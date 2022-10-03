@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "amd",
+    "target": "es5",
+    "outFile": "dist/app.js",
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "lib": ["es2016", "dom"]
+  },
+  "include": ["src/**/*"]
+}

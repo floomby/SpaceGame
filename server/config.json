@@ -1,0 +1,8 @@
+{
+  "ts-node": {
+    "compilerOptions": {
+      "lib": ["es2017"],
+      "downlevelIteration": true
+    }
+  }
+}

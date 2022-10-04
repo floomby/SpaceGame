@@ -47,20 +47,20 @@ const clearCanvas = () => {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 };
 
-// Probably an indication that the sync is not amazing, but this makes things less jarring
+// I may want to go back to using this if I change to have the update (not just the fractional update) being run on the clients
 let starAntiJitter = { x: 0, y: 0 };
 
 const drawStars = (self: Player) => {
-  const topLeft = { x: self.position.x - starAntiJitter.x - canvas.width / 2, y: self.position.y - starAntiJitter.y - canvas.height / 2 };
-  // topLeft.x /= 2;
-  // topLeft.y /= 2;
+  // const topLeft = { x: self.position.x - starAntiJitter.x - canvas.width / 2, y: self.position.y - starAntiJitter.y - canvas.height / 2 };
+  const topLeft = { x: self.position.x - canvas.width / 2, y: self.position.y - canvas.height / 2 };
+  topLeft.x /= 2;
+  topLeft.y /= 2;
   topLeft.x = positiveMod(topLeft.x, starTilingSize.x);
   topLeft.y = positiveMod(topLeft.y, starTilingSize.y);
   // console.log(topLeft);
   const wrapBottom = topLeft.y + canvas.height > starTilingSize.y;
   const wrapRight = topLeft.x + canvas.width > starTilingSize.x;
 
-  
   ctx.fillStyle = "white";
   for (const star of stars) {
     if (
@@ -129,8 +129,6 @@ const drawShip = (player: Player, self: Player) => {
     sprites[player.sprite].width,
     sprites[player.sprite].height
   );
-  ctx.fillStyle = player.team === 0 ? "lightblue" : "red";
-  ctx.fill();
   ctx.restore();
 };
 
@@ -278,7 +276,7 @@ const loop = () => {
   // //   sendInput(input, me);
   // // }
   // // The fractional update creates a smoother animation (I can make it more efficient by not using maps and slightly changing the drawing functions)
-  drawEverything(fractionalUpdate(state, (Date.now() - lastUpdate) * ticksPerSecond / 1000), syncPosition);
+  drawEverything(fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000), syncPosition);
   // drewOnFrame = syncPosition;
   // drawEverything(state, syncPosition);
   frame = requestAnimationFrame(loop);
@@ -319,42 +317,26 @@ const run = (socket: WebSocket) => {
     // syncTarget = data.frame;
     syncPosition = data.frame;
     console.log("Init on frame: " + syncPosition);
-    // clearInterval(frameTargetInterval);
-    // frameTargetInterval = setInterval(() => {
-    //   // syncTarget++;
-    //   // console.log(`On frame ${frame}, syncing to ${syncTarget} at ${syncPosition}`);
-    //   const self = state.players.get(me);
-    //   // while (syncPosition < syncTarget) {
-    //     syncPosition++;
-    //     applyInputs(input, self);
-    //     update(state, syncPosition, () => {});
-    //     if (self) {
-    //     } else if (!died) {
-    //       died = true;
-    //       // console.log("You are dead");
-    //       showDialog("You are dead");
-    //     }
-    //     lastUpdate = Date.now();
-    //   // }
-    //   drawEverything(state, syncPosition);
-    // }, 1000 / ticksPerSecond);
   });
 
   bindAction(socket, "removed", (data: any) => {
+    console.log("Got removed", data);
     state.players.delete(data);
   });
 
   bindAction(socket, "state", (data: any) => {
-    // console.log("On frame: ", syncPosition);
-    // console.log("Wanting frame: ", data.frame);
+    state.players = new Map();
+    state.projectiles = new Map();
+
     const players = data.players as Player[];
     syncPosition = data.frame;
-    const self = state.players.get(me);
+
+    // const self = state.players.get(me);
     for (const player of players) {
-      if (self && player.id === me) {
-        starAntiJitter = { x: player.position.x - self.position.x, y: player.position.y - self.position.y };
-        // console.log("Star anti jitter", starAntiJitter);
-      }
+      // if (self && player.id === me) {
+      // starAntiJitter = { x: player.position.x - self.position.x, y: player.position.y - self.position.y };
+      // console.log("Star anti jitter", starAntiJitter);
+      // }
       state.players.set(player.id, player);
     }
     const projectiles = data.projectiles as Ballistic[];
@@ -367,7 +349,13 @@ const run = (socket: WebSocket) => {
       state.projectiles.set(parentId, projectileGroup);
     }
     lastUpdate = Date.now();
-    // drawEverything(state, syncPosition);
+    const self = state.players.get(me);
+    if (self) {
+    } else if (!died) {
+      died = true;
+      // console.log("You are dead");
+      showDialog("You are dead");
+    }
   });
 
   bindAction(socket, "input", (data: any) => {

@@ -174,11 +174,11 @@ const drawEverything = (state: GlobalState, frameNumber: number) => {
   for (const [id, player] of state.players) {
     drawShip(player, lastSelf);
   }
-  let drawCount = 0;
+  // let drawCount = 0;
   for (const [id, projectiles] of state.projectiles) {
     for (const projectile of projectiles) {
       drawProjectile(projectile, lastSelf);
-      drawCount++;
+      // drawCount++;
     }
   }
   // console.log(drawCount, "projectiles");
@@ -188,7 +188,7 @@ let state: GlobalState;
 
 let frame: number;
 
-let syncTarget: number;
+// let syncTarget: number;
 let syncPosition: number;
 
 let input: Input = {
@@ -197,6 +197,15 @@ let input: Input = {
   left: false,
   right: false,
   primary: false,
+};
+
+const sendInput = (input: Input, id: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "input",
+      payload: { input, id },
+    })
+  );
 };
 
 const initInputHandlers = () => {
@@ -218,6 +227,7 @@ const initInputHandlers = () => {
         input.primary = true;
         break;
     }
+    sendInput(input, me);
   });
   document.addEventListener("keyup", (e) => {
     switch (e.key) {
@@ -237,6 +247,7 @@ const initInputHandlers = () => {
         input.primary = false;
         break;
     }
+    sendInput(input, me);
   });
 };
 
@@ -249,30 +260,27 @@ const sendPlayerInfo = (socket: WebSocket, player: Player) => {
   );
 };
 
-const sendInput = (socket: WebSocket, input: Input, id: number) => {
-  socket.send(
-    JSON.stringify({
-      type: "input",
-      payload: { input, id },
-    })
-  );
-};
-
 let lastUpdate = Date.now();
 let serverSocket: WebSocket;
 let died = false;
 
 const me = Math.floor(Math.random() * 1000000);
 
+let drewOnFrame = 0;
+
 const loop = () => {
-  const self = state.players.get(me);
-  // console.log("State", state);
-  if (self) {
-    // console.log("Updating self");
-    sendInput(serverSocket, input, me);
-  }
-  // TODO calculate fractional update state and draw from that so that it feels smoother
-  drawEverything(fractionalUpdate(state, (Date.now() - lastUpdate) / 1000 * 60), syncPosition);
+  // if (drewOnFrame >= syncPosition) {
+  //   // drawEverything(fractionalUpdate(state, (Date.now() - lastUpdate) * ticksPerSecond / 1000), syncPosition);
+  //   frame = requestAnimationFrame(loop);
+  //   return;
+  // }
+  // // if (self) {
+  // //   sendInput(input, me);
+  // // }
+  // // The fractional update creates a smoother animation (I can make it more efficient by not using maps and slightly changing the drawing functions)
+  drawEverything(fractionalUpdate(state, (Date.now() - lastUpdate) * ticksPerSecond / 1000), syncPosition);
+  // drewOnFrame = syncPosition;
+  // drawEverything(state, syncPosition);
   frame = requestAnimationFrame(loop);
 };
 
@@ -308,27 +316,28 @@ const run = (socket: WebSocket) => {
     state.players.set(me, self);
     // We send this now, but it should really be the servers job to send this to everyone and to actually add the player to the state
     sendPlayerInfo(serverSocket, self);
+    // syncTarget = data.frame;
     syncPosition = data.frame;
-    syncTarget = data.frame;
     console.log("Init on frame: " + syncPosition);
-    clearInterval(frameTargetInterval);
-    frameTargetInterval = setInterval(() => {
-      syncTarget++;
-      // console.log(`On frame ${frame}, syncing to ${syncTarget} at ${syncPosition}`);
-      const self = state.players.get(me);
-      while (syncPosition < syncTarget) {
-        syncPosition++;
-        if (self) {
-          applyInputs(input, self);
-        } else if (!died) {
-          died = true;
-          // console.log("You are dead");
-          showDialog("You are dead");
-        }
-        update(state, syncPosition, () => {});
-        lastUpdate = Date.now();
-      }
-    }, 1000 / ticksPerSecond);
+    // clearInterval(frameTargetInterval);
+    // frameTargetInterval = setInterval(() => {
+    //   // syncTarget++;
+    //   // console.log(`On frame ${frame}, syncing to ${syncTarget} at ${syncPosition}`);
+    //   const self = state.players.get(me);
+    //   // while (syncPosition < syncTarget) {
+    //     syncPosition++;
+    //     applyInputs(input, self);
+    //     update(state, syncPosition, () => {});
+    //     if (self) {
+    //     } else if (!died) {
+    //       died = true;
+    //       // console.log("You are dead");
+    //       showDialog("You are dead");
+    //     }
+    //     lastUpdate = Date.now();
+    //   // }
+    //   drawEverything(state, syncPosition);
+    // }, 1000 / ticksPerSecond);
   });
 
   bindAction(socket, "removed", (data: any) => {
@@ -336,12 +345,15 @@ const run = (socket: WebSocket) => {
   });
 
   bindAction(socket, "state", (data: any) => {
+    // console.log("On frame: ", syncPosition);
+    // console.log("Wanting frame: ", data.frame);
     const players = data.players as Player[];
-    syncTarget = data.frame;
+    syncPosition = data.frame;
     const self = state.players.get(me);
     for (const player of players) {
       if (self && player.id === me) {
         starAntiJitter = { x: player.position.x - self.position.x, y: player.position.y - self.position.y };
+        // console.log("Star anti jitter", starAntiJitter);
       }
       state.players.set(player.id, player);
     }
@@ -354,6 +366,8 @@ const run = (socket: WebSocket) => {
       }
       state.projectiles.set(parentId, projectileGroup);
     }
+    lastUpdate = Date.now();
+    // drawEverything(state, syncPosition);
   });
 
   bindAction(socket, "input", (data: any) => {

@@ -37,6 +37,7 @@ wss.on("connection", (ws) => {
     } else if (data.type === "player") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
+        console.log("Received player data from client: ", data.payload);
         // console.log("Player data from client: ", data.payload);
         state.players.set(client.id, data.payload);
         // TODO Cheating check needed
@@ -82,6 +83,8 @@ wss.on("connection", (ws) => {
   // ws.send(JSON.stringify({ type: "sync", payload: { frame } }));
 });
 
+const framesPerSync = 1;
+
 setInterval(() => {
   frame++;
   for (const [client, data] of clients) {
@@ -99,7 +102,7 @@ setInterval(() => {
   });
 
   // TODO Consider culling the state information to only send nearby players and projectiles
-  if (frame % 5 === 0) {
+  if (frame % framesPerSync === 0) {
     const playerData: Player[] = [];
     for (const player of state.players.values()) {
       playerData.push(player);
@@ -115,7 +118,9 @@ setInterval(() => {
       client.send(serialized);
     }
   }
-}, 1000 / ticksPerSecond);
+
+
+}, 1000 / (ticksPerSecond));
 
 server.listen(8080, () => {
   console.log("Server started on port 8080");

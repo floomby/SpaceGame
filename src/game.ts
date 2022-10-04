@@ -30,6 +30,7 @@ type Player = Entity & {
   sinceLastShot: number;
   toFire?: boolean;
   projectileId: number;
+  name?: string;
 };
 
 type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number };
@@ -157,6 +158,7 @@ const applyInputs = (input: Input, player: Player) => {
   }
 };
 
+const maxNameLength = 20;
 const ticksPerSecond = 60;
 
-export { GlobalState, Position, Circle, Input, Player, Ballistic, update, applyInputs, infinityNorm, positiveMod, fractionalUpdate, ticksPerSecond };
+export { GlobalState, Position, Circle, Input, Player, Ballistic, update, applyInputs, infinityNorm, positiveMod, fractionalUpdate, ticksPerSecond, maxNameLength };

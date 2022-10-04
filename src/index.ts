@@ -1,6 +1,6 @@
-import { connect, bindAction, register } from "./net";
+import { connect, bindAction, register, sendInput } from "./net";
 import { GlobalState, Position, Circle, Input, Player, update, applyInputs, Ballistic, positiveMod, ticksPerSecond, fractionalUpdate } from "./game";
-import { init as initDialog, show as showDialog, hide as hideDialog } from "./dialog";
+import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
 
 // TODO Move this to a separate file
 let canvas: HTMLCanvasElement;
@@ -48,7 +48,7 @@ const clearCanvas = () => {
 };
 
 // I may want to go back to using this if I change to have the update (not just the fractional update) being run on the clients
-let starAntiJitter = { x: 0, y: 0 };
+// let starAntiJitter = { x: 0, y: 0 };
 
 const drawStars = (self: Player) => {
   // const topLeft = { x: self.position.x - starAntiJitter.x - canvas.width / 2, y: self.position.y - starAntiJitter.y - canvas.height / 2 };
@@ -57,7 +57,6 @@ const drawStars = (self: Player) => {
   topLeft.y /= 2;
   topLeft.x = positiveMod(topLeft.x, starTilingSize.x);
   topLeft.y = positiveMod(topLeft.y, starTilingSize.y);
-  // console.log(topLeft);
   const wrapBottom = topLeft.y + canvas.height > starTilingSize.y;
   const wrapRight = topLeft.x + canvas.width > starTilingSize.x;
 
@@ -117,11 +116,6 @@ const drawShip = (player: Player, self: Player) => {
   ctx.save();
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
   ctx.rotate(player.heading);
-  // ctx.beginPath();
-  // ctx.moveTo(10, 0);
-  // ctx.lineTo(-10, -7);
-  // ctx.lineTo(-10, 7);
-  // ctx.closePath();
   ctx.drawImage(
     sprites[player.sprite],
     -sprites[player.sprite].width / 2,
@@ -137,7 +131,6 @@ const drawProjectile = (projectile: Ballistic, self: Player) => {
   ctx.translate(projectile.position.x - self.position.x + canvas.width / 2, projectile.position.y - self.position.y + canvas.height / 2);
   ctx.beginPath();
   ctx.arc(0, 0, projectile.radius, 0, 2 * Math.PI);
-  // ctx.fillStyle = projectile.team === 0 ? "lightblue" : "red";
   ctx.fillStyle = "white";
   ctx.closePath();
   ctx.fill();
@@ -160,7 +153,7 @@ const drawProjectile = (projectile: Ballistic, self: Player) => {
 
 let lastSelf: Player;
 
-const drawEverything = (state: GlobalState, frameNumber: number) => {
+const drawEverything = (state: GlobalState) => {
   clearCanvas();
   const self = state.players.get(me);
   if (self) {
@@ -172,21 +165,15 @@ const drawEverything = (state: GlobalState, frameNumber: number) => {
   for (const [id, player] of state.players) {
     drawShip(player, lastSelf);
   }
-  // let drawCount = 0;
   for (const [id, projectiles] of state.projectiles) {
     for (const projectile of projectiles) {
       drawProjectile(projectile, lastSelf);
-      // drawCount++;
     }
   }
-  // console.log(drawCount, "projectiles");
 };
 
 let state: GlobalState;
-
 let frame: number;
-
-// let syncTarget: number;
 let syncPosition: number;
 
 let input: Input = {
@@ -195,15 +182,6 @@ let input: Input = {
   left: false,
   right: false,
   primary: false,
-};
-
-const sendInput = (input: Input, id: number) => {
-  serverSocket.send(
-    JSON.stringify({
-      type: "input",
-      payload: { input, id },
-    })
-  );
 };
 
 const initInputHandlers = () => {
@@ -249,94 +227,58 @@ const initInputHandlers = () => {
   });
 };
 
-const sendPlayerInfo = (socket: WebSocket, player: Player) => {
-  socket.send(
-    JSON.stringify({
-      type: "player",
-      payload: player,
-    })
-  );
-};
-
 let lastUpdate = Date.now();
-let serverSocket: WebSocket;
-let died = false;
 
-const me = Math.floor(Math.random() * 1000000);
-
-let drewOnFrame = 0;
+// The server will decide this for us
+let me: number;
 
 const loop = () => {
-  // if (drewOnFrame >= syncPosition) {
-  //   // drawEverything(fractionalUpdate(state, (Date.now() - lastUpdate) * ticksPerSecond / 1000), syncPosition);
-  //   frame = requestAnimationFrame(loop);
-  //   return;
-  // }
-  // // if (self) {
-  // //   sendInput(input, me);
-  // // }
-  // // The fractional update creates a smoother animation (I can make it more efficient by not using maps and slightly changing the drawing functions)
-  drawEverything(fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000), syncPosition);
-  // drewOnFrame = syncPosition;
-  // drawEverything(state, syncPosition);
+  drawEverything(fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000));
   frame = requestAnimationFrame(loop);
 };
 
-let frameTargetInterval: number;
 
-const run = (socket: WebSocket) => {
+const registerHandler = (e: KeyboardEvent) => {
+  if (e.key === "Enter") {
+    const input = document.getElementById("username") as HTMLInputElement;
+    register(input.value);
+    clearDialog();
+    hideDialog();
+    initInputHandlers();
+  }
+};
+
+const registerDialog = horizontalCenter(["<h3>Input username</h3>", '<input type="text" placeholder="Username" id="username"/>']);
+
+const run = () => {
   console.log("Running game");
-  serverSocket = socket;
 
-  console.log("Initialized locals");
-  register(socket, me);
-  initInputHandlers();
+  showDialog(registerDialog);
+  const usernameInput = document.getElementById("username") as HTMLInputElement;
+  usernameInput.addEventListener("keydown", registerHandler);
 
   state = {
     players: new Map(),
     projectiles: new Map(),
   };
 
-  bindAction(socket, "init", (data: any) => {
-    console.log("Got init", data);
-    const self = {
-      position: { x: 100, y: 100 },
-      radius: 13,
-      speed: 0,
-      heading: 0,
-      health: 100,
-      id: me,
-      team: me % 2,
-      sprite: me % 2,
-      sinceLastShot: 10000,
-      projectileId: 0,
-    };
-    state.players.set(me, self);
-    // We send this now, but it should really be the servers job to send this to everyone and to actually add the player to the state
-    sendPlayerInfo(serverSocket, self);
-    // syncTarget = data.frame;
-    syncPosition = data.frame;
-    console.log("Init on frame: " + syncPosition);
+  bindAction("init", (data: { id: number }) => {
+    me = data.id;
   });
 
-  bindAction(socket, "removed", (data: any) => {
+  bindAction("removed", (data: any) => {
     console.log("Got removed", data);
     state.players.delete(data);
   });
 
-  bindAction(socket, "state", (data: any) => {
+  bindAction("state", (data: any) => {
     state.players = new Map();
     state.projectiles = new Map();
 
     const players = data.players as Player[];
     syncPosition = data.frame;
 
-    // const self = state.players.get(me);
     for (const player of players) {
-      // if (self && player.id === me) {
-      // starAntiJitter = { x: player.position.x - self.position.x, y: player.position.y - self.position.y };
-      // console.log("Star anti jitter", starAntiJitter);
-      // }
       state.players.set(player.id, player);
     }
     const projectiles = data.projectiles as Ballistic[];
@@ -350,15 +292,12 @@ const run = (socket: WebSocket) => {
     }
     lastUpdate = Date.now();
     const self = state.players.get(me);
-    if (self) {
-    } else if (!died) {
-      died = true;
-      // console.log("You are dead");
-      showDialog("You are dead");
+    if (!self) {
+      showDialog("<h3>You are dead</h3>");
     }
   });
 
-  bindAction(socket, "input", (data: any) => {
+  bindAction("input", (data: any) => {
     const { input, id } = data;
     const player = state.players.get(id);
     if (player) {

@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond } from "../src/game";
+import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond, maxNameLength } from "../src/game";
 
 const state: GlobalState = {
   players: new Map(),
@@ -10,6 +10,7 @@ const state: GlobalState = {
 type ClientData = {
   id: number;
   input: Input;
+  name: string;
 };
 
 let frame = 0;
@@ -26,8 +27,24 @@ wss.on("connection", (ws) => {
   ws.on("message", (msg) => {
     const data = JSON.parse(msg.toString());
     if (data.type === "register") {
-      const id = data.payload.id;
-      clients.set(ws, { id, input: { up: false, down: false, left: false, right: false, primary: false } });
+      const id = Math.floor(Math.random() * 1000000);
+      const name = data.payload.name.substring(0, maxNameLength);
+      clients.set(ws, { id, name, input: { up: false, down: false, left: false, right: false, primary: false } });
+      const player = {
+        position: { x: 100, y: 100 },
+        radius: 13,
+        speed: 0,
+        heading: 0,
+        health: 100,
+        id,
+        team: id % 2,
+        sprite: id % 2,
+        sinceLastShot: 10000,
+        projectileId: 0,
+        name,
+      };
+      state.players.set(id, player);
+      ws.send(JSON.stringify({ type: "init", payload: { id } }));
       console.log("Registered client with id: ", id);
     } else if (data.type === "debug") {
       console.log("Debugging");
@@ -35,9 +52,9 @@ wss.on("connection", (ws) => {
         console.log("Client: ", data);
       }
     } else if (data.type === "player") {
+      console.log("Received player data from client (should not be here with the changes): ", data.payload);
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
-        console.log("Received player data from client: ", data.payload);
         // console.log("Player data from client: ", data.payload);
         state.players.set(client.id, data.payload);
         // TODO Cheating check needed
@@ -48,12 +65,13 @@ wss.on("connection", (ws) => {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
         clients.set(ws, { ...client, input: data.payload.input });
-        for (const [toClient, toData] of clients) {
-          // TODO Cull based on distance
-          if (client.id !== toData.id) {
-            toClient.send(JSON.stringify({ type: "input", payload: data.payload }));
-          }
-        }
+        // Since I am just sending the state every frame I don't need to relay all the inputs to everyone
+        // for (const [toClient, toData] of clients) {
+        //   // TODO Cull based on distance
+        //   if (client.id !== toData.id) {
+        //     toClient.send(JSON.stringify({ type: "input", payload: data.payload }));
+        //   }
+        // }
       } else {
         console.log("Input data from unknown client");
       }
@@ -78,11 +96,9 @@ wss.on("connection", (ws) => {
       }
     }
   });
-
-  ws.send(JSON.stringify({ type: "init", payload: { frame } }));
-  // ws.send(JSON.stringify({ type: "sync", payload: { frame } }));
 });
 
+// Idk if this is how I want to do it or not
 const framesPerSync = 1;
 
 setInterval(() => {
@@ -118,10 +134,8 @@ setInterval(() => {
       client.send(serialized);
     }
   }
-
-
 }, 1000 / (ticksPerSecond));
 
 server.listen(8080, () => {
-  console.log("Server started on port 8080");
+  console.log("Websocket server started on port 8080");
 });

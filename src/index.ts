@@ -1,13 +1,32 @@
 import { connect, bindAction, register } from "./net";
-import { GlobalState, Position, Circle, Input, Player, update, applyInputs, Ballistic } from "./game";
+import { GlobalState, Position, Circle, Input, Player, update, applyInputs, Ballistic, positiveMod, ticksPerSecond, fractionalUpdate } from "./game";
+import { init as initDialog, show as showDialog, hide as hideDialog } from "./dialog";
 
 // TODO Move this to a separate file
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let sprites: ImageBitmap[] = [];
 
+let stars: Circle[] = [];
+let starTilingSize = { x: 5000, y: 5000 };
+
+const initStars = () => {
+  for (let i = 0; i < 1000; i++) {
+    stars.push({
+      position: { x: Math.random() * starTilingSize.x, y: Math.random() * starTilingSize.y },
+      radius: Math.random() * 2 + 1,
+    });
+  }
+};
+
 const initLocals = (callback: () => void) => {
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
   ctx = canvas.getContext("2d");
   const spriteSheet = new Image();
   spriteSheet.onload = () => {
@@ -26,6 +45,72 @@ const initLocals = (callback: () => void) => {
 const clearCanvas = () => {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+};
+
+// Probably an indication that the sync is not amazing, but this makes things less jarring
+let starAntiJitter = { x: 0, y: 0 };
+
+const drawStars = (self: Player) => {
+  const topLeft = { x: self.position.x - starAntiJitter.x - canvas.width / 2, y: self.position.y - starAntiJitter.y - canvas.height / 2 };
+  // topLeft.x /= 2;
+  // topLeft.y /= 2;
+  topLeft.x = positiveMod(topLeft.x, starTilingSize.x);
+  topLeft.y = positiveMod(topLeft.y, starTilingSize.y);
+  // console.log(topLeft);
+  const wrapBottom = topLeft.y + canvas.height > starTilingSize.y;
+  const wrapRight = topLeft.x + canvas.width > starTilingSize.x;
+
+  
+  ctx.fillStyle = "white";
+  for (const star of stars) {
+    if (
+      star.position.x + 3 >= topLeft.x &&
+      star.position.x - 3 <= topLeft.x + canvas.width &&
+      star.position.y + 3 >= topLeft.y &&
+      star.position.y - 3 <= topLeft.y + canvas.height
+    ) {
+      ctx.beginPath();
+      ctx.arc(star.position.x - topLeft.x, star.position.y - topLeft.y, star.radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    if (
+      wrapRight &&
+      star.position.x + starTilingSize.x + 3 >= topLeft.x &&
+      star.position.x + starTilingSize.x - 3 <= topLeft.x + canvas.width &&
+      star.position.y + 3 >= topLeft.y &&
+      star.position.y - 3 <= topLeft.y + canvas.height
+    ) {
+      ctx.beginPath();
+      ctx.arc(star.position.x + starTilingSize.x - topLeft.x, star.position.y - topLeft.y, star.radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    if (
+      wrapBottom &&
+      star.position.x + 3 >= topLeft.x &&
+      star.position.x - 3 <= topLeft.x + canvas.width &&
+      star.position.y + starTilingSize.y + 3 >= topLeft.y &&
+      star.position.y + starTilingSize.y - 3 <= topLeft.y + canvas.height
+    ) {
+      ctx.beginPath();
+      ctx.arc(star.position.x - topLeft.x, star.position.y + starTilingSize.y - topLeft.y, star.radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    if (
+      wrapBottom &&
+      wrapRight &&
+      star.position.x + starTilingSize.x + 3 >= topLeft.x &&
+      star.position.x + starTilingSize.x - 3 <= topLeft.x + canvas.width &&
+      star.position.y + starTilingSize.y + 3 >= topLeft.y &&
+      star.position.y + starTilingSize.y - 3 <= topLeft.y + canvas.height
+    ) {
+      ctx.beginPath();
+      ctx.arc(star.position.x + starTilingSize.x - topLeft.x, star.position.y + starTilingSize.y - topLeft.y, star.radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
 };
 
 const drawShip = (player: Player, self: Player) => {
@@ -75,20 +160,28 @@ const drawProjectile = (projectile: Ballistic, self: Player) => {
   ctx.restore();
 };
 
+let lastSelf: Player;
+
 const drawEverything = (state: GlobalState, frameNumber: number) => {
   clearCanvas();
   const self = state.players.get(me);
+  if (self) {
+    lastSelf = self;
+  }
+  if (lastSelf) {
+    drawStars(lastSelf);
+  }
   for (const [id, player] of state.players) {
-    drawShip(player, self);
+    drawShip(player, lastSelf);
   }
   let drawCount = 0;
   for (const [id, projectiles] of state.projectiles) {
     for (const projectile of projectiles) {
-      drawProjectile(projectile, self);
+      drawProjectile(projectile, lastSelf);
       drawCount++;
     }
   }
-  console.log(drawCount, "projectiles");
+  // console.log(drawCount, "projectiles");
 };
 
 let state: GlobalState;
@@ -165,7 +258,9 @@ const sendInput = (socket: WebSocket, input: Input, id: number) => {
   );
 };
 
+let lastUpdate = Date.now();
 let serverSocket: WebSocket;
+let died = false;
 
 const me = Math.floor(Math.random() * 1000000);
 
@@ -176,7 +271,8 @@ const loop = () => {
     // console.log("Updating self");
     sendInput(serverSocket, input, me);
   }
-  drawEverything(state, syncPosition);
+  // TODO calculate fractional update state and draw from that so that it feels smoother
+  drawEverything(fractionalUpdate(state, (Date.now() - lastUpdate) / 1000 * 60), syncPosition);
   frame = requestAnimationFrame(loop);
 };
 
@@ -210,7 +306,7 @@ const run = (socket: WebSocket) => {
       projectileId: 0,
     };
     state.players.set(me, self);
-    // We send this now, but we can send it later to check that everything is still synced up
+    // We send this now, but it should really be the servers job to send this to everyone and to actually add the player to the state
     sendPlayerInfo(serverSocket, self);
     syncPosition = data.frame;
     syncTarget = data.frame;
@@ -222,10 +318,17 @@ const run = (socket: WebSocket) => {
       const self = state.players.get(me);
       while (syncPosition < syncTarget) {
         syncPosition++;
-        applyInputs(input, self);
-        update(state, syncPosition);
+        if (self) {
+          applyInputs(input, self);
+        } else if (!died) {
+          died = true;
+          // console.log("You are dead");
+          showDialog("You are dead");
+        }
+        update(state, syncPosition, () => {});
+        lastUpdate = Date.now();
       }
-    }, 1000 / 60);
+    }, 1000 / ticksPerSecond);
   });
 
   bindAction(socket, "removed", (data: any) => {
@@ -235,10 +338,12 @@ const run = (socket: WebSocket) => {
   bindAction(socket, "state", (data: any) => {
     const players = data.players as Player[];
     syncTarget = data.frame;
+    const self = state.players.get(me);
     for (const player of players) {
-      // if (player.id !== me) {
+      if (self && player.id === me) {
+        starAntiJitter = { x: player.position.x - self.position.x, y: player.position.y - self.position.y };
+      }
       state.players.set(player.id, player);
-      // }
     }
     const projectiles = data.projectiles as Ballistic[];
     while (projectiles.length) {
@@ -251,10 +356,20 @@ const run = (socket: WebSocket) => {
     }
   });
 
+  bindAction(socket, "input", (data: any) => {
+    const { input, id } = data;
+    const player = state.players.get(id);
+    if (player) {
+      applyInputs(input, player);
+    }
+  });
+
   loop();
 };
 
 const toRun = () => {
+  initDialog();
+  initStars();
   initLocals(() => {
     connect(run);
   });

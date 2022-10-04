@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { GlobalState, Player, Input, update, applyInputs, Ballistic } from "../src/game";
+import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond } from "../src/game";
 
 const state: GlobalState = {
   players: new Map(),
@@ -47,6 +47,12 @@ wss.on("connection", (ws) => {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
         clients.set(ws, { ...client, input: data.payload.input });
+        for (const [toClient, toData] of clients) {
+          // TODO Cull based on distance
+          if (client.id !== toData.id) {
+            toClient.send(JSON.stringify({ type: "input", payload: data.payload }));
+          }
+        }
       } else {
         console.log("Input data from unknown client");
       }
@@ -84,10 +90,16 @@ setInterval(() => {
       applyInputs(data.input, player);
     }
   }
-  update(state, frame);
+  update(state, frame, (id: number) => {
+    for (const [client, data] of clients) {
+      if (data.id === id) {
+        client.send(JSON.stringify({ type: "removed", payload: id }));
+      }
+    }
+  });
 
   // TODO Consider culling the state information to only send nearby players and projectiles
-  if (frame % 10 === 0) {
+  if (frame % 5 === 0) {
     const playerData: Player[] = [];
     for (const player of state.players.values()) {
       playerData.push(player);
@@ -103,7 +115,7 @@ setInterval(() => {
       client.send(serialized);
     }
   }
-}, 1000 / 60);
+}, 1000 / ticksPerSecond);
 
 server.listen(8080, () => {
   console.log("Server started on port 8080");

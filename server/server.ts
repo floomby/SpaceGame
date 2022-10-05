@@ -42,6 +42,7 @@ wss.on("connection", (ws) => {
         sinceLastShot: 10000,
         projectileId: 0,
         name,
+        energy: 100,
       };
       state.players.set(id, player);
       ws.send(JSON.stringify({ type: "init", payload: { id } }));

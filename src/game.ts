@@ -31,6 +31,7 @@ type Player = Entity & {
   toFire?: boolean;
   projectileId: number;
   name?: string;
+  energy: number;
 };
 
 type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number };
@@ -74,7 +75,7 @@ const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) =
   for (const [id, player] of state.players) {
     player.position.x += player.speed * Math.cos(player.heading);
     player.position.y += player.speed * Math.sin(player.heading);
-    if (player.toFire) {
+    if (player.toFire && player.energy > 10) {
       // console.log(frameNumber, player);
       const projectile = {
         position: { x: player.position.x, y: player.position.y },
@@ -92,8 +93,13 @@ const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) =
       state.projectiles.set(id, projectiles);
       player.projectileId++;
       player.toFire = false;
+      player.energy -= 10;
     }
     player.sinceLastShot += 1;
+    player.energy += 0.5;
+    if (player.energy > 100) {
+      player.energy = 100;
+    }
   }
   for (const [id, projectiles] of state.projectiles) {
     for (let i = 0; i < projectiles.length; i++) {

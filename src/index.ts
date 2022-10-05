@@ -2,7 +2,7 @@ import { connect, bindAction, register, sendInput } from "./net";
 import { GlobalState, Position, Circle, Input, Player, update, applyInputs, Ballistic, positiveMod, ticksPerSecond, fractionalUpdate } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
 
-// TODO Move this to a separate file
+// TODO Move drawing to a separate file
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let sprites: ImageBitmap[] = [];
@@ -39,12 +39,58 @@ const initLocals = (callback: () => void) => {
       callback();
     });
   };
-  spriteSheet.src = "sprites/sprites.png";
+  spriteSheet.src = "resources/sprites.png";
 };
 
 const clearCanvas = () => {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+};
+
+const drawBar = (position: Position, width: number, height: number, primary: string, secondary: string, amount: number) => {
+  ctx.fillStyle = primary;
+  ctx.fillRect(position.x, position.y, width * amount, height);
+  ctx.fillStyle = secondary;
+  ctx.fillRect(position.x + width * amount, position.y, width * (1 - amount), height);
+};
+
+const drawHUD = (player: Player) => {
+  drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#0022FFCC", "#333333CC", player.energy / 100);
+};
+
+const drawMiniMapShip = (center: Position, player: Player, self: Player, miniMapScaleFactor: number) => {
+  ctx.save();
+  ctx.translate(
+    ((player.position.x - self.position.x) * miniMapScaleFactor + center.x),
+    ((player.position.y - self.position.y) * miniMapScaleFactor + center.y)
+  );
+  ctx.rotate(player.heading);
+  ctx.fillStyle = player.team ? "red" : "aqua";
+  ctx.beginPath();
+  ctx.moveTo(7, 0);
+  ctx.lineTo(-7, -4);
+  ctx.lineTo(-7, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawMiniMap = (position: Position, width: number, height: number, self: Player, state: GlobalState, miniMapScaleFactor: number) => {
+  ctx.fillStyle = "#30303055";
+  const margin = 5;
+  ctx.fillRect(position.x - margin, position.y - margin, width + margin, height + margin);
+  const center = { x: position.x + width / 2, y: position.y + height / 2 };
+  let drawCount = 0;
+  for (const [id, player] of state.players) {
+    if (
+      Math.abs(player.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
+      Math.abs(player.position.y - self.position.y) * miniMapScaleFactor < height / 2
+    ) {
+      drawMiniMapShip(center, player, self, miniMapScaleFactor);
+      drawCount++;
+    }
+  }
+  console.log(drawCount);
 };
 
 // I may want to go back to using this if I change to have the update (not just the fractional update) being run on the clients
@@ -115,6 +161,14 @@ const drawStars = (self: Player) => {
 const drawShip = (player: Player, self: Player) => {
   ctx.save();
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
+  drawBar(
+    { x: -sprites[player.sprite].width / 2, y: -sprites[player.sprite].height / 2 - 10 },
+    sprites[player.sprite].width,
+    5,
+    "#00EE00CC",
+    "#EE0000CC",
+    player.health / 100
+  );
   ctx.rotate(player.heading);
   ctx.drawImage(
     sprites[player.sprite],
@@ -163,12 +217,21 @@ const drawEverything = (state: GlobalState) => {
     drawStars(lastSelf);
   }
   for (const [id, player] of state.players) {
-    drawShip(player, lastSelf);
+    if (id !== me) {
+      drawShip(player, lastSelf);
+    }
+  }
+  if (self) {
+    drawShip(self, self);
   }
   for (const [id, projectiles] of state.projectiles) {
     for (const projectile of projectiles) {
       drawProjectile(projectile, lastSelf);
     }
+  }
+  if (self) {
+    drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.1);
+    drawHUD(self);
   }
 };
 
@@ -186,57 +249,72 @@ let input: Input = {
 
 const initInputHandlers = () => {
   document.addEventListener("keydown", (e) => {
+    let changed = false;
     switch (e.key) {
       case "ArrowUp":
+        changed = !input.up;
         input.up = true;
         break;
       case "ArrowDown":
+        changed = !input.down;
         input.down = true;
         break;
       case "ArrowLeft":
+        changed = !input.left;
         input.left = true;
         break;
       case "ArrowRight":
+        changed = !input.right;
         input.right = true;
         break;
       case " ":
+        changed = !input.primary;
         input.primary = true;
         break;
     }
-    sendInput(input, me);
+    if (changed) {
+      sendInput(input, me);
+    }
   });
   document.addEventListener("keyup", (e) => {
+    let changed = false;
     switch (e.key) {
       case "ArrowUp":
+        changed = input.up;
         input.up = false;
         break;
       case "ArrowDown":
+        changed = input.down;
         input.down = false;
         break;
       case "ArrowLeft":
+        changed = input.left;
         input.left = false;
         break;
       case "ArrowRight":
+        changed = input.right;
         input.right = false;
         break;
       case " ":
+        changed = input.primary;
         input.primary = false;
         break;
     }
-    sendInput(input, me);
+    if (changed) {
+      sendInput(input, me);
+    }
   });
 };
 
 let lastUpdate = Date.now();
 
-// The server will decide this for us
+// The server will assign us an id
 let me: number;
 
 const loop = () => {
   drawEverything(fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000));
   frame = requestAnimationFrame(loop);
 };
-
 
 const registerHandler = (e: KeyboardEvent) => {
   if (e.key === "Enter") {

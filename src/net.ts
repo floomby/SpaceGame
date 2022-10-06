@@ -57,4 +57,22 @@ const sendPlayerInfo = (player: Player) => {
   );
 };
 
-export { connect, bindAction, register, sendInput, sendPlayerInfo };
+const sendDock = (id: number, stationId: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "dock",
+      payload: { id, stationId },
+    })
+  );
+};
+
+const sendUndock = (id: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "undock",
+      payload: { id },
+    })
+  );
+};
+
+export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock };

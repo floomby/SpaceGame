@@ -1,6 +1,11 @@
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond, maxNameLength } from "../src/game";
+import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond, maxNameLength, canDock } from "../src/game";
+import { UnitDefinition, defs, defMap, initDefs } from "../src/defs";
+
+const port = 8080;
+
+initDefs();
 
 const state: GlobalState = {
   players: new Map(),
@@ -21,6 +26,23 @@ const server = createServer();
 
 const wss = new WebSocketServer({ server });
 
+const testStarbaseId = Math.floor(Math.random() * 1000000);
+const testStarbase = {
+  position: { x: -400, y: -400 },
+  radius: defs[2].radius,
+  speed: 0,
+  heading: 0,
+  health: defs[2].health,
+  testStarbaseId,
+  sinceLastShot: [10000, 10000, 10000, 10000],
+  projectileId: 0,
+  energy: defs[2].energy,
+  definitionIndex: 2,
+  id: testStarbaseId,
+  name: "Test Starbase",
+};
+state.players.set(testStarbaseId, testStarbase);
+
 wss.on("connection", (ws) => {
   console.log("Client connected");
 
@@ -30,20 +52,23 @@ wss.on("connection", (ws) => {
       const id = Math.floor(Math.random() * 1000000);
       const name = data.payload.name.substring(0, maxNameLength);
       clients.set(ws, { id, name, input: { up: false, down: false, left: false, right: false, primary: false } });
+
+      const defIndex = id % 2;
+
       const player = {
         position: { x: 100, y: 100 },
-        radius: 13,
+        radius: defs[defIndex].radius,
         speed: 0,
         heading: 0,
-        health: 100,
+        health: defs[defIndex].health,
         id,
-        team: id % 2,
-        sprite: id % 2,
-        sinceLastShot: 10000,
+        sinceLastShot: [10000],
         projectileId: 0,
         name,
-        energy: 100,
+        energy: defs[defIndex].energy,
+        definitionIndex: defIndex,
       };
+
       state.players.set(id, player);
       ws.send(JSON.stringify({ type: "init", payload: { id } }));
       console.log("Registered client with id: ", id);
@@ -75,6 +100,30 @@ wss.on("connection", (ws) => {
         // }
       } else {
         console.log("Input data from unknown client");
+      }
+    } else if (data.type === "dock") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const player = state.players.get(client.id);
+        if (player) {
+          const station = state.players.get(data.payload.stationId);
+          if (canDock(player, station, false)) {
+            player.docked = data.payload.stationId;
+            player.heading = 0;
+            player.speed = 0;
+            player.position = { x: station!.position.x, y: station!.position.y };
+            state.players.set(client.id, player);
+          }
+        }
+      }
+    } else if (data.type === "undock") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const player = state.players.get(client.id);
+        if (player) {
+          player.docked = undefined;
+          state.players.set(client.id, player);
+        }
       }
     } else {
       console.log("Message from client: ", data);
@@ -135,8 +184,8 @@ setInterval(() => {
       client.send(serialized);
     }
   }
-}, 1000 / (ticksPerSecond));
+}, 1000 / ticksPerSecond);
 
-server.listen(8080, () => {
+server.listen(port, () => {
   console.log("Websocket server started on port 8080");
 });

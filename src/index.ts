@@ -1,6 +1,7 @@
-import { connect, bindAction, register, sendInput } from "./net";
-import { GlobalState, Position, Circle, Input, Player, update, applyInputs, Ballistic, positiveMod, ticksPerSecond, fractionalUpdate } from "./game";
+import { connect, bindAction, register, sendInput, sendDock, sendUndock } from "./net";
+import { GlobalState, Position, Circle, Input, Player, update, applyInputs, Ballistic, positiveMod, ticksPerSecond, fractionalUpdate, setCanDock } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
+import { defs, initDefs } from "./defs";
 
 // TODO Move drawing to a separate file
 let canvas: HTMLCanvasElement;
@@ -20,6 +21,7 @@ const initStars = () => {
 };
 
 const initLocals = (callback: () => void) => {
+  initDefs();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -31,8 +33,8 @@ const initLocals = (callback: () => void) => {
   const spriteSheet = new Image();
   spriteSheet.onload = () => {
     const spritePromises: Promise<ImageBitmap>[] = [];
-    for (let i = 0; i < 2; i++) {
-      spritePromises.push(createImageBitmap(spriteSheet, i * 32, 0, 32, 32));
+    for (let i = 0; i < defs.length; i++) {
+      spritePromises.push(createImageBitmap(spriteSheet, defs[i].sprite.x, defs[i].sprite.y, defs[i].sprite.width, defs[i].sprite.height));
     }
     Promise.all(spritePromises).then((completed) => {
       sprites = completed;
@@ -55,17 +57,17 @@ const drawBar = (position: Position, width: number, height: number, primary: str
 };
 
 const drawHUD = (player: Player) => {
-  drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#0022FFCC", "#333333CC", player.energy / 100);
+  drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#0022FFCC", "#333333CC", player.energy / defs[player.definitionIndex].energy);
 };
 
 const drawMiniMapShip = (center: Position, player: Player, self: Player, miniMapScaleFactor: number) => {
   ctx.save();
   ctx.translate(
-    ((player.position.x - self.position.x) * miniMapScaleFactor + center.x),
-    ((player.position.y - self.position.y) * miniMapScaleFactor + center.y)
+    (player.position.x - self.position.x) * miniMapScaleFactor + center.x,
+    (player.position.y - self.position.y) * miniMapScaleFactor + center.y
   );
   ctx.rotate(player.heading);
-  ctx.fillStyle = player.team ? "red" : "aqua";
+  ctx.fillStyle = defs[player.definitionIndex].team ? "red" : "aqua";
   ctx.beginPath();
   ctx.moveTo(7, 0);
   ctx.lineTo(-7, -4);
@@ -80,17 +82,14 @@ const drawMiniMap = (position: Position, width: number, height: number, self: Pl
   const margin = 5;
   ctx.fillRect(position.x - margin, position.y - margin, width + margin, height + margin);
   const center = { x: position.x + width / 2, y: position.y + height / 2 };
-  let drawCount = 0;
   for (const [id, player] of state.players) {
     if (
       Math.abs(player.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
       Math.abs(player.position.y - self.position.y) * miniMapScaleFactor < height / 2
     ) {
       drawMiniMapShip(center, player, self, miniMapScaleFactor);
-      drawCount++;
     }
   }
-  console.log(drawCount);
 };
 
 // I may want to go back to using this if I change to have the update (not just the fractional update) being run on the clients
@@ -162,20 +161,28 @@ const drawShip = (player: Player, self: Player) => {
   ctx.save();
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
   drawBar(
-    { x: -sprites[player.sprite].width / 2, y: -sprites[player.sprite].height / 2 - 10 },
-    sprites[player.sprite].width,
+    { x: -sprites[player.definitionIndex].width / 2, y: -sprites[player.definitionIndex].height / 2 - 10 },
+    sprites[player.definitionIndex].width,
     5,
     "#00EE00CC",
     "#EE0000CC",
-    player.health / 100
+    player.health / defs[player.definitionIndex].health
+  );
+  drawBar(
+    { x: -sprites[player.definitionIndex].width / 2, y: -sprites[player.definitionIndex].height / 2 - 5 },
+    sprites[player.definitionIndex].width,
+    5,
+    "#0022FFCC",
+    "#333333CC",
+    player.energy / defs[player.definitionIndex].energy
   );
   ctx.rotate(player.heading);
   ctx.drawImage(
-    sprites[player.sprite],
-    -sprites[player.sprite].width / 2,
-    -sprites[player.sprite].height / 2,
-    sprites[player.sprite].width,
-    sprites[player.sprite].height
+    sprites[player.definitionIndex],
+    -sprites[player.definitionIndex].width / 2,
+    -sprites[player.definitionIndex].height / 2,
+    sprites[player.definitionIndex].width,
+    sprites[player.definitionIndex].height
   );
   ctx.restore();
 };
@@ -193,8 +200,8 @@ const drawProjectile = (projectile: Ballistic, self: Player) => {
   const tailLength = 20;
   const tailEnd = { x: -Math.cos(projectile.heading) * tailLength, y: -Math.sin(projectile.heading) * tailLength };
   const gradient = ctx.createLinearGradient(0, 0, tailEnd.x, tailEnd.y);
-  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
-  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+  gradient.addColorStop(0, "#FFFFFFFF");
+  gradient.addColorStop(1, "#FFFFFF00");
   ctx.strokeStyle = gradient;
   ctx.beginPath();
   ctx.moveTo(0, 0);
@@ -205,11 +212,17 @@ const drawProjectile = (projectile: Ballistic, self: Player) => {
   ctx.restore();
 };
 
+const drawDockText = () => {
+  ctx.fillStyle = "white";
+  ctx.font = "30px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Press m to dock", canvas.width / 2, canvas.height / 2 + 200);
+};
+
 let lastSelf: Player;
 
-const drawEverything = (state: GlobalState) => {
+const drawEverything = (state: GlobalState, self: Player) => {
   clearCanvas();
-  const self = state.players.get(me);
   if (self) {
     lastSelf = self;
   }
@@ -217,11 +230,14 @@ const drawEverything = (state: GlobalState) => {
     drawStars(lastSelf);
   }
   for (const [id, player] of state.players) {
+    if (player.docked) {
+      continue;
+    }
     if (id !== me) {
       drawShip(player, lastSelf);
     }
   }
-  if (self) {
+  if (self && !self.docked) {
     drawShip(self, self);
   }
   for (const [id, projectiles] of state.projectiles) {
@@ -229,9 +245,12 @@ const drawEverything = (state: GlobalState) => {
       drawProjectile(projectile, lastSelf);
     }
   }
-  if (self) {
+  if (self && !self.docked) {
     drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.1);
     drawHUD(self);
+    if (self.canDock) {
+      drawDockText();
+    }
   }
 };
 
@@ -239,12 +258,16 @@ let state: GlobalState;
 let frame: number;
 let syncPosition: number;
 
+let docker = () => {};
+let showDocked = false;
+
 let input: Input = {
   up: false,
   down: false,
   left: false,
   right: false,
   primary: false,
+  dock: false,
 };
 
 const initInputHandlers = () => {
@@ -270,6 +293,9 @@ const initInputHandlers = () => {
       case " ":
         changed = !input.primary;
         input.primary = true;
+        break;
+      case "m":
+        input.dock = true;
         break;
     }
     if (changed) {
@@ -299,6 +325,9 @@ const initInputHandlers = () => {
         changed = input.primary;
         input.primary = false;
         break;
+      case "m":
+        input.dock = false;
+        break;
     }
     if (changed) {
       sendInput(input, me);
@@ -308,11 +337,55 @@ const initInputHandlers = () => {
 
 let lastUpdate = Date.now();
 
-// The server will assign us an id
+// The server will assign this
 let me: number;
 
+const dockDialog = (station: Player | undefined, stationId: number) => {
+  if (!station) {
+    return `Docking error - station ${stationId} not found`;
+  }
+  return horizontalCenter([`<h3>Docked with ${station.name}</h3>`, `<button id="undock">Undock</button>`]);
+};
+
+const setupDockingUI = (station: Player | undefined) => {
+  if (!station) {
+    return;
+  }
+  document.getElementById("undock")?.addEventListener("click", () => {
+    sendUndock(me);
+  });
+};
+
+
 const loop = () => {
-  drawEverything(fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000));
+  if (input.dock) {
+    docker();
+  }
+
+  const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
+  const self = state.players.get(me);
+  if (self && !self.docked && showDocked) {
+    showDocked = false;
+    clearDialog();
+    hideDialog();
+  }
+  setCanDock(self, drawState);
+  if (self && self.canDock) {
+    docker = () => {
+      sendDock(me, self.canDock);
+    };
+  } else {
+    docker = () => {};
+  }
+  if (self && self.docked) {
+    if (!showDocked) {
+      showDocked = true;
+      const station = state.players.get(self.docked);
+      showDialog(dockDialog(station, self.docked));
+      setupDockingUI(station);
+    }
+  }
+  drawEverything(drawState, self);
   frame = requestAnimationFrame(loop);
 };
 

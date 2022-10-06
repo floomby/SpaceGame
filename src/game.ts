@@ -1,7 +1,10 @@
 // This is shared by the server and the client
 
+import { UnitDefinition, UnitKind, defs } from "./defs";
+
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
+type Rectangle = { x: number; y: number; width: number; height: number };
 
 const infinityNorm = (a: Position, b: Position) => {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -11,6 +14,10 @@ const l2NormSquared = (a: Position, b: Position) => {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return dx * dx + dy * dy;
+};
+
+const l2Norm = (a: Position, b: Position) => {
+  return Math.sqrt(l2NormSquared(a, b));
 };
 
 const pointInCircle = (point: Position, circle: Circle) => {
@@ -25,32 +32,70 @@ type Entity = Circle & { id: number; speed: number; heading: number };
 
 type Player = Entity & {
   health: number;
-  team: number;
-  sprite: number;
-  sinceLastShot: number;
+  sinceLastShot: number[];
   toFire?: boolean;
   projectileId: number;
   name?: string;
   energy: number;
+  definitionIndex: number;
+  canDock?: number;
+  docked?: number;
+};
+
+const canDock = (player: Player | undefined, station: Player | undefined, strict = true) => {
+  if (!player || !station) {
+    return false;
+  }
+  const stationDef = defs[station.definitionIndex];
+  const distance = l2Norm(player.position, station.position);
+  if (strict) {
+    return distance < stationDef.radius;
+  } else {
+    return distance < stationDef.radius * 2;
+  }
 };
 
 type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number };
 
 // Primary laser stats (TODO put this in a better place)
 const primaryRange = 1500;
+const primaryRangeSquared = primaryRange * primaryRange;
 const primarySpeed = 20;
 const primaryFramesToExpire = primaryRange / primarySpeed;
-const primaryReloadTime = 20;
 
 type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic[]>;
 };
 
+const setCanDock = (player: Player, state: GlobalState) => {
+  if (player) {
+    if (player.docked) {
+      player.canDock = undefined;
+      return;
+    }
+    const playerDef = defs[player.definitionIndex];
+    player.canDock = undefined;
+    state.players.forEach((otherPlayer) => {
+      const def = defs[otherPlayer.definitionIndex];
+      if (def.kind === UnitKind.Station && playerDef.team === def.team) {
+        if (canDock(player, otherPlayer)) {
+          player.canDock = otherPlayer.id;
+          return;
+        }
+      }
+    });
+  }
+};
+
 // For smoothing the animations
 const fractionalUpdate = (state: GlobalState, fraction: number) => {
   const ret: GlobalState = { players: new Map(), projectiles: new Map() };
   for (const [id, player] of state.players) {
+    if (player.docked) {
+      ret.players.set(id, player);
+      continue;
+    }
     ret.players.set(id, {
       ...player,
       position: {
@@ -60,45 +105,123 @@ const fractionalUpdate = (state: GlobalState, fraction: number) => {
     });
   }
   for (const [id, projectiles] of state.projectiles) {
-    ret.projectiles.set(id, projectiles.map((projectile) => ({ 
-      ...projectile,
-      position: {
-        x: projectile.position.x + projectile.speed * Math.cos(projectile.heading) * fraction,
-        y: projectile.position.y + projectile.speed * Math.sin(projectile.heading) * fraction,
-      },
-     })));
+    ret.projectiles.set(
+      id,
+      projectiles.map((projectile) => ({
+        ...projectile,
+        position: {
+          x: projectile.position.x + projectile.speed * Math.cos(projectile.heading) * fraction,
+          y: projectile.position.y + projectile.speed * Math.sin(projectile.heading) * fraction,
+        },
+      }))
+    );
   }
   return ret;
-}
+};
+
+const findHeadingBetween = (a: Position, b: Position) => {
+  return Math.atan2(b.y - a.y, b.x - a.x);
+};
+
+const hardpointPositions = (player: Player, def: UnitDefinition) => {
+  const ret: Position[] = [];
+  for (let i = 0; i < def.hardpoints.length; i++) {
+    const hardpoint = def.hardpoints[i];
+    ret.push({
+      x: player.position.x + hardpoint.x * Math.cos(player.heading) - hardpoint.y * Math.sin(player.heading),
+      y: player.position.y + hardpoint.x * Math.sin(player.heading) + hardpoint.y * Math.cos(player.heading),
+    });
+  }
+  return ret;
+};
 
 const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) => void) => {
   for (const [id, player] of state.players) {
-    player.position.x += player.speed * Math.cos(player.heading);
-    player.position.y += player.speed * Math.sin(player.heading);
-    if (player.toFire && player.energy > 10) {
-      // console.log(frameNumber, player);
-      const projectile = {
-        position: { x: player.position.x, y: player.position.y },
-        radius: 1,
-        speed: primarySpeed,
-        heading: player.heading,
-        damage: 10, // This should be based on what ship is firing
-        team: player.team,
-        id: player.projectileId,
-        parent: id,
-        frameTillEXpire: primaryFramesToExpire,
-      };
-      const projectiles = state.projectiles.get(id) || [];
-      projectiles.push(projectile);
-      state.projectiles.set(id, projectiles);
-      player.projectileId++;
-      player.toFire = false;
-      player.energy -= 10;
+    if (player.docked) {
+      continue;
     }
-    player.sinceLastShot += 1;
-    player.energy += 0.5;
-    if (player.energy > 100) {
-      player.energy = 100;
+    const def = defs[player.definitionIndex];
+    if (def.kind === UnitKind.Ship) {
+      player.position.x += player.speed * Math.cos(player.heading);
+      player.position.y += player.speed * Math.sin(player.heading);
+      if (player.toFire && player.energy > 10) {
+        // console.log(frameNumber, player);
+        const projectile = {
+          position: { x: player.position.x, y: player.position.y },
+          radius: 1,
+          speed: primarySpeed,
+          heading: player.heading,
+          damage: def.primaryDamage,
+          team: def.team,
+          id: player.projectileId,
+          parent: id,
+          frameTillEXpire: primaryFramesToExpire,
+        };
+        const projectiles = state.projectiles.get(id) || [];
+        projectiles.push(projectile);
+        state.projectiles.set(id, projectiles);
+        player.projectileId++;
+        player.toFire = false;
+        player.energy -= 10;
+      }
+    } else {
+      // Have the station spin
+      player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
+
+      let closestEnemy: Player | undefined;
+      const closestEnemyDistance = Infinity;
+      for (const [otherId, otherPlayer] of state.players) {
+        if (otherPlayer.docked) {
+          continue;
+        }
+        if (player.id === otherId) {
+          continue;
+        }
+        const otherDef = defs[otherPlayer.definitionIndex];
+        if (otherDef.team === def.team) {
+          continue;
+        }
+        const distance = l2NormSquared(player.position, otherPlayer.position);
+        if (distance < closestEnemyDistance) {
+          closestEnemy = otherPlayer;
+        }
+      }
+      if (closestEnemy) {
+        const hardpointLocations = hardpointPositions(player, def);
+        const hardpointHeadingsAndDistances = hardpointLocations.map((hardpoint) => [
+          findHeadingBetween(hardpoint, closestEnemy.position),
+          l2NormSquared(hardpoint, closestEnemy.position),
+        ]);
+        for (let i = 0; i < def.hardpoints.length; i++) {
+          const [heading, distanceSquared] = hardpointHeadingsAndDistances[i];
+          if (distanceSquared < primaryRangeSquared && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
+            const projectile = {
+              position: hardpointLocations[i],
+              radius: 1,
+              speed: primarySpeed,
+              heading,
+              damage: def.primaryDamage,
+              team: def.team,
+              id: player.projectileId,
+              parent: id,
+              frameTillEXpire: primaryFramesToExpire,
+            };
+            const projectiles = state.projectiles.get(id) || [];
+            projectiles.push(projectile);
+            state.projectiles.set(id, projectiles);
+            player.projectileId++;
+            player.energy -= 10;
+            player.sinceLastShot[i] = 0;
+          }
+        }
+      }
+    }
+    for (let i = 0; i < player.sinceLastShot.length; i++) {
+      player.sinceLastShot[i] += 1;
+    }
+    player.energy += def.energyRegen;
+    if (player.energy > def.energy) {
+      player.energy = def.energy;
     }
   }
   for (const [id, projectiles] of state.projectiles) {
@@ -109,7 +232,11 @@ const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) =
       projectile.frameTillEXpire -= 1;
       let didRemove = false;
       for (const [otherId, otherPlayer] of state.players) {
-        if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
+        if (otherPlayer.docked) {
+          continue;
+        }
+        const def = defs[otherPlayer.definitionIndex];
+        if (projectile.team !== def.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
             state.players.delete(otherId);
@@ -135,9 +262,11 @@ type Input = {
   left: boolean;
   right: boolean;
   primary: boolean;
+  dock?: boolean;
 };
 
 const applyInputs = (input: Input, player: Player) => {
+  const def = defs[player.definitionIndex];
   if (input.up) {
     player.speed += 0.1;
   }
@@ -157,14 +286,33 @@ const applyInputs = (input: Input, player: Player) => {
     player.speed = 0;
   }
   if (input.primary) {
-    if (player.sinceLastShot > primaryReloadTime) {
-      player.sinceLastShot = 0;
+    if (player.sinceLastShot[0] > def.primaryReloadTime) {
+      player.sinceLastShot[0] = 0;
       player.toFire = true;
     }
+  } else {
+    player.toFire = false;
   }
 };
 
 const maxNameLength = 20;
 const ticksPerSecond = 60;
 
-export { GlobalState, Position, Circle, Input, Player, Ballistic, update, applyInputs, infinityNorm, positiveMod, fractionalUpdate, ticksPerSecond, maxNameLength };
+export {
+  GlobalState,
+  Position,
+  Circle,
+  Rectangle,
+  Input,
+  Player,
+  Ballistic,
+  update,
+  applyInputs,
+  infinityNorm,
+  positiveMod,
+  fractionalUpdate,
+  canDock,
+  setCanDock,
+  ticksPerSecond,
+  maxNameLength,
+};

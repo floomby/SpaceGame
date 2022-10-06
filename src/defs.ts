@@ -5,6 +5,13 @@ enum UnitKind {
   Station,
 }
 
+enum SlotKind {
+  Normal,
+  Utility,
+  Mine,
+  Large,
+}
+
 type UnitDefinition = {
   name: string;
   description: string;
@@ -20,10 +27,21 @@ type UnitDefinition = {
   kind: UnitKind;
   hardpoints?: Position[];
   dockable?: boolean;
+  slots: SlotKind[];
+  cargoCapacity?: number;
+};
+
+type ArmamentDef = {
+  name: string;
+  description: string;
+  energyCost?: number;
 };
 
 const defs: UnitDefinition[] = [];
 const defMap = new Map<string, { index: number; def: UnitDefinition }>();
+
+const armDefs: ArmamentDef[] = [];
+const armDefMap = new Map<string, { index: number; def: ArmamentDef }>();
 
 const initDefs = () => {
   defs.push({
@@ -39,6 +57,10 @@ const initDefs = () => {
     team: 0,
     radius: 16,
     kind: UnitKind.Ship,
+    slots: [
+      SlotKind.Normal
+    ],
+    cargoCapacity: 100,
   });
   defs.push({
     name: "Drone",
@@ -53,6 +75,10 @@ const initDefs = () => {
     team: 1,
     radius: 16,
     kind: UnitKind.Ship,
+    slots: [
+      SlotKind.Normal
+    ],
+    cargoCapacity: 100,
   });
   defs.push({
     name: "Starbase",
@@ -74,12 +100,24 @@ const initDefs = () => {
       { x: 86, y: 70 },
     ],
     dockable: true,
+    slots: [],
   });
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];
     defMap.set(def.name, { index: i, def });
   }
+
+  armDefs.push({
+    name: "Empty",
+    description: "Empty slot (dock with a station to buy armaments)",
+  });
+
+  armDefs.push({
+    name: "Advanced Laser Cannon",
+    description: "A more powerful laser cannon",
+    energyCost: 10,
+  });
 };
 
-export { UnitDefinition, UnitKind, defs, defMap, initDefs };
+export { UnitDefinition, UnitKind, SlotKind, defs, defMap, initDefs };

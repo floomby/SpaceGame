@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond, maxNameLength, canDock } from "../src/game";
+import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond, maxNameLength, canDock, copyPlayer } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs } from "../src/defs";
 
 const port = 8080;
@@ -18,6 +18,9 @@ type ClientData = {
   name: string;
 };
 
+const checkpoints = new Map<number, Player>();
+const respawnKeys = new Map<number, number>();
+
 let frame = 0;
 
 const clients: Map<WebSocket, ClientData> = new Map();
@@ -26,7 +29,15 @@ const server = createServer();
 
 const wss = new WebSocketServer({ server });
 
-const testStarbaseId = Math.floor(Math.random() * 1000000);
+const uid = () => {
+  let ret = 0;
+  while (ret === 0) {
+    ret = Math.floor(Math.random() * 1000000);
+  }
+  return ret;
+}
+
+const testStarbaseId = uid();
 const testStarbase = {
   position: { x: -400, y: -400 },
   radius: defs[2].radius,
@@ -40,6 +51,8 @@ const testStarbase = {
   definitionIndex: 2,
   id: testStarbaseId,
   name: "Test Starbase",
+  armaments: [],
+  ammo: [],
 };
 state.players.set(testStarbaseId, testStarbase);
 
@@ -49,9 +62,9 @@ wss.on("connection", (ws) => {
   ws.on("message", (msg) => {
     const data = JSON.parse(msg.toString());
     if (data.type === "register") {
-      const id = Math.floor(Math.random() * 1000000);
+      const id = uid();
       const name = data.payload.name.substring(0, maxNameLength);
-      clients.set(ws, { id, name, input: { up: false, down: false, left: false, right: false, primary: false } });
+      clients.set(ws, { id, name, input: { up: false, down: false, left: false, right: false, primary: false, secondary: false } });
 
       const defIndex = id % 2;
 
@@ -67,10 +80,16 @@ wss.on("connection", (ws) => {
         name,
         energy: defs[defIndex].energy,
         definitionIndex: defIndex,
+        armaments: [0],
+        ammo: [0],
       };
 
       state.players.set(id, player);
-      ws.send(JSON.stringify({ type: "init", payload: { id } }));
+      const respawnKey = uid();
+      respawnKeys.set(respawnKey, id);
+      checkpoints.set(id, copyPlayer(player));
+
+      ws.send(JSON.stringify({ type: "init", payload: { id, respawnKey } }));
       console.log("Registered client with id: ", id);
     } else if (data.type === "debug") {
       console.log("Debugging");
@@ -113,6 +132,7 @@ wss.on("connection", (ws) => {
             player.speed = 0;
             player.position = { x: station!.position.x, y: station!.position.y };
             state.players.set(client.id, player);
+            checkpoints.set(client.id, copyPlayer(player));
           }
         }
       }
@@ -125,6 +145,18 @@ wss.on("connection", (ws) => {
           state.players.set(client.id, player);
         }
       }
+    } else if (data.type === "respawn") {
+      const client = clients.get(ws);
+      const id = respawnKeys.get(data.payload.respawnKey);
+      console.log("Respawning: ", id, data.payload.respawnKey);
+      if (id && client && id === client.id) {
+        const player = checkpoints.get(id);
+        if (player) {
+          state.players.set(id, copyPlayer(player));
+        } else {
+          console.log("No checkpoint found for player", id);
+        }
+      }
     } else {
       console.log("Message from client: ", data);
     }
@@ -135,15 +167,22 @@ wss.on("connection", (ws) => {
     const removedClient = clients.get(ws);
     if (removedClient) {
       state.players.delete(removedClient.id);
-      clients.delete(ws);
-      for (const [client, data] of clients) {
-        client.send(
-          JSON.stringify({
-            type: "removed",
-            payload: removedClient.id,
-          })
-        );
+      checkpoints.delete(removedClient.id);
+      for (const [respawnKey, id] of respawnKeys) {
+        if (id === removedClient.id) {
+          respawnKeys.delete(respawnKey);
+          break;
+        }
       }
+      clients.delete(ws);
+      // for (const [client, data] of clients) {
+      //   client.send(
+      //     JSON.stringify({
+      //       type: "removed",
+      //       payload: removedClient.id,
+      //     })
+      //   );
+      // }
     }
   });
 });
@@ -159,13 +198,14 @@ setInterval(() => {
       applyInputs(data.input, player);
     }
   }
-  update(state, frame, (id: number) => {
-    for (const [client, data] of clients) {
-      if (data.id === id) {
-        client.send(JSON.stringify({ type: "removed", payload: id }));
-      }
-    }
-  });
+  update(state, frame, () => {});
+  // update(state, frame, (id: number) => {
+  //   for (const [client, data] of clients) {
+  //     if (data.id === id) {
+  //       client.send(JSON.stringify({ type: "removed", payload: id }));
+  //     }
+  //   }
+  // });
 
   // TODO Consider culling the state information to only send nearby players and projectiles
   if (frame % framesPerSync === 0) {

@@ -75,4 +75,13 @@ const sendUndock = (id: number) => {
   );
 };
 
-export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock };
+const sendRespawn = (respawnKey: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "respawn",
+      payload: { respawnKey },
+    })
+  );
+};
+
+export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn };

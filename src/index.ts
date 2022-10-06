@@ -1,5 +1,18 @@
-import { connect, bindAction, register, sendInput, sendDock, sendUndock } from "./net";
-import { GlobalState, Position, Circle, Input, Player, update, applyInputs, Ballistic, positiveMod, ticksPerSecond, fractionalUpdate, setCanDock } from "./game";
+import { connect, bindAction, register, sendInput, sendDock, sendUndock, sendRespawn } from "./net";
+import {
+  GlobalState,
+  Position,
+  Circle,
+  Input,
+  Player,
+  update,
+  applyInputs,
+  Ballistic,
+  positiveMod,
+  ticksPerSecond,
+  fractionalUpdate,
+  setCanDock,
+} from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
 import { defs, initDefs } from "./defs";
 
@@ -267,6 +280,7 @@ let input: Input = {
   left: false,
   right: false,
   primary: false,
+  secondary: false,
   dock: false,
 };
 
@@ -356,7 +370,6 @@ const setupDockingUI = (station: Player | undefined) => {
   });
 };
 
-
 const loop = () => {
   if (input.dock) {
     docker();
@@ -401,6 +414,23 @@ const registerHandler = (e: KeyboardEvent) => {
 
 const registerDialog = horizontalCenter(["<h3>Input username</h3>", '<input type="text" placeholder="Username" id="username"/>']);
 
+let respawnKey = 0;
+let didDie = false;
+
+const deadDialog = horizontalCenter(['<h3 style="color: white;">You are dead</h3>', "<button id='respawn'>Respawn</button>"]);
+const setupDeadDialog = () => {
+  didDie = true;
+  document.getElementById("respawn")?.addEventListener("click", () => {
+    if (respawnKey !== 0) {
+      sendRespawn(respawnKey);
+      clearDialog();
+      hideDialog();
+    } else {
+      console.error("No respawn key");
+    }
+  });
+};
+
 const run = () => {
   console.log("Running game");
 
@@ -413,14 +443,15 @@ const run = () => {
     projectiles: new Map(),
   };
 
-  bindAction("init", (data: { id: number }) => {
+  bindAction("init", (data: { id: number, respawnKey: number }) => {
     me = data.id;
+    respawnKey = data.respawnKey;
   });
 
-  bindAction("removed", (data: any) => {
-    console.log("Got removed", data);
-    state.players.delete(data);
-  });
+  // bindAction("removed", (data: any) => {
+  //   console.log("Got removed", data);
+  //   state.players.delete(data);
+  // });
 
   bindAction("state", (data: any) => {
     state.players = new Map();
@@ -443,8 +474,12 @@ const run = () => {
     }
     lastUpdate = Date.now();
     const self = state.players.get(me);
-    if (!self) {
-      showDialog("<h3>You are dead</h3>");
+    if (!self && !didDie) {
+      showDialog(deadDialog);
+      setupDeadDialog();
+    }
+    if (self) {
+      didDie = false;
     }
   });
 

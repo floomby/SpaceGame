@@ -33,14 +33,37 @@ type Entity = Circle & { id: number; speed: number; heading: number };
 type Player = Entity & {
   health: number;
   sinceLastShot: number[];
-  toFire?: boolean;
+  toFirePrimary?: boolean;
+  toFireSecondary?: boolean;
   projectileId: number;
   name?: string;
   energy: number;
   definitionIndex: number;
   canDock?: number;
   docked?: number;
+  armaments: number[];
+  ammo: number[];
+  cargo?: { what: string, amount: number }[];
 };
+
+const availableCargoCapacity = (player: Player) => {
+  const def = defs[player.definitionIndex];
+  let capacity = 0;
+  if (def.cargoCapacity) {
+    capacity = def.cargoCapacity;
+  }
+  const carrying = player.cargo?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
+  return capacity - carrying;
+};
+
+const copyPlayer = (player: Player) => {
+  const ret = { ...player };
+  ret.sinceLastShot = [...player.sinceLastShot];
+  ret.armaments = [...player.armaments];
+  ret.ammo = [...player.ammo];
+  player.position = { ...player.position };
+  return ret;
+}
 
 const canDock = (player: Player | undefined, station: Player | undefined, strict = true) => {
   if (!player || !station) {
@@ -62,10 +85,19 @@ const primaryRange = 1500;
 const primaryRangeSquared = primaryRange * primaryRange;
 const primarySpeed = 20;
 const primaryFramesToExpire = primaryRange / primarySpeed;
+const primaryRadius = 1;
+
+// type Effect = {
+//   sprite: number;
+//   position: Position;
+//   heading: number;
+//   scale: number;
+// };
 
 type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic[]>;
+  // effects?: Effect[];
 };
 
 const setCanDock = (player: Player, state: GlobalState) => {
@@ -144,11 +176,10 @@ const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) =
     if (def.kind === UnitKind.Ship) {
       player.position.x += player.speed * Math.cos(player.heading);
       player.position.y += player.speed * Math.sin(player.heading);
-      if (player.toFire && player.energy > 10) {
-        // console.log(frameNumber, player);
+      if (player.toFirePrimary && player.energy > 10) {
         const projectile = {
           position: { x: player.position.x, y: player.position.y },
-          radius: 1,
+          radius: primaryRadius,
           speed: primarySpeed,
           heading: player.heading,
           damage: def.primaryDamage,
@@ -161,11 +192,11 @@ const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) =
         projectiles.push(projectile);
         state.projectiles.set(id, projectiles);
         player.projectileId++;
-        player.toFire = false;
+        player.toFirePrimary = false;
         player.energy -= 10;
       }
     } else {
-      // Have the station spin
+      // Have stations spin slowly
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
 
       let closestEnemy: Player | undefined;
@@ -197,7 +228,7 @@ const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) =
           if (distanceSquared < primaryRangeSquared && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
             const projectile = {
               position: hardpointLocations[i],
-              radius: 1,
+              radius: primaryRadius,
               speed: primarySpeed,
               heading,
               damage: def.primaryDamage,
@@ -262,6 +293,7 @@ type Input = {
   left: boolean;
   right: boolean;
   primary: boolean;
+  secondary: boolean;
   dock?: boolean;
 };
 
@@ -288,10 +320,10 @@ const applyInputs = (input: Input, player: Player) => {
   if (input.primary) {
     if (player.sinceLastShot[0] > def.primaryReloadTime) {
       player.sinceLastShot[0] = 0;
-      player.toFire = true;
+      player.toFirePrimary = true;
     }
   } else {
-    player.toFire = false;
+    player.toFirePrimary = false;
   }
 };
 
@@ -313,6 +345,7 @@ export {
   fractionalUpdate,
   canDock,
   setCanDock,
+  copyPlayer,
   ticksPerSecond,
   maxNameLength,
 };

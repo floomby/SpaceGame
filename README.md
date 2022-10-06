@@ -4,10 +4,11 @@ A simple multiplayer game where you have a ship and do things.
 
 ### TODO
 
-- Armaments + ammo
+- Armaments
 - Station UI
 - Shields
 - Mines
 - Asteroids + mining
 - Trade
+- Proper targeting for stations
 - Network optimization

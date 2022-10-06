@@ -1,4 +1,4 @@
-import { Rectangle, Position } from "../src/game";
+import { Rectangle, Position, GlobalState, Player } from "../src/game";
 
 enum UnitKind {
   Ship,
@@ -34,7 +34,9 @@ type UnitDefinition = {
 type ArmamentDef = {
   name: string;
   description: string;
-  energyCost?: number;
+  kind: SlotKind;
+  stateMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
+  effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
 };
 
 const defs: UnitDefinition[] = [];
@@ -109,15 +111,30 @@ const initDefs = () => {
   }
 
   armDefs.push({
-    name: "Empty",
-    description: "Empty slot (dock with a station to buy armaments)",
+    name: "Empty normal slot",
+    description: "Empty normal slot (dock with a station to buy armaments)",
+    kind: SlotKind.Normal,
+  });
+  armDefs.push({
+    name: "Empty utility slot",
+    description: "Empty utility slot (dock with a station to buy armaments)",
+    kind: SlotKind.Utility,
+  });
+  armDefs.push({
+    name: "Empty mine slot",
+    description: "Empty mine slot (dock with a station to buy armaments)",
+    kind: SlotKind.Mine,
+  });
+  armDefs.push({
+    name: "Empty large slot",
+    description: "Empty large slot (dock with a station to buy armaments)",
+    kind: SlotKind.Large,
   });
 
-  armDefs.push({
-    name: "Advanced Laser Cannon",
-    description: "A more powerful laser cannon",
-    energyCost: 10,
-  });
+  for (let i = 0; i < armDefs.length; i++) {
+    const def = armDefs[i];
+    armDefMap.set(def.name, { index: i, def });
+  }
 };
 
 export { UnitDefinition, UnitKind, SlotKind, defs, defMap, initDefs };

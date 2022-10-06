@@ -42,8 +42,9 @@ type Player = Entity & {
   canDock?: number;
   docked?: number;
   armaments: number[];
-  ammo: number[];
-  cargo?: { what: string, amount: number }[];
+  // Limited to flat objects (change player copy code to augment this behavior if needed)
+  slotData: any[];
+  cargo?: { what: string; amount: number }[];
 };
 
 const availableCargoCapacity = (player: Player) => {
@@ -60,10 +61,10 @@ const copyPlayer = (player: Player) => {
   const ret = { ...player };
   ret.sinceLastShot = [...player.sinceLastShot];
   ret.armaments = [...player.armaments];
-  ret.ammo = [...player.ammo];
+  ret.slotData = player.slotData.map((data) => ({ ...data }));
   player.position = { ...player.position };
   return ret;
-}
+};
 
 const canDock = (player: Player | undefined, station: Player | undefined, strict = true) => {
   if (!player || !station) {
@@ -91,7 +92,6 @@ const primaryRadius = 1;
 //   sprite: number;
 //   position: Position;
 //   heading: number;
-//   scale: number;
 // };
 
 type GlobalState = {
@@ -153,6 +153,108 @@ const fractionalUpdate = (state: GlobalState, fraction: number) => {
 
 const findHeadingBetween = (a: Position, b: Position) => {
   return Math.atan2(b.y - a.y, b.x - a.x);
+};
+
+const findClosestTarget = (player: Player, state: GlobalState) => {
+  let ret: [Player | undefined, number] = [undefined, 0];
+  let minDistance = Infinity;
+  const def = defs[player.definitionIndex];
+  for (const [id, otherPlayer] of state.players) {
+    const otherDef = defs[otherPlayer.definitionIndex];
+    if (def.team === otherDef.team) {
+      continue;
+    }
+    const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+    if (distanceSquared < minDistance) {
+      minDistance = distanceSquared;
+      ret = [otherPlayer, id];
+    }
+  }
+  return ret;
+};
+
+const findFurthestTarget = (player: Player, state: GlobalState) => {
+  let ret: [Player | undefined, number] = [undefined, 0];
+  let maxDistance = 0;
+  const def = defs[player.definitionIndex];
+  for (const [id, otherPlayer] of state.players) {
+    const otherDef = defs[otherPlayer.definitionIndex];
+    if (def.team === otherDef.team) {
+      continue;
+    }
+    const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+    if (distanceSquared > maxDistance) {
+      maxDistance = distanceSquared;
+      ret = [otherPlayer, id];
+    }
+  }
+  return ret;
+};
+
+const findNextTarget = (player: Player, current: Player | undefined, state: GlobalState) => {
+  if (!current) {
+    return findClosestTarget(player, state);
+  }
+  let ret: [Player | undefined, number] = [current, 0];
+  const def = defs[player.definitionIndex];
+  const currentDistanceSquared = l2NormSquared(player.position, current.position);
+  let minDistanceGreaterThanCurrent = Infinity;
+  let foundFurther = false;
+  for (const [id, otherPlayer] of state.players) {
+    if (otherPlayer === ret[0]) {
+      ret[1] = id;
+    }
+    const otherDef = defs[otherPlayer.definitionIndex];
+    if (def.team === otherDef.team) {
+      continue;
+    }
+    const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+    if (distanceSquared > currentDistanceSquared && distanceSquared < minDistanceGreaterThanCurrent) {
+      minDistanceGreaterThanCurrent = distanceSquared;
+      ret = [otherPlayer, id];
+      foundFurther = true;
+    }
+  }
+  if (!foundFurther) {
+    return findClosestTarget(player, state);
+  }
+  if (ret[1] === 0) {
+    ret = [undefined, 0];
+  }
+  return ret;
+};
+
+const findPreviousTarget = (player: Player, current: Player | undefined, state: GlobalState) => {
+  if (!current) {
+    return findClosestTarget(player, state);
+  }
+  let ret: [Player | undefined, number] = [current, 0];
+  const def = defs[player.definitionIndex];
+  const currentDistanceSquared = l2NormSquared(player.position, current.position);
+  let maxDistanceLessThanCurrent = 0;
+  let foundCloser = false;
+  for (const [id, otherPlayer] of state.players) {
+    if (otherPlayer === ret[0]) {
+      ret[1] = id;
+    }
+    const otherDef = defs[otherPlayer.definitionIndex];
+    if (def.team === otherDef.team) {
+      continue;
+    }
+    const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+    if (distanceSquared < currentDistanceSquared && distanceSquared > maxDistanceLessThanCurrent) {
+      maxDistanceLessThanCurrent = distanceSquared;
+      ret = [otherPlayer, id];
+      foundCloser = true;
+    }
+  }
+  if (!foundCloser) {
+    return findFurthestTarget(player, state);
+  }
+  if (ret[1] === 0) {
+    ret = [undefined, 0];
+  }
+  return ret;
 };
 
 const hardpointPositions = (player: Player, def: UnitDefinition) => {
@@ -295,6 +397,8 @@ type Input = {
   primary: boolean;
   secondary: boolean;
   dock?: boolean;
+  nextTarget?: boolean;
+  previousTarget?: boolean;
 };
 
 const applyInputs = (input: Input, player: Player) => {
@@ -346,6 +450,9 @@ export {
   canDock,
   setCanDock,
   copyPlayer,
+  findNextTarget,
+  findPreviousTarget,
+  findHeadingBetween,
   ticksPerSecond,
   maxNameLength,
 };

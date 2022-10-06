@@ -3,6 +3,7 @@ import {
   GlobalState,
   Position,
   Circle,
+  Rectangle,
   Input,
   Player,
   update,
@@ -12,6 +13,9 @@ import {
   ticksPerSecond,
   fractionalUpdate,
   setCanDock,
+  findNextTarget,
+  findPreviousTarget,
+  findHeadingBetween,
 } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
 import { defs, initDefs } from "./defs";
@@ -60,6 +64,21 @@ const initLocals = (callback: () => void) => {
 const clearCanvas = () => {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+};
+
+const projectRayFromCenterOfRect = (rect: Rectangle, angle: number) => {
+  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  if (rect.width * Math.abs(sin) < rect.height * Math.abs(cos)) {
+    const x = (rect.width / 2) * Math.sign(cos);
+    const y = x * Math.tan(angle);
+    return { x: center.x + x, y: center.y + y };
+  } else {
+    const y = (rect.height / 2) * Math.sign(sin);
+    const x = y / Math.tan(angle);
+    return { x: center.x + x, y: center.y + y };
+  }
 };
 
 const drawBar = (position: Position, width: number, height: number, primary: string, secondary: string, amount: number) => {
@@ -234,7 +253,29 @@ const drawDockText = () => {
 
 let lastSelf: Player;
 
-const drawEverything = (state: GlobalState, self: Player) => {
+const drawTarget = (self: Player, target: Player) => {
+  console.log("draw target: ", target.name);
+};
+
+const drawTargetArrow = (self: Player, target: Player) => {
+  const margin = 25;
+  const heading = findHeadingBetween(self.position, target.position);
+  const intersection = projectRayFromCenterOfRect({ x: 0, y: 0, width: canvas.width, height: canvas.height }, heading);
+  const position = { x: intersection.x - Math.cos(heading) * margin, y: intersection.y - Math.sin(heading) * margin };
+  ctx.save();
+  ctx.translate(position.x, position.y);
+  ctx.rotate(heading);
+  ctx.fillStyle = defs[target.definitionIndex].team ? "red" : "aqua";
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(-14, -8);
+  ctx.lineTo(-14, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawEverything = (state: GlobalState, self: Player, target: Player | undefined) => {
   clearCanvas();
   if (self) {
     lastSelf = self;
@@ -264,12 +305,17 @@ const drawEverything = (state: GlobalState, self: Player) => {
     if (self.canDock) {
       drawDockText();
     }
+    if (target) {
+      drawTarget(self, target);
+      if (Math.abs(self.position.x - target.position.x) > canvas.width / 2 || Math.abs(self.position.y - target.position.y) > canvas.height / 2) {
+        drawTargetArrow(self, target);
+      }
+    }
   }
 };
 
 let state: GlobalState;
-let frame: number;
-let syncPosition: number;
+// let syncPosition: number;
 
 let docker = () => {};
 let showDocked = false;
@@ -282,6 +328,8 @@ let input: Input = {
   primary: false,
   secondary: false,
   dock: false,
+  nextTarget: false,
+  previousTarget: false,
 };
 
 const initInputHandlers = () => {
@@ -310,6 +358,12 @@ const initInputHandlers = () => {
         break;
       case "m":
         input.dock = true;
+        break;
+      case "v":
+        input.nextTarget = true;
+        break;
+      case "w":
+        input.previousTarget = true;
         break;
     }
     if (changed) {
@@ -342,6 +396,12 @@ const initInputHandlers = () => {
       case "m":
         input.dock = false;
         break;
+      case "v":
+        input.nextTarget = false;
+        break;
+      case "w":
+        input.previousTarget = false;
+        break;
     }
     if (changed) {
       sendInput(input, me);
@@ -353,6 +413,7 @@ let lastUpdate = Date.now();
 
 // The server will assign this
 let me: number;
+let targetId: number;
 
 const dockDialog = (station: Player | undefined, stationId: number) => {
   if (!station) {
@@ -375,8 +436,20 @@ const loop = () => {
     docker();
   }
 
+  let target: Player | undefined = undefined;
+
   const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
   const self = state.players.get(me);
+
+  if (self && !self.docked && (input.nextTarget || input.previousTarget)) {
+    target = state.players.get(targetId);
+    [target, targetId] = input.nextTarget ? findNextTarget(self, target, state) : findPreviousTarget(self, target, state);
+    input.nextTarget = false;
+    input.previousTarget = false;
+  } else if (self && !self.docked) {
+    target = state.players.get(targetId);
+  }
+
   if (self && !self.docked && showDocked) {
     showDocked = false;
     clearDialog();
@@ -398,8 +471,9 @@ const loop = () => {
       setupDockingUI(station);
     }
   }
-  drawEverything(drawState, self);
-  frame = requestAnimationFrame(loop);
+
+  drawEverything(drawState, self, target);
+  requestAnimationFrame(loop);
 };
 
 const registerHandler = (e: KeyboardEvent) => {
@@ -443,7 +517,7 @@ const run = () => {
     projectiles: new Map(),
   };
 
-  bindAction("init", (data: { id: number, respawnKey: number }) => {
+  bindAction("init", (data: { id: number; respawnKey: number }) => {
     me = data.id;
     respawnKey = data.respawnKey;
   });
@@ -458,7 +532,7 @@ const run = () => {
     state.projectiles = new Map();
 
     const players = data.players as Player[];
-    syncPosition = data.frame;
+    // syncPosition = data.frame;
 
     for (const player of players) {
       state.players.set(player.id, player);

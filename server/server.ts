@@ -52,7 +52,7 @@ const testStarbase = {
   id: testStarbaseId,
   name: "Test Starbase",
   armaments: [],
-  ammo: [],
+  slotData: [],
 };
 state.players.set(testStarbaseId, testStarbase);
 
@@ -69,7 +69,7 @@ wss.on("connection", (ws) => {
       const defIndex = id % 2;
 
       const player = {
-        position: { x: 100, y: 100 },
+        position: { x: 300, y: 200 },
         radius: defs[defIndex].radius,
         speed: 0,
         heading: 0,
@@ -81,7 +81,7 @@ wss.on("connection", (ws) => {
         energy: defs[defIndex].energy,
         definitionIndex: defIndex,
         armaments: [0],
-        ammo: [0],
+        slotData: [{}],
       };
 
       state.players.set(id, player);

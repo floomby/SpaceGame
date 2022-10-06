@@ -89,7 +89,7 @@ const drawBar = (position: Position, width: number, height: number, primary: str
 };
 
 const drawHUD = (player: Player) => {
-  drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#0022FFCC", "#333333CC", player.energy / defs[player.definitionIndex].energy);
+  // drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#0022FFCC", "#333333CC", player.energy / defs[player.definitionIndex].energy);
 };
 
 const drawMiniMapShip = (center: Position, player: Player, self: Player, miniMapScaleFactor: number) => {
@@ -192,17 +192,18 @@ const drawStars = (self: Player) => {
 const drawShip = (player: Player, self: Player) => {
   ctx.save();
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
+  let sprite = sprites[player.definitionIndex];
   drawBar(
-    { x: -sprites[player.definitionIndex].width / 2, y: -sprites[player.definitionIndex].height / 2 - 10 },
-    sprites[player.definitionIndex].width,
+    { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
+    sprite.width,
     5,
     "#00EE00CC",
     "#EE0000CC",
     player.health / defs[player.definitionIndex].health
   );
   drawBar(
-    { x: -sprites[player.definitionIndex].width / 2, y: -sprites[player.definitionIndex].height / 2 - 5 },
-    sprites[player.definitionIndex].width,
+    { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
+    sprite.width,
     5,
     "#0022FFCC",
     "#333333CC",
@@ -210,11 +211,11 @@ const drawShip = (player: Player, self: Player) => {
   );
   ctx.rotate(player.heading);
   ctx.drawImage(
-    sprites[player.definitionIndex],
-    -sprites[player.definitionIndex].width / 2,
-    -sprites[player.definitionIndex].height / 2,
-    sprites[player.definitionIndex].width,
-    sprites[player.definitionIndex].height
+    sprite,
+    -sprite.width / 2,
+    -sprite.height / 2,
+    sprite.width,
+    sprite.height
   );
   ctx.restore();
 };
@@ -251,10 +252,61 @@ const drawDockText = () => {
   ctx.fillText("Press m to dock", canvas.width / 2, canvas.height / 2 + 200);
 };
 
+// This is only for drawing purposes (if we die we need to keep the last position)
 let lastSelf: Player;
 
-const drawTarget = (self: Player, target: Player) => {
-  console.log("draw target: ", target.name);
+let highlightPhase = 0;
+
+const drawHighlight = (self: Player, player: Player) => {
+  ctx.save();
+  ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
+  const amount = Math.cos(highlightPhase) * 0.3 + 0.3;
+  ctx.fillStyle = `rgba(255, 255, 255, ${amount})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, player.radius + 5, 0, 2 * Math.PI);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawTarget = (where: Rectangle, self: Player, target: Player) => {
+  ctx.fillStyle = "#30303055";
+  const margin = 5;
+  ctx.fillRect(where.x - margin, where.y - margin, where.width + margin, where.height + margin);
+  const sprite = sprites[target.definitionIndex];
+  const maxDimension = Math.max(sprite.width, sprite.height);
+  let scale = (where.width - margin * 2) / maxDimension / 2;
+  if (scale > 1) {
+    scale = 1;
+  }
+  ctx.save();
+  ctx.translate(where.x + where.width / 2, where.y + where.height / 2);
+  ctx.scale(scale, scale);
+  drawBar(
+    { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
+    sprite.width,
+    5 / scale,
+    "#00EE00CC",
+    "#EE0000CC",
+    target.health / defs[target.definitionIndex].health
+  );
+  drawBar(
+    { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
+    sprite.width,
+    5 / scale,
+    "#0022FFCC",
+    "#333333CC",
+    target.energy / defs[target.definitionIndex].energy
+  );
+  ctx.rotate(target.heading);
+  ctx.drawImage(
+    sprite,
+    -sprite.width / 2,
+    -sprite.height / 2,
+    sprite.width,
+    sprite.height
+  );
+  ctx.restore();
 };
 
 const drawTargetArrow = (self: Player, target: Player) => {
@@ -288,6 +340,9 @@ const drawEverything = (state: GlobalState, self: Player, target: Player | undef
       continue;
     }
     if (id !== me) {
+      if (id === targetId) {
+        drawHighlight(lastSelf, player);
+      }
       drawShip(player, lastSelf);
     }
   }
@@ -300,13 +355,13 @@ const drawEverything = (state: GlobalState, self: Player, target: Player | undef
     }
   }
   if (self && !self.docked) {
-    drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.1);
-    drawHUD(self);
+    drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.03);
+    // drawHUD(self);
     if (self.canDock) {
       drawDockText();
     }
     if (target) {
-      drawTarget(self, target);
+      drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
       if (Math.abs(self.position.x - target.position.x) > canvas.width / 2 || Math.abs(self.position.y - target.position.y) > canvas.height / 2) {
         drawTargetArrow(self, target);
       }
@@ -411,7 +466,7 @@ const initInputHandlers = () => {
 
 let lastUpdate = Date.now();
 
-// The server will assign this
+// The server will assign our id when we connect
 let me: number;
 let targetId: number;
 
@@ -432,13 +487,18 @@ const setupDockingUI = (station: Player | undefined) => {
 };
 
 const loop = () => {
+  highlightPhase += 0.1;
+  if (highlightPhase > 2 * Math.PI) {
+    highlightPhase -= 2 * Math.PI;
+  }
+
   if (input.dock) {
     docker();
   }
 
   let target: Player | undefined = undefined;
 
-  const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
+  // const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
   const self = state.players.get(me);
 
   if (self && !self.docked && (input.nextTarget || input.previousTarget)) {
@@ -450,12 +510,18 @@ const loop = () => {
     target = state.players.get(targetId);
   }
 
+  if (target?.docked) {
+    target = undefined;
+    targetId = 0;
+  }
+
+
   if (self && !self.docked && showDocked) {
     showDocked = false;
     clearDialog();
     hideDialog();
   }
-  setCanDock(self, drawState);
+  setCanDock(self, state);
   if (self && self.canDock) {
     docker = () => {
       sendDock(me, self.canDock);
@@ -472,7 +538,7 @@ const loop = () => {
     }
   }
 
-  drawEverything(drawState, self, target);
+  drawEverything(state, self, target);
   requestAnimationFrame(loop);
 };
 
@@ -549,6 +615,7 @@ const run = () => {
     lastUpdate = Date.now();
     const self = state.players.get(me);
     if (!self && !didDie) {
+      targetId = 0;
       showDialog(deadDialog);
       setupDeadDialog();
     }

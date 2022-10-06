@@ -11,4 +11,5 @@ A simple multiplayer game where you have a ship and do things.
 - Asteroids + mining
 - Trade
 - Proper targeting for stations
+- NPCs
 - Network optimization

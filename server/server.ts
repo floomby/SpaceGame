@@ -132,7 +132,9 @@ wss.on("connection", (ws) => {
             player.speed = 0;
             player.position = { x: station!.position.x, y: station!.position.y };
             state.players.set(client.id, player);
-            checkpoints.set(client.id, copyPlayer(player));
+            const playerCopy = copyPlayer(player);
+            playerCopy.docked = undefined;
+            checkpoints.set(client.id, playerCopy);
           }
         }
       }

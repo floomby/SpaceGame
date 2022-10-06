@@ -160,6 +160,9 @@ const findClosestTarget = (player: Player, state: GlobalState) => {
   let minDistance = Infinity;
   const def = defs[player.definitionIndex];
   for (const [id, otherPlayer] of state.players) {
+    if (otherPlayer.docked) {
+      continue;
+    }
     const otherDef = defs[otherPlayer.definitionIndex];
     if (def.team === otherDef.team) {
       continue;
@@ -178,6 +181,9 @@ const findFurthestTarget = (player: Player, state: GlobalState) => {
   let maxDistance = 0;
   const def = defs[player.definitionIndex];
   for (const [id, otherPlayer] of state.players) {
+    if (otherPlayer.docked) {
+      continue;
+    }
     const otherDef = defs[otherPlayer.definitionIndex];
     if (def.team === otherDef.team) {
       continue;
@@ -201,6 +207,9 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
   let minDistanceGreaterThanCurrent = Infinity;
   let foundFurther = false;
   for (const [id, otherPlayer] of state.players) {
+    if (otherPlayer.docked) {
+      continue;
+    }
     if (otherPlayer === ret[0]) {
       ret[1] = id;
     }
@@ -234,6 +243,9 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
   let maxDistanceLessThanCurrent = 0;
   let foundCloser = false;
   for (const [id, otherPlayer] of state.players) {
+    if (otherPlayer.docked) {
+      continue;
+    }
     if (otherPlayer === ret[0]) {
       ret[1] = id;
     }

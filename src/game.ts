@@ -357,7 +357,7 @@ const update = (
               target = state.asteroids.get(targetId);
             }
             if (target) {
-              armDef.stateMutator(state, player, targetKind, target);
+              armDef.stateMutator(state, player, targetKind, target, applyEffect);
             }
           }
         }
@@ -631,6 +631,8 @@ export {
   randomAsteroids,
   findNextTargetAsteroid,
   findPreviousTargetAsteroid,
+  l2Norm,
+  l2NormSquared,
   ticksPerSecond,
   maxNameLength,
 };

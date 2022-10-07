@@ -1,4 +1,4 @@
-import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind } from "../src/game";
+import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind, l2Norm, l2NormSquared, EffectTrigger } from "../src/game";
 
 enum Faction {
   Alliance = 0,
@@ -50,7 +50,7 @@ type ArmamentDef = {
   name: string;
   description: string;
   kind: SlotKind;
-  stateMutator?: (state: GlobalState, player: Player, targetKind: TargetKind, target: Player | Asteroid) => void;
+  stateMutator?: (state: GlobalState, player: Player, targetKind: TargetKind, target: Player | Asteroid, applyEffect: (trigger: EffectTrigger) => void) => void;
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
 };
 
@@ -159,10 +159,10 @@ const initDefs = () => {
     description: "A low powered mining laser",
     kind: SlotKind.Mining,
     stateMutator: (state, player, targetKind, target) => {
-      if (targetKind === TargetKind.Asteroid && player.energy > 0.1) {
+      if (targetKind === TargetKind.Asteroid && player.energy > 0.5) {
         target = target as Asteroid;
-        if (target.resources > 0.5) {
-          player.energy += 0.1;
+        if (target.resources > 0.5 && l2NormSquared(player.position, target.position) < 500 * 500) {
+          player.energy += 0.5;
           target.resources -= 0.5;
         }
       }

@@ -272,7 +272,7 @@ setInterval(() => {
 
     const serialized = JSON.stringify({
       type: "state",
-      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData },
+      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers },
     });
 
     for (const [client, data] of clients) {

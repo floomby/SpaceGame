@@ -1,5 +1,19 @@
 import { Rectangle, Position, GlobalState, Player, Asteroid } from "../src/game";
 
+enum Faction {
+  Alliance = 0,
+  Confederation,
+}
+
+const getFactionString = (faction: Faction) => {
+  switch (faction) {
+    case Faction.Alliance:
+      return "Alliance";
+    case Faction.Confederation:
+      return "Confederation";
+  }
+};
+
 enum UnitKind {
   Ship,
   Station,
@@ -152,4 +166,4 @@ const initDefs = () => {
   });
 };
 
-export { UnitDefinition, UnitKind, SlotKind, AsteroidDef, defs, defMap, asteroidDefs, initDefs };
+export { UnitDefinition, UnitKind, SlotKind, AsteroidDef, Faction, defs, defMap, asteroidDefs, initDefs, getFactionString };

@@ -1,12 +1,13 @@
 import { Input, Player, maxNameLength } from "./game";
+import { Faction } from "./defs";
 
 let serverSocket: WebSocket;
 
-const register = (name: string) => {
+const register = (name: string, faction: Faction) => {
   serverSocket.send(
     JSON.stringify({
       type: "register",
-      payload: { name },
+      payload: { name, faction },
     })
   );
 };

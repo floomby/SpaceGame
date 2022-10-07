@@ -15,7 +15,8 @@ import {
   uid,
   randomAsteroids,
 } from "../src/game";
-import { UnitDefinition, defs, defMap, initDefs } from "../src/defs";
+import { UnitDefinition, defs, defMap, initDefs, Faction } from "../src/defs";
+import { assert } from "console";
 
 const port = 8080;
 
@@ -78,7 +79,16 @@ wss.on("connection", (ws) => {
       const name = data.payload.name.substring(0, maxNameLength);
       clients.set(ws, { id, name, input: { up: false, down: false, left: false, right: false, primary: false, secondary: false } });
 
-      const defIndex = id % 2;
+      let defIndex: number;
+      const faction = data.payload.faction as Faction;
+      if (faction === Faction.Alliance) {
+        defIndex = defMap.get("Fighter")!.index;
+      } else if (faction === Faction.Confederation) {
+        defIndex = defMap.get("Drone")!.index;
+      } else {
+        console.log(`Invalid faction ${faction}`);
+        return;
+      }
 
       const player = {
         position: { x: 300, y: 200 },

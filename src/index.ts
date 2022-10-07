@@ -21,7 +21,7 @@ import {
   findPreviousTargetAsteroid,
 } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
-import { defs, initDefs, asteroidDefs } from "./defs";
+import { defs, initDefs, asteroidDefs, Faction, getFactionString } from "./defs";
 
 type KeyBindings = {
   up: string;
@@ -709,19 +709,36 @@ const loop = () => {
   requestAnimationFrame(loop);
 };
 
+let faction: Faction = Faction.Alliance;
+
+const doRegister = () => {
+  const input = document.getElementById("username") as HTMLInputElement;
+  register(input.value, faction);
+  clearDialog();
+  hideDialog();
+  initInputHandlers();
+};
+
 const registerHandler = (e: KeyboardEvent) => {
   if (e.key === "Enter") {
-    const input = document.getElementById("username") as HTMLInputElement;
-    register(input.value);
-    clearDialog();
-    hideDialog();
-    initInputHandlers();
+    doRegister();
   }
 };
 
 const registerDialog = horizontalCenter([
   "<h3>Input username</h3>",
   '<input type="text" placeholder="Username" id="username"/>',
+`<br/>
+<fieldset>
+  <legend>Select Faction</legend>
+  <div style="text-align: left;">
+    <input type="radio" id="alliance" name="faction" value="alliance" checked>
+    <label for="alliance">${getFactionString(Faction.Alliance)}</label>
+  </div>
+  <div style="text-align: left;">
+    <input type="radio" id="confederation" name="faction" value="confederation">
+    <label for="confederation">${getFactionString(Faction.Confederation)}</label>
+</fieldset>`,
 `<br/>
 <fieldset>
   <legend>Keyboard Layout</legend>
@@ -734,6 +751,7 @@ const registerDialog = horizontalCenter([
     <label for="dvorak">Dvorak</label>
   </div>
 </fieldset>`,
+  '<br/><button id="register">Register</button>',
 ]);
 
 const setupRegisterDialog = () => {
@@ -751,6 +769,19 @@ const setupRegisterDialog = () => {
       keybind = dvorakBindings;
     }
   });
+  const alliance = document.getElementById("alliance") as HTMLInputElement;
+  const confederation = document.getElementById("confederation") as HTMLInputElement;
+  alliance.addEventListener("change", () => {
+    if (alliance.checked) {
+      faction = Faction.Alliance;
+    }
+  });
+  confederation.addEventListener("change", () => {
+    if (confederation.checked) {
+      faction = Faction.Confederation;
+    }
+  });
+  document.getElementById("register")?.addEventListener("click", doRegister);
 };
 
 let respawnKey = 0;

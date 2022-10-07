@@ -38,10 +38,18 @@ const bindAction = (action: string, callback: (data: any) => void) => {
 };
 
 const sendInput = (input: Input, id: number) => {
+  const inputToSend = {
+    up: input.up,
+    down: input.down,
+    left: input.left,
+    right: input.right,
+    primary: input.primary,
+    secondary: input.secondary,
+  };
   serverSocket.send(
     JSON.stringify({
       type: "input",
-      payload: { input, id },
+      payload: { input: inputToSend, id },
     })
   );
 };

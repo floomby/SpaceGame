@@ -102,7 +102,7 @@ wss.on("connection", (ws) => {
         name,
         energy: defs[defIndex].energy,
         definitionIndex: defIndex,
-        armaments: [0],
+        armaments: [4, 0],
         slotData: [{}],
       };
 

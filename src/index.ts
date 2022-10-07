@@ -21,7 +21,10 @@ import {
   findPreviousTargetAsteroid,
 } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
-import { defs, initDefs, asteroidDefs, Faction, getFactionString } from "./defs";
+import { defs, initDefs, asteroidDefs, Faction, getFactionString, armDefs } from "./defs";
+
+// The server will assign our id when we connect
+let me: number;
 
 type KeyBindings = {
   up: string;
@@ -35,6 +38,16 @@ type KeyBindings = {
   previousTarget: string;
   nextTargetAsteroid: string;
   previousTargetAsteroid: string;
+  selectSecondary0: string;
+  selectSecondary1: string;
+  selectSecondary2: string;
+  selectSecondary3: string;
+  selectSecondary4: string;
+  selectSecondary5: string;
+  selectSecondary6: string;
+  selectSecondary7: string;
+  selectSecondary8: string;
+  selectSecondary9: string;
 };
 
 const qwertyBindings: KeyBindings = {
@@ -49,6 +62,16 @@ const qwertyBindings: KeyBindings = {
   previousTarget: "z",
   nextTargetAsteroid: "s",
   previousTargetAsteroid: "a",
+  selectSecondary0: "0",
+  selectSecondary1: "1",
+  selectSecondary2: "2",
+  selectSecondary3: "3",
+  selectSecondary4: "4",
+  selectSecondary5: "5",
+  selectSecondary6: "6",
+  selectSecondary7: "7",
+  selectSecondary8: "8",
+  selectSecondary9: "9",
 };
 
 const dvorakBindings: KeyBindings = {
@@ -63,9 +86,168 @@ const dvorakBindings: KeyBindings = {
   previousTarget: ";",
   nextTargetAsteroid: "o",
   previousTargetAsteroid: "a",
+  selectSecondary0: "0",
+  selectSecondary1: "1",
+  selectSecondary2: "2",
+  selectSecondary3: "3",
+  selectSecondary4: "4",
+  selectSecondary5: "5",
+  selectSecondary6: "6",
+  selectSecondary7: "7",
+  selectSecondary8: "8",
+  selectSecondary9: "9",
 };
 
 let keybind = qwertyBindings;
+
+let targetEnemy = false;
+let selectedSecondary = 0;
+let selectedSecondaryChanged = false;
+
+let input: Input = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+  primary: false,
+  secondary: false,
+  dock: false,
+  nextTarget: false,
+  previousTarget: false,
+  nextTargetAsteroid: false,
+  previousTargetAsteroid: false,
+};
+
+const initInputHandlers = () => {
+  document.addEventListener("keydown", (e) => {
+    let changed = false;
+    const oldSecondary = selectedSecondary;
+    switch (e.key) {
+      case keybind.up:
+        changed = !input.up;
+        input.up = true;
+        break;
+      case keybind.down:
+        changed = !input.down;
+        input.down = true;
+        break;
+      case keybind.left:
+        changed = !input.left;
+        input.left = true;
+        break;
+      case keybind.right:
+        changed = !input.right;
+        input.right = true;
+        break;
+      case keybind.primary:
+        changed = !input.primary;
+        input.primary = true;
+        break;
+      case keybind.secondary:
+        changed = !input.secondary;
+        input.secondary = true;
+      case keybind.dock:
+        input.dock = true;
+        break;
+      case keybind.nextTarget:
+        input.nextTarget = true;
+        targetEnemy = e.getModifierState("Control");
+        break;
+      case keybind.previousTarget:
+        input.previousTarget = true;
+        targetEnemy = e.getModifierState("Control");
+        break;
+      case keybind.nextTargetAsteroid:
+        input.nextTargetAsteroid = true;
+        break;
+      case keybind.previousTargetAsteroid:
+        input.previousTargetAsteroid = true;
+        break;
+      case keybind.selectSecondary0:
+        selectedSecondary = 0;
+        break;
+      case keybind.selectSecondary1:
+        selectedSecondary = 1;
+        break;
+      case keybind.selectSecondary2:
+        selectedSecondary = 2;
+        break;
+      case keybind.selectSecondary3:
+        selectedSecondary = 3;
+        break;
+      case keybind.selectSecondary4:
+        selectedSecondary = 4;
+        break;
+      case keybind.selectSecondary5:
+        selectedSecondary = 5;
+        break;
+      case keybind.selectSecondary6:
+        selectedSecondary = 6;
+        break;
+      case keybind.selectSecondary7:
+        selectedSecondary = 7;
+        break;
+      case keybind.selectSecondary8:
+        selectedSecondary = 8;
+        break;
+      case keybind.selectSecondary9:
+        selectedSecondary = 9;
+        break;
+    }
+    if (changed) {
+      sendInput(input, me);
+    }
+    if (oldSecondary !== selectedSecondary) {
+      selectedSecondaryChanged = true;
+    }
+  });
+  document.addEventListener("keyup", (e) => {
+    let changed = false;
+    switch (e.key) {
+      case keybind.up:
+        changed = input.up;
+        input.up = false;
+        break;
+      case keybind.down:
+        changed = input.down;
+        input.down = false;
+        break;
+      case keybind.left:
+        changed = input.left;
+        input.left = false;
+        break;
+      case keybind.right:
+        changed = input.right;
+        input.right = false;
+        break;
+      case keybind.primary:
+        changed = input.primary;
+        input.primary = false;
+        break;
+      case keybind.secondary:
+        changed = input.secondary;
+        input.secondary = false;
+      case keybind.dock:
+        input.dock = false;
+        break;
+      case keybind.nextTarget:
+        input.nextTarget = false;
+        break;
+      case keybind.previousTarget:
+        input.previousTarget = false;
+        break;
+      case keybind.nextTargetAsteroid:
+        input.nextTargetAsteroid = false;
+        break;
+      case keybind.previousTargetAsteroid:
+        input.previousTargetAsteroid = false;
+        break;
+    }
+    if (changed) {
+      sendInput(input, me);
+    }
+  });
+};
 
 // TODO Move drawing to a separate file
 let canvas: HTMLCanvasElement;
@@ -75,8 +257,6 @@ let asteroidSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
-
-
 
 const initStars = () => {
   for (let i = 0; i < 1000; i++) {
@@ -342,10 +522,19 @@ const drawDockText = () => {
   ctx.fillText(`Press ${keybind.dock} to dock`, canvas.width / 2, canvas.height / 2 + 200);
 };
 
+const drawSecondaryText = (self: Player) => {
+  ctx.fillStyle = "white";
+  ctx.font = "18px Arial";
+  ctx.textAlign = "center";
+  const armamentDef = armDefs[self.armaments[selectedSecondary]];
+  ctx.fillText(`${selectedSecondary} - ${armamentDef.name}`, canvas.width / 2, 20);
+};
+
 // This is only for drawing purposes (if we die we need to keep the last position)
 let lastSelf: Player;
 
 let highlightPhase = 0;
+let secondaryFlashTimeRemaining = 0;
 
 const drawHighlight = (self: Player, player: Circle) => {
   ctx.save();
@@ -476,6 +665,9 @@ const drawEverything = (state: GlobalState, self: Player, target: Player | undef
     if (self.canDock) {
       drawDockText();
     }
+    if (secondaryFlashTimeRemaining > 0) {
+      drawSecondaryText(self);
+    }
     if (target) {
       drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
       if (Math.abs(self.position.x - target.position.x) > canvas.width / 2 || Math.abs(self.position.y - target.position.y) > canvas.height / 2) {
@@ -499,123 +691,8 @@ let state: GlobalState;
 let docker = () => {};
 let showDocked = false;
 
-let input: Input = {
-  up: false,
-  down: false,
-  left: false,
-  right: false,
-  primary: false,
-  secondary: false,
-  dock: false,
-  nextTarget: false,
-  previousTarget: false,
-  nextTargetAsteroid: false,
-  previousTargetAsteroid: false,
-};
-
-let targetEnemy = false;
-
-const initInputHandlers = () => {
-  document.addEventListener("keydown", (e) => {
-    let changed = false;
-    switch (e.key) {
-      case keybind.up:
-        changed = !input.up;
-        input.up = true;
-        break;
-      case keybind.down:
-        changed = !input.down;
-        input.down = true;
-        break;
-      case keybind.left:
-        changed = !input.left;
-        input.left = true;
-        break;
-      case keybind.right:
-        changed = !input.right;
-        input.right = true;
-        break;
-      case keybind.primary:
-        changed = !input.primary;
-        input.primary = true;
-        break;
-      case keybind.secondary:
-        changed = !input.secondary;
-        input.secondary = true;
-      case keybind.dock:
-        input.dock = true;
-        break;
-      case keybind.nextTarget:
-        input.nextTarget = true;
-        targetEnemy = e.getModifierState("Control");
-        break;
-      case keybind.previousTarget:
-        input.previousTarget = true;
-        targetEnemy = e.getModifierState("Control");
-        break;
-      case keybind.nextTargetAsteroid:
-        input.nextTargetAsteroid = true;
-        break;
-      case keybind.previousTargetAsteroid:
-        input.previousTargetAsteroid = true;
-        break;
-    }
-    if (changed) {
-      sendInput(input, me);
-    }
-  });
-  document.addEventListener("keyup", (e) => {
-    let changed = false;
-    switch (e.key) {
-      case keybind.up:
-        changed = input.up;
-        input.up = false;
-        break;
-      case keybind.down:
-        changed = input.down;
-        input.down = false;
-        break;
-      case keybind.left:
-        changed = input.left;
-        input.left = false;
-        break;
-      case keybind.right:
-        changed = input.right;
-        input.right = false;
-        break;
-      case keybind.primary:
-        changed = input.primary;
-        input.primary = false;
-        break;
-      case keybind.secondary:
-        changed = input.secondary;
-        input.secondary = false;
-      case keybind.dock:
-        input.dock = false;
-        break;
-      case keybind.nextTarget:
-        input.nextTarget = false;
-        break;
-      case keybind.previousTarget:
-        input.previousTarget = false;
-        break;
-      case keybind.nextTargetAsteroid:
-        input.nextTargetAsteroid = false;
-        break;
-      case keybind.previousTargetAsteroid:
-        input.previousTargetAsteroid = false;
-        break;
-    }
-    if (changed) {
-      sendInput(input, me);
-    }
-  });
-};
-
 // let lastUpdate = Date.now();
 
-// The server will assign our id when we connect
-let me: number;
 let targetId = 0;
 let targetAsteroidId = 0;
 
@@ -635,10 +712,15 @@ const setupDockingUI = (station: Player | undefined) => {
   });
 };
 
+let lastValidSecondary = 0;
+
 const loop = () => {
   highlightPhase += 0.1;
   if (highlightPhase > 2 * Math.PI) {
     highlightPhase -= 2 * Math.PI;
+  }
+  if (secondaryFlashTimeRemaining > 0) {
+    secondaryFlashTimeRemaining--;
   }
 
   if (input.dock) {
@@ -649,6 +731,18 @@ const loop = () => {
   let targetAsteroid: Asteroid | undefined = undefined;
 
   const self = state.players.get(me);
+
+  const def = self ? defs[self.definitionIndex] : undefined;
+  if (self && selectedSecondaryChanged) {
+    console.log("selectedSecondaryChanged");
+    if (selectedSecondary < def.slots.length) {
+      lastValidSecondary = selectedSecondary;
+      secondaryFlashTimeRemaining = 120;
+    } else {
+      selectedSecondary = lastValidSecondary;
+    }
+    selectedSecondaryChanged = false;
+  }
 
   if (self && !self.docked) {
     if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
@@ -728,7 +822,7 @@ const registerHandler = (e: KeyboardEvent) => {
 const registerDialog = horizontalCenter([
   "<h3>Input username</h3>",
   '<input type="text" placeholder="Username" id="username"/>',
-`<br/>
+  `<br/>
 <fieldset>
   <legend>Select Faction</legend>
   <div style="text-align: left;">
@@ -739,7 +833,7 @@ const registerDialog = horizontalCenter([
     <input type="radio" id="confederation" name="faction" value="confederation">
     <label for="confederation">${getFactionString(Faction.Confederation)}</label>
 </fieldset>`,
-`<br/>
+  `<br/>
 <fieldset>
   <legend>Keyboard Layout</legend>
   <div style="text-align: left;">

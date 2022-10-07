@@ -83,6 +83,7 @@ const initDefs = () => {
     radius: 16,
     kind: UnitKind.Ship,
     slots: [
+      SlotKind.Mining,
       SlotKind.Normal
     ],
     cargoCapacity: 100,
@@ -101,6 +102,7 @@ const initDefs = () => {
     radius: 16,
     kind: UnitKind.Ship,
     slots: [
+      SlotKind.Mining,
       SlotKind.Normal
     ],
     cargoCapacity: 100,
@@ -153,6 +155,11 @@ const initDefs = () => {
     description: "Empty large slot (dock with a station to buy armaments)",
     kind: SlotKind.Large,
   });
+  armDefs.push({
+    name: "Empty mining slot",
+    description: "Empty mining slot (dock with a station to buy armaments)",
+    kind: SlotKind.Mining,
+  });
 
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];
@@ -166,4 +173,4 @@ const initDefs = () => {
   });
 };
 
-export { UnitDefinition, UnitKind, SlotKind, AsteroidDef, Faction, defs, defMap, asteroidDefs, initDefs, getFactionString };
+export { UnitDefinition, UnitKind, SlotKind, AsteroidDef, Faction, defs, defMap, asteroidDefs, armDefs, initDefs, getFactionString };

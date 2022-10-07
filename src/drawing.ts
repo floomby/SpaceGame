@@ -1,8 +1,8 @@
 import { armDefs, asteroidDefs, defs } from "./defs";
+import { drawEffects, initEffects } from "./effects";
 import { Asteroid, Ballistic, Circle, findHeadingBetween, GlobalState, Player, Position, positiveMod, Rectangle } from "./game";
 import { KeyBindings } from "./keybindings";
 
-// TODO Move drawing to a separate file
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let sprites: ImageBitmap[] = [];
@@ -34,6 +34,7 @@ const loadAsteroidSprites = (spriteSheet: HTMLImageElement, callback: () => void
 
 const initDrawing = (callback: () => void) => {
   initStars();
+  initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -430,6 +431,7 @@ const drawEverything = (
       drawProjectile(projectile, lastSelf);
     }
   }
+  drawEffects(lastSelf, state);
   if (self && !self.docked) {
     drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.03);
     // drawHUD(self);
@@ -460,4 +462,4 @@ const flashSecondary = () => {
   secondaryFlashTimeRemaining = 90;
 };
 
-export { drawEverything, initDrawing, flashSecondary };
+export { drawEverything, initDrawing, flashSecondary, ctx, canvas };

@@ -101,16 +101,21 @@ const primarySpeed = 20;
 const primaryFramesToExpire = primaryRange / primarySpeed;
 const primaryRadius = 1;
 
-// type Effect = {
-//   sprite: number;
-//   position: Position;
-//   heading: number;
-// };
+enum EffectAnchorKind {
+  Absolute,
+  Player,
+  Asteroid,
+}
+
+type EffectAnchor = {
+  kind: EffectAnchorKind;
+  value: Position | number;
+};
 
 type EffectTrigger = {
   effectIndex: number;
-  from: Position;
-  to: Position;
+  from: EffectAnchor;
+  to: EffectAnchor;
 };
 
 type GlobalState = {
@@ -615,6 +620,8 @@ export {
   Asteroid,
   Ballistic,
   TargetKind,
+  EffectAnchorKind,
+  EffectAnchor,
   EffectTrigger,
   update,
   applyInputs,

@@ -1,4 +1,4 @@
-import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind, l2Norm, l2NormSquared, EffectTrigger } from "../src/game";
+import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind, l2Norm, l2NormSquared, EffectTrigger, EffectAnchorKind } from "../src/game";
 
 enum Faction {
   Alliance = 0,
@@ -158,12 +158,18 @@ const initDefs = () => {
     name: "Basic mining laser",
     description: "A low powered mining laser",
     kind: SlotKind.Mining,
-    stateMutator: (state, player, targetKind, target) => {
+    stateMutator: (state, player, targetKind, target, applyEffect) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.5) {
         target = target as Asteroid;
         if (target.resources > 0.5 && l2NormSquared(player.position, target.position) < 500 * 500) {
-          player.energy += 0.5;
+          player.energy -= 0.3;
           target.resources -= 0.5;
+          applyEffect({
+            effectIndex: 0,
+            // Fine to just use the reference here
+            from: { kind: EffectAnchorKind.Player, value: player.id },
+            to: { kind: EffectAnchorKind.Asteroid, value: target.id },
+          });
         }
       }
     },

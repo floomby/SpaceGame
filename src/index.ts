@@ -1,21 +1,13 @@
 import { connect, bindAction, register, sendInput, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary } from "./net";
 import {
   GlobalState,
-  Position,
-  Circle,
-  Rectangle,
   Input,
   Player,
-  update,
   applyInputs,
   Ballistic,
-  positiveMod,
-  ticksPerSecond,
-  fractionalUpdate,
   setCanDock,
   findNextTarget,
   findPreviousTarget,
-  findHeadingBetween,
   Asteroid,
   findNextTargetAsteroid,
   findPreviousTargetAsteroid,
@@ -25,11 +17,13 @@ import { init as initDialog, show as showDialog, hide as hideDialog, clear as cl
 import { defs, initDefs, asteroidDefs, Faction, getFactionString, armDefs } from "./defs";
 import { drawEverything, flashSecondary, initDrawing } from "./drawing";
 import { dvorakBindings, qwertyBindings } from "./keybindings";
+import { applyEffects } from "./effects";
 
 // The server will assign our id when we connect
 let me: number;
 
-let keybind = qwertyBindings;
+// let keybind = qwertyBindings;
+let keybind = dvorakBindings;
 
 let targetEnemy = false;
 let selectedSecondary = 0;
@@ -334,11 +328,11 @@ const registerDialog = horizontalCenter([
 <fieldset>
   <legend>Keyboard Layout</legend>
   <div style="text-align: left;">
-    <input type="radio" id="qwerty" name="keyboard" value="qwerty" checked>
+    <input type="radio" id="qwerty" name="keyboard" value="qwerty">
     <label for="qwerty">QWERTY</label>
   </div>
   <div style="text-align: left;">
-    <input type="radio" id="dvorak" name="keyboard" value="dvorak">
+    <input type="radio" id="dvorak" name="keyboard" value="dvorak" checked>
     <label for="dvorak">Dvorak</label>
   </div>
 </fieldset>`,
@@ -446,6 +440,7 @@ const run = () => {
     if (self) {
       didDie = false;
     }
+    applyEffects(data.effects);
   });
 
   bindAction("input", (data: any) => {

@@ -17,6 +17,8 @@ import {
   findPreviousTarget,
   findHeadingBetween,
   Asteroid,
+  findNextTargetAsteroid,
+  findPreviousTargetAsteroid,
 } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
 import { defs, initDefs, asteroidDefs } from "./defs";
@@ -230,23 +232,10 @@ const drawAsteroid = (asteroid: Asteroid, self: Player) => {
   let sprite = asteroidSprites[asteroid.definitionIndex];
   let def = asteroidDefs[asteroid.definitionIndex];
   if (asteroid.resources < def.resources) {
-    drawBar(
-      { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
-      sprite.width,
-      5,
-      "#662222CC",
-      "#333333CC",
-      asteroid.resources / def.resources
-    );
+    drawBar({ x: -sprite.width / 2, y: -sprite.height / 2 - 10 }, sprite.width, 5, "#662222CC", "#333333CC", asteroid.resources / def.resources);
   }
   ctx.rotate(asteroid.heading);
-  ctx.drawImage(
-    sprite,
-    -sprite.width / 2,
-    -sprite.height / 2,
-    sprite.width,
-    sprite.height
-  );
+  ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   ctx.restore();
 };
 
@@ -271,13 +260,7 @@ const drawShip = (player: Player, self: Player) => {
     player.energy / defs[player.definitionIndex].energy
   );
   ctx.rotate(player.heading);
-  ctx.drawImage(
-    sprite,
-    -sprite.width / 2,
-    -sprite.height / 2,
-    sprite.width,
-    sprite.height
-  );
+  ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   ctx.restore();
 };
 
@@ -318,7 +301,7 @@ let lastSelf: Player;
 
 let highlightPhase = 0;
 
-const drawHighlight = (self: Player, player: Player) => {
+const drawHighlight = (self: Player, player: Circle) => {
   ctx.save();
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
   const amount = Math.cos(highlightPhase) * 0.3 + 0.3;
@@ -360,17 +343,37 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
     target.energy / defs[target.definitionIndex].energy
   );
   ctx.rotate(target.heading);
-  ctx.drawImage(
-    sprite,
-    -sprite.width / 2,
-    -sprite.height / 2,
-    sprite.width,
-    sprite.height
-  );
+  ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   ctx.restore();
 };
 
-const drawTargetArrow = (self: Player, target: Player) => {
+const drawTargetAsteroid = (where: Rectangle, self: Player, targetAsteroid: Asteroid) => {
+  ctx.fillStyle = "#30303055";
+  const margin = 5;
+  ctx.fillRect(where.x - margin, where.y - margin, where.width + margin, where.height + margin);
+  const sprite = asteroidSprites[targetAsteroid.definitionIndex];
+  const maxDimension = Math.max(sprite.width, sprite.height);
+  let scale = (where.width - margin * 2) / maxDimension / 2;
+  if (scale > 1) {
+    scale = 1;
+  }
+  ctx.save();
+  ctx.translate(where.x + where.width / 2, where.y + where.height / 2);
+  ctx.scale(scale, scale);
+  drawBar(
+    { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
+    sprite.width,
+    5 / scale,
+    "#662222CC",
+    "#333333CC",
+    targetAsteroid.resources / asteroidDefs[targetAsteroid.definitionIndex].resources
+  );
+  ctx.rotate(targetAsteroid.heading);
+  ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+  ctx.restore();
+};
+
+const drawTargetArrow = (self: Player, target: Circle, fillStyle: string) => {
   const margin = 25;
   const heading = findHeadingBetween(self.position, target.position);
   const intersection = projectRayFromCenterOfRect({ x: 0, y: 0, width: canvas.width, height: canvas.height }, heading);
@@ -378,7 +381,7 @@ const drawTargetArrow = (self: Player, target: Player) => {
   ctx.save();
   ctx.translate(position.x, position.y);
   ctx.rotate(heading);
-  ctx.fillStyle = defs[target.definitionIndex].team ? "red" : "aqua";
+  ctx.fillStyle = fillStyle;
   ctx.beginPath();
   ctx.moveTo(14, 0);
   ctx.lineTo(-14, -8);
@@ -388,7 +391,7 @@ const drawTargetArrow = (self: Player, target: Player) => {
   ctx.restore();
 };
 
-const drawEverything = (state: GlobalState, self: Player, target: Player | undefined) => {
+const drawEverything = (state: GlobalState, self: Player, target: Player | undefined, targetAsteroid: Asteroid | undefined) => {
   clearCanvas();
   if (self) {
     lastSelf = self;
@@ -398,6 +401,9 @@ const drawEverything = (state: GlobalState, self: Player, target: Player | undef
   }
   for (const [id, asteroid] of state.asteroids) {
     drawAsteroid(asteroid, lastSelf);
+    if (targetAsteroidId === id) {
+      drawHighlight(lastSelf, asteroid);
+    }
   }
   for (const [id, player] of state.players) {
     if (player.docked) {
@@ -427,7 +433,15 @@ const drawEverything = (state: GlobalState, self: Player, target: Player | undef
     if (target) {
       drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
       if (Math.abs(self.position.x - target.position.x) > canvas.width / 2 || Math.abs(self.position.y - target.position.y) > canvas.height / 2) {
-        drawTargetArrow(self, target);
+        drawTargetArrow(self, target, defs[target.definitionIndex].team ? "red" : "aqua");
+      }
+    } else if (targetAsteroid) {
+      drawTargetAsteroid({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, targetAsteroid);
+      if (
+        Math.abs(self.position.x - targetAsteroid.position.x) > canvas.width / 2 ||
+        Math.abs(self.position.y - targetAsteroid.position.y) > canvas.height / 2
+      ) {
+        drawTargetArrow(self, targetAsteroid, "white");
       }
     }
   }
@@ -449,7 +463,11 @@ let input: Input = {
   dock: false,
   nextTarget: false,
   previousTarget: false,
+  nextTargetAsteroid: false,
+  previousTargetAsteroid: false,
 };
+
+let targetEnemy = false;
 
 const initInputHandlers = () => {
   document.addEventListener("keydown", (e) => {
@@ -478,11 +496,19 @@ const initInputHandlers = () => {
       case "m":
         input.dock = true;
         break;
-      case "v":
+      case "q":
         input.nextTarget = true;
+        targetEnemy = e.getModifierState("Control");
         break;
-      case "w":
+      case ";":
         input.previousTarget = true;
+        targetEnemy = e.getModifierState("Control");
+        break;
+      case "o":
+        input.nextTargetAsteroid = true;
+        break;
+      case "a":
+        input.previousTargetAsteroid = true;
         break;
     }
     if (changed) {
@@ -515,11 +541,17 @@ const initInputHandlers = () => {
       case "m":
         input.dock = false;
         break;
-      case "v":
+      case "q":
         input.nextTarget = false;
         break;
-      case "w":
+      case ";":
         input.previousTarget = false;
+        break;
+      case "o":
+        input.nextTargetAsteroid = false;
+        break;
+      case "a":
+        input.previousTargetAsteroid = false;
         break;
     }
     if (changed) {
@@ -532,16 +564,14 @@ let lastUpdate = Date.now();
 
 // The server will assign our id when we connect
 let me: number;
-let targetId: number;
+let targetId = 0;
+let targetAsteroidId = 0;
 
 const dockDialog = (station: Player | undefined, stationId: number) => {
   if (!station) {
     return `Docking error - station ${stationId} not found`;
   }
-  return horizontalCenter([
-    `<h3>Docked with ${station.name}</h3>`,
-    `<button id="undock">Undock</button>`
-  ]);
+  return horizontalCenter([`<h3>Docked with ${station.name}</h3>`, `<button id="undock">Undock</button>`]);
 };
 
 const setupDockingUI = (station: Player | undefined) => {
@@ -564,23 +594,41 @@ const loop = () => {
   }
 
   let target: Player | undefined = undefined;
+  let targetAsteroid: Asteroid | undefined = undefined;
 
   const self = state.players.get(me);
 
-  if (self && !self.docked && (input.nextTarget || input.previousTarget)) {
-    target = state.players.get(targetId);
-    [target, targetId] = input.nextTarget ? findNextTarget(self, target, state) : findPreviousTarget(self, target, state);
-    input.nextTarget = false;
-    input.previousTarget = false;
-  } else if (self && !self.docked) {
-    target = state.players.get(targetId);
+  if (self && !self.docked) {
+    if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
+      target = state.players.get(targetId);
+      console.log(targetEnemy);
+      [target, targetId] = input.nextTarget ? findNextTarget(self, target, state, targetEnemy) : findPreviousTarget(self, target, state, targetEnemy);
+      input.nextTarget = false;
+      input.previousTarget = false;
+      if (target) {
+        targetAsteroidId = 0;
+      }
+    } else if (input.nextTargetAsteroid || input.previousTargetAsteroid) {
+      targetAsteroid = state.asteroids.get(targetAsteroidId);
+      [targetAsteroid, targetAsteroidId] = input.nextTargetAsteroid
+        ? findNextTargetAsteroid(self, targetAsteroid, state)
+        : findPreviousTargetAsteroid(self, targetAsteroid, state);
+      input.nextTargetAsteroid = false;
+      input.previousTargetAsteroid = false;
+      if (targetAsteroidId) {
+        target = undefined;
+        targetId = 0;
+      }
+    } else {
+      target = state.players.get(targetId);
+      targetAsteroid = state.asteroids.get(targetAsteroidId);
+    }
   }
 
   if (target?.docked) {
     target = undefined;
     targetId = 0;
   }
-
 
   if (self && !self.docked && showDocked) {
     showDocked = false;
@@ -605,7 +653,7 @@ const loop = () => {
   }
 
   // const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
-  drawEverything(state, self, target);
+  drawEverything(state, self, target, targetAsteroid);
   requestAnimationFrame(loop);
 };
 
@@ -671,7 +719,7 @@ const run = () => {
     for (const player of players) {
       state.players.set(player.id, player);
     }
-    for (const asteroid of (data.asteroids as Asteroid[])) {
+    for (const asteroid of data.asteroids as Asteroid[]) {
       state.asteroids.set(asteroid.id, asteroid);
     }
     const projectiles = data.projectiles as Ballistic[];

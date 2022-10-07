@@ -70,12 +70,26 @@ const availableCargoCapacity = (player: Player) => {
   return capacity - carrying;
 };
 
+const addCargo = (player: Player, what: string, amount: number) => {
+  if (!player.cargo) {
+    player.cargo = [];
+  }
+  const maxAmount = availableCargoCapacity(player);
+  const existing = player.cargo.find((c) => c.what === what);
+  if (existing) {
+    existing.amount += Math.min(amount, maxAmount);
+  } else {
+    player.cargo.push({ what, amount: Math.min(amount, maxAmount) });
+  }
+};
+
 const copyPlayer = (player: Player) => {
   const ret = { ...player };
   ret.sinceLastShot = [...player.sinceLastShot];
   ret.armaments = [...player.armaments];
   ret.slotData = player.slotData.map((data) => ({ ...data }));
   player.position = { ...player.position };
+  player.cargo = player.cargo?.map((cargo) => ({ ...cargo }));
   return ret;
 };
 
@@ -640,6 +654,8 @@ export {
   findPreviousTargetAsteroid,
   l2Norm,
   l2NormSquared,
+  availableCargoCapacity,
+  addCargo,
   ticksPerSecond,
   maxNameLength,
 };

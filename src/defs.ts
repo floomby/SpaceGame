@@ -1,4 +1,4 @@
-import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind, l2Norm, l2NormSquared, EffectTrigger, EffectAnchorKind } from "../src/game";
+import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind, l2Norm, l2NormSquared, EffectTrigger, EffectAnchorKind, availableCargoCapacity, addCargo } from "../src/game";
 
 enum Faction {
   Alliance = 0,
@@ -161,9 +161,10 @@ const initDefs = () => {
     stateMutator: (state, player, targetKind, target, applyEffect) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.5) {
         target = target as Asteroid;
-        if (target.resources > 0.5 && l2NormSquared(player.position, target.position) < 500 * 500) {
+        if (target.resources > 0.5 && l2NormSquared(player.position, target.position) < 500 * 500 && availableCargoCapacity(player) > 0) {
           player.energy -= 0.3;
           target.resources -= 0.5;
+          addCargo(player, "minerals", 0.5);
           applyEffect({
             effectIndex: 0,
             // Fine to just use the reference here

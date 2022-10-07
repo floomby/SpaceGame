@@ -1,6 +1,6 @@
 import { armDefs, asteroidDefs, defs } from "./defs";
 import { drawEffects, initEffects } from "./effects";
-import { Asteroid, Ballistic, Circle, findHeadingBetween, GlobalState, Player, Position, positiveMod, Rectangle } from "./game";
+import { Asteroid, availableCargoCapacity, Ballistic, Circle, findHeadingBetween, GlobalState, Player, Position, positiveMod, Rectangle } from "./game";
 import { KeyBindings } from "./keybindings";
 
 let canvas: HTMLCanvasElement;
@@ -85,7 +85,9 @@ const drawBar = (position: Position, width: number, height: number, primary: str
 };
 
 const drawHUD = (player: Player) => {
-  // drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#0022FFCC", "#333333CC", player.energy / defs[player.definitionIndex].energy);
+  const def = defs[player.definitionIndex];
+  const totalCargo = def.cargoCapacity - availableCargoCapacity(player);
+  drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#774422CC", "#333333CC", totalCargo / defs[player.definitionIndex].cargoCapacity);
 };
 
 const drawMiniMapShip = (center: Position, player: Player, self: Player, miniMapScaleFactor: number) => {
@@ -434,7 +436,7 @@ const drawEverything = (
   drawEffects(lastSelf, state);
   if (self && !self.docked) {
     drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.03);
-    // drawHUD(self);
+    drawHUD(self);
     if (self.canDock) {
       drawDockText(keybind.dock);
     }

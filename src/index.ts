@@ -23,6 +23,50 @@ import {
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
 import { defs, initDefs, asteroidDefs } from "./defs";
 
+type KeyBindings = {
+  up: string;
+  down: string;
+  left: string;
+  right: string;
+  primary: string;
+  secondary: string;
+  dock: string;
+  nextTarget: string;
+  previousTarget: string;
+  nextTargetAsteroid: string;
+  previousTargetAsteroid: string;
+};
+
+const qwertyBindings: KeyBindings = {
+  up: "ArrowUp",
+  down: "ArrowDown",
+  left: "ArrowLeft",
+  right: "ArrowRight",
+  primary: " ",
+  secondary: "c",
+  dock: "m",
+  nextTarget: "x",
+  previousTarget: "z",
+  nextTargetAsteroid: "s",
+  previousTargetAsteroid: "a",
+};
+
+const dvorakBindings: KeyBindings = {
+  up: "ArrowUp",
+  down: "ArrowDown",
+  left: "ArrowLeft",
+  right: "ArrowRight",
+  primary: " ",
+  secondary: "j",
+  dock: "m",
+  nextTarget: "q",
+  previousTarget: ";",
+  nextTargetAsteroid: "o",
+  previousTargetAsteroid: "a",
+};
+
+let keybind = qwertyBindings;
+
 // TODO Move drawing to a separate file
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -31,6 +75,8 @@ let asteroidSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
+
+
 
 const initStars = () => {
   for (let i = 0; i < 1000; i++) {
@@ -293,7 +339,7 @@ const drawDockText = () => {
   ctx.fillStyle = "white";
   ctx.font = "30px Arial";
   ctx.textAlign = "center";
-  ctx.fillText("Press m to dock", canvas.width / 2, canvas.height / 2 + 200);
+  ctx.fillText(`Press ${keybind.dock} to dock`, canvas.width / 2, canvas.height / 2 + 200);
 };
 
 // This is only for drawing purposes (if we die we need to keep the last position)
@@ -473,41 +519,44 @@ const initInputHandlers = () => {
   document.addEventListener("keydown", (e) => {
     let changed = false;
     switch (e.key) {
-      case "ArrowUp":
+      case keybind.up:
         changed = !input.up;
         input.up = true;
         break;
-      case "ArrowDown":
+      case keybind.down:
         changed = !input.down;
         input.down = true;
         break;
-      case "ArrowLeft":
+      case keybind.left:
         changed = !input.left;
         input.left = true;
         break;
-      case "ArrowRight":
+      case keybind.right:
         changed = !input.right;
         input.right = true;
         break;
-      case " ":
+      case keybind.primary:
         changed = !input.primary;
         input.primary = true;
         break;
-      case "m":
+      case keybind.secondary:
+        changed = !input.secondary;
+        input.secondary = true;
+      case keybind.dock:
         input.dock = true;
         break;
-      case "q":
+      case keybind.nextTarget:
         input.nextTarget = true;
         targetEnemy = e.getModifierState("Control");
         break;
-      case ";":
+      case keybind.previousTarget:
         input.previousTarget = true;
         targetEnemy = e.getModifierState("Control");
         break;
-      case "o":
+      case keybind.nextTargetAsteroid:
         input.nextTargetAsteroid = true;
         break;
-      case "a":
+      case keybind.previousTargetAsteroid:
         input.previousTargetAsteroid = true;
         break;
     }
@@ -518,39 +567,42 @@ const initInputHandlers = () => {
   document.addEventListener("keyup", (e) => {
     let changed = false;
     switch (e.key) {
-      case "ArrowUp":
+      case keybind.up:
         changed = input.up;
         input.up = false;
         break;
-      case "ArrowDown":
+      case keybind.down:
         changed = input.down;
         input.down = false;
         break;
-      case "ArrowLeft":
+      case keybind.left:
         changed = input.left;
         input.left = false;
         break;
-      case "ArrowRight":
+      case keybind.right:
         changed = input.right;
         input.right = false;
         break;
-      case " ":
+      case keybind.primary:
         changed = input.primary;
         input.primary = false;
         break;
-      case "m":
+      case keybind.secondary:
+        changed = input.secondary;
+        input.secondary = false;
+      case keybind.dock:
         input.dock = false;
         break;
-      case "q":
+      case keybind.nextTarget:
         input.nextTarget = false;
         break;
-      case ";":
+      case keybind.previousTarget:
         input.previousTarget = false;
         break;
-      case "o":
+      case keybind.nextTargetAsteroid:
         input.nextTargetAsteroid = false;
         break;
-      case "a":
+      case keybind.previousTargetAsteroid:
         input.previousTargetAsteroid = false;
         break;
     }
@@ -560,7 +612,7 @@ const initInputHandlers = () => {
   });
 };
 
-let lastUpdate = Date.now();
+// let lastUpdate = Date.now();
 
 // The server will assign our id when we connect
 let me: number;
@@ -667,7 +719,39 @@ const registerHandler = (e: KeyboardEvent) => {
   }
 };
 
-const registerDialog = horizontalCenter(["<h3>Input username</h3>", '<input type="text" placeholder="Username" id="username"/>']);
+const registerDialog = horizontalCenter([
+  "<h3>Input username</h3>",
+  '<input type="text" placeholder="Username" id="username"/>',
+`<br/>
+<fieldset>
+  <legend>Keyboard Layout</legend>
+  <div style="text-align: left;">
+    <input type="radio" id="qwerty" name="keyboard" value="qwerty" checked>
+    <label for="qwerty">QWERTY</label>
+  </div>
+  <div style="text-align: left;">
+    <input type="radio" id="dvorak" name="keyboard" value="dvorak">
+    <label for="dvorak">Dvorak</label>
+  </div>
+</fieldset>`,
+]);
+
+const setupRegisterDialog = () => {
+  const usernameInput = document.getElementById("username") as HTMLInputElement;
+  usernameInput.addEventListener("keydown", registerHandler);
+  const qwerty = document.getElementById("qwerty") as HTMLInputElement;
+  const dvorak = document.getElementById("dvorak") as HTMLInputElement;
+  qwerty.addEventListener("change", () => {
+    if (qwerty.checked) {
+      keybind = qwertyBindings;
+    }
+  });
+  dvorak.addEventListener("change", () => {
+    if (dvorak.checked) {
+      keybind = dvorakBindings;
+    }
+  });
+};
 
 let respawnKey = 0;
 let didDie = false;
@@ -690,8 +774,7 @@ const run = () => {
   console.log("Running game");
 
   showDialog(registerDialog);
-  const usernameInput = document.getElementById("username") as HTMLInputElement;
-  usernameInput.addEventListener("keydown", registerHandler);
+  setupRegisterDialog();
 
   state = {
     players: new Map(),
@@ -731,7 +814,7 @@ const run = () => {
       }
       state.projectiles.set(parentId, projectileGroup);
     }
-    lastUpdate = Date.now();
+    // lastUpdate = Date.now();
     const self = state.players.get(me);
     if (!self && !didDie) {
       targetId = 0;

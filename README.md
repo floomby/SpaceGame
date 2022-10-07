@@ -8,7 +8,7 @@ A simple multiplayer game where you have a ship and do things.
 - Station UI
 - Shields
 - Mines
-- Asteroids + mining
+- Mining
 - Trade
 - Proper targeting for stations
 - NPCs

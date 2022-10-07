@@ -1,6 +1,20 @@
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { GlobalState, Player, Input, update, applyInputs, Ballistic, ticksPerSecond, maxNameLength, canDock, copyPlayer } from "../src/game";
+import {
+  GlobalState,
+  Player,
+  Asteroid,
+  Input,
+  update,
+  applyInputs,
+  Ballistic,
+  ticksPerSecond,
+  maxNameLength,
+  canDock,
+  copyPlayer,
+  uid,
+  randomAsteroids,
+} from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs } from "../src/defs";
 
 const port = 8080;
@@ -10,6 +24,7 @@ initDefs();
 const state: GlobalState = {
   players: new Map(),
   projectiles: new Map(),
+  asteroids: new Map(),
 };
 
 type ClientData = {
@@ -29,14 +44,6 @@ const server = createServer();
 
 const wss = new WebSocketServer({ server });
 
-const uid = () => {
-  let ret = 0;
-  while (ret === 0) {
-    ret = Math.floor(Math.random() * 1000000);
-  }
-  return ret;
-}
-
 const testStarbaseId = uid();
 const testStarbase = {
   position: { x: -400, y: -400 },
@@ -55,6 +62,11 @@ const testStarbase = {
   slotData: [],
 };
 state.players.set(testStarbaseId, testStarbase);
+
+const testAsteroids = randomAsteroids(30, { x: -1000, y: -1000, width: 2000, height: 2000 });
+for (const asteroid of testAsteroids) {
+  state.asteroids.set(asteroid.id, asteroid);
+}
 
 wss.on("connection", (ws) => {
   console.log("Client connected");
@@ -219,8 +231,15 @@ setInterval(() => {
     for (const [id, projectiles] of state.projectiles) {
       projectileData.push(...projectiles);
     }
+    const asteroidData: Asteroid[] = [];
+    for (const asteroid of state.asteroids.values()) {
+      asteroidData.push(asteroid);
+    }
 
-    const serialized = JSON.stringify({ type: "state", payload: { players: playerData, frame, projectiles: projectileData } });
+    const serialized = JSON.stringify({
+      type: "state",
+      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData },
+    });
 
     for (const [client, data] of clients) {
       client.send(serialized);

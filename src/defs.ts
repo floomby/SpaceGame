@@ -1,4 +1,4 @@
-import { Rectangle, Position, GlobalState, Player } from "../src/game";
+import { Rectangle, Position, GlobalState, Player, Asteroid } from "../src/game";
 
 enum UnitKind {
   Ship,
@@ -10,6 +10,7 @@ enum SlotKind {
   Utility,
   Mine,
   Large,
+  Mining,
 }
 
 type UnitDefinition = {
@@ -39,11 +40,19 @@ type ArmamentDef = {
   effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
 };
 
+type AsteroidDef = {
+  resources: number;
+  sprite: Rectangle;
+  radius: number;
+};
+
 const defs: UnitDefinition[] = [];
 const defMap = new Map<string, { index: number; def: UnitDefinition }>();
 
 const armDefs: ArmamentDef[] = [];
 const armDefMap = new Map<string, { index: number; def: ArmamentDef }>();
+
+const asteroidDefs: AsteroidDef[] = [];
 
 const initDefs = () => {
   defs.push({
@@ -135,6 +144,12 @@ const initDefs = () => {
     const def = armDefs[i];
     armDefMap.set(def.name, { index: i, def });
   }
+
+  asteroidDefs.push({
+    resources: 100,
+    sprite: { x: 256, y: 0, width: 64, height: 64 },
+    radius: 24,
+  });
 };
 
-export { UnitDefinition, UnitKind, SlotKind, defs, defMap, initDefs };
+export { UnitDefinition, UnitKind, SlotKind, AsteroidDef, defs, defMap, asteroidDefs, initDefs };

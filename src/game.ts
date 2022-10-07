@@ -1,6 +1,6 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs } from "./defs";
+import { UnitDefinition, UnitKind, defs, asteroidDefs } from "./defs";
 
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
@@ -45,6 +45,13 @@ type Player = Entity & {
   // Limited to flat objects (change player copy code to augment this behavior if needed)
   slotData: any[];
   cargo?: { what: string; amount: number }[];
+};
+
+type Asteroid = Circle & {
+  id: number;
+  resources: number;
+  heading: number;
+  definitionIndex: number;
 };
 
 const availableCargoCapacity = (player: Player) => {
@@ -98,6 +105,7 @@ type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic[]>;
   // effects?: Effect[];
+  asteroids: Map<number, Asteroid>;
 };
 
 const setCanDock = (player: Player, state: GlobalState) => {
@@ -122,7 +130,7 @@ const setCanDock = (player: Player, state: GlobalState) => {
 
 // For smoothing the animations
 const fractionalUpdate = (state: GlobalState, fraction: number) => {
-  const ret: GlobalState = { players: new Map(), projectiles: new Map() };
+  const ret: GlobalState = { players: new Map(), projectiles: new Map(), asteroids: new Map() };
   for (const [id, player] of state.players) {
     if (player.docked) {
       ret.players.set(id, player);
@@ -158,13 +166,11 @@ const findHeadingBetween = (a: Position, b: Position) => {
 const findClosestTarget = (player: Player, state: GlobalState) => {
   let ret: [Player | undefined, number] = [undefined, 0];
   let minDistance = Infinity;
-  const def = defs[player.definitionIndex];
   for (const [id, otherPlayer] of state.players) {
     if (otherPlayer.docked) {
       continue;
     }
-    const otherDef = defs[otherPlayer.definitionIndex];
-    if (def.team === otherDef.team) {
+    if (player === otherPlayer) {
       continue;
     }
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
@@ -179,13 +185,11 @@ const findClosestTarget = (player: Player, state: GlobalState) => {
 const findFurthestTarget = (player: Player, state: GlobalState) => {
   let ret: [Player | undefined, number] = [undefined, 0];
   let maxDistance = 0;
-  const def = defs[player.definitionIndex];
   for (const [id, otherPlayer] of state.players) {
     if (otherPlayer.docked) {
       continue;
     }
-    const otherDef = defs[otherPlayer.definitionIndex];
-    if (def.team === otherDef.team) {
+    if (player === otherPlayer) {
       continue;
     }
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
@@ -202,7 +206,6 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
     return findClosestTarget(player, state);
   }
   let ret: [Player | undefined, number] = [current, 0];
-  const def = defs[player.definitionIndex];
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let minDistanceGreaterThanCurrent = Infinity;
   let foundFurther = false;
@@ -213,8 +216,7 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
     if (otherPlayer === ret[0]) {
       ret[1] = id;
     }
-    const otherDef = defs[otherPlayer.definitionIndex];
-    if (def.team === otherDef.team) {
+    if (player === otherPlayer) {
       continue;
     }
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
@@ -238,7 +240,6 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
     return findClosestTarget(player, state);
   }
   let ret: [Player | undefined, number] = [current, 0];
-  const def = defs[player.definitionIndex];
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let maxDistanceLessThanCurrent = 0;
   let foundCloser = false;
@@ -249,8 +250,7 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
     if (otherPlayer === ret[0]) {
       ret[1] = id;
     }
-    const otherDef = defs[otherPlayer.definitionIndex];
-    if (def.team === otherDef.team) {
+    if (player === otherPlayer) {
       continue;
     }
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
@@ -443,6 +443,38 @@ const applyInputs = (input: Input, player: Player) => {
   }
 };
 
+const uid = () => {
+  let ret = 0;
+  while (ret === 0) {
+    ret = Math.floor(Math.random() * 1000000);
+  }
+  return ret;
+}
+
+const randomAsteroids = (count: number, bounds: Rectangle) => {
+  if (asteroidDefs.length === 0) {
+    throw new Error("Asteroid defs not initialized");
+  }
+  const asteroids: Asteroid[] = [];
+  for (let i = 0; i < count; i++) {
+    const index = Math.floor(Math.random() * asteroidDefs.length);
+    const def = asteroidDefs[index];
+    const asteroid: Asteroid = {
+      position: {
+        x: Math.random() * bounds.width + bounds.x,
+        y: Math.random() * bounds.height + bounds.y,
+      },
+      heading: Math.random() * 2 * Math.PI,
+      resources: def.resources,
+      definitionIndex: index,
+      id: uid(),
+      radius: def.radius,
+    };
+    asteroids.push(asteroid);
+  }
+  return asteroids;
+};
+
 const maxNameLength = 20;
 const ticksPerSecond = 60;
 
@@ -453,6 +485,7 @@ export {
   Rectangle,
   Input,
   Player,
+  Asteroid,
   Ballistic,
   update,
   applyInputs,
@@ -465,6 +498,8 @@ export {
   findNextTarget,
   findPreviousTarget,
   findHeadingBetween,
+  uid,
+  randomAsteroids,
   ticksPerSecond,
   maxNameLength,
 };

@@ -16,14 +16,16 @@ import {
   findNextTarget,
   findPreviousTarget,
   findHeadingBetween,
+  Asteroid,
 } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
-import { defs, initDefs } from "./defs";
+import { defs, initDefs, asteroidDefs } from "./defs";
 
 // TODO Move drawing to a separate file
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let sprites: ImageBitmap[] = [];
+let asteroidSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
@@ -35,6 +37,18 @@ const initStars = () => {
       radius: Math.random() * 2 + 1,
     });
   }
+};
+
+const loadAsteroidSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
+  const spritePromises: Promise<ImageBitmap>[] = [];
+  for (let i = 0; i < asteroidDefs.length; i++) {
+    const sprite = asteroidDefs[i].sprite;
+    spritePromises.push(createImageBitmap(spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height));
+  }
+  Promise.all(spritePromises).then((completed) => {
+    asteroidSprites = completed;
+    callback();
+  });
 };
 
 const initLocals = (callback: () => void) => {
@@ -55,7 +69,7 @@ const initLocals = (callback: () => void) => {
     }
     Promise.all(spritePromises).then((completed) => {
       sprites = completed;
-      callback();
+      loadAsteroidSprites(spriteSheet, callback);
     });
   };
   spriteSheet.src = "resources/sprites.png";
@@ -109,11 +123,32 @@ const drawMiniMapShip = (center: Position, player: Player, self: Player, miniMap
   ctx.restore();
 };
 
+const drawMiniMapAsteroid = (center: Position, asteroid: Asteroid, self: Player, miniMapScaleFactor: number) => {
+  ctx.save();
+  ctx.translate(
+    (asteroid.position.x - self.position.x) * miniMapScaleFactor + center.x,
+    (asteroid.position.y - self.position.y) * miniMapScaleFactor + center.y
+  );
+  ctx.fillStyle = "grey";
+  ctx.beginPath();
+  ctx.arc(0, 0, 2, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.restore();
+};
+
 const drawMiniMap = (position: Position, width: number, height: number, self: Player, state: GlobalState, miniMapScaleFactor: number) => {
   ctx.fillStyle = "#30303055";
   const margin = 5;
   ctx.fillRect(position.x - margin, position.y - margin, width + margin, height + margin);
   const center = { x: position.x + width / 2, y: position.y + height / 2 };
+  for (const [id, asteroid] of state.asteroids) {
+    if (
+      Math.abs(asteroid.position.x - self.position.x) < starTilingSize.x / 2 &&
+      Math.abs(asteroid.position.y - self.position.y) < starTilingSize.y / 2
+    ) {
+      drawMiniMapAsteroid(center, asteroid, self, miniMapScaleFactor);
+    }
+  }
   for (const [id, player] of state.players) {
     if (
       Math.abs(player.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
@@ -187,6 +222,32 @@ const drawStars = (self: Player) => {
       ctx.fill();
     }
   }
+};
+
+const drawAsteroid = (asteroid: Asteroid, self: Player) => {
+  ctx.save();
+  ctx.translate(asteroid.position.x - self.position.x + canvas.width / 2, asteroid.position.y - self.position.y + canvas.height / 2);
+  let sprite = asteroidSprites[asteroid.definitionIndex];
+  let def = asteroidDefs[asteroid.definitionIndex];
+  if (asteroid.resources < def.resources) {
+    drawBar(
+      { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
+      sprite.width,
+      5,
+      "#662222CC",
+      "#333333CC",
+      asteroid.resources / def.resources
+    );
+  }
+  ctx.rotate(asteroid.heading);
+  ctx.drawImage(
+    sprite,
+    -sprite.width / 2,
+    -sprite.height / 2,
+    sprite.width,
+    sprite.height
+  );
+  ctx.restore();
 };
 
 const drawShip = (player: Player, self: Player) => {
@@ -335,6 +396,9 @@ const drawEverything = (state: GlobalState, self: Player, target: Player | undef
   if (lastSelf) {
     drawStars(lastSelf);
   }
+  for (const [id, asteroid] of state.asteroids) {
+    drawAsteroid(asteroid, lastSelf);
+  }
   for (const [id, player] of state.players) {
     if (player.docked) {
       continue;
@@ -474,7 +538,10 @@ const dockDialog = (station: Player | undefined, stationId: number) => {
   if (!station) {
     return `Docking error - station ${stationId} not found`;
   }
-  return horizontalCenter([`<h3>Docked with ${station.name}</h3>`, `<button id="undock">Undock</button>`]);
+  return horizontalCenter([
+    `<h3>Docked with ${station.name}</h3>`,
+    `<button id="undock">Undock</button>`
+  ]);
 };
 
 const setupDockingUI = (station: Player | undefined) => {
@@ -498,7 +565,6 @@ const loop = () => {
 
   let target: Player | undefined = undefined;
 
-  // const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
   const self = state.players.get(me);
 
   if (self && !self.docked && (input.nextTarget || input.previousTarget)) {
@@ -538,6 +604,7 @@ const loop = () => {
     }
   }
 
+  // const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
   drawEverything(state, self, target);
   requestAnimationFrame(loop);
 };
@@ -581,6 +648,7 @@ const run = () => {
   state = {
     players: new Map(),
     projectiles: new Map(),
+    asteroids: new Map(),
   };
 
   bindAction("init", (data: { id: number; respawnKey: number }) => {
@@ -602,6 +670,9 @@ const run = () => {
 
     for (const player of players) {
       state.players.set(player.id, player);
+    }
+    for (const asteroid of (data.asteroids as Asteroid[])) {
+      state.asteroids.set(asteroid.id, asteroid);
     }
     const projectiles = data.projectiles as Ballistic[];
     while (projectiles.length) {

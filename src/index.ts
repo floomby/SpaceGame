@@ -1,4 +1,4 @@
-import { connect, bindAction, register, sendInput, sendDock, sendUndock, sendRespawn } from "./net";
+import { connect, bindAction, register, sendInput, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary } from "./net";
 import {
   GlobalState,
   Position,
@@ -19,6 +19,7 @@ import {
   Asteroid,
   findNextTargetAsteroid,
   findPreviousTargetAsteroid,
+  TargetKind,
 } from "./game";
 import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
 import { defs, initDefs, asteroidDefs, Faction, getFactionString, armDefs } from "./defs";
@@ -713,6 +714,7 @@ const setupDockingUI = (station: Player | undefined) => {
 };
 
 let lastValidSecondary = 0;
+let serverTarget: [TargetKind, number] = [TargetKind.None, 0];
 
 const loop = () => {
   highlightPhase += 0.1;
@@ -738,6 +740,7 @@ const loop = () => {
     if (selectedSecondary < def.slots.length) {
       lastValidSecondary = selectedSecondary;
       secondaryFlashTimeRemaining = 120;
+      sendSecondary(me, selectedSecondary);
     } else {
       selectedSecondary = lastValidSecondary;
     }
@@ -769,6 +772,14 @@ const loop = () => {
       target = state.players.get(targetId);
       targetAsteroid = state.asteroids.get(targetAsteroidId);
     }
+  }
+
+  const unifiedTargetId = targetId || targetAsteroidId;
+  const unifiedTargetKind = targetId ? TargetKind.Player : targetAsteroidId ? TargetKind.Asteroid : TargetKind.None;
+
+  if (unifiedTargetId !== serverTarget[1] || unifiedTargetKind !== serverTarget[0]) {
+    serverTarget = [unifiedTargetKind, unifiedTargetId];
+    sendTarget(me, serverTarget);
   }
 
   if (target?.docked) {

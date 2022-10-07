@@ -14,6 +14,8 @@ import {
   copyPlayer,
   uid,
   randomAsteroids,
+  TargetKind,
+  EffectTrigger,
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction } from "../src/defs";
 import { assert } from "console";
@@ -27,6 +29,12 @@ const state: GlobalState = {
   projectiles: new Map(),
   asteroids: new Map(),
 };
+
+// Targeting is handled by the clients, but the server needs to know
+// Same pattern with secondaries
+// BTW I do not like this design
+const targets: Map<number, [TargetKind, number]> = new Map();
+const secondaries: Map<number, number> = new Map();
 
 type ClientData = {
   id: number;
@@ -102,7 +110,7 @@ wss.on("connection", (ws) => {
         name,
         energy: defs[defIndex].energy,
         definitionIndex: defIndex,
-        armaments: [4, 0],
+        armaments: [5, 0],
         slotData: [{}],
       };
 
@@ -110,6 +118,9 @@ wss.on("connection", (ws) => {
       const respawnKey = uid();
       respawnKeys.set(respawnKey, id);
       checkpoints.set(id, copyPlayer(player));
+
+      targets.set(id, [TargetKind.None, 0]);
+      secondaries.set(id, 0);
 
       ws.send(JSON.stringify({ type: "init", payload: { id, respawnKey } }));
       console.log("Registered client with id: ", id);
@@ -181,6 +192,16 @@ wss.on("connection", (ws) => {
           console.log("No checkpoint found for player", id);
         }
       }
+    } else if (data.type === "target") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        targets.set(client.id, data.payload.target);
+      }
+    } else if (data.type === "secondary") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        secondaries.set(client.id, data.payload.secondary);
+      }
     } else {
       console.log("Message from client: ", data);
     }
@@ -192,6 +213,8 @@ wss.on("connection", (ws) => {
     if (removedClient) {
       state.players.delete(removedClient.id);
       checkpoints.delete(removedClient.id);
+      targets.delete(removedClient.id);
+      secondaries.delete(removedClient.id);
       for (const [respawnKey, id] of respawnKeys) {
         if (id === removedClient.id) {
           respawnKeys.delete(respawnKey);
@@ -222,7 +245,8 @@ setInterval(() => {
       applyInputs(data.input, player);
     }
   }
-  update(state, frame, () => {});
+  const triggers: EffectTrigger[] = [];
+  update(state, frame, () => {}, targets, secondaries, (trigger) => triggers.push(trigger));
   // update(state, frame, (id: number) => {
   //   for (const [client, data] of clients) {
   //     if (data.id === id) {

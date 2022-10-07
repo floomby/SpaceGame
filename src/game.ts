@@ -1,6 +1,6 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs, asteroidDefs } from "./defs";
+import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs } from "./defs";
 
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
@@ -54,6 +54,12 @@ type Asteroid = Circle & {
   definitionIndex: number;
 };
 
+enum TargetKind {
+  None = 0,
+  Player,
+  Asteroid,
+}
+
 const availableCargoCapacity = (player: Player) => {
   const def = defs[player.definitionIndex];
   let capacity = 0;
@@ -101,10 +107,15 @@ const primaryRadius = 1;
 //   heading: number;
 // };
 
+type EffectTrigger = {
+  effectIndex: number;
+  from: Position;
+  to: Position;
+};
+
 type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic[]>;
-  // effects?: Effect[];
   asteroids: Map<number, Asteroid>;
 };
 
@@ -297,7 +308,15 @@ const hardpointPositions = (player: Player, def: UnitDefinition) => {
   return ret;
 };
 
-const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) => void) => {
+// Like usual the update function is a monstrosity
+const update = (
+  state: GlobalState,
+  frameNumber: number,
+  onDeath: (id: number) => void,
+  serverTargets: Map<number, [TargetKind, number]>,
+  serverSecondaries: Map<number, number>,
+  applyEffect: (effect: EffectTrigger) => void,
+) => {
   for (const [id, player] of state.players) {
     if (player.docked) {
       continue;
@@ -324,6 +343,24 @@ const update = (state: GlobalState, frameNumber: number, onDeath: (id: number) =
         player.projectileId++;
         player.toFirePrimary = false;
         player.energy -= 10;
+      }
+      if (player.toFireSecondary) {
+        const slotId = serverSecondaries.get(id);
+        const [targetKind, targetId] = serverTargets.get(id) || [TargetKind.None, 0];
+        if (slotId !== undefined && targetKind && slotId < player.armaments.length) {
+          const armDef = armDefs[player.armaments[slotId]];
+          if (armDef.stateMutator) {
+            let target: Player | Asteroid | undefined;
+            if (targetKind === TargetKind.Player) {
+              target = state.players.get(targetId);
+            } else if (targetKind === TargetKind.Asteroid) {
+              target = state.asteroids.get(targetId);
+            }
+            if (target) {
+              armDef.stateMutator(state, player, targetKind, target);
+            }
+          }
+        }
       }
     } else {
       // Have stations spin slowly
@@ -460,6 +497,7 @@ const applyInputs = (input: Input, player: Player) => {
   } else {
     player.toFirePrimary = false;
   }
+  player.toFireSecondary = input.secondary;
 };
 
 const uid = () => {
@@ -468,7 +506,7 @@ const uid = () => {
     ret = Math.floor(Math.random() * 1000000);
   }
   return ret;
-}
+};
 
 const randomAsteroids = (count: number, bounds: Rectangle) => {
   if (asteroidDefs.length === 0) {
@@ -576,6 +614,8 @@ export {
   Player,
   Asteroid,
   Ballistic,
+  TargetKind,
+  EffectTrigger,
   update,
   applyInputs,
   infinityNorm,

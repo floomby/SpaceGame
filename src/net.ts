@@ -1,4 +1,4 @@
-import { Input, Player, maxNameLength } from "./game";
+import { Input, Player, maxNameLength, TargetKind } from "./game";
 import { Faction } from "./defs";
 
 let serverSocket: WebSocket;
@@ -93,4 +93,22 @@ const sendRespawn = (respawnKey: number) => {
   );
 };
 
-export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn };
+const sendTarget = (id: number, target: [TargetKind, number]) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "target",
+      payload: { id, target },
+    })
+  );
+};
+
+const sendSecondary = (id: number, secondary: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "secondary",
+      payload: { id, secondary },
+    })
+  );
+};
+
+export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary };

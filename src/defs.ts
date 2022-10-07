@@ -1,4 +1,4 @@
-import { Rectangle, Position, GlobalState, Player, Asteroid } from "../src/game";
+import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind } from "../src/game";
 
 enum Faction {
   Alliance = 0,
@@ -50,8 +50,8 @@ type ArmamentDef = {
   name: string;
   description: string;
   kind: SlotKind;
-  stateMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
-  effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
+  stateMutator?: (state: GlobalState, player: Player, targetKind: TargetKind, target: Player | Asteroid) => void;
+  // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
 };
 
 type AsteroidDef = {
@@ -82,10 +82,7 @@ const initDefs = () => {
     team: 0,
     radius: 16,
     kind: UnitKind.Ship,
-    slots: [
-      SlotKind.Mining,
-      SlotKind.Normal
-    ],
+    slots: [SlotKind.Mining, SlotKind.Normal],
     cargoCapacity: 100,
   });
   defs.push({
@@ -101,10 +98,7 @@ const initDefs = () => {
     team: 1,
     radius: 16,
     kind: UnitKind.Ship,
-    slots: [
-      SlotKind.Mining,
-      SlotKind.Normal
-    ],
+    slots: [SlotKind.Mining, SlotKind.Normal],
     cargoCapacity: 100,
   });
   defs.push({
@@ -159,6 +153,20 @@ const initDefs = () => {
     name: "Empty mining slot",
     description: "Empty mining slot (dock with a station to buy armaments)",
     kind: SlotKind.Mining,
+  });
+  armDefs.push({
+    name: "Basic mining laser",
+    description: "A low powered mining laser",
+    kind: SlotKind.Mining,
+    stateMutator: (state, player, targetKind, target) => {
+      if (targetKind === TargetKind.Asteroid && player.energy > 0.1) {
+        target = target as Asteroid;
+        if (target.resources > 0.5) {
+          player.energy += 0.1;
+          target.resources -= 0.5;
+        }
+      }
+    },
   });
 
   for (let i = 0; i < armDefs.length; i++) {

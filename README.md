@@ -6,10 +6,12 @@ A simple multiplayer game where you have a ship and do things.
 
 - Armaments
 - Station UI
+  * Cargo browser + selling minerals
+  * Armament purchasing and outfitting
 - Shields
 - Mines
-- Mining
 - Trade
 - Proper targeting for stations
 - NPCs
+- Handle network interruptions
 - Network optimization

@@ -111,4 +111,13 @@ const sendSecondary = (id: number, secondary: number) => {
   );
 };
 
-export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary };
+const sendSellCargo = (id: number, what: string) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "sellCargo",
+      payload: { id, what },
+    })
+  );
+};
+
+export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary, sendSellCargo };

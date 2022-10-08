@@ -16,6 +16,7 @@ import {
   randomAsteroids,
   TargetKind,
   EffectTrigger,
+  CargoEntry,
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction } from "../src/defs";
 import { assert } from "console";
@@ -77,6 +78,9 @@ for (const asteroid of testAsteroids) {
   state.asteroids.set(asteroid.id, asteroid);
 }
 
+const market = new Map<string, number>();
+market.set("minerals", 1);
+
 wss.on("connection", (ws) => {
   console.log("Client connected");
 
@@ -112,6 +116,8 @@ wss.on("connection", (ws) => {
         definitionIndex: defIndex,
         armaments: [5, 0],
         slotData: [{}],
+        cargo: [{ what: "Teddy Bears", amount: 30 }],
+        credits: 500,
       };
 
       state.players.set(id, player);
@@ -201,6 +207,36 @@ wss.on("connection", (ws) => {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
         secondaries.set(client.id, data.payload.secondary);
+      }
+    } else if (data.type === "sellCargo") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const player = state.players.get(client.id);
+        if (player && player.cargo) {
+          const selling: CargoEntry[] = [];
+          player.cargo = player.cargo.filter(({ what, amount }) => {
+            if (what !== data.payload.what) {
+              return true;
+            } else {
+              selling.push({ what, amount });
+              return false;
+            }
+          });
+          if (selling.length > 1) {
+            console.log("Warning: duplicate cargo (this is indicative of a bug)");
+          }
+          for (const { what, amount } of selling) {
+            const price = market.get(what);
+            if (price) {
+              if (player.credits === undefined) {
+                player.credits = 0;
+              }
+              player.credits += amount * price;
+            }
+          }
+
+          state.players.set(client.id, player);
+        }
       }
     } else {
       console.log("Message from client: ", data);

@@ -30,6 +30,8 @@ const positiveMod = (a: number, b: number) => {
 
 type Entity = Circle & { id: number; speed: number; heading: number };
 
+type CargoEntry = { what: string; amount: number };
+
 type Player = Entity & {
   health: number;
   sinceLastShot: number[];
@@ -44,7 +46,8 @@ type Player = Entity & {
   armaments: number[];
   // Limited to flat objects (change player copy code to augment this behavior if needed)
   slotData: any[];
-  cargo?: { what: string; amount: number }[];
+  cargo?: CargoEntry[];
+  credits?: number;
 };
 
 type Asteroid = Circle & {
@@ -637,6 +640,7 @@ export {
   EffectAnchorKind,
   EffectAnchor,
   EffectTrigger,
+  CargoEntry,
   update,
   applyInputs,
   infinityNorm,

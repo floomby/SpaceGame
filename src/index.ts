@@ -1,4 +1,4 @@
-import { connect, bindAction, register, sendInput, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary } from "./net";
+import { connect, bindAction, register, sendInput, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary, sendSellCargo } from "./net";
 import {
   GlobalState,
   Input,
@@ -12,9 +12,19 @@ import {
   findNextTargetAsteroid,
   findPreviousTargetAsteroid,
   TargetKind,
+  CargoEntry,
 } from "./game";
-import { init as initDialog, show as showDialog, hide as hideDialog, clear as clearDialog, horizontalCenter } from "./dialog";
-import { defs, initDefs, asteroidDefs, Faction, getFactionString, armDefs } from "./defs";
+import {
+  init as initDialog,
+  show as showDialog,
+  hide as hideDialog,
+  clear as clearDialog,
+  horizontalCenter,
+  updateDom,
+  bindUpdater,
+  bindPostUpdater,
+} from "./dialog";
+import { defs, initDefs, Faction, getFactionString } from "./defs";
 import { drawEverything, flashSecondary, initDrawing } from "./drawing";
 import { dvorakBindings, qwertyBindings } from "./keybindings";
 import { applyEffects } from "./effects";
@@ -71,6 +81,7 @@ const initInputHandlers = () => {
       case keybind.secondary:
         changed = !input.secondary;
         input.secondary = true;
+        break;
       case keybind.dock:
         input.dock = true;
         break;
@@ -152,6 +163,7 @@ const initInputHandlers = () => {
       case keybind.secondary:
         changed = input.secondary;
         input.secondary = false;
+        break;
       case keybind.dock:
         input.dock = false;
         break;
@@ -185,20 +197,75 @@ let showDocked = false;
 let targetId = 0;
 let targetAsteroidId = 0;
 
-const dockDialog = (station: Player | undefined, stationId: number) => {
-  if (!station) {
-    return `Docking error - station ${stationId} not found`;
+const creditsHtml = (credits: number | undefined) => {
+  if (credits === undefined) {
+    credits = 0;
   }
-  return horizontalCenter([`<h3>Docked with ${station.name}</h3>`, `<button id="undock">Undock</button>`]);
+  return `<span class="credits">${credits}</span>`;
 };
 
-const setupDockingUI = (station: Player | undefined) => {
+const cargoHtml = (cargo?: CargoEntry[]) => {
+  if (!cargo) {
+    return "";
+  }
+  let html = "<table>";
+  // html += "<tr><th>Item</th><th>Quantity</th><th>Sell</th></tr>";
+  let index = 0;
+  for (const entry of cargo) {
+    html += `<tr>
+  <td>${entry.what}</td>
+  <td>${entry.amount}</td>
+  <td><button id="sellCargo${index}">Sell</button></td></tr>`;
+    index++;
+  }
+  html += "</table>";
+  return html;
+};
+
+const cargoPostUpdate = (cargo?: CargoEntry[]) => {
+  if (cargo) {
+    for (let i = 0; i < cargo.length; i++) {
+      const button = document.getElementById(`sellCargo${i}`);
+      if (button) {
+        button.addEventListener("click", () => {
+          sendSellCargo(me, cargo[i].what);
+        });
+      } else {
+        console.log("button not found", `sellCargo${i}`);
+      }
+    }
+  }
+};
+
+const dockDialog = (station: Player | undefined, self: Player) => {
+  if (!station) {
+    return `Docking error - station ${self.docked} not found`;
+  }
+  return horizontalCenter([
+    `<h2>Docked with ${station.name}</h2>`,
+    `<div id="credits">${creditsHtml(self.credits)}</div>`,
+    `<div>
+  <div style="width: 50%; float: left;">
+    <h3>Cargo</h3>
+    <div id="cargo">${cargoHtml(self.cargo)}</div>
+  </div>
+  <div style="width: 50%; float: left;">
+    <h3>Something else here</h3>
+    <p>The menus need a lot of work</p>
+  </div>
+</div>`,
+    `<br/><button id="undock">Undock</button>`,
+  ]);
+};
+
+const setupDockingUI = (station: Player | undefined, self: Player) => {
   if (!station) {
     return;
   }
   document.getElementById("undock")?.addEventListener("click", () => {
     sendUndock(me);
   });
+  cargoPostUpdate();
 };
 
 let lastValidSecondary = 0;
@@ -284,8 +351,8 @@ const loop = () => {
     if (!showDocked) {
       showDocked = true;
       const station = state.players.get(self.docked);
-      showDialog(dockDialog(station, self.docked));
-      setupDockingUI(station);
+      showDialog(dockDialog(station, self));
+      setupDockingUI(station, self);
     }
   }
 
@@ -359,11 +426,19 @@ const setupRegisterDialog = () => {
   alliance.addEventListener("change", () => {
     if (alliance.checked) {
       faction = Faction.Alliance;
+      const dialog = document.getElementById("dialog");
+      if (dialog) {
+        dialog.style.backgroundColor = "rgba(22, 45, 34, 0.341)";
+      }
     }
   });
   confederation.addEventListener("change", () => {
     if (confederation.checked) {
       faction = Faction.Confederation;
+      const dialog = document.getElementById("dialog");
+      if (dialog) {
+        dialog.style.backgroundColor = "rgba(49, 25, 25, 0.341)";
+      }
     }
   });
   document.getElementById("register")?.addEventListener("click", doRegister);
@@ -372,7 +447,7 @@ const setupRegisterDialog = () => {
 let respawnKey = 0;
 let didDie = false;
 
-const deadDialog = horizontalCenter(['<h3 style="color: white;">You are dead</h3>', "<button id='respawn'>Respawn</button>"]);
+const deadDialog = horizontalCenter(["<h2>You are dead</h2>", "<button id='respawn'>Respawn</button>"]);
 const setupDeadDialog = () => {
   didDie = true;
   document.getElementById("respawn")?.addEventListener("click", () => {
@@ -403,10 +478,9 @@ const run = () => {
     respawnKey = data.respawnKey;
   });
 
-  // bindAction("removed", (data: any) => {
-  //   console.log("Got removed", data);
-  //   state.players.delete(data);
-  // });
+  bindUpdater("cargo", cargoHtml);
+  bindPostUpdater("cargo", cargoPostUpdate);
+  bindUpdater("credits", creditsHtml);
 
   bindAction("state", (data: any) => {
     state.players = new Map();
@@ -438,6 +512,8 @@ const run = () => {
       setupDeadDialog();
     }
     if (self) {
+      updateDom("cargo", self.cargo);
+      updateDom("credits", self.credits);
       didDie = false;
     }
     applyEffects(data.effects);

@@ -1,6 +1,17 @@
-import { armDefs, asteroidDefs, defs } from "./defs";
+import { armDefs, ArmUsage, asteroidDefs, defs } from "./defs";
 import { drawEffects, initEffects } from "./effects";
-import { Asteroid, availableCargoCapacity, Ballistic, Circle, findHeadingBetween, GlobalState, Player, Position, positiveMod, Rectangle } from "./game";
+import {
+  Asteroid,
+  availableCargoCapacity,
+  Ballistic,
+  Circle,
+  findHeadingBetween,
+  GlobalState,
+  Player,
+  Position,
+  positiveMod,
+  Rectangle,
+} from "./game";
 import { KeyBindings } from "./keybindings";
 
 let canvas: HTMLCanvasElement;
@@ -84,10 +95,39 @@ const drawBar = (position: Position, width: number, height: number, primary: str
   ctx.fillRect(position.x + width * amount, position.y, width * (1 - amount), height);
 };
 
-const drawHUD = (player: Player) => {
+const drawHUD = (player: Player, selectedSecondary: number) => {
   const def = defs[player.definitionIndex];
   const totalCargo = def.cargoCapacity - availableCargoCapacity(player);
-  drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#774422CC", "#333333CC", totalCargo / defs[player.definitionIndex].cargoCapacity);
+  drawBar(
+    { x: 10, y: canvas.height - 20 },
+    canvas.width / 2 - 20,
+    10,
+    "#774422CC",
+    "#333333CC",
+    totalCargo / defs[player.definitionIndex].cargoCapacity
+  );
+  for (let i = 0; i < player.armIndices.length; i++) {
+    let armDef = armDefs[player.armIndices[i]];
+    ctx.fillStyle = i === selectedSecondary ? "yellow" : "white";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText(armDef.name, 10, canvas.height - 10 - (player.armIndices.length - i) * 20);
+    if (i === selectedSecondary) {
+      if (armDef.usage === ArmUsage.Energy && armDef.energyCost !== undefined) {
+        const color = armDef.energyCost > player.energy ? "#EE2200CC" : "#0022FFCC";
+        drawBar({ x: canvas.width / 2 + 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, color, "#333333CC", player.energy / def.energy);
+      } else if (armDef.usage === ArmUsage.Ammo && armDef.maxAmmo !== undefined) {
+        drawBar(
+          { x: canvas.width / 2 + 10, y: canvas.height - 20 },
+          canvas.width / 2 - 20,
+          10,
+          "#AAAAAACC",
+          "#333333CC",
+          player.slotData[selectedSecondary].ammo / armDef.maxAmmo
+        );
+      }
+    }
+  }
 };
 
 const drawMiniMapShip = (center: Position, player: Player, self: Player, miniMapScaleFactor: number) => {
@@ -278,11 +318,13 @@ const drawDockText = (dockKey: string) => {
   ctx.fillText(`Press ${dockKey} to dock`, canvas.width / 2, canvas.height / 2 + 200);
 };
 
+let secondaryFlashTimeRemaining = 0;
+
 const drawSecondaryText = (self: Player, selectedSecondary: number) => {
-  ctx.fillStyle = "white";
+  ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, secondaryFlashTimeRemaining / 50)})`;
   ctx.font = "18px Arial";
   ctx.textAlign = "center";
-  const armamentDef = armDefs[self.armaments[selectedSecondary]];
+  const armamentDef = armDefs[self.armIndices[selectedSecondary]];
   ctx.fillText(`${selectedSecondary} - ${armamentDef.name}`, canvas.width / 2, 20);
 };
 
@@ -290,7 +332,6 @@ const drawSecondaryText = (self: Player, selectedSecondary: number) => {
 let lastSelf: Player;
 
 let highlightPhase = 0;
-let secondaryFlashTimeRemaining = 0;
 
 const drawHighlight = (self: Player, player: Circle) => {
   ctx.save();
@@ -391,7 +432,7 @@ const drawEverything = (
   targetAsteroidId: number,
   me: number,
   selectedSecondary: number,
-  keybind: KeyBindings,
+  keybind: KeyBindings
 ) => {
   highlightPhase += 0.1;
   if (highlightPhase > 2 * Math.PI) {
@@ -436,7 +477,7 @@ const drawEverything = (
   drawEffects(lastSelf, state);
   if (self && !self.docked) {
     drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.03);
-    drawHUD(self);
+    drawHUD(self, selectedSecondary);
     if (self.canDock) {
       drawDockText(keybind.dock);
     }

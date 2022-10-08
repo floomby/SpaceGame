@@ -1,4 +1,16 @@
-import { Rectangle, Position, GlobalState, Player, Asteroid, TargetKind, l2Norm, l2NormSquared, EffectTrigger, EffectAnchorKind, availableCargoCapacity, addCargo } from "../src/game";
+import {
+  Rectangle,
+  Position,
+  GlobalState,
+  Player,
+  Asteroid,
+  TargetKind,
+  l2NormSquared,
+  EffectTrigger,
+  EffectAnchorKind,
+  availableCargoCapacity,
+  addCargo,
+} from "../src/game";
 
 enum Faction {
   Alliance = 0,
@@ -46,12 +58,30 @@ type UnitDefinition = {
   cargoCapacity?: number;
 };
 
+enum ArmUsage {
+  Empty,
+  Energy,
+  Ammo,
+}
+
 type ArmamentDef = {
   name: string;
   description: string;
   kind: SlotKind;
-  stateMutator?: (state: GlobalState, player: Player, targetKind: TargetKind, target: Player | Asteroid, applyEffect: (trigger: EffectTrigger) => void) => void;
+  usage: ArmUsage;
+  energyCost?: number;
+  maxAmmo?: number;
+  stateMutator?: (
+    state: GlobalState,
+    player: Player,
+    targetKind: TargetKind,
+    target: Player | Asteroid,
+    applyEffect: (trigger: EffectTrigger) => void,
+    slotIndex: number
+  ) => void;
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
+  equipMutator?: (player: Player, slotIndex: number) => void;
+  frameMutator?: (player: Player, slotIndex: number) => void;
 };
 
 type AsteroidDef = {
@@ -133,38 +163,46 @@ const initDefs = () => {
     name: "Empty normal slot",
     description: "Empty normal slot (dock with a station to buy armaments)",
     kind: SlotKind.Normal,
+    usage: ArmUsage.Empty,
   });
   armDefs.push({
     name: "Empty utility slot",
     description: "Empty utility slot (dock with a station to buy armaments)",
     kind: SlotKind.Utility,
+    usage: ArmUsage.Empty,
   });
   armDefs.push({
     name: "Empty mine slot",
     description: "Empty mine slot (dock with a station to buy armaments)",
     kind: SlotKind.Mine,
+    usage: ArmUsage.Empty,
   });
   armDefs.push({
     name: "Empty large slot",
     description: "Empty large slot (dock with a station to buy armaments)",
     kind: SlotKind.Large,
+    usage: ArmUsage.Empty,
   });
   armDefs.push({
     name: "Empty mining slot",
     description: "Empty mining slot (dock with a station to buy armaments)",
     kind: SlotKind.Mining,
+    usage: ArmUsage.Empty,
   });
   armDefs.push({
     name: "Basic mining laser",
     description: "A low powered mining laser",
     kind: SlotKind.Mining,
-    stateMutator: (state, player, targetKind, target, applyEffect) => {
+    usage: ArmUsage.Energy,
+    energyCost: 0.5,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.5) {
         target = target as Asteroid;
-        if (target.resources > 0.5 && l2NormSquared(player.position, target.position) < 500 * 500 && availableCargoCapacity(player) > 0) {
+        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 500 * 500 && availableCargoCapacity(player) > 0) {
           player.energy -= 0.3;
-          target.resources -= 0.5;
-          addCargo(player, "minerals", 0.5);
+          const amount = Math.min(target.resources, 0.5);
+          target.resources -= amount;
+          addCargo(player, "minerals", amount);
           applyEffect({
             effectIndex: 0,
             // Fine to just use the reference here
@@ -173,6 +211,47 @@ const initDefs = () => {
           });
         }
       }
+    },
+  });
+  armDefs.push({
+    name: "Laser Beam",
+    description: "Strong but energy hungry laser beam",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Energy,
+    energyCost: 35,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      if (targetKind === TargetKind.Player && player.energy > 35 && slotData.sinceFired > 45) {
+        target = target as Player;
+        if (l2NormSquared(player.position, target.position) < 700 * 700) {
+          player.energy -= 35;
+          target.health -= 30;
+          slotData.sinceFired = 0;
+          applyEffect({
+            effectIndex: 1,
+            from: { kind: EffectAnchorKind.Player, value: player.id },
+            to: { kind: EffectAnchorKind.Player, value: target.id },
+          });
+        }
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 46 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+  });
+  armDefs.push({
+    name: "Javelin Missile",
+    description: "An unguided missile",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Ammo,
+    maxAmmo: 30,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {},
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 20 };
     },
   });
 
@@ -188,4 +267,27 @@ const initDefs = () => {
   });
 };
 
-export { UnitDefinition, UnitKind, SlotKind, AsteroidDef, Faction, defs, defMap, asteroidDefs, armDefs, initDefs, getFactionString };
+enum EmptySlot {
+  Normal = 0,
+  Utility = 1,
+  Mine = 2,
+  Large = 3,
+  Mining = 4,
+}
+
+export {
+  UnitDefinition,
+  UnitKind,
+  SlotKind,
+  AsteroidDef,
+  Faction,
+  EmptySlot,
+  ArmUsage,
+  defs,
+  defMap,
+  asteroidDefs,
+  armDefs,
+  armDefMap,
+  initDefs,
+  getFactionString,
+};

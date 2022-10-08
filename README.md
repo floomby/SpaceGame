@@ -4,11 +4,11 @@ A simple multiplayer game where you have a ship and do things.
 
 ### TODO
 
-- Armaments
+- Guided weapons
 - Station UI
   * Cargo browser + selling minerals
   * Armament purchasing and outfitting
-- Shields
+- Shields? (maybe)
 - Mines
 - Trade
 - Proper targeting for stations

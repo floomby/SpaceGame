@@ -17,8 +17,10 @@ import {
   TargetKind,
   EffectTrigger,
   CargoEntry,
+  equip,
+  Missile,
 } from "../src/game";
-import { UnitDefinition, defs, defMap, initDefs, Faction } from "../src/defs";
+import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot } from "../src/defs";
 import { assert } from "console";
 
 const port = 8080;
@@ -29,6 +31,7 @@ const state: GlobalState = {
   players: new Map(),
   projectiles: new Map(),
   asteroids: new Map(),
+  missiles: new Map(),
 };
 
 // Targeting is handled by the clients, but the server needs to know
@@ -68,7 +71,7 @@ const testStarbase = {
   definitionIndex: 2,
   id: testStarbaseId,
   name: "Test Starbase",
-  armaments: [],
+  armIndices: [],
   slotData: [],
 };
 state.players.set(testStarbaseId, testStarbase);
@@ -114,11 +117,15 @@ wss.on("connection", (ws) => {
         name,
         energy: defs[defIndex].energy,
         definitionIndex: defIndex,
-        armaments: [5, 0],
-        slotData: [{}],
+        armIndices: [EmptySlot.Mining, EmptySlot.Normal],
+        slotData: [{}, {}],
         cargo: [{ what: "Teddy Bears", amount: 30 }],
         credits: 500,
       };
+
+      equip(player, 0, "Basic mining laser");
+      equip(player, 1, "Javelin Missile");
+      equip(player, 1, "Laser Beam");
 
       state.players.set(id, player);
       const respawnKey = uid();
@@ -282,7 +289,14 @@ setInterval(() => {
     }
   }
   const triggers: EffectTrigger[] = [];
-  update(state, frame, () => {}, targets, secondaries, (trigger) => triggers.push(trigger));
+  update(
+    state,
+    frame,
+    () => {},
+    targets,
+    secondaries,
+    (trigger) => triggers.push(trigger)
+  );
   // update(state, frame, (id: number) => {
   //   for (const [client, data] of clients) {
   //     if (data.id === id) {
@@ -305,10 +319,14 @@ setInterval(() => {
     for (const asteroid of state.asteroids.values()) {
       asteroidData.push(asteroid);
     }
+    const missileData: Missile[] = [];
+    for (const missile of state.missiles.values()) {
+      missileData.push(missile);
+    }
 
     const serialized = JSON.stringify({
       type: "state",
-      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers },
+      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers, missiles: missileData },
     });
 
     for (const [client, data] of clients) {

@@ -1,6 +1,6 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs } from "./defs";
+import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap } from "./defs";
 
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
@@ -43,7 +43,7 @@ type Player = Entity & {
   definitionIndex: number;
   canDock?: number;
   docked?: number;
-  armaments: number[];
+  armIndices: number[];
   // Limited to flat objects (change player copy code to augment this behavior if needed)
   slotData: any[];
   cargo?: CargoEntry[];
@@ -54,6 +54,13 @@ type Asteroid = Circle & {
   id: number;
   resources: number;
   heading: number;
+  definitionIndex: number;
+};
+
+type Missile = Entity & {
+  damage: number;
+  target: number;
+  team: number;
   definitionIndex: number;
 };
 
@@ -89,7 +96,7 @@ const addCargo = (player: Player, what: string, amount: number) => {
 const copyPlayer = (player: Player) => {
   const ret = { ...player };
   ret.sinceLastShot = [...player.sinceLastShot];
-  ret.armaments = [...player.armaments];
+  ret.armIndices = [...player.armIndices];
   ret.slotData = player.slotData.map((data) => ({ ...data }));
   player.position = { ...player.position };
   player.cargo = player.cargo?.map((cargo) => ({ ...cargo }));
@@ -139,6 +146,7 @@ type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic[]>;
   asteroids: Map<number, Asteroid>;
+  missiles: Map<number, Missile>;
 };
 
 const setCanDock = (player: Player, state: GlobalState) => {
@@ -163,7 +171,7 @@ const setCanDock = (player: Player, state: GlobalState) => {
 
 // For smoothing the animations
 const fractionalUpdate = (state: GlobalState, fraction: number) => {
-  const ret: GlobalState = { players: new Map(), projectiles: new Map(), asteroids: new Map() };
+  const ret: GlobalState = { players: new Map(), projectiles: new Map(), asteroids: new Map(), missiles: new Map() };
   for (const [id, player] of state.players) {
     if (player.docked) {
       ret.players.set(id, player);
@@ -366,11 +374,17 @@ const update = (
         player.toFirePrimary = false;
         player.energy -= 10;
       }
+      player.armIndices.forEach((armament, index) => {
+        const armDef = armDefs[armament];
+        if (armDef.frameMutator) {
+          armDef.frameMutator(player, index);
+        }
+      });
       if (player.toFireSecondary) {
         const slotId = serverSecondaries.get(id);
         const [targetKind, targetId] = serverTargets.get(id) || [TargetKind.None, 0];
-        if (slotId !== undefined && targetKind && slotId < player.armaments.length) {
-          const armDef = armDefs[player.armaments[slotId]];
+        if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
+          const armDef = armDefs[player.armIndices[slotId]];
           if (armDef.stateMutator) {
             let target: Player | Asteroid | undefined;
             if (targetKind === TargetKind.Player) {
@@ -379,7 +393,7 @@ const update = (
               target = state.asteroids.get(targetId);
             }
             if (target) {
-              armDef.stateMutator(state, player, targetKind, target, applyEffect);
+              armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId);
             }
           }
         }
@@ -624,6 +638,33 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
   return ret;
 };
 
+const equip = (player: Player, slotIndex: number, what: string) => {
+  const def = defs[player.definitionIndex];
+  if (slotIndex >= def.slots.length) {
+    console.log("Warning: slot number too high");
+    return;
+  }
+  const armDef = armDefMap.get(what);
+  if (!armDef) {
+    console.log("Warning: no such armament");
+    return;
+  }
+  const slotKind = def.slots[slotIndex];
+  if (slotKind !== armDef.def.kind) {
+    console.log("Warning: wrong kind of armament");
+    return;
+  }
+  if (slotIndex >= player.armIndices.length) {
+    console.log("Warning: player armaments not initialized correctly");
+    return;
+  }
+
+  player.armIndices[slotIndex] = armDef.index;
+  if (armDef.def.equipMutator) {
+    armDef.def.equipMutator(player, slotIndex);
+  }
+};
+
 const maxNameLength = 20;
 const ticksPerSecond = 60;
 
@@ -636,6 +677,7 @@ export {
   Player,
   Asteroid,
   Ballistic,
+  Missile,
   TargetKind,
   EffectAnchorKind,
   EffectAnchor,
@@ -660,6 +702,7 @@ export {
   l2NormSquared,
   availableCargoCapacity,
   addCargo,
+  equip,
   ticksPerSecond,
   maxNameLength,
 };

@@ -1,4 +1,4 @@
-import { EffectAnchor, EffectAnchorKind, EffectTrigger, GlobalState, Player, Position } from "./game";
+import { EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Player, Position } from "./game";
 import { ctx, canvas } from "./drawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
@@ -25,9 +25,10 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
 
 type EffectDefinition = {
   frames: number;
-  draw: (effect: Effect, self: Player, state: GlobalState) => void;
+  draw: (effect: Effect, self: Player, state: GlobalState, framesLeft: number) => void;
 };
 
+// TODO Move effect definitions to a separate file
 const effectDefs: EffectDefinition[] = [];
 
 const initEffects = () => {
@@ -46,6 +47,40 @@ const initEffects = () => {
       ctx.lineTo(to.x - from.x, to.y - from.y);
       ctx.strokeStyle = "green";
       ctx.stroke();
+      ctx.restore();
+    },
+  });
+  effectDefs.push({
+    frames: 15,
+    draw: (effect, self, state, framesLeft) => {
+      const from = resolveAnchor(effect.from, state);
+      const to = resolveAnchor(effect.to, state);
+      if (!from || !to) {
+        return;
+      }
+      const heading = findHeadingBetween(from, to);
+      const cos = Math.cos(heading);
+      const sin = Math.sin(heading);
+      const halfBeamWidth = 2.5;
+      const offsets = [
+        { x: -halfBeamWidth * sin, y: halfBeamWidth * cos },
+        { x: halfBeamWidth * sin, y: -halfBeamWidth * cos },
+      ];
+
+      const color = `rgba(255, 40, 155, ${Math.min(framesLeft / 10, 1)})`;
+
+      ctx.save();
+      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = color;
+      ctx.beginPath();
+      ctx.moveTo(to.x - from.x + offsets[1].x, to.y - from.y + offsets[1].y);
+      ctx.moveTo(offsets[1].x, offsets[1].y);
+      ctx.arc(0, 0, halfBeamWidth, heading - Math.PI / 2, heading + Math.PI / 2, true);
+      ctx.lineTo(offsets[0].x, offsets[0].y);
+      ctx.arc(to.x - from.x, to.y - from.y, halfBeamWidth, heading + Math.PI / 2, heading - Math.PI / 2, true);
+      ctx.fillStyle = color;
+      ctx.fill();
       ctx.restore();
     },
   });
@@ -82,7 +117,7 @@ const drawEffects = (self: Player, state: GlobalState) => {
   // TODO Culling if the effect is offscreen
   for (const effect of effects) {
     const def = effectDefs[effect.definitionIndex];
-    def.draw(effect, self, state);
+    def.draw(effect, self, state, effect.frame);
     effect.frame--;
   }
 };

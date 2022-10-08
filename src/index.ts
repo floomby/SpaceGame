@@ -201,7 +201,7 @@ const creditsHtml = (credits: number | undefined) => {
   if (credits === undefined) {
     credits = 0;
   }
-  return `<span class="credits">${credits}</span>`;
+  return `<span class="credits">Credits: ${credits}</span>`;
 };
 
 const cargoHtml = (cargo?: CargoEntry[]) => {
@@ -265,7 +265,7 @@ const setupDockingUI = (station: Player | undefined, self: Player) => {
   document.getElementById("undock")?.addEventListener("click", () => {
     sendUndock(me);
   });
-  cargoPostUpdate();
+  cargoPostUpdate(self.cargo);
 };
 
 let lastValidSecondary = 0;
@@ -471,6 +471,7 @@ const run = () => {
     players: new Map(),
     projectiles: new Map(),
     asteroids: new Map(),
+    missiles: new Map(),
   };
 
   bindAction("init", (data: { id: number; respawnKey: number }) => {
@@ -515,6 +516,10 @@ const run = () => {
       updateDom("cargo", self.cargo);
       updateDom("credits", self.credits);
       didDie = false;
+      if (self.docked) {
+        targetId = 0;
+        targetAsteroidId = 0;
+      }
     }
     applyEffects(data.effects);
   });

@@ -144,7 +144,7 @@ type EffectAnchor = {
 type EffectTrigger = {
   effectIndex: number;
   from: EffectAnchor;
-  to: EffectAnchor;
+  to?: EffectAnchor;
 };
 
 type GlobalState = {
@@ -502,18 +502,18 @@ const update = (
     }
   }
   for (const [id, missile] of state.missiles) {
-    const def = missileDefs[missile.definitionIndex];
+    const missileDef = missileDefs[missile.definitionIndex];
     missile.position.x += missile.speed * Math.cos(missile.heading);
     missile.position.y += missile.speed * Math.sin(missile.heading);
-    if (missile.speed > def.speed) {
-      missile.speed -= def.acceleration;
-      if (missile.speed < def.speed) {
-        missile.speed = def.speed;
+    if (missile.speed > missileDef.speed) {
+      missile.speed -= missileDef.acceleration;
+      if (missile.speed < missileDef.speed) {
+        missile.speed = missileDef.speed;
       }
-    } else if (missile.speed < def.speed) {
-      missile.speed += def.acceleration;
-      if (missile.speed > def.speed) {
-        missile.speed = def.speed;
+    } else if (missile.speed < missileDef.speed) {
+      missile.speed += missileDef.acceleration;
+      if (missile.speed > missileDef.speed) {
+        missile.speed = missileDef.speed;
       }
     }
     missile.lifetime -= 1;
@@ -530,12 +530,14 @@ const update = (
           onDeath(otherId);
         }
         state.missiles.delete(id);
+        applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
         didRemove = true;
         break;
       }
     }
     if (!didRemove && missile.lifetime <= 0) {
       state.missiles.delete(id);
+      applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
     }
   }
 };

@@ -1,5 +1,5 @@
 import { armDefs, ArmUsage, asteroidDefs, defs, missileDefs } from "./defs";
-import { drawEffects, initEffects } from "./effects";
+import { drawEffects, initEffects, effectSpriteDefs } from "./effects";
 import {
   Asteroid,
   availableCargoCapacity,
@@ -20,6 +20,7 @@ let ctx: CanvasRenderingContext2D;
 let sprites: ImageBitmap[] = [];
 let asteroidSprites: ImageBitmap[] = [];
 let missileSprites: ImageBitmap[] = [];
+let effectSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
@@ -31,6 +32,19 @@ const initStars = () => {
       radius: Math.random() * 2 + 1,
     });
   }
+};
+
+// Arguably thing should be in effects.ts, but crosscutting is basically unavoidable and it is almost identical the the other loading functions
+const loadEffectSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
+  const spritePromises: Promise<ImageBitmap>[] = [];
+  for (let i = 0; i < effectSpriteDefs.length; i++) {
+    const sprite = effectSpriteDefs[i].sprite;
+    spritePromises.push(createImageBitmap(spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height));
+  }
+  Promise.all(spritePromises).then((completed) => {
+    effectSprites = completed;
+    callback();
+  });
 };
 
 const loadMissileSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
@@ -78,7 +92,9 @@ const initDrawing = (callback: () => void) => {
     Promise.all(spritePromises).then((completed) => {
       sprites = completed;
       loadAsteroidSprites(spriteSheet, () => {
-        loadMissileSprites(spriteSheet, callback);
+        loadMissileSprites(spriteSheet, () => {
+          loadEffectSprites(spriteSheet, callback);
+        });
       });
     });
   };
@@ -532,4 +548,4 @@ const flashSecondary = () => {
   secondaryFlashTimeRemaining = 90;
 };
 
-export { drawEverything, initDrawing, flashSecondary, ctx, canvas };
+export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites };

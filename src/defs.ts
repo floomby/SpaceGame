@@ -107,6 +107,8 @@ type MissileDef = {
   radius: number;
   lifetime: number;
   acceleration: number;
+  // TODO this should be easier to use (having all these indices is error prone)
+  deathEffect: number;
 };
 
 const defs: UnitDefinition[] = [];
@@ -330,6 +332,7 @@ const initDefs = () => {
     damage: 10,
     acceleration: 0.2,
     lifetime: 600,
+    deathEffect: 2,
   });
 };
 

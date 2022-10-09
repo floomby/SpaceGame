@@ -1,5 +1,5 @@
-import { EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Player, Position } from "./game";
-import { ctx, canvas } from "./drawing";
+import { EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Player, Position, Rectangle } from "./game";
+import { ctx, canvas, effectSprites } from "./drawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Absolute) {
@@ -26,10 +26,38 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
 type EffectDefinition = {
   frames: number;
   draw: (effect: Effect, self: Player, state: GlobalState, framesLeft: number) => void;
+  initializer?: () => any;
 };
 
 // TODO Move effect definitions to a separate file
 const effectDefs: EffectDefinition[] = [];
+
+type EffectSpriteData = {
+  sprite: Rectangle;
+};
+
+const effectSpriteDefs: EffectSpriteData[] = [];
+
+type Effect = {
+  frame: number;
+  from: EffectAnchor;
+  to?: EffectAnchor;
+  definitionIndex: number;
+  extra?: any;
+};
+
+const drawExplosion = (position: Position, def: EffectDefinition, framesLeft: number, spriteIndex: number) => {
+  const scale = 1 - framesLeft / def.frames;
+  const sprite = effectSprites[spriteIndex];
+  ctx.globalAlpha = 1 - scale;
+  ctx.drawImage(
+    sprite,
+    position.x - (sprite.width / 2) * scale,
+    position.y - (sprite.height / 2) * scale,
+    sprite.width * scale,
+    sprite.height * scale
+  );
+};
 
 const initEffects = () => {
   effectDefs.push({
@@ -84,13 +112,24 @@ const initEffects = () => {
       ctx.restore();
     },
   });
-};
+  effectDefs.push({
+    frames: 15,
+    draw: (effect, self, state, framesLeft) => {
+      const from = resolveAnchor(effect.from, state);
+      ctx.save();
+      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 0);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * Math.PI * 2 };
+    },
+  });
 
-type Effect = {
-  frame: number;
-  from: EffectAnchor;
-  to: EffectAnchor;
-  definitionIndex: number;
+  effectSpriteDefs.push({
+    sprite: { x: 256, y: 64, width: 64, height: 64 },
+  });
 };
 
 let effects: Effect[] = [];
@@ -108,6 +147,9 @@ const applyEffects = (triggers: EffectTrigger[]) => {
       to: trigger.to,
       definitionIndex: trigger.effectIndex,
     });
+    if (def.initializer) {
+      effects[effects.length - 1].extra = def.initializer();
+    }
   }
 };
 
@@ -122,4 +164,4 @@ const drawEffects = (self: Player, state: GlobalState) => {
   }
 };
 
-export { applyEffects, drawEffects, initEffects };
+export { applyEffects, drawEffects, initEffects, effectSpriteDefs };

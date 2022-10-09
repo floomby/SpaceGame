@@ -1,6 +1,6 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap } from "./defs";
+import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs } from "./defs";
 
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
@@ -22,6 +22,10 @@ const l2Norm = (a: Position, b: Position) => {
 
 const pointInCircle = (point: Position, circle: Circle) => {
   return l2NormSquared(point, circle.position) < circle.radius * circle.radius;
+};
+
+const circlesIntersect = (a: Circle, b: Circle) => {
+  return l2NormSquared(a.position, b.position) < (a.radius + b.radius) * (a.radius + b.radius);
 };
 
 const positiveMod = (a: number, b: number) => {
@@ -59,8 +63,9 @@ type Asteroid = Circle & {
 
 type Missile = Entity & {
   damage: number;
-  target: number;
+  target?: number;
   team: number;
+  lifetime: number;
   definitionIndex: number;
 };
 
@@ -382,18 +387,26 @@ const update = (
       });
       if (player.toFireSecondary) {
         const slotId = serverSecondaries.get(id);
-        const [targetKind, targetId] = serverTargets.get(id) || [TargetKind.None, 0];
-        if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
-          const armDef = armDefs[player.armIndices[slotId]];
-          if (armDef.stateMutator) {
-            let target: Player | Asteroid | undefined;
-            if (targetKind === TargetKind.Player) {
-              target = state.players.get(targetId);
-            } else if (targetKind === TargetKind.Asteroid) {
-              target = state.asteroids.get(targetId);
+        const armDef = armDefs[player.armIndices[slotId]];
+        if (armDef.targeted === TargetedKind.Targeted) {
+          const [targetKind, targetId] = serverTargets.get(id) || [TargetKind.None, 0];
+          if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
+            if (armDef.stateMutator) {
+              let target: Player | Asteroid | undefined;
+              if (targetKind === TargetKind.Player) {
+                target = state.players.get(targetId);
+              } else if (targetKind === TargetKind.Asteroid) {
+                target = state.asteroids.get(targetId);
+              }
+              if (target) {
+                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId);
+              }
             }
-            if (target) {
-              armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId);
+          }
+        } else if (armDef.targeted === TargetedKind.Untargeted) {
+          if (slotId !== undefined && slotId < player.armIndices.length) {
+            if (armDef.stateMutator) {
+              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId);
             }
           }
         }
@@ -486,6 +499,43 @@ const update = (
         projectiles.splice(i, 1);
         i--;
       }
+    }
+  }
+  for (const [id, missile] of state.missiles) {
+    const def = missileDefs[missile.definitionIndex];
+    missile.position.x += missile.speed * Math.cos(missile.heading);
+    missile.position.y += missile.speed * Math.sin(missile.heading);
+    if (missile.speed > def.speed) {
+      missile.speed -= def.acceleration;
+      if (missile.speed < def.speed) {
+        missile.speed = def.speed;
+      }
+    } else if (missile.speed < def.speed) {
+      missile.speed += def.acceleration;
+      if (missile.speed > def.speed) {
+        missile.speed = def.speed;
+      }
+    }
+    missile.lifetime -= 1;
+    let didRemove = false;
+    for (const [otherId, otherPlayer] of state.players) {
+      if (otherPlayer.docked) {
+        continue;
+      }
+      const def = defs[otherPlayer.definitionIndex];
+      if (missile.team !== def.team && circlesIntersect(missile, otherPlayer)) {
+        otherPlayer.health -= missile.damage;
+        if (otherPlayer.health <= 0) {
+          state.players.delete(otherId);
+          onDeath(otherId);
+        }
+        state.missiles.delete(id);
+        didRemove = true;
+        break;
+      }
+    }
+    if (!didRemove && missile.lifetime <= 0) {
+      state.missiles.delete(id);
     }
   }
 };

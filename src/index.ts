@@ -13,6 +13,7 @@ import {
   findPreviousTargetAsteroid,
   TargetKind,
   CargoEntry,
+  Missile,
 } from "./game";
 import {
   init as initDialog,
@@ -357,7 +358,7 @@ const loop = () => {
   }
 
   // const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
-  drawEverything(state, self, target, targetAsteroid, targetId, targetAsteroidId, me, selectedSecondary, keybind);
+  drawEverything(state, self, target, targetAsteroid, me, selectedSecondary, keybind);
   requestAnimationFrame(loop);
 };
 
@@ -486,6 +487,7 @@ const run = () => {
   bindAction("state", (data: any) => {
     state.players = new Map();
     state.projectiles = new Map();
+    state.missiles = new Map();
 
     const players = data.players as Player[];
     // syncPosition = data.frame;
@@ -496,6 +498,10 @@ const run = () => {
     for (const asteroid of data.asteroids as Asteroid[]) {
       state.asteroids.set(asteroid.id, asteroid);
     }
+    for (const missile of data.missiles as Missile[]) {
+      state.missiles.set(missile.id, missile);
+    }
+    
     const projectiles = data.projectiles as Ballistic[];
     while (projectiles.length) {
       let parentId = projectiles[0].parent;

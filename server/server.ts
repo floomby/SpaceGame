@@ -125,7 +125,7 @@ wss.on("connection", (ws) => {
 
       equip(player, 0, "Basic mining laser");
       equip(player, 1, "Javelin Missile");
-      equip(player, 1, "Laser Beam");
+      // equip(player, 1, "Laser Beam");
 
       state.players.set(id, player);
       const respawnKey = uid();
@@ -304,6 +304,10 @@ setInterval(() => {
   //     }
   //   }
   // });
+
+  // if (frame % 100 === 0) {
+  //   console.log("Missiles: ", state.missiles);
+  // }
 
   // TODO Consider culling the state information to only send nearby players and projectiles
   if (frame % framesPerSync === 0) {

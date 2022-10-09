@@ -8,6 +8,7 @@ A simple multiplayer game where you have a ship and do things.
 - Station UI
   * Cargo browser + selling minerals
   * Armament purchasing and outfitting
+- Collectables
 - Shields? (maybe)
 - Mines
 - Trade

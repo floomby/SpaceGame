@@ -1,4 +1,4 @@
-import { armDefs, ArmUsage, asteroidDefs, defs } from "./defs";
+import { armDefs, ArmUsage, asteroidDefs, defs, missileDefs } from "./defs";
 import { drawEffects, initEffects } from "./effects";
 import {
   Asteroid,
@@ -7,6 +7,7 @@ import {
   Circle,
   findHeadingBetween,
   GlobalState,
+  Missile,
   Player,
   Position,
   positiveMod,
@@ -18,6 +19,7 @@ let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let sprites: ImageBitmap[] = [];
 let asteroidSprites: ImageBitmap[] = [];
+let missileSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
@@ -29,6 +31,19 @@ const initStars = () => {
       radius: Math.random() * 2 + 1,
     });
   }
+};
+
+const loadMissileSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
+  const spritePromises: Promise<ImageBitmap>[] = [];
+  for (let i = 0; i < missileDefs.length; i++) {
+    const sprite = missileDefs[i].sprite;
+    const spritePromise = createImageBitmap(spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height);
+    spritePromises.push(spritePromise);
+  }
+  Promise.all(spritePromises).then((sprites) => {
+    missileSprites = sprites;
+    callback();
+  });
 };
 
 const loadAsteroidSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
@@ -62,7 +77,9 @@ const initDrawing = (callback: () => void) => {
     }
     Promise.all(spritePromises).then((completed) => {
       sprites = completed;
-      loadAsteroidSprites(spriteSheet, callback);
+      loadAsteroidSprites(spriteSheet, () => {
+        loadMissileSprites(spriteSheet, callback);
+      });
     });
   };
   spriteSheet.src = "resources/sprites.png";
@@ -286,6 +303,15 @@ const drawShip = (player: Player, self: Player) => {
   ctx.restore();
 };
 
+const drawMissile = (missile: Missile, self: Player) => {
+  ctx.save();
+  ctx.translate(missile.position.x - self.position.x + canvas.width / 2, missile.position.y - self.position.y + canvas.height / 2);
+  ctx.rotate(missile.heading);
+  const sprite = missileSprites[missile.definitionIndex];
+  ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+  ctx.restore();
+};
+
 const drawProjectile = (projectile: Ballistic, self: Player) => {
   ctx.save();
   ctx.translate(projectile.position.x - self.position.x + canvas.width / 2, projectile.position.y - self.position.y + canvas.height / 2);
@@ -428,8 +454,6 @@ const drawEverything = (
   self: Player,
   target: Player | undefined,
   targetAsteroid: Asteroid | undefined,
-  targetId: number,
-  targetAsteroidId: number,
   me: number,
   selectedSecondary: number,
   keybind: KeyBindings
@@ -451,7 +475,7 @@ const drawEverything = (
   }
   for (const [id, asteroid] of state.asteroids) {
     drawAsteroid(asteroid, lastSelf);
-    if (targetAsteroidId === id) {
+    if (targetAsteroid && targetAsteroid.id === id) {
       drawHighlight(lastSelf, asteroid);
     }
   }
@@ -460,7 +484,7 @@ const drawEverything = (
       continue;
     }
     if (id !== me) {
-      if (id === targetId) {
+      if (target && id === target.id) {
         drawHighlight(lastSelf, player);
       }
       drawShip(player, lastSelf);
@@ -468,6 +492,9 @@ const drawEverything = (
   }
   if (self && !self.docked) {
     drawShip(self, self);
+  }
+  for (const [id, missile] of state.missiles) {
+    drawMissile(missile, lastSelf);
   }
   for (const [id, projectiles] of state.projectiles) {
     for (const projectile of projectiles) {

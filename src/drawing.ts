@@ -472,14 +472,15 @@ const drawEverything = (
   targetAsteroid: Asteroid | undefined,
   me: number,
   selectedSecondary: number,
-  keybind: KeyBindings
+  keybind: KeyBindings,
+  sixtieths: number
 ) => {
-  highlightPhase += 0.1;
+  highlightPhase += 0.1 * sixtieths;
   if (highlightPhase > 2 * Math.PI) {
     highlightPhase -= 2 * Math.PI;
   }
   if (secondaryFlashTimeRemaining > 0) {
-    secondaryFlashTimeRemaining--;
+    secondaryFlashTimeRemaining -= sixtieths;
   }
 
   clearCanvas();
@@ -517,7 +518,7 @@ const drawEverything = (
       drawProjectile(projectile, lastSelf);
     }
   }
-  drawEffects(lastSelf, state);
+  drawEffects(lastSelf, state, sixtieths);
   if (self && !self.docked) {
     drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.03);
     drawHUD(self, selectedSecondary);

@@ -272,7 +272,13 @@ const setupDockingUI = (station: Player | undefined, self: Player) => {
 let lastValidSecondary = 0;
 let serverTarget: [TargetKind, number] = [TargetKind.None, 0];
 
+let lastFrameTime = Date.now();
+
 const loop = () => {
+  const elapsed = Date.now() - lastFrameTime;
+  lastFrameTime = Date.now();
+  const sixtieths = elapsed / 16.666666666666666666666666666667;
+
   if (input.dock) {
     docker();
   }
@@ -358,7 +364,7 @@ const loop = () => {
   }
 
   // const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
-  drawEverything(state, self, target, targetAsteroid, me, selectedSecondary, keybind);
+  drawEverything(state, self, target, targetAsteroid, me, selectedSecondary, keybind, sixtieths);
   requestAnimationFrame(loop);
 };
 

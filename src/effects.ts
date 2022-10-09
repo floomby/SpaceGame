@@ -153,14 +153,17 @@ const applyEffects = (triggers: EffectTrigger[]) => {
   }
 };
 
-const drawEffects = (self: Player, state: GlobalState) => {
+const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
   effects = effects.filter((effect) => effect.frame > 0);
 
   // TODO Culling if the effect is offscreen
   for (const effect of effects) {
+    effect.frame -= sixtieths;
+    if (effect.frame <= 0) {
+      continue;
+    }
     const def = effectDefs[effect.definitionIndex];
     def.draw(effect, self, state, effect.frame);
-    effect.frame--;
   }
 };
 

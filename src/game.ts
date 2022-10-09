@@ -5,6 +5,7 @@ import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, Targe
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
 type Rectangle = { x: number; y: number; width: number; height: number };
+type Line = { from: Position; to: Position };
 
 const infinityNorm = (a: Position, b: Position) => {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));

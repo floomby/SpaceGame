@@ -127,7 +127,7 @@ const initEffects = () => {
     },
   });
   effectDefs.push({
-    frames: 16,
+    frames: 50,
     draw: (effect, self, state, framesLeft) => {
       const from = resolveAnchor(effect.from, state);
       ctx.save();
@@ -183,6 +183,14 @@ const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
       console.log("Invalid effect definition index: ", effect.definitionIndex);
       effect.frame = 0;
       continue;
+    }
+    if (effect.from.kind === EffectAnchorKind.Absolute && effect.from.heading !== undefined && effect.from.speed !== undefined) {
+      (effect.from.value as Position).x += Math.cos(effect.from.heading) * effect.from.speed * sixtieths;
+      (effect.from.value as Position).y += Math.sin(effect.from.heading) * effect.from.speed * sixtieths;
+    }
+    if (effect.to.kind === EffectAnchorKind.Absolute && effect.to.heading !== undefined && effect.to.speed !== undefined) {
+      (effect.to.value as Position).x += Math.cos(effect.to.heading) * effect.to.speed * sixtieths;
+      (effect.to.value as Position).y += Math.sin(effect.to.heading) * effect.to.speed * sixtieths;
     }
     const def = effectDefs[effect.definitionIndex];
     def.draw(effect, self, state, effect.frame);

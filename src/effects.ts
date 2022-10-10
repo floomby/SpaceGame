@@ -126,9 +126,26 @@ const initEffects = () => {
       return { heading: Math.random() * Math.PI * 2 };
     },
   });
+  effectDefs.push({
+    frames: 16,
+    draw: (effect, self, state, framesLeft) => {
+      const from = resolveAnchor(effect.from, state);
+      ctx.save();
+      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 1);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * Math.PI * 2 };
+    },
+  });
 
   effectSpriteDefs.push({
     sprite: { x: 256, y: 64, width: 64, height: 64 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 256, y: 128, width: 128, height: 128 },
   });
 };
 
@@ -160,6 +177,11 @@ const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
   for (const effect of effects) {
     effect.frame -= sixtieths;
     if (effect.frame <= 0) {
+      continue;
+    }
+    if (effect.definitionIndex >= effectDefs.length) {
+      console.log("Invalid effect definition index: ", effect.definitionIndex);
+      effect.frame = 0;
       continue;
     }
     const def = effectDefs[effect.definitionIndex];

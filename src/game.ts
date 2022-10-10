@@ -140,6 +140,8 @@ enum EffectAnchorKind {
 type EffectAnchor = {
   kind: EffectAnchorKind;
   value: Position | number;
+  heading?: number;
+  speed?: number;
 };
 
 type EffectTrigger = {
@@ -351,7 +353,7 @@ const update = (
   onDeath: (id: number) => void,
   serverTargets: Map<number, [TargetKind, number]>,
   serverSecondaries: Map<number, number>,
-  applyEffect: (effect: EffectTrigger) => void,
+  applyEffect: (effect: EffectTrigger) => void
 ) => {
   for (const [id, player] of state.players) {
     if (player.docked) {
@@ -488,6 +490,10 @@ const update = (
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
             state.players.delete(otherId);
+            applyEffect({
+              effectIndex: def.deathEffect,
+              from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
+            });
             onDeath(otherId);
           }
           projectiles.splice(i, 1);
@@ -528,6 +534,10 @@ const update = (
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
           state.players.delete(otherId);
+          applyEffect({
+            effectIndex: def.deathEffect,
+            from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
+          });
           onDeath(otherId);
         }
         state.missiles.delete(id);

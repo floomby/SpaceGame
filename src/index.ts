@@ -290,7 +290,6 @@ const loop = () => {
 
   const def = self ? defs[self.definitionIndex] : undefined;
   if (self && selectedSecondaryChanged) {
-    console.log("selectedSecondaryChanged");
     if (selectedSecondary < def.slots.length) {
       lastValidSecondary = selectedSecondary;
       flashSecondary();

@@ -58,6 +58,7 @@ type UnitDefinition = {
   dockable?: boolean;
   slots: SlotKind[];
   cargoCapacity?: number;
+  deathEffect: number;
 };
 
 enum ArmUsage {
@@ -137,6 +138,7 @@ const initDefs = () => {
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal],
     cargoCapacity: 100,
+    deathEffect: 3,
   });
   defs.push({
     name: "Drone",
@@ -153,6 +155,7 @@ const initDefs = () => {
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal],
     cargoCapacity: 100,
+    deathEffect: 3,
   });
   defs.push({
     name: "Starbase",
@@ -175,6 +178,7 @@ const initDefs = () => {
     ],
     dockable: true,
     slots: [],
+    deathEffect: 4,
   });
 
   for (let i = 0; i < defs.length; i++) {

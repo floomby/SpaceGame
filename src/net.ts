@@ -120,4 +120,13 @@ const sendSellCargo = (id: number, what: string) => {
   );
 };
 
-export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary, sendSellCargo };
+const sendEquip = (id: number, slotIndex: number, what: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "equip",
+      payload: { id, slotIndex, what },
+    })
+  );
+};
+
+export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary, sendSellCargo, sendEquip };

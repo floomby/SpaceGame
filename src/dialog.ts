@@ -44,6 +44,7 @@ const updateDom = (id: string, value: any) => {
     }
   }
 
+  console.log("Updating dom", id, value, lastState, thisState);
   const element = document.getElementById(id);
   const updater = updaters.get(id);
   if (element && updater) {

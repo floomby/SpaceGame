@@ -1,6 +1,6 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs } from "./defs";
+import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs, ArmamentDef } from "./defs";
 
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
@@ -701,19 +701,32 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
   return ret;
 };
 
-const equip = (player: Player, slotIndex: number, what: string) => {
+const equip = (player: Player, slotIndex: number, what: string | number, noCost = false) => {
   const def = defs[player.definitionIndex];
   if (slotIndex >= def.slots.length) {
     console.log("Warning: slot number too high");
     return;
   }
-  const armDef = armDefMap.get(what);
-  if (!armDef) {
-    console.log("Warning: no such armament");
-    return;
+  let armDef: ArmamentDef | undefined = undefined;
+  let defIndex: number;
+  if (typeof what === "string") {
+    const entry = armDefMap.get(what);
+    if (!entry) {
+      console.log("Warning: no such armament");
+      return;
+    }
+    armDef = entry.def;
+    defIndex = entry.index;
+  } else {
+    if (what >= armDefs.length) {
+      console.log("Warning: armament index too high");
+      return;
+    }
+    armDef = armDefs[what];
+    defIndex = what;
   }
   const slotKind = def.slots[slotIndex];
-  if (slotKind !== armDef.def.kind) {
+  if (slotKind !== armDef.kind) {
     console.log("Warning: wrong kind of armament");
     return;
   }
@@ -722,9 +735,12 @@ const equip = (player: Player, slotIndex: number, what: string) => {
     return;
   }
 
-  player.armIndices[slotIndex] = armDef.index;
-  if (armDef.def.equipMutator) {
-    armDef.def.equipMutator(player, slotIndex);
+  if ((player.credits !== undefined && armDef.cost <= player.credits) || noCost) {
+    player.credits -= armDef.cost;
+    player.armIndices[slotIndex] = defIndex;
+    if (armDef.equipMutator) {
+      armDef.equipMutator(player, slotIndex);
+    }
   }
 };
 

@@ -245,6 +245,15 @@ wss.on("connection", (ws) => {
           state.players.set(client.id, player);
         }
       }
+    } else if (data.type === "equip") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const player = state.players.get(client.id);
+        if (player) {
+          equip(player, data.payload.slotIndex, data.payload.what);
+          state.players.set(client.id, player);
+        }
+      }
     } else {
       console.log("Message from client: ", data);
     }

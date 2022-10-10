@@ -82,6 +82,7 @@ type ArmamentDef = {
   energyCost?: number;
   maxAmmo?: number;
   missileIndex?: number;
+  cost: number;
   stateMutator?: (
     state: GlobalState,
     player: Player,
@@ -193,6 +194,7 @@ const initDefs = () => {
     kind: SlotKind.Normal,
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
+    cost: 0,
   });
   armDefs.push({
     name: "Empty utility slot",
@@ -200,6 +202,7 @@ const initDefs = () => {
     kind: SlotKind.Utility,
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
+    cost: 0,
   });
   armDefs.push({
     name: "Empty mine slot",
@@ -207,6 +210,7 @@ const initDefs = () => {
     kind: SlotKind.Mine,
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
+    cost: 0,
   });
   armDefs.push({
     name: "Empty large slot",
@@ -214,6 +218,7 @@ const initDefs = () => {
     kind: SlotKind.Large,
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
+    cost: 0,
   });
   armDefs.push({
     name: "Empty mining slot",
@@ -221,6 +226,7 @@ const initDefs = () => {
     kind: SlotKind.Mining,
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
+    cost: 0,
   });
   armDefs.push({
     name: "Basic mining laser",
@@ -246,6 +252,7 @@ const initDefs = () => {
         }
       }
     },
+    cost: 50,
   });
   armDefs.push({
     name: "Laser Beam",
@@ -277,6 +284,7 @@ const initDefs = () => {
       const slotData = player.slotData[slotIndex];
       slotData.sinceFired++;
     },
+    cost: 100,
   });
   armDefs.push({
     name: "Javelin Missile",
@@ -315,7 +323,8 @@ const initDefs = () => {
     frameMutator: (player, slotIndex) => {
       const slotData = player.slotData[slotIndex];
       slotData.sinceFired++;
-    }
+    },
+    cost: 100,
   });
 
   for (let i = 0; i < armDefs.length; i++) {
@@ -357,6 +366,7 @@ export {
   EmptySlot,
   ArmUsage,
   TargetedKind,
+  ArmamentDef,
   defs,
   defMap,
   asteroidDefs,

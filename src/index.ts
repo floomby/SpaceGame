@@ -1,4 +1,16 @@
-import { connect, bindAction, register, sendInput, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary, sendSellCargo } from "./net";
+import {
+  connect,
+  bindAction,
+  register,
+  sendInput,
+  sendDock,
+  sendUndock,
+  sendRespawn,
+  sendTarget,
+  sendSecondary,
+  sendSellCargo,
+  sendEquip,
+} from "./net";
 import {
   GlobalState,
   Input,
@@ -25,7 +37,7 @@ import {
   bindUpdater,
   bindPostUpdater,
 } from "./dialog";
-import { defs, initDefs, Faction, getFactionString } from "./defs";
+import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind } from "./defs";
 import { drawEverything, flashSecondary, initDrawing } from "./drawing";
 import { dvorakBindings, qwertyBindings } from "./keybindings";
 import { applyEffects } from "./effects";
@@ -209,7 +221,7 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
   if (!cargo) {
     return "";
   }
-  let html = "<table>";
+  let html = '<table style="width: 100%;">';
   // html += "<tr><th>Item</th><th>Quantity</th><th>Sell</th></tr>";
   let index = 0;
   for (const entry of cargo) {
@@ -238,6 +250,61 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
   }
 };
 
+const armsHtml = (armIndices: number[]) => {
+  let html = '<table style="width: 100%;">';
+  html += "<tr><th>Item</th><th>Quantity</th><th></th></tr>";
+  let index = 0;
+  for (const entry of armIndices) {
+    const armDef = armDefs[entry];
+    html += `<tr>
+  <td>${armDef.name}</td>
+  <td><button id="arm${index++}">Equip</button></td></tr>`;
+  }
+  html += "</table>";
+  return html;
+};
+
+const armsPostUpdate = (armIndices: number[]) => {
+  for (let i = 0; i < armIndices.length; i++) {
+    const button = document.getElementById(`arm${i}`);
+    if (button) {
+      button.addEventListener("click", () => {
+        const slotIndex = i;
+        const index = parseInt(button.id.substring(3));
+        const self = state.players.get(me);
+        if (self) {
+          const def = defs[self.definitionIndex];
+          if (def.slots.length > index) {
+            const kind = def.slots[index];
+            showDialog(equipMenu(kind, slotIndex));
+            setupEquipMenu(kind, slotIndex);
+          } else {
+            console.log("no slot for index", index);
+          }
+        }
+      });
+    } else {
+      console.log("button not found", `arm${i}`);
+    }
+  }
+};
+
+let equipMenu = (kind: SlotKind, slotIndex: number) => {
+  let index = 0;
+  let html = '<table style="width: 80vw;">';
+  html += "<tr><th>Armament</th><th>Price</th><th></th></tr>";
+  for (const armDef of armDefs) {
+    if (armDef.kind === kind) {
+      html += `<tr>
+  <td>${armDef.name}</td>
+  <td>${armDef.cost}</td>
+  <td><button id="equip${index++}">Equip</button></td></tr>`;
+    }
+  }
+  html += "</table>";
+  return html;
+};
+
 const dockDialog = (station: Player | undefined, self: Player) => {
   if (!station) {
     return `Docking error - station ${self.docked} not found`;
@@ -245,28 +312,50 @@ const dockDialog = (station: Player | undefined, self: Player) => {
   return horizontalCenter([
     `<h2>Docked with ${station.name}</h2>`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
-    `<div>
+    `<div style="width: 80vw;">
   <div style="width: 50%; float: left;">
     <h3>Cargo</h3>
     <div id="cargo">${cargoHtml(self.cargo)}</div>
   </div>
   <div style="width: 50%; float: left;">
-    <h3>Something else here</h3>
-    <p>The menus need a lot of work</p>
+    <h3>Armaments</h3>
+    <div id="arms">${armsHtml(self.armIndices)}</div>
   </div>
 </div>`,
     `<br/><button id="undock">Undock</button>`,
   ]);
 };
 
-const setupDockingUI = (station: Player | undefined, self: Player) => {
-  if (!station) {
+const setupDockingUI = (station: Player | undefined, self: Player | undefined) => {
+  if (!station || !self) {
     return;
   }
   document.getElementById("undock")?.addEventListener("click", () => {
     sendUndock(me);
   });
   cargoPostUpdate(self.cargo);
+  armsPostUpdate(self.armIndices);
+};
+
+const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
+  let index = 0;
+  for (const armDef of armDefs) {
+    if (armDef.kind === kind) {
+      const button = document.getElementById(`equip${index++}`);
+      if (button) {
+        button.addEventListener("click", () => {
+          const idx = armDefs.indexOf(armDef);
+          sendEquip(me, slotIndex, idx);
+          const self = state.players.get(me);
+          const station = state.players.get(self?.docked);
+          showDialog(dockDialog(station, self));
+          setupDockingUI(station, self);
+        });
+      } else {
+        console.log("button not found", `equip${index}`);
+      }
+    }
+  }
 };
 
 let lastValidSecondary = 0;
@@ -488,6 +577,8 @@ const run = () => {
   bindUpdater("cargo", cargoHtml);
   bindPostUpdater("cargo", cargoPostUpdate);
   bindUpdater("credits", creditsHtml);
+  bindUpdater("arms", armsHtml);
+  bindPostUpdater("arms", armsPostUpdate);
 
   bindAction("state", (data: any) => {
     state.players = new Map();
@@ -506,7 +597,7 @@ const run = () => {
     for (const missile of data.missiles as Missile[]) {
       state.missiles.set(missile.id, missile);
     }
-    
+
     const projectiles = data.projectiles as Ballistic[];
     while (projectiles.length) {
       let parentId = projectiles[0].parent;
@@ -526,6 +617,7 @@ const run = () => {
     if (self) {
       updateDom("cargo", self.cargo);
       updateDom("credits", self.credits);
+      updateDom("arms", self.armIndices);
       didDie = false;
       if (self.docked) {
         targetId = 0;

@@ -360,6 +360,14 @@ const update = (
       continue;
     }
     const def = defs[player.definitionIndex];
+    if (player.health <= 0) {
+      state.players.delete(id);
+      applyEffect({
+        effectIndex: def.deathEffect,
+        from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+      });
+      onDeath(id);
+    }
     if (def.kind === UnitKind.Ship) {
       player.position.x += player.speed * Math.cos(player.heading);
       player.position.y += player.speed * Math.sin(player.heading);

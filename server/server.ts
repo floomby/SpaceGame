@@ -70,11 +70,30 @@ const testStarbase = {
   energy: defs[2].energy,
   definitionIndex: 2,
   id: testStarbaseId,
-  name: "Test Starbase",
+  name: "Outpost 476",
   armIndices: [],
   slotData: [],
 };
 state.players.set(testStarbaseId, testStarbase);
+
+const testStarbase2Id = uid();
+const testStarbase2 = {
+  position: { x: 2500, y: 100 },
+  radius: defs[3].radius,
+  speed: 0,
+  heading: 0,
+  health: defs[3].health,
+  testStarbase2Id,
+  sinceLastShot: [10000, 10000, 10000, 10000],
+  projectileId: 0,
+  energy: defs[3].energy,
+  definitionIndex: 3,
+  id: testStarbase2Id,
+  name: "Incubation center 17",
+  armIndices: [],
+  slotData: [],
+};
+state.players.set(testStarbase2Id, testStarbase2);
 
 const testAsteroids = randomAsteroids(30, { x: -1000, y: -1000, width: 2000, height: 2000 });
 for (const asteroid of testAsteroids) {

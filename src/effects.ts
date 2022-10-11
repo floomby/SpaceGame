@@ -164,12 +164,29 @@ const initEffects = () => {
       return { heading: Math.random() * Math.PI * 2 };
     },
   });
+  effectDefs.push({
+    frames: 50,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 2);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * Math.PI * 2 };
+    },
+  });
 
   effectSpriteDefs.push({
     sprite: { x: 256, y: 64, width: 64, height: 64 },
   });
   effectSpriteDefs.push({
     sprite: { x: 256, y: 128, width: 128, height: 128 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 388, y: 0, width: 512, height: 512 },
   });
 };
 
@@ -212,7 +229,7 @@ const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
       (effect.from.value as Position).x += Math.cos(effect.from.heading) * effect.from.speed * sixtieths;
       (effect.from.value as Position).y += Math.sin(effect.from.heading) * effect.from.speed * sixtieths;
     }
-    if (effect.to.kind === EffectAnchorKind.Absolute && effect.to.heading !== undefined && effect.to.speed !== undefined) {
+    if (effect.to !== undefined && effect.to.kind === EffectAnchorKind.Absolute && effect.to.heading !== undefined && effect.to.speed !== undefined) {
       (effect.to.value as Position).x += Math.cos(effect.to.heading) * effect.to.speed * sixtieths;
       (effect.to.value as Position).y += Math.sin(effect.to.heading) * effect.to.speed * sixtieths;
     }

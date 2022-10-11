@@ -304,7 +304,7 @@ const drawShip = (player: Player, self: Player) => {
     5,
     "#00EE00CC",
     "#EE0000CC",
-    player.health / defs[player.definitionIndex].health
+    Math.max(player.health, 0) / defs[player.definitionIndex].health
   );
   drawBar(
     { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },

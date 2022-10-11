@@ -252,13 +252,13 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
 
 const armsHtml = (armIndices: number[]) => {
   let html = '<table style="width: 100%;">';
-  html += "<tr><th>Item</th><th>Quantity</th><th></th></tr>";
+  html += "<tr><th>Item</th><th></th><th></th></tr>";
   let index = 0;
   for (const entry of armIndices) {
     const armDef = armDefs[entry];
     html += `<tr>
   <td>${armDef.name}</td>
-  <td><button id="arm${index++}">Equip</button></td></tr>`;
+  <td><button id="arm${index++}">Change</button></td></tr>`;
   }
   html += "</table>";
   return html;

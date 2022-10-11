@@ -5,7 +5,7 @@
     "outFile": "dist/app.js",
     "esModuleInterop": true,
     "downlevelIteration": true,
-    "lib": ["es2016", "dom"]
+    "lib": ["es2017", "dom"]
   },
   "include": ["src/**/*"]
 }

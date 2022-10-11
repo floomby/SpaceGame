@@ -14,10 +14,67 @@
         -webkit-transform: translate(-50%, -50%);
         transform: translate(-50%, -50%);
       }
+
+      .tooltip {
+        /* position: relative; */
+        display: inline-block;
+        border-bottom: 1px dotted white;
+      }
+
+      .tooltip .tooltipText {
+        visibility: hidden;
+        /* width: 30vw; */
+        background-color: rgb(207, 202, 202);
+        color: rgb(0, 0, 0);
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+
+        position: absolute;
+        z-index: 3;
+      }
+
+      .tooltip .bigTooltipText {
+        visibility: hidden;
+        /* width: 30vw; */
+        background-color: rgb(207, 202, 202);
+        color: rgb(0, 0, 0);
+        text-align: center;
+        border-radius: 6px;
+        padding: 10px 30px;
+
+        /* width: 90vw; */
+        /* height: 90vh; */
+
+        left: 50%;
+        top: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+        
+        position: absolute;
+        z-index: 3;
+      }
+
+      .tooltip:hover .tooltipText {
+        visibility: visible;
+      }
+
+      .tooltip:hover .bigTooltipText {
+        visibility: visible;
+      }
+
+      .svgText {
+        position: absolute;
+        z-index: 2;
+        left: 0;
+        top: -12px;
+        width: 250px;
+        height: 250px;
+      }
     </style>
   </head>
   <body style="background-color: darkgray">
-    <canvas id="canvas" width="800" height="600" style="position: absolute; left: 0px; top: 0px; z-index: 0;"></canvas>
+    <canvas id="canvas" width="800" height="600" style="position: absolute; left: 0px; top: 0px; z-index: 0"></canvas>
     <script data-main="dist/app" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
     <div
       id="dialog"

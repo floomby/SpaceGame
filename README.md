@@ -20,12 +20,8 @@ A simple multiplayer game where you have a ship and do things.
 
 ### List for first alpha
 
-- Tooltip for armament description
 - Station explosions
 - Confederation station
-- Keyboard control summary tooltip at start
-- Improve laser effect
-- Improve mining laser effect
 - Win condition
 - Server state refresh on game completion
 - Improve asteroids

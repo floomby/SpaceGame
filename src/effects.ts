@@ -1,25 +1,25 @@
-import { EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Player, Position, Rectangle } from "./game";
+import { Circle, EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Player, Position, Rectangle } from "./game";
 import { ctx, canvas, effectSprites } from "./drawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Absolute) {
-    return anchor.value as Position;
+    return [anchor.value as Position, undefined as Circle];
   }
   if (anchor.kind === EffectAnchorKind.Player) {
     const player = state.players.get(anchor.value as number);
     if (!player) {
       console.log("Invalid player id during anchor resolution: ", anchor.value);
-      return undefined;
+      return [undefined, undefined];
     }
-    return player.position;
+    return [player.position, player as Circle];
   }
   if (anchor.kind === EffectAnchorKind.Asteroid) {
     const asteroid = state.asteroids.get(anchor.value as number);
     if (!asteroid) {
       console.log("Invalid asteroid id during anchor resolution: ", anchor.value);
-      return undefined;
+      return [undefined, undefined];
     }
-    return asteroid.position;
+    return [asteroid.position, asteroid as Circle];
   }
 };
 
@@ -63,30 +63,45 @@ const initEffects = () => {
   effectDefs.push({
     frames: 10,
     draw: (effect, self, state) => {
-      const from = resolveAnchor(effect.from, state);
-      const to = resolveAnchor(effect.to, state);
-      if (!from || !to) {
+      const [from] = resolveAnchor(effect.from, state) as (Position | undefined)[];
+      const [to, toCircle] = resolveAnchor(effect.to, state);
+      if (!from || !to || !toCircle) {
         return;
       }
+
       ctx.save();
       ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(to.x - from.x, to.y - from.y);
+      ctx.lineTo(
+        (to as Position).x - from.x + effect.extra.offset.x * (toCircle as Circle).radius,
+        (to as Position).y - from.y + effect.extra.offset.y * (toCircle as Circle).radius
+      );
       ctx.strokeStyle = "green";
       ctx.stroke();
       ctx.restore();
+    },
+    initializer: () => {
+      return {
+        offset: { x: Math.random() - 0.5, y: Math.random() - 0.5 },
+      };
     },
   });
   effectDefs.push({
     frames: 15,
     draw: (effect, self, state, framesLeft) => {
-      const from = resolveAnchor(effect.from, state);
-      const to = resolveAnchor(effect.to, state);
-      if (!from || !to) {
+      const [from] = resolveAnchor(effect.from, state);
+      let [to, toCircle] = resolveAnchor(effect.to, state);
+      if (!from || !to || !toCircle) {
         return;
       }
-      const heading = findHeadingBetween(from, to);
+
+      const heading = findHeadingBetween(from as Position, to as Position);
+      to = {
+        x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
+        y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
+      };
+
       const cos = Math.cos(heading);
       const sin = Math.sin(heading);
       const halfBeamWidth = 2.5;
@@ -95,29 +110,38 @@ const initEffects = () => {
         { x: halfBeamWidth * sin, y: -halfBeamWidth * cos },
       ];
 
-      const color = `rgba(255, 40, 155, ${Math.min(framesLeft / 10, 1)})`;
+      const alpha = Math.min(framesLeft / 10, 1);
+      const color = `rgba(255, 40, 155, ${alpha})`;
 
       ctx.save();
-      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
-      ctx.shadowBlur = 30;
-      ctx.shadowColor = color;
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = "red";
       ctx.beginPath();
-      ctx.moveTo(to.x - from.x + offsets[1].x, to.y - from.y + offsets[1].y);
+      ctx.moveTo(to.x - (from as Position).x + offsets[1].x, to.y - (from as Position).y + offsets[1].y);
       ctx.moveTo(offsets[1].x, offsets[1].y);
       ctx.arc(0, 0, halfBeamWidth, heading - Math.PI / 2, heading + Math.PI / 2, true);
       ctx.lineTo(offsets[0].x, offsets[0].y);
-      ctx.arc(to.x - from.x, to.y - from.y, halfBeamWidth, heading + Math.PI / 2, heading - Math.PI / 2, true);
+      ctx.arc(to.x - (from as Position).x, to.y - (from as Position).y, halfBeamWidth, heading + Math.PI / 2, heading - Math.PI / 2, true);
       ctx.fillStyle = color;
       ctx.fill();
+
+      ctx.filter = "blur(20px)";
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(to.x - (from as Position).x, to.y - (from as Position).y, 30, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+
       ctx.restore();
     },
   });
   effectDefs.push({
     frames: 15,
     draw: (effect, self, state, framesLeft) => {
-      const from = resolveAnchor(effect.from, state);
+      const [from] = resolveAnchor(effect.from, state);
       ctx.save();
-      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
       ctx.rotate(effect.extra.heading);
       drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 0);
       ctx.restore();
@@ -129,9 +153,9 @@ const initEffects = () => {
   effectDefs.push({
     frames: 50,
     draw: (effect, self, state, framesLeft) => {
-      const from = resolveAnchor(effect.from, state);
+      const [from] = resolveAnchor(effect.from, state);
       ctx.save();
-      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
       ctx.rotate(effect.extra.heading);
       drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 1);
       ctx.restore();

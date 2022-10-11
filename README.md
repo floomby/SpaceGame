@@ -22,5 +22,3 @@ A simple multiplayer game where you have a ship and do things.
 
 - Win condition
 - Server state refresh on game completion
-- Improve asteroids
-- Fix docking UI styling

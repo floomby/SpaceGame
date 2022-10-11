@@ -265,7 +265,7 @@ const initDefs = () => {
           player.energy -= 0.3;
           const amount = Math.min(target.resources, 0.5);
           target.resources -= amount;
-          addCargo(player, "minerals", amount);
+          addCargo(player, "Minerals", amount);
           applyEffect({
             effectIndex: 0,
             // Fine to just use the reference here
@@ -356,7 +356,7 @@ const initDefs = () => {
   }
 
   asteroidDefs.push({
-    resources: 100,
+    resources: 500,
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 24,
   });

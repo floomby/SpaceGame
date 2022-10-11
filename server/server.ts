@@ -59,7 +59,7 @@ const wss = new WebSocketServer({ server });
 
 const testStarbaseId = uid();
 const testStarbase = {
-  position: { x: -400, y: -400 },
+  position: { x: -1600, y: -1600 },
   radius: defs[2].radius,
   speed: 0,
   heading: 0,
@@ -95,13 +95,13 @@ const testStarbase2 = {
 };
 state.players.set(testStarbase2Id, testStarbase2);
 
-const testAsteroids = randomAsteroids(30, { x: -1000, y: -1000, width: 2000, height: 2000 });
+const testAsteroids = randomAsteroids(30, { x: -2000, y: -2000, width: 4000, height: 4000 });
 for (const asteroid of testAsteroids) {
   state.asteroids.set(asteroid.id, asteroid);
 }
 
 const market = new Map<string, number>();
-market.set("minerals", 1);
+market.set("Minerals", 1);
 
 wss.on("connection", (ws) => {
   console.log("Client connected");

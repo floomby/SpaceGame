@@ -221,14 +221,14 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
   if (!cargo) {
     return "";
   }
-  let html = '<table style="width: 100%;">';
+  let html = '<table style="width: 100%; text-align: left;">';
   // html += "<tr><th>Item</th><th>Quantity</th><th>Sell</th></tr>";
   let index = 0;
   for (const entry of cargo) {
     html += `<tr>
   <td>${entry.what}</td>
   <td>${entry.amount}</td>
-  <td><button id="sellCargo${index}">Sell</button></td></tr>`;
+  <td style="text-align: right;"><button id="sellCargo${index}">Sell</button></td></tr>`;
     index++;
   }
   html += "</table>";
@@ -250,15 +250,27 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
   }
 };
 
+const disableTooExpensive = (player: Player | undefined, cost: number) => {
+  if (player) {
+    if (player.credits < cost) {
+      return "disabled";
+    } else {
+      return "";
+    }
+  } else {
+    return "disabled";
+  }
+};
+
 const armsHtml = (armIndices: number[]) => {
-  let html = '<table style="width: 100%;">';
-  html += "<tr><th>Item</th><th></th><th></th></tr>";
+  let html = '<table style="width: 100%; text-align: left;">';
+  // html += "<tr><th>Item</th><th></th><th></th></tr>";
   let index = 0;
   for (const entry of armIndices) {
     const armDef = armDefs[entry];
     html += `<tr>
   <td>${armDef.name}</td>
-  <td><button id="arm${index++}">Change</button></td></tr>`;
+  <td style="text-align: right;"><button id="arm${index++}">Change</button></td></tr>`;
   }
   html += "</table>";
   return html;
@@ -305,11 +317,11 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   <td>${armDef.name}</td>
   <td><div class="tooltip">?<span class="tooltipText">&nbsp;${armDef.description}&nbsp;</span></div></td>
   <td>${armDef.cost}</td>
-  <td style="text-align: right;"><button id="equip${index++}">Equip</button></td></tr>`;
+  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(me), armDef.cost)}>Equip</button></td></tr>`;
     }
   }
   html += "</table>";
-  return html;
+  return horizontalCenter([html, '<br><button id="back">Back</button>']);
 };
 
 const dockDialog = (station: Player | undefined, self: Player) => {
@@ -320,11 +332,11 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     `<h2>Docked with ${station.name}</h2>`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">
-  <div style="width: 50%; float: left;">
+  <div style="width: 45%; float: left;">
     <h3>Cargo</h3>
     <div id="cargo">${cargoHtml(self.cargo)}</div>
   </div>
-  <div style="width: 50%; float: left;">
+  <div style="width: 45%; float: right;">
     <h3>Armaments</h3>
     <div id="arms">${armsHtml(self.armIndices)}</div>
   </div>
@@ -363,6 +375,12 @@ const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
       }
     }
   }
+  document.getElementById("back")?.addEventListener("click", () => {
+    const self = state.players.get(me);
+    const station = state.players.get(self?.docked);
+    showDialog(dockDialog(station, self));
+    setupDockingUI(station, self);
+  });
 };
 
 let lastValidSecondary = 0;

@@ -187,7 +187,7 @@ const initDefs = () => {
     sprite: { x: 0, y: 288, width: 256, height: 256 },
     health: 1000,
     speed: 0,
-    energy: 1000,
+    energy: 1100,
     energyRegen: 0.5,
     primaryReloadTime: 10,
     primaryDamage: 15,

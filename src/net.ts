@@ -37,6 +37,10 @@ const bindAction = (action: string, callback: (data: any) => void) => {
   });
 };
 
+const unbindAllActions = () => {
+  serverSocket.onmessage = null;
+};
+
 const sendInput = (input: Input, id: number) => {
   const inputToSend = {
     up: input.up,
@@ -129,4 +133,18 @@ const sendEquip = (id: number, slotIndex: number, what: number) => {
   );
 };
 
-export { connect, bindAction, register, sendInput, sendPlayerInfo, sendDock, sendUndock, sendRespawn, sendTarget, sendSecondary, sendSellCargo, sendEquip };
+export {
+  connect,
+  bindAction,
+  unbindAllActions,
+  register,
+  sendInput,
+  sendPlayerInfo,
+  sendDock,
+  sendUndock,
+  sendRespawn,
+  sendTarget,
+  sendSecondary,
+  sendSellCargo,
+  sendEquip,
+};

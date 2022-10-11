@@ -53,55 +53,82 @@ let frame = 0;
 
 const clients: Map<WebSocket, ClientData> = new Map();
 
-const server = createServer();
+let winUids = {
+  [Faction.Alliance]: 0,
+  [Faction.Confederation]: 0,
+};
 
+const resetState = () => {
+  state.players.clear();
+  state.projectiles.clear();
+  state.asteroids.clear();
+  state.missiles.clear();
+  targets.clear();
+  secondaries.clear();
+  clients.clear();
+  checkpoints.clear();
+  respawnKeys.clear();
+
+  frame = 0;
+  winUids[Faction.Alliance] = 0;
+  winUids[Faction.Confederation] = 0;
+};
+
+const server = createServer();
 const wss = new WebSocketServer({ server });
 
-const testStarbaseId = uid();
-const testStarbase = {
-  position: { x: -1600, y: -1600 },
-  radius: defs[2].radius,
-  speed: 0,
-  heading: 0,
-  health: defs[2].health,
-  testStarbaseId,
-  sinceLastShot: [10000, 10000, 10000, 10000],
-  projectileId: 0,
-  energy: defs[2].energy,
-  definitionIndex: 2,
-  id: testStarbaseId,
-  name: "Outpost 476",
-  armIndices: [],
-  slotData: [],
-};
-state.players.set(testStarbaseId, testStarbase);
+const initEnvironment = (state: GlobalState) => {
+  const testStarbaseId = uid();
+  winUids[Faction.Alliance] = testStarbaseId;
+  const testStarbase = {
+    position: { x: -1600, y: -1600 },
+    radius: defs[2].radius,
+    speed: 0,
+    heading: 0,
+    health: defs[2].health,
+    testStarbaseId,
+    sinceLastShot: [10000, 10000, 10000, 10000],
+    projectileId: 0,
+    energy: defs[2].energy,
+    definitionIndex: 2,
+    id: testStarbaseId,
+    name: "Outpost 476",
+    armIndices: [],
+    slotData: [],
+  };
+  state.players.set(testStarbaseId, testStarbase);
 
-const testStarbase2Id = uid();
-const testStarbase2 = {
-  position: { x: 2500, y: 100 },
-  radius: defs[3].radius,
-  speed: 0,
-  heading: 0,
-  health: defs[3].health,
-  testStarbase2Id,
-  sinceLastShot: [10000, 10000, 10000, 10000],
-  projectileId: 0,
-  energy: defs[3].energy,
-  definitionIndex: 3,
-  id: testStarbase2Id,
-  name: "Incubation center 17",
-  armIndices: [],
-  slotData: [],
-};
-state.players.set(testStarbase2Id, testStarbase2);
+  const testStarbase2Id = uid();
+  winUids[Faction.Confederation] = testStarbase2Id;
+  const testStarbase2 = {
+    position: { x: 2500, y: 100 },
+    radius: defs[3].radius,
+    speed: 0,
+    heading: 0,
+    health: defs[3].health,
+    testStarbase2Id,
+    sinceLastShot: [10000, 10000, 10000, 10000],
+    projectileId: 0,
+    energy: defs[3].energy,
+    definitionIndex: 3,
+    id: testStarbase2Id,
+    name: "Incubation center 17",
+    armIndices: [],
+    slotData: [],
+  };
+  state.players.set(testStarbase2Id, testStarbase2);
 
-const testAsteroids = randomAsteroids(30, { x: -2000, y: -2000, width: 4000, height: 4000 });
-for (const asteroid of testAsteroids) {
-  state.asteroids.set(asteroid.id, asteroid);
-}
+  const testAsteroids = randomAsteroids(30, { x: -3000, y: -3000, width: 6000, height: 6000 });
+  for (const asteroid of testAsteroids) {
+    state.asteroids.set(asteroid.id, asteroid);
+  }
+};
+
+initEnvironment(state);
 
 const market = new Map<string, number>();
 market.set("Minerals", 1);
+market.set("Teddy Bears", 5);
 
 wss.on("connection", (ws) => {
   console.log("Client connected");
@@ -305,6 +332,36 @@ wss.on("connection", (ws) => {
   });
 });
 
+const checkWin = (state: GlobalState) => {
+  if (winUids[Faction.Alliance] && !state.players.has(winUids[Faction.Alliance])) {
+    for (const [client, data] of clients) {
+      client.send(
+        JSON.stringify({
+          type: "win",
+          payload: {
+            faction: Faction.Confederation,
+          },
+        })
+      );
+    }
+    resetState();
+    initEnvironment(state);
+  } else if (winUids[Faction.Confederation] && !state.players.has(winUids[Faction.Confederation])) {
+    for (const [client, data] of clients) {
+      client.send(
+        JSON.stringify({
+          type: "win",
+          payload: {
+            faction: Faction.Alliance,
+          },
+        })
+      );
+    }
+    resetState();
+    initEnvironment(state);
+  }
+};
+
 // Idk if this is how I want to do it or not
 const framesPerSync = 1;
 
@@ -332,10 +389,6 @@ setInterval(() => {
   //     }
   //   }
   // });
-
-  // if (frame % 100 === 0) {
-  //   console.log("Missiles: ", state.missiles);
-  // }
 
   // TODO Consider culling the state information to only send nearby players and projectiles
   if (frame % framesPerSync === 0) {
@@ -365,6 +418,8 @@ setInterval(() => {
       client.send(serialized);
     }
   }
+
+  checkWin(state);
 }, 1000 / ticksPerSecond);
 
 server.listen(port, () => {

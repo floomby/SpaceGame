@@ -10,6 +10,7 @@ import {
   sendSecondary,
   sendSellCargo,
   sendEquip,
+  unbindAllActions,
 } from "./net";
 import {
   GlobalState,
@@ -657,12 +658,11 @@ const run = () => {
   bindPostUpdater("arms", armsPostUpdate);
 
   bindAction("state", (data: any) => {
-    state.players = new Map();
-    state.projectiles = new Map();
-    state.missiles = new Map();
+    state.players.clear();
+    state.projectiles.clear();
+    state.missiles.clear();
 
     const players = data.players as Player[];
-    // syncPosition = data.frame;
 
     for (const player of players) {
       state.players.set(player.id, player);
@@ -709,6 +709,11 @@ const run = () => {
     if (player) {
       applyInputs(input, player);
     }
+  });
+
+  bindAction("win", (data: { faction: Faction }) => {
+    showDialog(horizontalCenter([`<h2>${getFactionString(data.faction)} wins!</h2>`, '<button onclick="location.reload();">Play Again</button>']));
+    unbindAllActions();
   });
 
   loop();

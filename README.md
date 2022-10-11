@@ -20,5 +20,4 @@ A simple multiplayer game where you have a ship and do things.
 
 ### List for first alpha
 
-- Win condition
-- Server state refresh on game completion
+- Test everything well

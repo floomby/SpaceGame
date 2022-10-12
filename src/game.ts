@@ -427,7 +427,7 @@ const update = (
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
 
       let closestEnemy: Player | undefined;
-      const closestEnemyDistance = Infinity;
+      let closestEnemyDistanceSquared = Infinity;
       for (const [otherId, otherPlayer] of state.players) {
         if (otherPlayer.docked) {
           continue;
@@ -439,9 +439,10 @@ const update = (
         if (otherDef.team === def.team) {
           continue;
         }
-        const distance = l2NormSquared(player.position, otherPlayer.position);
-        if (distance < closestEnemyDistance) {
+        const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+        if (distanceSquared < closestEnemyDistanceSquared) {
           closestEnemy = otherPlayer;
+          closestEnemyDistanceSquared = distanceSquared;
         }
       }
       if (closestEnemy) {

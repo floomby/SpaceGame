@@ -304,14 +304,14 @@ const armsPostUpdate = (armIndices: number[]) => {
 
 let equipMenu = (kind: SlotKind, slotIndex: number) => {
   let index = 0;
-  let html = `<table style="width: 80vw;">
+  let html = `<table style="width: 80vw; text-align: left;">
   <colgroup>
     <col span="1" style="width: 30vw;">
     <col span="1" style="width: 10vw;">
     <col span="1" style="width: 20vw;">
     <col span="1" style="width: 20vw;">
   </colgroup>`;
-  html += '<tr><th style="text-align: left;">Armament</th><th></th><th style="text-align: left;">Price</th><th></th></tr>';
+  html += '<tr><th>Armament</th><th></th><th style="text-align: left;">Price</th><th></th></tr>';
   for (const armDef of armDefs) {
     if (armDef.kind === kind) {
       html += `<tr>
@@ -575,7 +575,7 @@ const registerDialog = horizontalCenter([
     <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>
   </div>
 </fieldset>`,
-  '<br/><button id="register">Register</button>',
+  '<br/><button id="register">Play</button>',
 ]);
 
 const setupRegisterDialog = () => {

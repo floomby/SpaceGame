@@ -20,7 +20,7 @@ import {
   equip,
   Missile,
 } from "../src/game";
-import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot } from "../src/defs";
+import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage } from "../src/defs";
 import { assert } from "console";
 
 const port = 8080;
@@ -219,10 +219,20 @@ wss.on("connection", (ws) => {
         if (player) {
           const station = state.players.get(data.payload.stationId);
           if (canDock(player, station, false)) {
+            const def = defs[player.definitionIndex];
             player.docked = data.payload.stationId;
             player.heading = 0;
             player.speed = 0;
+            player.energy = def.energy;
+            player.health = def.health;
             player.position = { x: station!.position.x, y: station!.position.y };
+            for (let i = 0; i < player.armIndices.length; i++) {
+              const armDef = armDefs[player.armIndices[i]];
+              if (armDef && armDef.usage === ArmUsage.Ammo) {
+                player.slotData[i].ammo = armDef.maxAmmo;
+              }
+            }
+
             state.players.set(client.id, player);
             const playerCopy = copyPlayer(player);
             playerCopy.docked = undefined;

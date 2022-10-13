@@ -25,7 +25,7 @@ import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, Ar
 import { assert } from "console";
 import { readFileSync } from "fs";
 
-const useSsl = true;
+const useSsl = false;
 
 const credentials: any = {};
 
@@ -451,5 +451,5 @@ setInterval(() => {
 }, 1000 / ticksPerSecond);
 
 server.listen(port, () => {
-  console.log("Websocket server started on port 8080");
+  console.log(`${useSsl ? "Secure" : "Unsecure"} websocket server running on port ${port}`);
 });

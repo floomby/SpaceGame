@@ -24,8 +24,7 @@ import {
 import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage } from "../src/defs";
 import { assert } from "console";
 import { readFileSync } from "fs";
-
-const useSsl = false;
+import { useSsl } from "../src/config";
 
 const credentials: any = {};
 

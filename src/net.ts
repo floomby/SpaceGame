@@ -1,5 +1,6 @@
 import { Input, Player, maxNameLength, TargetKind } from "./game";
 import { Faction } from "./defs";
+import { wsUrl } from "./config";
 
 let serverSocket: WebSocket;
 
@@ -14,7 +15,7 @@ const register = (name: string, faction: Faction) => {
 
 // Client connection code
 const connect = (callback: (socket: WebSocket) => void) => {
-  const socket = new WebSocket("ws://localhost:8080");
+  const socket = new WebSocket(wsUrl);
   socket.onopen = () => {
     console.log("Connected to the server");
     serverSocket = socket;

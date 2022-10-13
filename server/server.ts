@@ -1,4 +1,5 @@
 import { createServer } from "http";
+import { createServer as createSecureServer } from "https";
 import { WebSocketServer, WebSocket } from "ws";
 import {
   GlobalState,
@@ -22,6 +23,17 @@ import {
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage } from "../src/defs";
 import { assert } from "console";
+import { readFileSync } from "fs";
+
+const useSsl = true;
+
+const credentials: any = {};
+
+if (useSsl) {
+  credentials.key = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/privkey.pem", "utf8");
+  credentials.cert = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/cert.pem", "utf8");
+  credentials.ca = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/chain.pem", "utf8");
+}
 
 const port = 8080;
 
@@ -74,7 +86,13 @@ const resetState = () => {
   winUids[Faction.Confederation] = 0;
 };
 
-const server = createServer();
+let server: any;
+if (useSsl) {
+  server = createSecureServer(credentials);
+} else {
+  server = createServer();
+}
+
 const wss = new WebSocketServer({ server });
 
 const initEnvironment = (state: GlobalState) => {

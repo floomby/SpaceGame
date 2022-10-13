@@ -4,5 +4,9 @@
       "lib": ["es2017"],
       "downlevelIteration": true
     }
+  },
+  "compilerOptions": {
+    "lib": ["es2017"],
+    "downlevelIteration": true
   }
 }

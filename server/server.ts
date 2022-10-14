@@ -205,16 +205,6 @@ wss.on("connection", (ws) => {
       for (const [client, data] of clients) {
         console.log("Client: ", data);
       }
-    } else if (data.type === "player") {
-      console.log("Received player data from client (should not be here with the changes): ", data.payload);
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        // console.log("Player data from client: ", data.payload);
-        state.players.set(client.id, data.payload);
-        // TODO Cheating check needed
-      } else {
-        console.log("Player data from unknown client");
-      }
     } else if (data.type === "input") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {

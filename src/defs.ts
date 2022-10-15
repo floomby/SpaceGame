@@ -59,6 +59,8 @@ type UnitDefinition = {
   slots: SlotKind[];
   cargoCapacity?: number;
   deathEffect: number;
+  turnRate?: number;
+  acceleration?: number;
 };
 
 enum ArmUsage {
@@ -140,6 +142,8 @@ const initDefs = () => {
     slots: [SlotKind.Mining, SlotKind.Normal],
     cargoCapacity: 100,
     deathEffect: 3,
+    turnRate: 0.1,
+    acceleration: 0.1,
   });
   defs.push({
     name: "Drone",
@@ -157,6 +161,8 @@ const initDefs = () => {
     slots: [SlotKind.Mining, SlotKind.Normal],
     cargoCapacity: 100,
     deathEffect: 3,
+    turnRate: 0.1,
+    acceleration: 0.1,
   });
   defs.push({
     name: "Alliance Starbase",

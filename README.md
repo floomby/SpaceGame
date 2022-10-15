@@ -19,7 +19,7 @@ A simple multiplayer game where you have a ship and do things.
 
 - Sound effects
 - Missile launch graphic effect
-- Look at how the networking works and how to improve it
+- Look at how well the networking works and if it needs to be improved
 - Ship view in station UI
 - Guided missiles
 - Proper station targeting

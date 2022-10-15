@@ -580,19 +580,19 @@ type Input = {
 const applyInputs = (input: Input, player: Player) => {
   const def = defs[player.definitionIndex];
   if (input.up) {
-    player.speed += 0.1;
+    player.speed += def.acceleration;
   }
   if (input.down) {
-    player.speed -= 0.1;
+    player.speed -= def.acceleration;
   }
   if (input.left) {
-    player.heading -= 0.1;
+    player.heading -= def.turnRate;
   }
   if (input.right) {
-    player.heading += 0.1;
+    player.heading += def.turnRate;
   }
-  if (player.speed > 10) {
-    player.speed = 10;
+  if (player.speed > def.speed) {
+    player.speed = def.speed;
   }
   if (player.speed < 0) {
     player.speed = 0;

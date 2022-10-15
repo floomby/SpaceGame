@@ -1,4 +1,4 @@
-import { armDefs, ArmUsage, asteroidDefs, defs, missileDefs } from "./defs";
+import { armDefs, ArmUsage, asteroidDefs, defs, missileDefs, UnitKind } from "./defs";
 import { drawEffects, initEffects, effectSpriteDefs } from "./effects";
 import {
   Asteroid,
@@ -163,19 +163,24 @@ const drawHUD = (player: Player, selectedSecondary: number) => {
   }
 };
 
-const drawMiniMapShip = (center: Position, player: Player, self: Player, miniMapScaleFactor: number) => {
+const drawMiniMapPlayer = (center: Position, player: Player, self: Player, miniMapScaleFactor: number) => {
   ctx.save();
   ctx.translate(
     (player.position.x - self.position.x) * miniMapScaleFactor + center.x,
     (player.position.y - self.position.y) * miniMapScaleFactor + center.y
   );
-  ctx.rotate(player.heading);
   ctx.fillStyle = defs[player.definitionIndex].team ? "red" : "aqua";
-  ctx.beginPath();
-  ctx.moveTo(7, 0);
-  ctx.lineTo(-7, -4);
-  ctx.lineTo(-7, 4);
-  ctx.closePath();
+  if (defs[player.definitionIndex].kind === UnitKind.Ship) {
+    ctx.rotate(player.heading);
+    ctx.beginPath();
+    ctx.moveTo(7, 0);
+    ctx.lineTo(-7, -4);
+    ctx.lineTo(-7, 4);
+    ctx.closePath();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, 2 * Math.PI);
+  }
   ctx.fill();
   ctx.restore();
 };
@@ -207,11 +212,14 @@ const drawMiniMap = (position: Position, width: number, height: number, self: Pl
     }
   }
   for (const [id, player] of state.players) {
+    if (player.docked) {
+      continue;
+    }
     if (
       Math.abs(player.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
       Math.abs(player.position.y - self.position.y) * miniMapScaleFactor < height / 2
     ) {
-      drawMiniMapShip(center, player, self, miniMapScaleFactor);
+      drawMiniMapPlayer(center, player, self, miniMapScaleFactor);
     }
   }
 };

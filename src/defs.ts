@@ -61,6 +61,7 @@ type UnitDefinition = {
   deathEffect: number;
   turnRate?: number;
   acceleration?: number;
+  healthRegen: number;
 };
 
 enum ArmUsage {
@@ -144,6 +145,7 @@ const initDefs = () => {
     deathEffect: 3,
     turnRate: 0.1,
     acceleration: 0.1,
+    healthRegen: 0.03,
   });
   defs.push({
     name: "Drone",
@@ -163,6 +165,7 @@ const initDefs = () => {
     deathEffect: 3,
     turnRate: 0.1,
     acceleration: 0.1,
+    healthRegen: 0.03,
   });
   defs.push({
     name: "Alliance Starbase",
@@ -186,6 +189,7 @@ const initDefs = () => {
     dockable: true,
     slots: [],
     deathEffect: 4,
+    healthRegen: 0.06,
   });
   defs.push({
     name: "Confederacy Starbase",
@@ -209,6 +213,7 @@ const initDefs = () => {
     dockable: true,
     slots: [],
     deathEffect: 4,
+    healthRegen: 0.06,
   });
 
   for (let i = 0; i < defs.length; i++) {

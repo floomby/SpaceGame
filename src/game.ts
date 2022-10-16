@@ -368,6 +368,8 @@ const update = (
       });
       onDeath(id);
     }
+    player.health = Math.min(player.health + def.healthRegen, def.health);
+
     if (def.kind === UnitKind.Ship) {
       player.position.x += player.speed * Math.cos(player.heading);
       player.position.y += player.speed * Math.sin(player.heading);

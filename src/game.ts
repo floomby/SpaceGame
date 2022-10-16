@@ -212,6 +212,22 @@ const findHeadingBetween = (a: Position, b: Position) => {
   return Math.atan2(b.y - a.y, b.x - a.x);
 };
 
+const seek = (entity: Entity, target: Entity, maxTurn: number) => {
+  const heading = findHeadingBetween(entity.position, target.position);
+  let diff = heading - entity.heading;
+  diff = positiveMod(diff, 2 * Math.PI);
+  if (diff > Math.PI) {
+    diff -= 2 * Math.PI;
+  }
+  if (Math.abs(diff) < maxTurn) {
+    entity.heading = heading;
+  } else if (diff > 0) {
+    entity.heading += maxTurn;
+  } else {
+    entity.heading -= maxTurn;
+  }
+};
+
 const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
   let ret: [Player | undefined, number] = [undefined, 0];
   let minDistance = Infinity;
@@ -555,6 +571,12 @@ const update = (
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
         didRemove = true;
         break;
+      }
+    }
+    if (!didRemove && missile.lifetime > 0 && missile.target) {
+      const targetPlayer = state.players.get(missile.target);
+      if (targetPlayer) {
+        seek(missile, targetPlayer, missileDef.turnRate);
       }
     }
     if (!didRemove && missile.lifetime <= 0) {

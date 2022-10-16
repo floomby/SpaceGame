@@ -187,8 +187,8 @@ wss.on("connection", (ws) => {
       };
 
       equip(player, 0, "Basic mining laser");
-      equip(player, 1, "Javelin Missile");
-      // equip(player, 1, "Laser Beam");
+      // equip(player, 1, "Tomahawk Missile");
+      equip(player, 1, "Laser Beam");
 
       state.players.set(id, player);
       const respawnKey = uid();

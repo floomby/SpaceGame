@@ -84,7 +84,6 @@ type ArmamentDef = {
   targeted: TargetedKind;
   energyCost?: number;
   maxAmmo?: number;
-  missileIndex?: number;
   cost: number;
   stateMutator?: (
     state: GlobalState,
@@ -114,6 +113,7 @@ type MissileDef = {
   acceleration: number;
   // TODO this should be easier to use (having all these indices is error prone)
   deathEffect: number;
+  turnRate?: number;
 };
 
 const defs: UnitDefinition[] = [];
@@ -324,7 +324,7 @@ const initDefs = () => {
     sprite: { x: 64, y: 0, width: 32, height: 16 },
     radius: 8,
     speed: 15,
-    damage: 10,
+    damage: 13,
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
@@ -332,15 +332,14 @@ const initDefs = () => {
   const javelinIndex = missileDefs.length - 1;
   armDefs.push({
     name: "Javelin Missile",
-    description: "An unguided missile",
+    description: "An quick firing, unguided missile",
     kind: SlotKind.Normal,
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
-    maxAmmo: 30,
-    missileIndex: 0,
+    maxAmmo: 50,
     stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
-      if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0) {
+      if (player.energy > 1 && slotData.sinceFired > 25 && slotData.ammo > 0) {
         player.energy -= 1;
         slotData.sinceFired = 0;
         slotData.ammo--;
@@ -362,7 +361,7 @@ const initDefs = () => {
       }
     },
     equipMutator: (player, slotIndex) => {
-      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 30 };
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 50 };
     },
     frameMutator: (player, slotIndex) => {
       const slotData = player.slotData[slotIndex];
@@ -388,7 +387,6 @@ const initDefs = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
     maxAmmo: 20,
-    missileIndex: 0,
     stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0) {
@@ -414,6 +412,57 @@ const initDefs = () => {
     },
     equipMutator: (player, slotIndex) => {
       player.slotData[slotIndex] = { sinceFired: 1000, ammo: 20 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 100,
+  });
+
+  missileDefs.push({
+    sprite: { x: 96, y: 0, width: 32, height: 16 },
+    radius: 8,
+    speed: 15,
+    damage: 10,
+    acceleration: 0.2,
+    lifetime: 600,
+    deathEffect: 2,
+    turnRate: 0.1,
+  });
+  const tomahawkIndex = missileDefs.length - 1;
+  armDefs.push({
+    name: "Tomahawk Missile",
+    description: "A guided missile",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Targeted,
+    maxAmmo: 30,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
+        player.energy -= 1;
+        slotData.sinceFired = 0;
+        slotData.ammo--;
+        const id = uid();
+        const def = defs[player.definitionIndex];
+        const missile: Missile = {
+          id,
+          position: { x: player.position.x, y: player.position.y },
+          speed: player.speed + 1,
+          heading: player.heading,
+          radius: missileDefs[tomahawkIndex].radius,
+          team: def.team,
+          damage: missileDefs[tomahawkIndex].damage,
+          target: target.id,
+          definitionIndex: tomahawkIndex,
+          lifetime: missileDefs[tomahawkIndex].lifetime,
+        };
+        state.missiles.set(id, missile);
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 30 };
     },
     frameMutator: (player, slotIndex) => {
       const slotData = player.slotData[slotIndex];

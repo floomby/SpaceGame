@@ -209,13 +209,6 @@ wss.on("connection", (ws) => {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
         clients.set(ws, { ...client, input: data.payload.input });
-        // Since I am just sending the state every frame I don't need to relay all the inputs to everyone
-        // for (const [toClient, toData] of clients) {
-        //   // TODO Cull based on distance
-        //   if (client.id !== toData.id) {
-        //     toClient.send(JSON.stringify({ type: "input", payload: data.payload }));
-        //   }
-        // }
       } else {
         console.log("Input data from unknown client");
       }
@@ -337,14 +330,6 @@ wss.on("connection", (ws) => {
         }
       }
       clients.delete(ws);
-      // for (const [client, data] of clients) {
-      //   client.send(
-      //     JSON.stringify({
-      //       type: "removed",
-      //       payload: removedClient.id,
-      //     })
-      //   );
-      // }
     }
   });
 });
@@ -379,9 +364,6 @@ const checkWin = (state: GlobalState) => {
   }
 };
 
-// Idk if this is how I want to do it or not
-const framesPerSync = 1;
-
 setInterval(() => {
   frame++;
   for (const [client, data] of clients) {
@@ -399,41 +381,32 @@ setInterval(() => {
     secondaries,
     (trigger) => triggers.push(trigger)
   );
-  // update(state, frame, (id: number) => {
-  //   for (const [client, data] of clients) {
-  //     if (data.id === id) {
-  //       client.send(JSON.stringify({ type: "removed", payload: id }));
-  //     }
-  //   }
-  // });
 
   // TODO Consider culling the state information to only send nearby players and projectiles
-  if (frame % framesPerSync === 0) {
-    const playerData: Player[] = [];
-    for (const player of state.players.values()) {
-      playerData.push(player);
-    }
-    const projectileData: Ballistic[] = [];
-    for (const [id, projectiles] of state.projectiles) {
-      projectileData.push(...projectiles);
-    }
-    const asteroidData: Asteroid[] = [];
-    for (const asteroid of state.asteroids.values()) {
-      asteroidData.push(asteroid);
-    }
-    const missileData: Missile[] = [];
-    for (const missile of state.missiles.values()) {
-      missileData.push(missile);
-    }
+  const playerData: Player[] = [];
+  for (const player of state.players.values()) {
+    playerData.push(player);
+  }
+  const projectileData: Ballistic[] = [];
+  for (const [id, projectiles] of state.projectiles) {
+    projectileData.push(...projectiles);
+  }
+  const asteroidData: Asteroid[] = [];
+  for (const asteroid of state.asteroids.values()) {
+    asteroidData.push(asteroid);
+  }
+  const missileData: Missile[] = [];
+  for (const missile of state.missiles.values()) {
+    missileData.push(missile);
+  }
 
-    const serialized = JSON.stringify({
-      type: "state",
-      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers, missiles: missileData },
-    });
+  const serialized = JSON.stringify({
+    type: "state",
+    payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers, missiles: missileData },
+  });
 
-    for (const [client, data] of clients) {
-      client.send(serialized);
-    }
+  for (const [client, data] of clients) {
+    client.send(serialized);
   }
 
   checkWin(state);

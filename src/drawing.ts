@@ -205,8 +205,8 @@ const drawMiniMap = (position: Position, width: number, height: number, self: Pl
   const center = { x: position.x + width / 2, y: position.y + height / 2 };
   for (const [id, asteroid] of state.asteroids) {
     if (
-      Math.abs(asteroid.position.x - self.position.x) < starTilingSize.x / 2 &&
-      Math.abs(asteroid.position.y - self.position.y) < starTilingSize.y / 2
+      Math.abs(asteroid.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
+      Math.abs(asteroid.position.y - self.position.y) * miniMapScaleFactor < height / 2
     ) {
       drawMiniMapAsteroid(center, asteroid, self, miniMapScaleFactor);
     }

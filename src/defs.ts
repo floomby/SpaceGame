@@ -221,7 +221,6 @@ const initDefs = () => {
     defMap.set(def.name, { index: i, def });
   }
 
-  let missileIndex = 0;
   armDefs.push({
     name: "Empty normal slot",
     description: "Empty normal slot (dock with a station to buy armaments)",
@@ -320,6 +319,17 @@ const initDefs = () => {
     },
     cost: 100,
   });
+
+  missileDefs.push({
+    sprite: { x: 64, y: 0, width: 32, height: 16 },
+    radius: 8,
+    speed: 15,
+    damage: 10,
+    acceleration: 0.2,
+    lifetime: 600,
+    deathEffect: 2,
+  });
+  const javelinIndex = missileDefs.length - 1;
   armDefs.push({
     name: "Javelin Missile",
     description: "An unguided missile",
@@ -327,7 +337,7 @@ const initDefs = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
     maxAmmo: 30,
-    missileIndex: missileIndex++,
+    missileIndex: 0,
     stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0) {
@@ -341,12 +351,63 @@ const initDefs = () => {
           position: { x: player.position.x, y: player.position.y },
           speed: player.speed + 1,
           heading: player.heading,
-          radius: 8,
+          radius: missileDefs[javelinIndex].radius,
           team: def.team,
-          damage: 10,
+          damage: missileDefs[javelinIndex].damage,
           target: 0,
-          definitionIndex: missileIndex - 1,
-          lifetime: 600,
+          definitionIndex: javelinIndex,
+          lifetime: missileDefs[javelinIndex].lifetime,
+        };
+        state.missiles.set(id, missile);
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 30 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 100,
+  });
+
+  missileDefs.push({
+    sprite: { x: 64, y: 16, width: 32, height: 16 },
+    radius: 8,
+    speed: 5,
+    damage: 150,
+    acceleration: 0.2,
+    lifetime: 600,
+    deathEffect: 2,
+  });
+  const heavyJavelinIndex = missileDefs.length - 1;
+  armDefs.push({
+    name: "Heavy Javelin Missile",
+    description: "A high damage, slow, unguided missile",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Untargeted,
+    maxAmmo: 20,
+    missileIndex: 0,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0) {
+        player.energy -= 1;
+        slotData.sinceFired = 0;
+        slotData.ammo--;
+        const id = uid();
+        const def = defs[player.definitionIndex];
+        const missile: Missile = {
+          id,
+          position: { x: player.position.x, y: player.position.y },
+          speed: player.speed + 1,
+          heading: player.heading,
+          radius: missileDefs[heavyJavelinIndex].radius,
+          team: def.team,
+          damage: missileDefs[heavyJavelinIndex].damage,
+          target: 0,
+          definitionIndex: heavyJavelinIndex,
+          lifetime: missileDefs[heavyJavelinIndex].lifetime,
         };
         state.missiles.set(id, missile);
       }
@@ -370,16 +431,6 @@ const initDefs = () => {
     resources: 500,
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 24,
-  });
-
-  missileDefs.push({
-    sprite: { x: 64, y: 0, width: 32, height: 16 },
-    radius: 8,
-    speed: 15,
-    damage: 10,
-    acceleration: 0.2,
-    lifetime: 600,
-    deathEffect: 2,
   });
 };
 

@@ -4,7 +4,6 @@ A simple multiplayer game where you have a ship and do things.
 
 ### TODO
 
-- Collectables
 - Shields? (maybe)
 - Mines
 - Trade
@@ -16,3 +15,7 @@ A simple multiplayer game where you have a ship and do things.
 
 - Sound effects
 - Ship view in station UI
+
+### Next next version steps
+
+- Collectables

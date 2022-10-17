@@ -247,6 +247,11 @@ wss.on("connection", (ws) => {
         if (player) {
           player.docked = undefined;
           state.players.set(client.id, player);
+
+          state.players.set(client.id, player);
+          const playerCopy = copyPlayer(player);
+          playerCopy.docked = undefined;
+          checkpoints.set(client.id, playerCopy);
         }
       }
     } else if (data.type === "respawn") {

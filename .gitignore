@@ -2,3 +2,4 @@ server/node_modules
 server/server.js
 dist
 src/*.js
+deployer.sh

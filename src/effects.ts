@@ -6,6 +6,7 @@ import {
   EffectTrigger,
   findHeadingBetween,
   GlobalState,
+  infinityNorm,
   Missile,
   Player,
   Position,
@@ -160,10 +161,20 @@ const initEffects = () => {
     frames: 15,
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
+      const spriteIdx = 0;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
       ctx.save();
       ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
       ctx.rotate(effect.extra.heading);
-      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 0);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
       ctx.restore();
     },
     initializer: () => {
@@ -174,10 +185,20 @@ const initEffects = () => {
     frames: 50,
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
+      const spriteIdx = 1;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
       ctx.save();
       ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
       ctx.rotate(effect.extra.heading);
-      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 1);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
       ctx.restore();
     },
     initializer: () => {
@@ -188,10 +209,20 @@ const initEffects = () => {
     frames: 50,
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
+      const spriteIdx = 2;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
       ctx.save();
       ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
       ctx.rotate(effect.extra.heading);
-      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 2);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
       ctx.restore();
     },
     initializer: () => {
@@ -234,10 +265,20 @@ const initEffects = () => {
     frames: 50,
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
+      const spriteIdx = 3;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
       ctx.save();
       ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
       ctx.rotate(effect.extra.heading);
-      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 3);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
       ctx.restore();
     },
     initializer: () => {

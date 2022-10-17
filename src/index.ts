@@ -46,8 +46,8 @@ import { applyEffects } from "./effects";
 // The server will assign our id when we connect
 let me: number;
 
-// let keybind = qwertyBindings;
-let keybind = dvorakBindings;
+let keybind = qwertyBindings;
+// let keybind = dvorakBindings;
 
 let targetEnemy = false;
 let selectedSecondary = 0;
@@ -632,12 +632,12 @@ const registerDialog = horizontalCenter([
 <fieldset>
   <legend>Keyboard Layout</legend>
   <div style="text-align: left;">
-    <input type="radio" id="qwerty" name="keyboard" value="qwerty">
+    <input type="radio" id="qwerty" name="keyboard" value="qwerty" checked>
     <label for="qwerty">QWERTY</label>
     <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(qwertyBindings)}&nbsp;</span></div>
   </div>
   <div style="text-align: left;">
-    <input type="radio" id="dvorak" name="keyboard" value="dvorak" checked>
+    <input type="radio" id="dvorak" name="keyboard" value="dvorak">
     <label for="dvorak">Dvorak</label>
     <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>
   </div>

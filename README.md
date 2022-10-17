@@ -15,6 +15,4 @@ A simple multiplayer game where you have a ship and do things.
 ### Next version steps
 
 - Sound effects
-- Missile launch graphic effect
 - Ship view in station UI
-- Proper station targeting

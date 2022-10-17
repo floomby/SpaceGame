@@ -1,4 +1,16 @@
-import { Circle, EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Player, Position, Rectangle } from "./game";
+import {
+  Asteroid,
+  Circle,
+  EffectAnchor,
+  EffectAnchorKind,
+  EffectTrigger,
+  findHeadingBetween,
+  GlobalState,
+  Missile,
+  Player,
+  Position,
+  Rectangle,
+} from "./game";
 import { ctx, canvas, effectSprites } from "./drawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
@@ -11,7 +23,7 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
       console.log("Invalid player id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
-    return [player.position, player as Circle];
+    return [player.position, player as Player];
   }
   if (anchor.kind === EffectAnchorKind.Asteroid) {
     const asteroid = state.asteroids.get(anchor.value as number);
@@ -19,7 +31,15 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
       console.log("Invalid asteroid id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
-    return [asteroid.position, asteroid as Circle];
+    return [asteroid.position, asteroid as Asteroid];
+  }
+  if (anchor.kind === EffectAnchorKind.Missile) {
+    const missile = state.missiles.get(anchor.value as number);
+    if (!missile) {
+      console.log("Invalid missile id during anchor resolution: ", anchor.value);
+      return [undefined, undefined];
+    }
+    return [missile.position, missile as Missile];
   }
 };
 
@@ -178,6 +198,52 @@ const initEffects = () => {
       return { heading: Math.random() * Math.PI * 2 };
     },
   });
+  effectDefs.push({
+    frames: 1500,
+    draw: (effect, self, state, framesLeft) => {
+      const [from, fromPlayer] = resolveAnchor(effect.from, state);
+      if (!from || !fromPlayer) {
+        effect.frame = 0;
+        return;
+      }
+
+      if (effect.frame < effect.extra.lastPoof - 10) {
+        effect.extra.lastPoof = effect.frame;
+        const heading = (fromPlayer as Missile).heading;
+        const speed = (fromPlayer as Missile).speed / 2;
+        const trigger = {
+          effectIndex: 6,
+          from: {
+            kind: EffectAnchorKind.Absolute,
+            value: {
+              x: (from as Position).x + Math.random() * 8 - 4 - Math.cos((fromPlayer as Missile).heading) * 8,
+              y: (from as Position).y + Math.random() * 8 - 4 - Math.sin((fromPlayer as Missile).heading) * 8,
+            },
+            heading,
+            speed,
+          },
+        };
+        applyEffects([trigger]);
+      }
+    },
+    initializer: () => {
+      return { lastPoof: 1500 };
+    },
+  });
+  effectDefs.push({
+    frames: 50,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, 3);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * Math.PI * 2 };
+    },
+  });
 
   effectSpriteDefs.push({
     sprite: { x: 256, y: 64, width: 64, height: 64 },
@@ -187,6 +253,9 @@ const initEffects = () => {
   });
   effectSpriteDefs.push({
     sprite: { x: 388, y: 0, width: 512, height: 512 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 320, y: 0, width: 64, height: 64 },
   });
 };
 

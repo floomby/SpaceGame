@@ -135,6 +135,7 @@ enum EffectAnchorKind {
   Absolute,
   Player,
   Asteroid,
+  Missile,
 }
 
 type EffectAnchor = {
@@ -226,6 +227,27 @@ const seek = (entity: Entity, target: Entity, maxTurn: number) => {
   } else {
     entity.heading -= maxTurn;
   }
+};
+
+const findInterceptAimingHeading = (from: Position, target: Entity, projectileSpeed: number, maxRange: number) => {
+  const heading = findHeadingBetween(from, target.position);
+  const A = Math.PI - heading + target.heading;
+
+  const a = target.speed * target.speed - projectileSpeed * projectileSpeed;
+  const b = -2 * Math.cos(A) * target.speed * l2Norm(target.position, from);
+  const c = l2NormSquared(target.position, from);
+  const discriminate = b * b - 4 * a * c;
+
+  const t = (-b - Math.sqrt(discriminate)) / (2 * a);
+  const intercept = {
+    x: target.position.x + target.speed * Math.cos(target.heading) * t,
+    y: target.position.y + target.speed * Math.sin(target.heading) * t,
+  };
+  if (l2NormSquared(from, intercept) > maxRange * maxRange) {
+    return undefined;
+  }
+  const interceptHeading = findHeadingBetween(from, intercept);
+  return interceptHeading;
 };
 
 const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
@@ -465,18 +487,17 @@ const update = (
       }
       if (closestEnemy) {
         const hardpointLocations = hardpointPositions(player, def);
-        const hardpointHeadingsAndDistances = hardpointLocations.map((hardpoint) => [
-          findHeadingBetween(hardpoint, closestEnemy.position),
-          l2NormSquared(hardpoint, closestEnemy.position),
-        ]);
+        const targetingVectors = hardpointLocations.map((hardpoint) =>
+          findInterceptAimingHeading(hardpoint, closestEnemy, primarySpeed, primaryRange)
+        );
         for (let i = 0; i < def.hardpoints.length; i++) {
-          const [heading, distanceSquared] = hardpointHeadingsAndDistances[i];
-          if (distanceSquared < primaryRangeSquared && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
+          const targeting = targetingVectors[i];
+          if (targeting && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
             const projectile = {
               position: hardpointLocations[i],
               radius: primaryRadius,
               speed: primarySpeed,
-              heading,
+              heading: targeting,
               damage: def.primaryDamage,
               team: def.team,
               id: player.projectileId,
@@ -551,6 +572,15 @@ const update = (
       }
     }
     missile.lifetime -= 1;
+    if (missile.lifetime % 10 === 5) {
+      applyEffect({
+        effectIndex: 5,
+        from: {
+          kind: EffectAnchorKind.Missile,
+          value: id
+        },
+      });
+    }
     let didRemove = false;
     for (const [otherId, otherPlayer] of state.players) {
       if (otherPlayer.docked) {

@@ -25,6 +25,14 @@ const initSound = () => {
   });
 };
 
+const setVolume = (value: number) => {
+  volume.gain.value = value;
+};
+
+const getVolume = () => {
+  return volume.gain.value;
+};
+
 const playSound = (index: number) => {
   if (!ctx || index < 0 || index >= soundBuffers.length) {
     console.log(ctx ? `Invalid sound index ${index}` : "Sound not initialized");
@@ -55,4 +63,4 @@ const play3dSound = (index: number, x: number, y: number) => {
 
 const soundScale = 500;
 
-export { initSound, playSound, play3dSound, soundScale };
+export { initSound, playSound, play3dSound, soundScale, setVolume, getVolume };

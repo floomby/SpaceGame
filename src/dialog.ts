@@ -7,9 +7,21 @@ const init = () => {
   div.style.display = "none";
 };
 
+let staged: HTMLDivElement;
+let stackPlace: HTMLDivElement;
+
 const show = (html: string) => {
   div.style.display = "flex";
-  div.innerHTML = `<div class="center">${html}</div>`;
+  div.innerHTML = `<div class="center" id="staged">${html}</div>
+    <div id="stackPlace"></div>`;
+  staged = document.getElementById("staged") as HTMLDivElement;
+  stackPlace = document.getElementById("stackPlace") as HTMLDivElement;
+  stackPlace.style.display = "none";
+  stackPlace.style.position = "absolute";
+  stackPlace.style.top = "0";
+  stackPlace.style.left = "0";
+  stackPlace.style.width = "100%";
+  stackPlace.style.height = "100%";
   shown = true;
 };
 
@@ -20,6 +32,46 @@ const hide = () => {
 
 const clear = () => {
   div.innerHTML = "";
+};
+
+let shownFromStack = false;
+
+const stack: { html: string; callback: () => void }[] = [];
+
+const showStack = () => {
+  if (stack.length > 0) {
+    if (!shown) {
+      show("");
+      shown = true;
+      shownFromStack = true;
+    }
+    staged.style.display = "none";
+    const { html, callback } = stack[stack.length - 1];
+    stackPlace.innerHTML = `<div class="center">${html}</div>`;
+    stackPlace.style.display = "flex";
+    callback();
+  } else {
+    if (shownFromStack) {
+      clear();
+      hide();
+      shownFromStack = false;
+      shown = false;
+    } else {
+      stackPlace.innerHTML = "";
+      stackPlace.style.display = "none";
+      staged.style.display = "flex";
+    }
+  }
+};
+
+const push = (html: string, callback: () => void) => {
+  stack.push({ html, callback });
+  showStack();
+};
+
+const pop = () => {
+  stack.pop();
+  showStack();
 };
 
 const horizontalCenter = (html: string[]) => {
@@ -35,6 +87,10 @@ const updateDom = (id: string, value: any) => {
   if (!shown) {
     return;
   }
+  const element = document.getElementById(id);
+  if (!element) {
+    return;
+  }
   const lastState = lastStates.get(id);
   let thisState: string | undefined = undefined;
   if (lastState) {
@@ -44,10 +100,8 @@ const updateDom = (id: string, value: any) => {
     }
   }
 
-  console.log("Updating dom", id, value, lastState, thisState);
-  const element = document.getElementById(id);
   const updater = updaters.get(id);
-  if (element && updater) {
+  if (updater) {
     if (!thisState) {
       thisState = JSON.stringify(value);
     }
@@ -74,4 +128,4 @@ const unbindKey = (key: string) => {
   lastStates.delete(key);
 };
 
-export { init, show, hide, clear, horizontalCenter, bindUpdater, updateDom, bindPostUpdater, unbindKey };
+export { init, show, hide, clear, horizontalCenter, bindUpdater, updateDom, bindPostUpdater, unbindKey, push, pop };

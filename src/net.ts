@@ -17,7 +17,7 @@ const register = (name: string, faction: Faction) => {
 const connect = (callback: (socket: WebSocket) => void) => {
   const socket = new WebSocket(wsUrl);
   socket.onopen = () => {
-    console.log("Connected to the server");
+    console.log(`Connected to the server at ${wsUrl}`);
     serverSocket = socket;
     callback(socket);
   };

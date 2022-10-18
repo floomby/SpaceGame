@@ -33,6 +33,8 @@ import {
   show as showDialog,
   hide as hideDialog,
   clear as clearDialog,
+  pop as popDialog,
+  push as pushDialog,
   horizontalCenter,
   updateDom,
   bindUpdater,
@@ -42,7 +44,7 @@ import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind } from "./
 import { drawEverything, flashSecondary, initDrawing } from "./drawing";
 import { dvorakBindings, KeyBindings, qwertyBindings } from "./keybindings";
 import { applyEffects } from "./effects";
-import { initSound } from "./sound";
+import { initSound, setVolume, getVolume } from "./sound";
 
 // The server will assign our id when we connect
 let me: number;
@@ -492,15 +494,89 @@ const registerer = (username: string) => {
   initInputHandlers();
 };
 
+const keylayoutSelector = () => `<fieldset>
+<legend>Keyboard Layout</legend>
+<div style="text-align: left;">
+  <input type="radio" id="qwerty" name="keyboard" value="qwerty">
+  <label for="qwerty">QWERTY</label>
+  <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(qwertyBindings)}&nbsp;</span></div>
+</div>
+<div style="text-align: left;">
+  <input type="radio" id="dvorak" name="keyboard" value="dvorak">
+  <label for="dvorak">Dvorak</label>
+  <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>
+</div>
+</fieldset>`;
+
+const keylayoutSelectorSetup = () => {
+  const qwerty = document.getElementById("qwerty") as HTMLInputElement;
+  const dvorak = document.getElementById("dvorak") as HTMLInputElement;
+  qwerty?.addEventListener("change", () => {
+    if (qwerty.checked) {
+      keybind = qwertyBindings;
+    }
+  });
+  dvorak?.addEventListener("change", () => {
+    if (dvorak.checked) {
+      keybind = dvorakBindings;
+    }
+  });
+  if (keybind === qwertyBindings) {
+    qwerty.checked = true;
+  } else {
+    dvorak.checked = true;
+  }
+};
+
+const settingsDialog = () => horizontalCenter([
+  `<h1>Settings</h1>`,
+  `Volume:`,
+  `<input type="range" min="0" max="1" value="${getVolume()}" class="slider" id="volumeSlider" step="0.05"><br/>`,
+  keylayoutSelector(),
+  `<br/><button id="closeSettings">Close</button>`,
+]);
+
+let settingShown = false;
+
+const setupSettingsDialog = () => {
+  document.getElementById("closeSettings")?.addEventListener("click", () => {
+    settingShown = false;
+    popDialog();
+  });
+  const volumeSlider = document.getElementById("volumeSlider") as HTMLInputElement;
+  volumeSlider?.addEventListener("input", () => {
+    setVolume(parseFloat(volumeSlider.value));
+  });
+  volumeSlider.value = getVolume().toString();
+  keylayoutSelectorSetup();
+};
+
+const initSettings = () => {
+  const settingsIcon = document.getElementById("settingsIcon");
+  if (settingsIcon) {
+    settingsIcon.addEventListener("click", () => {
+      if (!settingShown) {
+        pushDialog(settingsDialog(), setupSettingsDialog);
+        settingShown = true;
+      }
+    });
+    settingsIcon.style.display = "flex";
+  }
+};
+
 const doRegister = () => {
+  // Sound init and setting menu init feel strange being here (we need sound somewhere after page interaction since autoplay is not allowed)
+  // and this is the first place that page interaction is guaranteed to have happened. Setting menu should be drawn after the game starts which
+  // is after the registration.
   initSound();
+  initSettings();
   const input = document.getElementById("username") as HTMLInputElement;
   const visited = localStorage.getItem("visited") !== null;
   if (visited) {
     registerer(input.value);
   } else {
     showFirstTimeHelp(input.value);
-  };
+  }
 };
 
 const registerHandler = (e: KeyboardEvent) => {
@@ -630,20 +706,7 @@ const registerDialog = horizontalCenter([
     <input type="radio" id="confederation" name="faction" value="confederation">
     <label for="confederation">${getFactionString(Faction.Confederation)}</label>
 </fieldset>`,
-  `<br/>
-<fieldset>
-  <legend>Keyboard Layout</legend>
-  <div style="text-align: left;">
-    <input type="radio" id="qwerty" name="keyboard" value="qwerty">
-    <label for="qwerty">QWERTY</label>
-    <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(qwertyBindings)}&nbsp;</span></div>
-  </div>
-  <div style="text-align: left;">
-    <input type="radio" id="dvorak" name="keyboard" value="dvorak" checked>
-    <label for="dvorak">Dvorak</label>
-    <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>
-  </div>
-</fieldset>`,
+  `<br/>${keylayoutSelector()}`,
   '<br/><button id="register">Play</button>',
 ]);
 
@@ -665,18 +728,7 @@ const showFirstTimeHelp = (username: string) => {
 const setupRegisterDialog = () => {
   const usernameInput = document.getElementById("username") as HTMLInputElement;
   usernameInput.addEventListener("keydown", registerHandler);
-  const qwerty = document.getElementById("qwerty") as HTMLInputElement;
-  const dvorak = document.getElementById("dvorak") as HTMLInputElement;
-  qwerty.addEventListener("change", () => {
-    if (qwerty.checked) {
-      keybind = qwertyBindings;
-    }
-  });
-  dvorak.addEventListener("change", () => {
-    if (dvorak.checked) {
-      keybind = dvorakBindings;
-    }
-  });
+  keylayoutSelectorSetup();
   const alliance = document.getElementById("alliance") as HTMLInputElement;
   const confederation = document.getElementById("confederation") as HTMLInputElement;
   alliance.addEventListener("change", () => {

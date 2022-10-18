@@ -50,9 +50,9 @@
         top: 50%;
         -webkit-transform: translate(-50%, -50%);
         transform: translate(-50%, -50%);
-        
+
         position: absolute;
-        z-index: 3;
+        z-index: 4;
       }
 
       .tooltip:hover .tooltipText {
@@ -71,6 +71,21 @@
         width: 250px;
         height: 250px;
       }
+
+      .settings {
+        z-index: 4;
+        margin-top: 8px;
+        margin-left: 8px;
+        position: absolute;
+        height: 35px;
+        width: 35px;
+        opacity: 0.4;
+        cursor: pointer;
+      }
+
+      .settings:hover {
+        opacity: 0.8;
+      }
     </style>
   </head>
   <body style="background-color: darkgray">
@@ -80,5 +95,11 @@
       id="dialog"
       style="color: white; position: absolute; left: 0px; top: 0px; z-index: 1; width: 100%; height: 100%; background-color: rgba(22, 45, 34, 0.341)"
     ></div>
+    <img
+      src="resources/gear.svg"
+      id="settingsIcon"
+      class="settings"
+      style="display: none;"
+    />
   </body>
 </html>

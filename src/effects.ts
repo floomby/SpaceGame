@@ -13,6 +13,7 @@ import {
   Rectangle,
 } from "./game";
 import { ctx, canvas, effectSprites } from "./drawing";
+import { play3dSound, playSound, soundScale } from "./sound";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Absolute) {
@@ -81,6 +82,7 @@ const drawExplosion = (position: Position, def: EffectDefinition, framesLeft: nu
 };
 
 const initEffects = () => {
+  // Mining laser effect - 0
   effectDefs.push({
     frames: 10,
     draw: (effect, self, state) => {
@@ -108,6 +110,7 @@ const initEffects = () => {
       };
     },
   });
+  // Laser beam effect - 1
   effectDefs.push({
     frames: 15,
     draw: (effect, self, state, framesLeft) => {
@@ -157,13 +160,29 @@ const initEffects = () => {
       ctx.restore();
     },
   });
+  // Small explosion (ships) - 2
   effectDefs.push({
     frames: 15,
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
+
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        effect.extra.panner = play3dSound(1, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
+        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
+        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+      }
+
       const spriteIdx = 0;
       const width = effectSprites[spriteIdx].width;
       const height = effectSprites[spriteIdx].height;
+
       if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
         return;
       }
@@ -181,10 +200,25 @@ const initEffects = () => {
       return { heading: Math.random() * Math.PI * 2 };
     },
   });
+  // Large explosion (stations) - 3
   effectDefs.push({
     frames: 50,
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
+
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        effect.extra.panner = play3dSound(1, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
+        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
+        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+      }
+
       const spriteIdx = 1;
       const width = effectSprites[spriteIdx].width;
       const height = effectSprites[spriteIdx].height;
@@ -202,9 +236,10 @@ const initEffects = () => {
       ctx.restore();
     },
     initializer: () => {
-      return { heading: Math.random() * Math.PI * 2 };
+      return { heading: Math.random() * Math.PI * 2, needSound: true };
     },
   });
+  // Missile explosion - 4
   effectDefs.push({
     frames: 50,
     draw: (effect, self, state, framesLeft) => {
@@ -229,6 +264,7 @@ const initEffects = () => {
       return { heading: Math.random() * Math.PI * 2 };
     },
   });
+  // Missile trail - 5
   effectDefs.push({
     frames: 1500,
     draw: (effect, self, state, framesLeft) => {
@@ -237,8 +273,12 @@ const initEffects = () => {
         effect.frame = 0;
         return;
       }
+      if (effect.frame > 1400 && effect.extra.needSound) {
+        effect.extra.needSound = false;
+        play3dSound(0, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      }
 
-      if (effect.frame < effect.extra.lastPoof - 10) {
+      if (effect.frame < effect.extra.lastPoof - 5) {
         effect.extra.lastPoof = effect.frame;
         const heading = (fromPlayer as Missile).heading;
         const speed = (fromPlayer as Missile).speed / 2;
@@ -258,9 +298,10 @@ const initEffects = () => {
       }
     },
     initializer: () => {
-      return { lastPoof: 1500 };
+      return { lastPoof: 1500, needSound: true };
     },
   });
+  // Missile trail poof - 6
   effectDefs.push({
     frames: 50,
     draw: (effect, self, state, framesLeft) => {

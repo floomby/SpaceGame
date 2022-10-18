@@ -528,7 +528,7 @@ const drawEverything = (
   }
   drawEffects(lastSelf, state, sixtieths);
   if (self && !self.docked) {
-    drawMiniMap({ x: canvas.width - 210, y: canvas.height - 210 }, 200, 200, self, state, 0.03);
+    drawMiniMap({ x: canvas.width - 210, y: canvas.height - 230 }, 200, 200, self, state, 0.03);
     drawHUD(self, selectedSecondary);
     if (self.canDock) {
       drawDockText(keybind.dock);

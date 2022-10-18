@@ -10,12 +10,15 @@ A simple multiplayer game where you have a ship and do things.
 - NPCs
 - Handle network interruptions
 - Network optimization
+- Defining units, missiles, effects, etc should be easier
+- Economy is very boring right now
 
 ### Next version steps
 
-- Sound effects
+- Finish making the sound effects
 - Ship view in station UI
 
 ### Next next version steps
 
 - Collectables
+- Chat

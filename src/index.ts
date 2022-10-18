@@ -39,6 +39,7 @@ import {
   updateDom,
   bindUpdater,
   bindPostUpdater,
+  setDialogBackground,
 } from "./dialog";
 import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind } from "./defs";
 import { drawEverything, flashSecondary, initDrawing } from "./drawing";
@@ -528,6 +529,11 @@ const keylayoutSelectorSetup = () => {
   }
 };
 
+const allianceColor = "rgba(22, 45, 34, 0.341)";
+const confederationColor = "rgba(49, 25, 25, 0.341)";
+const allianceColorDark = "rgba(22, 45, 34, 0.8)";
+const confederationColorDark = "rgba(49, 25, 25, 0.8)";
+
 const settingsDialog = () => horizontalCenter([
   `<h1>Settings</h1>`,
   `Volume:`,
@@ -541,6 +547,7 @@ let settingShown = false;
 const setupSettingsDialog = () => {
   document.getElementById("closeSettings")?.addEventListener("click", () => {
     settingShown = false;
+    setDialogBackground(faction === Faction.Alliance ? allianceColor : confederationColor);
     popDialog();
   });
   const volumeSlider = document.getElementById("volumeSlider") as HTMLInputElement;
@@ -558,6 +565,7 @@ const initSettings = () => {
       if (!settingShown) {
         pushDialog(settingsDialog(), setupSettingsDialog);
         settingShown = true;
+        setDialogBackground(faction === Faction.Alliance ? allianceColorDark : confederationColorDark);
       }
     });
     settingsIcon.style.display = "flex";
@@ -725,7 +733,7 @@ const showFirstTimeHelp = (username: string) => {
   localStorage.setItem("visited", "true");
 };
 
-const setupRegisterDialog = () => {
+const registerDialogSetup = () => {
   const usernameInput = document.getElementById("username") as HTMLInputElement;
   usernameInput.addEventListener("keydown", registerHandler);
   keylayoutSelectorSetup();
@@ -734,19 +742,13 @@ const setupRegisterDialog = () => {
   alliance.addEventListener("change", () => {
     if (alliance.checked) {
       faction = Faction.Alliance;
-      const dialog = document.getElementById("dialog");
-      if (dialog) {
-        dialog.style.backgroundColor = "rgba(22, 45, 34, 0.341)";
-      }
+      setDialogBackground(allianceColor);
     }
   });
   confederation.addEventListener("change", () => {
     if (confederation.checked) {
       faction = Faction.Confederation;
-      const dialog = document.getElementById("dialog");
-      if (dialog) {
-        dialog.style.backgroundColor = "rgba(49, 25, 25, 0.341)";
-      }
+      setDialogBackground(confederationColor);
     }
   });
   document.getElementById("register")?.addEventListener("click", doRegister);
@@ -771,7 +773,7 @@ const setupDeadDialog = () => {
 
 const run = () => {
   showDialog(registerDialog);
-  setupRegisterDialog();
+  registerDialogSetup();
 
   state = {
     players: new Map(),

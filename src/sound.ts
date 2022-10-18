@@ -16,10 +16,8 @@ const initSound = () => {
   volume.connect(ctx.destination);
   volume.gain.value = 0.5;
 
-  // load the sounds, returning promises
   const promises: Promise<AudioBuffer>[] = [loadSound("resources/sounds/fire.wav"), loadSound("resources/sounds/explosion.wav")];
 
-  // when all sounds have loaded, call the callback
   Promise.all(promises).then((buffers) => {
     buffers.forEach((buffer) => soundBuffers.push(buffer));
   });

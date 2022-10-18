@@ -169,7 +169,7 @@ wss.on("connection", (ws) => {
       }
 
       const player = {
-        position: { x: -1600, y: -1600 },
+        position: { x: 200, y: 200 },
         radius: defs[defIndex].radius,
         speed: 0,
         heading: 0,

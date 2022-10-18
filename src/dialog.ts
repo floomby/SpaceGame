@@ -7,6 +7,10 @@ const init = () => {
   div.style.display = "none";
 };
 
+const setDialogBackground = (color: string) => {
+  div.style.backgroundColor = color;
+};
+
 let staged: HTMLDivElement;
 let stackPlace: HTMLDivElement;
 
@@ -128,4 +132,4 @@ const unbindKey = (key: string) => {
   lastStates.delete(key);
 };
 
-export { init, show, hide, clear, horizontalCenter, bindUpdater, updateDom, bindPostUpdater, unbindKey, push, pop };
+export { init, show, hide, clear, horizontalCenter, bindUpdater, updateDom, bindPostUpdater, unbindKey, push, pop, setDialogBackground };

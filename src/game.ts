@@ -571,8 +571,7 @@ const update = (
         missile.speed = missileDef.speed;
       }
     }
-    missile.lifetime -= 1;
-    if (missile.lifetime % 10 === 5) {
+    if (missile.lifetime === missileDef.lifetime) {
       applyEffect({
         effectIndex: 5,
         from: {
@@ -581,6 +580,7 @@ const update = (
         },
       });
     }
+    missile.lifetime -= 1;
     let didRemove = false;
     for (const [otherId, otherPlayer] of state.players) {
       if (otherPlayer.docked) {

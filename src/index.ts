@@ -42,6 +42,7 @@ import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind } from "./
 import { drawEverything, flashSecondary, initDrawing } from "./drawing";
 import { dvorakBindings, KeyBindings, qwertyBindings } from "./keybindings";
 import { applyEffects } from "./effects";
+import { initSound } from "./sound";
 
 // The server will assign our id when we connect
 let me: number;
@@ -492,6 +493,7 @@ const registerer = (username: string) => {
 };
 
 const doRegister = () => {
+  initSound();
   const input = document.getElementById("username") as HTMLInputElement;
   const visited = localStorage.getItem("visited") !== null;
   if (visited) {

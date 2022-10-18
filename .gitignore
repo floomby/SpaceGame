@@ -3,3 +3,4 @@ server/server.js
 dist
 src/*.js
 deployer.sh
+server/resources

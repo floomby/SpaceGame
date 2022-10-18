@@ -14,15 +14,15 @@ credentials.ca = fs.readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/
 const app = express();
 
 // app.use(express.static("dist"));
-// app.use(express.static("resources"));
+app.use(express.static("resources"));
 
 app.get("/dist/app.js", (req, res) => {
     res.sendFile("dist/app.js", { root });
 });
 
-app.get("/resources/sprites.png", (req, res) => {
-    res.sendFile("resources/sprites.png", { root });
-});
+// app.get("/resources/sprites.png", (req, res) => {
+//     res.sendFile("resources/sprites.png", { root });
+// });
 
 app.get('/', (req, res) => {
     res.sendFile("index.html", { root });

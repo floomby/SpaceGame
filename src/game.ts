@@ -7,6 +7,11 @@ type Circle = { position: Position; radius: number };
 type Rectangle = { x: number; y: number; width: number; height: number };
 type Line = { from: Position; to: Position };
 
+const maxDecimals = (num: number, decimals: number) => {
+  const factor = Math.pow(10, decimals);
+  return Math.round((num + Number.EPSILON) * factor) / factor;
+};
+
 const infinityNorm = (a: Position, b: Position) => {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 };
@@ -845,6 +850,7 @@ export {
   availableCargoCapacity,
   addCargo,
   equip,
+  maxDecimals,
   ticksPerSecond,
   maxNameLength,
 };

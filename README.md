@@ -16,7 +16,6 @@ A simple multiplayer game where you have a ship and do things.
 ### Next version steps
 
 - Finish making the sound effects
-- Ship view in station UI
 
 ### Next next version steps
 

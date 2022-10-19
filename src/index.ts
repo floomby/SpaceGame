@@ -27,6 +27,8 @@ import {
   TargetKind,
   CargoEntry,
   Missile,
+  ticksPerSecond,
+  maxDecimals,
 } from "./game";
 import {
   init as initDialog,
@@ -330,13 +332,24 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   return horizontalCenter([html, '<br><button id="back">Back</button>']);
 };
 
+const shipViewer = (definitionIndex: number) => {
+  const def = defs[definitionIndex];
+  return `<div style=" display: flex; flex-direction: row;">
+  <canvas id="shipView" width="200" height="200"></canvas>
+  <div style="width: 60vw;">
+    <div id="shipStats" style="width: 100%">
+    </div>
+  </div>
+</div>`;
+};
+
 const dockDialog = (station: Player | undefined, self: Player) => {
   if (!station) {
     return `Docking error - station ${self.docked} not found`;
   }
   return horizontalCenter([
     `<h2>Docked with ${station.name}</h2>`,
-    `<canvas id="shipView" width="200" height="200"></canvas>`,
+    `${shipViewer(self.definitionIndex)}`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">
   <div style="width: 45%; float: left;">
@@ -369,15 +382,40 @@ const shipPostUpdate = (defIndex: number) => {
     console.log("no sprite for ship view");
     return;
   }
-  const maxSize = Math.max(sprite.width, sprite.height);
-  let scale = 200 / maxSize;
+  const widthScale = canvas.width / sprite.width;
+  const heightScale = canvas.height / sprite.height;
+  let scale = Math.min(widthScale, heightScale);
   if (scale > 1) {
     scale = 1;
   }
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  ctx.drawImage(sprite, centerX - sprite.width * scale / 2, centerY - sprite.height * scale / 2, sprite.width * scale, sprite.height * scale);
+  ctx.drawImage(sprite, centerX - (sprite.width * scale) / 2, centerY - (sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
+
+  const stats = document.getElementById("shipStats");
+  if (stats) {
+    const normalSlotCount = def.slots.filter((kind) => kind === SlotKind.Normal).length;
+    const utilitySlotCount = def.slots.filter((kind) => kind === SlotKind.Utility).length;
+    const mineSlotCount = def.slots.filter((kind) => kind === SlotKind.Mine).length;
+    const largeSlotCount = def.slots.filter((kind) => kind === SlotKind.Large).length;
+
+    stats.innerHTML = `<table style="width: 100%; text-align: left;">
+  <tr><th>Name</th><td>${def.name}</td></tr>
+  <tr><th>Speed</th><td>${maxDecimals(def.speed * ticksPerSecond, 2)} Units/sec</td></tr>
+  <tr><th>Turn Rate</th><td>${maxDecimals(def.turnRate * ticksPerSecond, 2)} Radians/sec</td></tr>
+  <tr><th>Acceleration</th><td>${maxDecimals(def.acceleration * ticksPerSecond, 2)} Units/sec<sup>2</sup></td></tr>
+  <tr><th>Health</th><td>${maxDecimals(def.health, 2)}</td></tr>
+  ${normalSlotCount > 0 ? `<tr><th>Normal Slots</th><td>${normalSlotCount}</td></tr>` : ""}
+  ${utilitySlotCount > 0 ? `<tr><th>Utility Slots</th><td>${utilitySlotCount}</td></tr>` : ""}
+  ${mineSlotCount > 0 ? `<tr><th>Mine Slots</th><td>${mineSlotCount}</td></tr>` : ""}
+  ${largeSlotCount > 0 ? `<tr><th>Large Slots</th><td>${largeSlotCount}</td></tr>` : ""}
+  <tr><th>Energy Regen</th><td>${maxDecimals(def.energyRegen * ticksPerSecond, 2)} Energy/sec</td></tr>
+  <tr><th>Health Regen</th><td>${maxDecimals(def.healthRegen * ticksPerSecond, 2)} Health/sec</td></tr>
+  <tr><th>Cargo Capacity</th><td>${maxDecimals(def.cargoCapacity, 2)}</td></tr>
+</table>`;
+  }
 };
 
 const setupDockingUI = (station: Player | undefined, self: Player | undefined) => {
@@ -565,13 +603,14 @@ const confederationColor = "rgba(49, 25, 25, 0.341)";
 const allianceColorDark = "rgba(22, 45, 34, 0.8)";
 const confederationColorDark = "rgba(49, 25, 25, 0.8)";
 
-const settingsDialog = () => horizontalCenter([
-  `<h1>Settings</h1>`,
-  `Volume:`,
-  `<input type="range" min="0" max="1" value="${getVolume()}" class="slider" id="volumeSlider" step="0.05"><br/>`,
-  keylayoutSelector(),
-  `<br/><button id="closeSettings">Close</button>`,
-]);
+const settingsDialog = () =>
+  horizontalCenter([
+    `<h1>Settings</h1>`,
+    `Volume:`,
+    `<input type="range" min="0" max="1" value="${getVolume()}" class="slider" id="volumeSlider" step="0.05"><br/>`,
+    keylayoutSelector(),
+    `<br/><button id="closeSettings">Close</button>`,
+  ]);
 
 let settingShown = false;
 

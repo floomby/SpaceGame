@@ -1,3 +1,8 @@
+enum KeyLayouts {
+  Qwerty,
+  Dvorak,
+}
+
 type KeyBindings = {
   up: string;
   down: string;
@@ -70,4 +75,8 @@ const dvorakBindings: KeyBindings = {
   selectSecondary9: "9",
 };
 
-export { KeyBindings, qwertyBindings, dvorakBindings };
+const useKeybindings = (layout: KeyLayouts) => {
+  return KeyLayouts.Qwerty ? qwertyBindings : dvorakBindings;
+};
+
+export { KeyBindings, KeyLayouts, qwertyBindings, dvorakBindings, useKeybindings };

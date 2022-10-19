@@ -79,7 +79,7 @@ const pop = () => {
 };
 
 const horizontalCenter = (html: string[]) => {
-  return `<div style="text-align: center;">${html.map(html => `<div style="display: inline-block;">${html}</div>`).join("<br/>")}</div>`;
+  return `<div style="text-align: center;">${html.map((html) => `<div style="display: inline-block;">${html}</div>`).join("<br/>")}</div>`;
 };
 
 const updaters: Map<string, (value: any) => string> = new Map();
@@ -118,6 +118,30 @@ const updateDom = (id: string, value: any) => {
   }
 };
 
+const runPostUpdaterOnly = (id: string, value: any) => {
+  if (!shown) {
+    return;
+  }
+  const lastState = lastStates.get(id);
+  let thisState: string | undefined = undefined;
+  if (lastState) {
+    thisState = JSON.stringify(value);
+    if (lastState === thisState) {
+      return;
+    }
+  }
+
+  const postUpdater = postUpdaters.get(id);
+  if (postUpdater) {
+    if (!thisState) {
+      thisState = JSON.stringify(value);
+    }
+    lastStates.set(id, thisState);
+    console.log("runPostUpdaterOnly", id, value);
+    postUpdater(value);
+  }
+};
+
 const bindUpdater = (id: string, updater: (value: any) => string) => {
   updaters.set(id, updater);
 };
@@ -132,4 +156,18 @@ const unbindKey = (key: string) => {
   lastStates.delete(key);
 };
 
-export { init, show, hide, clear, horizontalCenter, bindUpdater, updateDom, bindPostUpdater, unbindKey, push, pop, setDialogBackground };
+export {
+  init,
+  show,
+  hide,
+  clear,
+  horizontalCenter,
+  bindUpdater,
+  updateDom,
+  bindPostUpdater,
+  unbindKey,
+  push,
+  pop,
+  setDialogBackground,
+  runPostUpdaterOnly,
+};

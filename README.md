@@ -20,5 +20,7 @@ A simple multiplayer game where you have a ship and do things.
 
 ### Next next version steps
 
+- Point to target key
 - Collectables
 - Chat
+- Killed/kill message with names

@@ -40,18 +40,19 @@ import {
   bindUpdater,
   bindPostUpdater,
   setDialogBackground,
+  runPostUpdaterOnly,
 } from "./dialog";
 import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind } from "./defs";
-import { drawEverything, flashSecondary, initDrawing } from "./drawing";
-import { dvorakBindings, KeyBindings, qwertyBindings } from "./keybindings";
+import { drawEverything, flashSecondary, initDrawing, sprites } from "./drawing";
+import { dvorakBindings, KeyBindings, qwertyBindings, useKeybindings } from "./keybindings";
 import { applyEffects } from "./effects";
 import { initSound, setVolume, getVolume } from "./sound";
+import { defaultKeyLayout } from "./config";
 
-// The server will assign our id when we connect
+// The server will assign our id after we register
 let me: number;
 
-let keybind = qwertyBindings;
-// let keybind = dvorakBindings;
+let keybind = useKeybindings(defaultKeyLayout);
 
 let targetEnemy = false;
 let selectedSecondary = 0;
@@ -335,6 +336,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
   }
   return horizontalCenter([
     `<h2>Docked with ${station.name}</h2>`,
+    `<canvas id="shipView" width="200" height="200"></canvas>`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">
   <div style="width: 45%; float: left;">
@@ -350,6 +352,34 @@ const dockDialog = (station: Player | undefined, self: Player) => {
   ]);
 };
 
+const shipPostUpdate = (defIndex: number) => {
+  const canvas = document.getElementById("shipView") as HTMLCanvasElement;
+  if (!canvas) {
+    console.log("no canvas for ship view");
+    return;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    console.log("no context for ship view");
+    return;
+  }
+  const def = defs[defIndex];
+  const sprite = sprites[defIndex];
+  if (!sprite) {
+    console.log("no sprite for ship view");
+    return;
+  }
+  const maxSize = Math.max(sprite.width, sprite.height);
+  let scale = 200 / maxSize;
+  if (scale > 1) {
+    scale = 1;
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  ctx.drawImage(sprite, centerX - sprite.width * scale / 2, centerY - sprite.height * scale / 2, sprite.width * scale, sprite.height * scale);
+};
+
 const setupDockingUI = (station: Player | undefined, self: Player | undefined) => {
   if (!station || !self) {
     return;
@@ -359,6 +389,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   });
   cargoPostUpdate(self.cargo);
   armsPostUpdate(self.armIndices);
+  shipPostUpdate(self.definitionIndex);
 };
 
 const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
@@ -733,7 +764,7 @@ const showFirstTimeHelp = (username: string) => {
   localStorage.setItem("visited", "true");
 };
 
-const registerDialogSetup = () => {
+const setupRegisterDialog = () => {
   const usernameInput = document.getElementById("username") as HTMLInputElement;
   usernameInput.addEventListener("keydown", registerHandler);
   keylayoutSelectorSetup();
@@ -773,7 +804,7 @@ const setupDeadDialog = () => {
 
 const run = () => {
   showDialog(registerDialog);
-  registerDialogSetup();
+  setupRegisterDialog();
 
   state = {
     players: new Map(),
@@ -792,6 +823,7 @@ const run = () => {
   bindUpdater("credits", creditsHtml);
   bindUpdater("arms", armsHtml);
   bindPostUpdater("arms", armsPostUpdate);
+  bindPostUpdater("ship", shipPostUpdate);
 
   bindAction("state", (data: any) => {
     state.players.clear();
@@ -830,6 +862,7 @@ const run = () => {
       updateDom("cargo", self.cargo);
       updateDom("credits", self.credits);
       updateDom("arms", self.armIndices);
+      runPostUpdaterOnly("ship", self.definitionIndex);
       didDie = false;
       if (self.docked) {
         targetId = 0;

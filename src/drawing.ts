@@ -557,4 +557,4 @@ const flashSecondary = () => {
   secondaryFlashTimeRemaining = 90;
 };
 
-export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites };
+export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites, sprites };

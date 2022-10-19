@@ -327,7 +327,7 @@ const initDefs = () => {
     damage: 13,
     acceleration: 0.2,
     lifetime: 600,
-    deathEffect: 2,
+    deathEffect: 4,
   });
   const javelinIndex = missileDefs.length - 1;
   armDefs.push({

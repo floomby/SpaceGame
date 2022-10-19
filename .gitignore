@@ -4,3 +4,4 @@ dist
 src/*.js
 deployer.sh
 server/resources
+soundCandidates

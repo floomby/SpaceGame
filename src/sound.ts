@@ -3,6 +3,14 @@ let volume: GainNode;
 
 const soundBuffers: AudioBuffer[] = [];
 
+const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav"];
+
+const soundMap: Map<string, number> = new Map<string, number>();
+
+for (let i = 0; i < sounds.length; i++) {
+  soundMap.set(sounds[i], i);
+}
+
 // load a sound and return a promise
 const loadSound = (url: string) => {
   return fetch(url)
@@ -16,7 +24,7 @@ const initSound = () => {
   volume.connect(ctx.destination);
   volume.gain.value = 0.5;
 
-  const promises: Promise<AudioBuffer>[] = [loadSound("resources/sounds/fire.wav"), loadSound("resources/sounds/explosion.wav")];
+  const promises: Promise<AudioBuffer>[] = sounds.map((sound) => `resources/sounds/${sound}`).map(loadSound);
 
   Promise.all(promises).then((buffers) => {
     buffers.forEach((buffer) => soundBuffers.push(buffer));
@@ -50,6 +58,7 @@ const play3dSound = (index: number, x: number, y: number) => {
   const source = ctx.createBufferSource();
   source.buffer = soundBuffers[index];
   const panner = ctx.createPanner();
+  
   panner.positionX.value = x;
   panner.positionY.value = y;
   panner.positionZ.value = 1;
@@ -59,6 +68,14 @@ const play3dSound = (index: number, x: number, y: number) => {
   return panner;
 };
 
+const getSound = (name: string) => {
+  const ret = soundMap.get(name);
+  if (ret === undefined) {
+    console.log(`Sound ${name} not found`);
+  }
+  return ret;
+};
+
 const soundScale = 500;
 
-export { initSound, playSound, play3dSound, soundScale, setVolume, getVolume };
+export { initSound, playSound, play3dSound, soundScale, setVolume, getVolume, soundMap, getSound };

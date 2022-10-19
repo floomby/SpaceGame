@@ -76,7 +76,7 @@ const dvorakBindings: KeyBindings = {
 };
 
 const useKeybindings = (layout: KeyLayouts) => {
-  return KeyLayouts.Qwerty ? qwertyBindings : dvorakBindings;
+  return layout === KeyLayouts.Qwerty ? qwertyBindings : dvorakBindings;
 };
 
 export { KeyBindings, KeyLayouts, qwertyBindings, dvorakBindings, useKeybindings };

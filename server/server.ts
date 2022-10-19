@@ -315,7 +315,14 @@ wss.on("connection", (ws) => {
           state.players.set(client.id, player);
         }
       }
-    } else {
+    } else if (data.type === "chat") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        for (const [client, clientData] of clients) {
+          client.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
+        }
+      }
+    }else {
       console.log("Message from client: ", data);
     }
   });

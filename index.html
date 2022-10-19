@@ -15,10 +15,18 @@
         transform: translate(-50%, -50%);
       }
 
+      .horizontal-center {
+        position: absolute;
+        left: 50%;
+        -webkit-transform: translate(-50%, 0);
+        transform: translate(-50%, 0);
+      }
+
       .tooltip {
         /* position: relative; */
         display: inline-block;
         border-bottom: 1px dotted white;
+        z-index: 5;
       }
 
       .tooltip .tooltipText {
@@ -31,7 +39,7 @@
         padding: 5px;
 
         position: absolute;
-        z-index: 3;
+        z-index: 6;
       }
 
       .tooltip .bigTooltipText {
@@ -52,7 +60,7 @@
         transform: translate(-50%, -50%);
 
         position: absolute;
-        z-index: 4;
+        z-index: 6;
       }
 
       .tooltip:hover .tooltipText {
@@ -86,6 +94,16 @@
       .settings:hover {
         opacity: 0.8;
       }
+
+      .chatInputStyle {
+        top: 80vh;
+        z-index: 2;
+
+        background-color: transparent;
+        color: white;
+        border: none;
+        display: none;
+      }
     </style>
   </head>
   <body style="background-color: darkgray">
@@ -93,7 +111,7 @@
     <script data-main="dist/app" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js"></script>
     <div
       id="dialog"
-      style="color: white; position: absolute; left: 0px; top: 0px; z-index: 1; width: 100%; height: 100%; background-color: rgba(22, 45, 34, 0.341)"
+      style="color: white; position: absolute; left: 0px; top: 0px; z-index: 3; width: 100%; height: 100%; background-color: rgba(22, 45, 34, 0.341)"
     ></div>
     <img
       src="resources/gear.svg"
@@ -101,5 +119,6 @@
       class="settings"
       style="display: none;"
     />
+    <input type="text" class="horizontal-center chatInputStyle" id="chatInput"></input>
   </body>
 </html>

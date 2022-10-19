@@ -11,6 +11,7 @@ import {
   sendSellCargo,
   sendEquip,
   unbindAllActions,
+  sendChat,
 } from "./net";
 import {
   GlobalState,
@@ -29,6 +30,7 @@ import {
   Missile,
   ticksPerSecond,
   maxDecimals,
+  ChatMessage,
 } from "./game";
 import {
   init as initDialog,
@@ -45,7 +47,7 @@ import {
   runPostUpdaterOnly,
 } from "./dialog";
 import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind } from "./defs";
-import { drawEverything, flashSecondary, initDrawing, sprites } from "./drawing";
+import { canvas, drawEverything, flashSecondary, initDrawing, sprites } from "./drawing";
 import { dvorakBindings, KeyBindings, qwertyBindings, useKeybindings } from "./keybindings";
 import { applyEffects } from "./effects";
 import { initSound, setVolume, getVolume } from "./sound";
@@ -74,8 +76,28 @@ let input: Input = {
   previousTargetAsteroid: false,
 };
 
+let chatInput: HTMLInputElement;
+
 const initInputHandlers = () => {
+  chatInput = document.getElementById("chatInput") as HTMLInputElement;
+  // if the chat is unfocused and empty we need to hide it
+  chatInput.addEventListener("blur", () => {
+    if (chatInput.value === "") {
+      chatInput.style.display = "none";
+    }
+  });
+
   document.addEventListener("keydown", (e) => {
+    if (chatInput === document.activeElement) {
+      if (e.key === "Enter" && chatInput.value !== "") {
+        sendChat(me, chatInput.value);
+        chatInput.value = "";
+        chatInput.blur();
+        chatInput.style.display = "none";
+      }
+      return;
+    }
+
     let changed = false;
     const oldSecondary = selectedSecondary;
     switch (e.key) {
@@ -150,6 +172,10 @@ const initInputHandlers = () => {
       case keybind.selectSecondary9:
         selectedSecondary = 9;
         break;
+      case keybind.chat:
+        chatInput.style.display = "block";
+        chatInput.focus();
+        break;
     }
     if (changed) {
       sendInput(input, me);
@@ -159,6 +185,10 @@ const initInputHandlers = () => {
     }
   });
   document.addEventListener("keyup", (e) => {
+    if (chatInput === document.activeElement) {
+      return;
+    }
+
     let changed = false;
     switch (e.key) {
       case keybind.up:
@@ -208,12 +238,10 @@ const initInputHandlers = () => {
 };
 
 let state: GlobalState;
-// let syncPosition: number;
+let chats: ChatMessage[] = [];
 
 let docker = () => {};
 let showDocked = false;
-
-// let lastUpdate = Date.now();
 
 let targetId = 0;
 let targetAsteroidId = 0;
@@ -462,6 +490,8 @@ let serverTarget: [TargetKind, number] = [TargetKind.None, 0];
 
 let lastFrameTime = Date.now();
 
+const lastChats = new Map<number, ChatMessage>();
+
 const loop = () => {
   const elapsed = Date.now() - lastFrameTime;
   lastFrameTime = Date.now();
@@ -550,8 +580,27 @@ const loop = () => {
     }
   }
 
-  // const drawState = fractionalUpdate(state, ((Date.now() - lastUpdate) * ticksPerSecond) / 1000);
-  drawEverything(state, self, target, targetAsteroid, me, selectedSecondary, keybind, sixtieths);
+  lastChats.clear();
+  const newChats: ChatMessage[] = [];
+
+  for (const chat of chats) {
+    if (chat.showUntil < lastFrameTime) {
+      continue;
+    }
+    const last = lastChats.get(chat.id);
+    if (last && last.showUntil < chat.showUntil) {
+      lastChats.set(chat.id, chat);
+      newChats.push(chat);
+
+    } else if (!last) {
+      lastChats.set(chat.id, chat);
+      newChats.push(chat);
+    }
+  }
+  chats = newChats;
+
+  drawEverything(state, self, target, targetAsteroid, me, selectedSecondary, keybind, sixtieths, lastChats);
+
   requestAnimationFrame(loop);
 };
 
@@ -709,6 +758,7 @@ const keybindingTooltipText = (bindings: KeyBindings) => {
   <tr><td style="padding-right: 3vw;">${keys.down}</td><td>Decelerate</td></tr>
   <tr><td style="padding-right: 3vw;">${keys.left}</td><td>Rotate left</td></tr>
   <tr><td style="padding-right: 3vw;">${keys.right}</td><td>Rotate right</td></tr>
+  <tr><td style="padding-right: 3vw;">${keys.chat}</td><td>Chat</td></tr>
 </table>`;
 };
 
@@ -765,6 +815,7 @@ const keybindingHelpText = (bindings: KeyBindings) => {
       <tr><td style="padding-right: 3vw;">${keys.selectSecondary7}</td><td>Select secondary 7</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.selectSecondary8}</td><td>Select secondary 8</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.selectSecondary9}</td><td>Select secondary 9</td></tr>
+      <tr><td style="padding-right: 3vw;">${keys.chat}</td><td>Chat</td></tr>
     </table>
   </div>
 </div>`;
@@ -855,6 +906,7 @@ const run = () => {
   bindAction("init", (data: { id: number; respawnKey: number }) => {
     me = data.id;
     respawnKey = data.respawnKey;
+    chatInput.blur();
   });
 
   bindUpdater("cargo", cargoHtml);
@@ -911,17 +963,25 @@ const run = () => {
     applyEffects(data.effects);
   });
 
-  bindAction("input", (data: any) => {
-    const { input, id } = data;
-    const player = state.players.get(id);
-    if (player) {
-      applyInputs(input, player);
-    }
-  });
+  // bindAction("input", (data: any) => {
+  //   const { input, id } = data;
+  //   const player = state.players.get(id);
+  //   if (player) {
+  //     applyInputs(input, player);
+  //   }
+  // });
 
   bindAction("win", (data: { faction: Faction }) => {
     showDialog(horizontalCenter([`<h2>${getFactionString(data.faction)} wins!</h2>`, '<button onclick="location.reload();">Play Again</button>']));
     unbindAllActions();
+  });
+
+  bindAction("chat", (data: { id: number; message: string }) => {
+    chats.push({
+      id: data.id,
+      message: data.message,
+      showUntil: Date.now() + 8000,
+    });
   });
 
   loop();

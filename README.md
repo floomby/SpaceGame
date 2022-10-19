@@ -15,11 +15,9 @@ A simple multiplayer game where you have a ship and do things.
 
 ### Next version steps
 
-- Finish making the sound effects
-
-### Next next version steps
-
 - Point to target key
 - Collectables
-- Chat
 - Killed/kill message with names
+- Ability to dump cargo
+- Make a second ship for each race
+- Ship purchasing UI in station

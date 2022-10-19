@@ -134,6 +134,15 @@ const sendEquip = (id: number, slotIndex: number, what: number) => {
   );
 };
 
+const sendChat = (id: number, message: string) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "chat",
+      payload: { id, message },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -148,4 +157,5 @@ export {
   sendSecondary,
   sendSellCargo,
   sendEquip,
+  sendChat,
 };

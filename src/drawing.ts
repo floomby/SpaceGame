@@ -4,6 +4,7 @@ import {
   Asteroid,
   availableCargoCapacity,
   Ballistic,
+  ChatMessage,
   Circle,
   findHeadingBetween,
   GlobalState,
@@ -473,6 +474,26 @@ const drawTargetArrow = (self: Player, target: Circle, fillStyle: string) => {
   ctx.restore();
 };
 
+const drawChat = (self: Player, player: Player, chat: ChatMessage) => {
+  ctx.save();
+  ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
+  // TODO Maybe draw a cute little chat bubble
+  ctx.fillStyle = "white";
+  ctx.font = "12px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(chat.message, 0, -player.radius - 15);
+  ctx.restore();
+};
+
+const drawChats = (self: Player, players: Map<number, Player>, chats: IterableIterator<ChatMessage>) => {
+  for (const chat of chats) {
+    const player = players.get(chat.id);
+    if (player) {
+      drawChat(self, player, chat);
+    }
+  }
+};
+
 const drawEverything = (
   state: GlobalState,
   self: Player,
@@ -481,7 +502,8 @@ const drawEverything = (
   me: number,
   selectedSecondary: number,
   keybind: KeyBindings,
-  sixtieths: number
+  sixtieths: number,
+  chats: Map<number, ChatMessage>,
 ) => {
   highlightPhase += 0.1 * sixtieths;
   if (highlightPhase > 2 * Math.PI) {
@@ -527,6 +549,9 @@ const drawEverything = (
     }
   }
   drawEffects(lastSelf, state, sixtieths);
+  if (self) {
+    drawChats(self, state.players, chats.values());
+  }
   if (self && !self.docked) {
     drawMiniMap({ x: canvas.width - 210, y: canvas.height - 230 }, 200, 200, self, state, 0.03);
     drawHUD(self, selectedSecondary);
@@ -557,4 +582,4 @@ const flashSecondary = () => {
   secondaryFlashTimeRemaining = 90;
 };
 
-export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites, sprites };
+export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites, sprites, ChatMessage };

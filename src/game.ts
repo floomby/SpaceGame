@@ -104,6 +104,12 @@ const addCargo = (player: Player, what: string, amount: number) => {
   }
 };
 
+type ChatMessage = {
+  id: number;
+  message: string;
+  showUntil: number;
+};
+
 const copyPlayer = (player: Player) => {
   const ret = { ...player };
   ret.sinceLastShot = [...player.sinceLastShot];
@@ -830,6 +836,7 @@ export {
   EffectAnchor,
   EffectTrigger,
   CargoEntry,
+  ChatMessage,
   update,
   applyInputs,
   infinityNorm,

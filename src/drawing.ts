@@ -488,7 +488,7 @@ const drawChat = (self: Player, player: Player, chat: ChatMessage) => {
 const drawChats = (self: Player, players: Map<number, Player>, chats: IterableIterator<ChatMessage>) => {
   for (const chat of chats) {
     const player = players.get(chat.id);
-    if (player) {
+    if (player && !player.docked) {
       drawChat(self, player, chat);
     }
   }

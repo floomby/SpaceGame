@@ -39,6 +39,7 @@ import {
   clear as clearDialog,
   pop as popDialog,
   push as pushDialog,
+  isShown as isDialogShown,
   horizontalCenter,
   updateDom,
   bindUpdater,
@@ -92,6 +93,9 @@ const initInputHandlers = () => {
       if (e.key === "Enter" && chatInput.value !== "") {
         sendChat(me, chatInput.value);
         chatInput.value = "";
+        chatInput.blur();
+        chatInput.style.display = "none";
+      } else if (e.key === "Enter") {
         chatInput.blur();
         chatInput.style.display = "none";
       }
@@ -173,8 +177,10 @@ const initInputHandlers = () => {
         selectedSecondary = 9;
         break;
       case keybind.chat:
-        chatInput.style.display = "block";
-        chatInput.focus();
+        if (!isDialogShown()) {
+          chatInput.style.display = "block";
+          chatInput.focus();
+        }
         break;
     }
     if (changed) {
@@ -591,7 +597,6 @@ const loop = () => {
     if (last && last.showUntil < chat.showUntil) {
       lastChats.set(chat.id, chat);
       newChats.push(chat);
-
     } else if (!last) {
       lastChats.set(chat.id, chat);
       newChats.push(chat);

@@ -20,8 +20,9 @@ import {
   CargoEntry,
   equip,
   Missile,
+  purchaseShip,
 } from "../src/game";
-import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage } from "../src/defs";
+import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout } from "../src/defs";
 import { assert } from "console";
 import { readFileSync } from "fs";
 import { useSsl } from "../src/config";
@@ -160,9 +161,11 @@ wss.on("connection", (ws) => {
       let defIndex: number;
       const faction = data.payload.faction as Faction;
       if (faction === Faction.Alliance) {
-        defIndex = defMap.get("Fighter")!.index;
+        // defIndex = defMap.get("Fighter")!.index;
+        defIndex = defMap.get("Advanced Fighter")!.index;
       } else if (faction === Faction.Confederation) {
-        defIndex = defMap.get("Drone")!.index;
+        // defIndex = defMap.get("Drone")!.index;
+        defIndex = defMap.get("Seeker")!.index;
       } else {
         console.log(`Invalid faction ${faction}`);
         return;
@@ -180,15 +183,15 @@ wss.on("connection", (ws) => {
         name,
         energy: defs[defIndex].energy,
         definitionIndex: defIndex,
-        armIndices: [EmptySlot.Mining, EmptySlot.Normal],
-        slotData: [{}, {}],
+        armIndices: emptyLoadout(defIndex),
+        slotData: [{}, {}, {}],
         cargo: [{ what: "Teddy Bears", amount: 30 }],
         credits: 500,
       };
 
       equip(player, 0, "Basic mining laser");
-      // equip(player, 1, "Tomahawk Missile");
-      equip(player, 1, "Laser Beam");
+      equip(player, 1, "Tomahawk Missile");
+      equip(player, 2, "Laser Beam");
 
       state.players.set(id, player);
       const respawnKey = uid();
@@ -322,7 +325,16 @@ wss.on("connection", (ws) => {
           client.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
         }
       }
-    }else {
+    } else if (data.type === "purchase") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const player = state.players.get(client.id);
+        if (player) {
+          purchaseShip(player, data.payload.index);
+          state.players.set(client.id, player);
+        }
+      }   
+    } else {
       console.log("Message from client: ", data);
     }
   });

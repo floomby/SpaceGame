@@ -4,6 +4,7 @@ A simple multiplayer game where you have a ship and do things.
 
 ### TODO
 
+- Decide on what happens when stations die (if they even do, and how respawning works between sessions, and all that stuff)
 - Shields? (maybe)
 - Mines
 - Trade
@@ -19,5 +20,4 @@ A simple multiplayer game where you have a ship and do things.
 - Collectables
 - Killed/kill message with names
 - Ability to dump cargo
-- Make a second ship for each race
 - Ship purchasing UI in station

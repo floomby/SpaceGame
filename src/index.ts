@@ -54,6 +54,7 @@ import { dvorakBindings, KeyBindings, qwertyBindings, useKeybindings } from "./k
 import { applyEffects } from "./effects";
 import { initSound, setVolume, getVolume } from "./sound";
 import { defaultKeyLayout } from "./config";
+import { domFromRest } from "./rest";
 
 // The server will assign our id after we register
 let me: number;
@@ -388,19 +389,15 @@ const shipPreviewer = (definitionIndex: number) => {
     <div id="shipStatsPreview" style="width: 100%">
     </div>
   </div>
-</div>`
+</div>`;
 };
 
 const shipShop = () => {
   const self = state.players.get(me);
-  return horizontalCenter([
-    shipPreviewer(self.definitionIndex),
-    `<div id="shipList"></div>`,
-    `<button id="back">Back</button>`,
-  ]);
+  return horizontalCenter([shipPreviewer(self.definitionIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`]);
 };
 
-const populateShipList = (availableShips: { def: UnitDefinition, index: number }[], self: Player) => {
+const populateShipList = (availableShips: { def: UnitDefinition; index: number }[], self: Player) => {
   const shipList = document.getElementById("shipList");
   if (shipList) {
     shipList.innerHTML = `<table style="width: 80vw; text-align: left;">
@@ -411,19 +408,22 @@ const populateShipList = (availableShips: { def: UnitDefinition, index: number }
     <col span="1" style="width: 20vw;">
   </colgroup>
   <tbody>
-    ${availableShips.map(({ def, index }) => `<tr>
+    ${availableShips
+      .map(
+        ({ def, index }) => `<tr>
     <td>${def.name}</td>
     <td><button id="previewShip${index}">Preview</button></td>
     <td>${def.price}</td>
-    <td><button id="purchase${index}" ${self.credits >= def.price ? "" : "disabled"}>Purchase</button></td></tr>`).join("")}
+    <td><button id="purchase${index}" ${self.credits >= def.price ? "" : "disabled"}>Purchase</button></td></tr>`
+      )
+      .join("")}
   </tbody>
   </table>`;
   }
 };
 
-// TODO Refactor this repeated code (easy enough to do with creating a closure for the different viewers)
-const populateShipPreviewer = (defIndex: number) => {
-  const canvas = document.getElementById("shipPreview") as HTMLCanvasElement;
+const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: string) => {
+  const canvas = document.getElementById(shipViewId) as HTMLCanvasElement;
   if (!canvas) {
     console.log("no canvas for ship preview");
     return;
@@ -451,7 +451,7 @@ const populateShipPreviewer = (defIndex: number) => {
   const centerY = canvas.height / 2;
   ctx.drawImage(sprite, centerX - (sprite.width * scale) / 2, centerY - (sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
 
-  const stats = document.getElementById("shipStatsPreview");
+  const stats = document.getElementById(shipStatId);
   if (stats) {
     const normalSlotCount = def.slots.filter((kind) => kind === SlotKind.Normal).length;
     const utilitySlotCount = def.slots.filter((kind) => kind === SlotKind.Utility).length;
@@ -475,13 +475,19 @@ const populateShipPreviewer = (defIndex: number) => {
   }
 };
 
+const populateShipPreviewer = (definitionIndex: number) => {
+  shipViewerHelper(definitionIndex, "shipPreview", "shipStatsPreview");
+};
+
 const setupShipShop = () => {
   const self = state.players.get(me);
-  const availableShips = defs.map((def, index) => {
-    return { def, index };
-    }).filter(({ def }) => {
-    return def.kind === UnitKind.Ship && def.team === defs[self.definitionIndex].team;
-  });
+  const availableShips = defs
+    .map((def, index) => {
+      return { def, index };
+    })
+    .filter(({ def }) => {
+      return def.kind === UnitKind.Ship && def.team === defs[self.definitionIndex].team;
+    });
   populateShipList(availableShips, self);
   console.log("available ships", availableShips);
   for (const { def, index } of availableShips) {
@@ -516,7 +522,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     return `Docking error - station ${self.docked} not found`;
   }
   return horizontalCenter([
-    `<h2>Docked with ${station.name}</h2>`,
+    domFromRest(`nameOf?id=${station.id}`, (name) => `<h2>Docked with station ${name}</h2>`),
     `${shipViewer()}`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">
@@ -534,56 +540,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
 };
 
 const shipPostUpdate = (defIndex: number) => {
-  const canvas = document.getElementById("shipView") as HTMLCanvasElement;
-  if (!canvas) {
-    console.log("no canvas for ship view");
-    return;
-  }
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    console.log("no context for ship view");
-    return;
-  }
-  const def = defs[defIndex];
-  const sprite = sprites[defIndex];
-  if (!sprite) {
-    console.log("no sprite for ship view");
-    return;
-  }
-  const widthScale = canvas.width / sprite.width;
-  const heightScale = canvas.height / sprite.height;
-  let scale = Math.min(widthScale, heightScale);
-  if (scale > 1) {
-    scale = 1;
-  }
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  ctx.drawImage(sprite, centerX - (sprite.width * scale) / 2, centerY - (sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
-
-  const stats = document.getElementById("shipStats");
-  if (stats) {
-    const normalSlotCount = def.slots.filter((kind) => kind === SlotKind.Normal).length;
-    const utilitySlotCount = def.slots.filter((kind) => kind === SlotKind.Utility).length;
-    const mineSlotCount = def.slots.filter((kind) => kind === SlotKind.Mine).length;
-    const largeSlotCount = def.slots.filter((kind) => kind === SlotKind.Large).length;
-
-    stats.innerHTML = `<table style="width: 100%; text-align: left;">
-  <tr><th>Name</th><td>${def.name}</td></tr>
-  <tr><th>Speed</th><td>${maxDecimals(def.speed * ticksPerSecond, 2)} Units/sec</td></tr>
-  <tr><th>Turn Rate</th><td>${maxDecimals(def.turnRate * ticksPerSecond, 2)} Radians/sec</td></tr>
-  <tr><th>Acceleration</th><td>${maxDecimals(def.acceleration * ticksPerSecond, 2)} Units/sec<sup>2</sup></td></tr>
-  <tr><th>Health</th><td>${maxDecimals(def.health, 2)}</td></tr>
-  ${normalSlotCount > 0 ? `<tr><th>Normal Slots</th><td>${normalSlotCount}</td></tr>` : ""}
-  ${utilitySlotCount > 0 ? `<tr><th>Utility Slots</th><td>${utilitySlotCount}</td></tr>` : ""}
-  ${mineSlotCount > 0 ? `<tr><th>Mine Slots</th><td>${mineSlotCount}</td></tr>` : ""}
-  ${largeSlotCount > 0 ? `<tr><th>Large Slots</th><td>${largeSlotCount}</td></tr>` : ""}
-  <tr><th>Energy Regen</th><td>${maxDecimals(def.energyRegen * ticksPerSecond, 2)} Energy/sec</td></tr>
-  <tr><th>Health Regen</th><td>${maxDecimals(def.healthRegen * ticksPerSecond, 2)} Health/sec</td></tr>
-  <tr><th>Cargo Capacity</th><td>${maxDecimals(def.cargoCapacity, 2)}</td></tr>
-</table>`;
-  }
+  shipViewerHelper(defIndex, "shipView", "shipStats");
 };
 
 const setupDockingUI = (station: Player | undefined, self: Player | undefined) => {

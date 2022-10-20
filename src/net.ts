@@ -65,7 +65,8 @@ const sendPlayerInfo = (player: Player) => {
       type: "player",
       payload: {
         ...player,
-        name: player.name.substring(0, maxNameLength),
+        // name: player.name.substring(0, maxNameLength),
+        name: "test",
       },
     })
   );

@@ -48,7 +48,6 @@ type Player = Entity & {
   toFirePrimary?: boolean;
   toFireSecondary?: boolean;
   projectileId: number;
-  name?: string;
   energy: number;
   definitionIndex: number;
   canDock?: number;

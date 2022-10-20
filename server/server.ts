@@ -26,8 +26,17 @@ import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, Ar
 import { assert } from "console";
 import { readFileSync } from "fs";
 import { useSsl } from "../src/config";
+import express from "express";
+import { resolve } from "path";
 
-const credentials: any = {};
+import { User } from "./datamodels";
+import mongoose from "mongoose";
+
+// connect to the database
+mongoose.connect("mongodb://localhost:27017/SpaceGame", {});
+
+// Server stuff
+const credentials: { key?: string; cert?: string; ca?: string } = {};
 
 if (useSsl) {
   credentials.key = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/privkey.pem", "utf8");
@@ -35,16 +44,145 @@ if (useSsl) {
   credentials.ca = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/chain.pem", "utf8");
 }
 
-const port = 8080;
+const wsPort = 8080;
+const httpPort = 8081;
 
+// Http server stuff
+const root = resolve(__dirname + "/..");
+
+const app = express();
+
+app.get("/dist/app.js", (req, res) => {
+  res.sendFile("dist/app.js", { root });
+});
+
+app.get('/', (req, res) => {
+  res.sendFile("index.html", { root });
+});
+
+// Rest api stuff for things that are not "realtime"
+// check if username is available
+app.get("/available", (req, res) => {
+  const name = req.query.name;
+  if (!name || typeof name !== "string" || name.length > maxNameLength) {
+    res.send("false");
+    return;
+  }
+  // check the database
+  User.findOne({ name }, (err, user) => {
+    if (err) {
+      console.log(err);
+      res.send("false");
+      return;
+    }
+    if (user) {
+      res.send("false");
+      return;
+    }
+    res.send("true");
+  });
+});
+
+app.get("/nameOf", (req, res) => {
+  const id = req.query.id;
+  if (!id || typeof id !== "string") {
+    // send error json
+    res.send(JSON.stringify({ error: "Invalid id" }));
+    return;
+  }
+  // find the user from the database
+  User.findOne({ id }, (err, user) => {
+    if (err) {
+      console.log(err);
+      res.send(JSON.stringify({ error: "Error finding user" }));
+      return;
+    }
+    if (user) {
+      res.send(JSON.stringify({ value: user.name }));
+      return;
+    }
+    res.send(JSON.stringify({ error: "User not found" }));
+  });
+});
+
+app.get("/register", (req, res) => {
+  const name = req.query.name;
+  const password = req.query.password;
+  if (!name || typeof name !== "string" || name.length > maxNameLength) {
+    res.send("false");
+    return;
+  }
+  if (!password || typeof password !== "string") {
+    res.send("false");
+    return;
+  }
+  // check the database
+  User.findOne({ name }, (err, user) => {
+    if (err) {
+      console.log(err);
+      res.send("false");
+      return;
+    }
+    if (user) {
+      res.send("false");
+      return;
+    }
+    const id = uid();
+    // create the user
+    const newUser = new User({
+      name,
+      password,
+      id,
+    });
+    newUser.save((err) => {
+      if (err) {
+        console.log(err);
+        res.send("false");
+        return;
+      }
+      res.send("true");
+    });
+  });
+});
+
+if (useSsl) {
+  app.use(express.static("resources"));
+
+  const httpsServer = createSecureServer(credentials, app);
+  httpsServer.listen(httpPort, () => {
+    console.log(`Running secure http server on port ${httpPort}`);
+  });
+} else {
+  app.use(express.static(".."));
+
+  const httpServer = createServer(app);
+  httpServer.listen(httpPort, () => {
+    console.log(`Running unsecure http server on port ${httpPort}`);
+  });
+}
+
+// Websocket server stuff
+let server: ReturnType<typeof createServer> | ReturnType<typeof createSecureServer>;
+if (useSsl) {
+  server = createSecureServer(credentials);
+} else {
+  server = createServer();
+}
+
+// Initialize the definitions (Needs to be done to use them)
 initDefs();
 
+// Game state
 const state: GlobalState = {
   players: new Map(),
   projectiles: new Map(),
   asteroids: new Map(),
   missiles: new Map(),
 };
+
+let frame = 0;
+
+// Server state
 
 // Targeting is handled by the clients, but the server needs to know
 // Same pattern with secondaries
@@ -61,8 +199,6 @@ type ClientData = {
 const checkpoints = new Map<number, Player>();
 const respawnKeys = new Map<number, number>();
 
-let frame = 0;
-
 const clients: Map<WebSocket, ClientData> = new Map();
 
 let winUids = {
@@ -70,6 +206,7 @@ let winUids = {
   [Faction.Confederation]: 0,
 };
 
+// Clears everything for resetting everything
 const resetState = () => {
   state.players.clear();
   state.projectiles.clear();
@@ -86,15 +223,7 @@ const resetState = () => {
   winUids[Faction.Confederation] = 0;
 };
 
-let server: any;
-if (useSsl) {
-  server = createSecureServer(credentials);
-} else {
-  server = createServer();
-}
-
-const wss = new WebSocketServer({ server });
-
+// Make some stations so that we have something for testing
 const initEnvironment = (state: GlobalState) => {
   const testStarbaseId = uid();
   winUids[Faction.Alliance] = testStarbaseId;
@@ -144,9 +273,13 @@ const initEnvironment = (state: GlobalState) => {
 
 initEnvironment(state);
 
+// Market stuff
 const market = new Map<string, number>();
 market.set("Minerals", 1);
 market.set("Teddy Bears", 5);
+
+// Websocket stuff (TODO Move to its own file)
+const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws) => {
   console.log("Client connected");
@@ -172,7 +305,7 @@ wss.on("connection", (ws) => {
       }
 
       const player = {
-        position: { x: 200, y: 200 },
+        position: { x: -1600, y: -1600 },
         radius: defs[defIndex].radius,
         speed: 0,
         heading: 0,
@@ -203,11 +336,11 @@ wss.on("connection", (ws) => {
 
       ws.send(JSON.stringify({ type: "init", payload: { id, respawnKey } }));
       console.log("Registered client with id: ", id);
-    } else if (data.type === "debug") {
-      console.log("Debugging");
-      for (const [client, data] of clients) {
-        console.log("Client: ", data);
-      }
+      // } else if (data.type === "debug") {
+      //   console.log("Debugging");
+      //   for (const [client, data] of clients) {
+      //     console.log("Client: ", data);
+      //   }
     } else if (data.type === "input") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
@@ -333,7 +466,7 @@ wss.on("connection", (ws) => {
           purchaseShip(player, data.payload.index);
           state.players.set(client.id, player);
         }
-      }   
+      }
     } else {
       console.log("Message from client: ", data);
     }
@@ -358,6 +491,7 @@ wss.on("connection", (ws) => {
   });
 });
 
+// Temporary win condition for players
 const checkWin = (state: GlobalState) => {
   if (winUids[Faction.Alliance] && !state.players.has(winUids[Faction.Alliance])) {
     for (const [client, data] of clients) {
@@ -388,6 +522,7 @@ const checkWin = (state: GlobalState) => {
   }
 };
 
+// Updating the game state
 setInterval(() => {
   frame++;
   for (const [client, data] of clients) {
@@ -436,6 +571,6 @@ setInterval(() => {
   checkWin(state);
 }, 1000 / ticksPerSecond);
 
-server.listen(port, () => {
-  console.log(`${useSsl ? "Secure" : "Unsecure"} websocket server running on port ${port}`);
+server.listen(wsPort, () => {
+  console.log(`${useSsl ? "Secure" : "Unsecure"} websocket server running on port ${wsPort}`);
 });

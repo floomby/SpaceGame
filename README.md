@@ -14,10 +14,13 @@ A simple multiplayer game where you have a ship and do things.
 - Defining units, missiles, effects, etc should be easier
 - Economy is very boring right now
 
-### Next version steps
+### Next version
+
+- Do the mmo aspects of the game
+
+### Next next version steps
 
 - Point to target key
 - Collectables
 - Killed/kill message with names
 - Ability to dump cargo
-- Ship purchasing UI in station

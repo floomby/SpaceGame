@@ -1,6 +1,6 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs, ArmamentDef } from "./defs";
+import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs, ArmamentDef, emptyLoadout } from "./defs";
 
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
@@ -801,7 +801,7 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost 
   }
   const slotKind = def.slots[slotIndex];
   if (slotKind !== armDef.kind) {
-    console.log("Warning: wrong kind of armament");
+    console.log("Warning: wrong kind of armament", slotKind, armDef.kind);
     return;
   }
   if (slotIndex >= player.armIndices.length) {
@@ -815,6 +815,29 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost 
     if (armDef.equipMutator) {
       armDef.equipMutator(player, slotIndex);
     }
+  }
+};
+
+const purchaseShip = (player: Player, index: number) => {
+  if (index >= defs.length || index < 0) {
+    console.log("Warning: ship index out of range");
+    return;
+  }
+  const def = defs[index];
+  const playerDef = defs[player.definitionIndex];
+  if (def.price === undefined) {
+    console.log("Warning: ship not purchasable");
+    return;
+  }
+  if (playerDef.team !== def.team) {
+    console.log("Warning: ship not on same team");
+    return;
+  }
+  if (player.credits !== undefined && def.price <= player.credits) {
+    player.credits -= def.price;
+    player.definitionIndex = index;
+    player.slotData = (new Array(def.slots.length)).map(() => ({}));
+    player.armIndices = emptyLoadout(index);
   }
 };
 
@@ -858,6 +881,7 @@ export {
   addCargo,
   equip,
   maxDecimals,
+  purchaseShip,
   ticksPerSecond,
   maxNameLength,
 };

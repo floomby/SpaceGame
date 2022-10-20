@@ -12,6 +12,7 @@ import {
   sendEquip,
   unbindAllActions,
   sendChat,
+  sendPurchase,
 } from "./net";
 import {
   GlobalState,
@@ -47,7 +48,7 @@ import {
   setDialogBackground,
   runPostUpdaterOnly,
 } from "./dialog";
-import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind } from "./defs";
+import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, UnitKind, UnitDefinition } from "./defs";
 import { canvas, drawEverything, flashSecondary, initDrawing, sprites } from "./drawing";
 import { dvorakBindings, KeyBindings, qwertyBindings, useKeybindings } from "./keybindings";
 import { applyEffects } from "./effects";
@@ -366,15 +367,148 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   return horizontalCenter([html, '<br><button id="back">Back</button>']);
 };
 
-const shipViewer = (definitionIndex: number) => {
-  const def = defs[definitionIndex];
-  return `<div style=" display: flex; flex-direction: row;">
-  <canvas id="shipView" width="200" height="200"></canvas>
+const shipViewer = () => {
+  return `<div style="display: flex; flex-direction: row;">
+  <div>
+    <canvas id="shipView" width="200" height="200"></canvas>
+    <button id="changeShip" style="top: 0;">Change</button>
+  </div>
   <div style="width: 60vw;">
     <div id="shipStats" style="width: 100%">
     </div>
   </div>
 </div>`;
+};
+
+const shipPreviewer = (definitionIndex: number) => {
+  const def = defs[definitionIndex];
+  return `<div style="display: flex; flex-direction: row;">
+  <canvas id="shipPreview" width="200" height="200"></canvas>
+  <div style="width: 60vw;">
+    <div id="shipStatsPreview" style="width: 100%">
+    </div>
+  </div>
+</div>`
+};
+
+const shipShop = () => {
+  const self = state.players.get(me);
+  return horizontalCenter([
+    shipPreviewer(self.definitionIndex),
+    `<div id="shipList"></div>`,
+    `<button id="back">Back</button>`,
+  ]);
+};
+
+const populateShipList = (availableShips: { def: UnitDefinition, index: number }[], self: Player) => {
+  const shipList = document.getElementById("shipList");
+  if (shipList) {
+    shipList.innerHTML = `<table style="width: 80vw; text-align: left;">
+  <colgroup>
+    <col span="1" style="width: 30vw;">
+    <col span="1" style="width: 10vw;">
+    <col span="1" style="width: 20vw;">
+    <col span="1" style="width: 20vw;">
+  </colgroup>
+  <tbody>
+    ${availableShips.map(({ def, index }) => `<tr>
+    <td>${def.name}</td>
+    <td><button id="previewShip${index}">Preview</button></td>
+    <td>${def.price}</td>
+    <td><button id="purchase${index}" ${self.credits >= def.price ? "" : "disabled"}>Purchase</button></td></tr>`).join("")}
+  </tbody>
+  </table>`;
+  }
+};
+
+// TODO Refactor this repeated code (easy enough to do with creating a closure for the different viewers)
+const populateShipPreviewer = (defIndex: number) => {
+  const canvas = document.getElementById("shipPreview") as HTMLCanvasElement;
+  if (!canvas) {
+    console.log("no canvas for ship preview");
+    return;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    console.log("no context for ship preview");
+    return;
+  }
+  const def = defs[defIndex];
+  const sprite = sprites[defIndex];
+  if (!sprite) {
+    console.log("no sprite for ship preview");
+    return;
+  }
+  const widthScale = canvas.width / sprite.width;
+  const heightScale = canvas.height / sprite.height;
+  let scale = Math.min(widthScale, heightScale);
+  if (scale > 1) {
+    scale = 1;
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  ctx.drawImage(sprite, centerX - (sprite.width * scale) / 2, centerY - (sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
+
+  const stats = document.getElementById("shipStatsPreview");
+  if (stats) {
+    const normalSlotCount = def.slots.filter((kind) => kind === SlotKind.Normal).length;
+    const utilitySlotCount = def.slots.filter((kind) => kind === SlotKind.Utility).length;
+    const mineSlotCount = def.slots.filter((kind) => kind === SlotKind.Mine).length;
+    const largeSlotCount = def.slots.filter((kind) => kind === SlotKind.Large).length;
+
+    stats.innerHTML = `<table style="width: 100%; text-align: left;">
+  <tr><th>Name</th><td>${def.name}</td></tr>
+  <tr><th>Speed</th><td>${maxDecimals(def.speed * ticksPerSecond, 2)} Units/sec</td></tr>
+  <tr><th>Turn Rate</th><td>${maxDecimals(def.turnRate * ticksPerSecond, 2)} Radians/sec</td></tr>
+  <tr><th>Acceleration</th><td>${maxDecimals(def.acceleration * ticksPerSecond, 2)} Units/sec<sup>2</sup></td></tr>
+  <tr><th>Health</th><td>${maxDecimals(def.health, 2)}</td></tr>
+  ${normalSlotCount > 0 ? `<tr><th>Normal Slots</th><td>${normalSlotCount}</td></tr>` : ""}
+  ${utilitySlotCount > 0 ? `<tr><th>Utility Slots</th><td>${utilitySlotCount}</td></tr>` : ""}
+  ${mineSlotCount > 0 ? `<tr><th>Mine Slots</th><td>${mineSlotCount}</td></tr>` : ""}
+  ${largeSlotCount > 0 ? `<tr><th>Large Slots</th><td>${largeSlotCount}</td></tr>` : ""}
+  <tr><th>Energy Regen</th><td>${maxDecimals(def.energyRegen * ticksPerSecond, 2)} Energy/sec</td></tr>
+  <tr><th>Health Regen</th><td>${maxDecimals(def.healthRegen * ticksPerSecond, 2)} Health/sec</td></tr>
+  <tr><th>Cargo Capacity</th><td>${maxDecimals(def.cargoCapacity, 2)}</td></tr>
+</table>`;
+  }
+};
+
+const setupShipShop = () => {
+  const self = state.players.get(me);
+  const availableShips = defs.map((def, index) => {
+    return { def, index };
+    }).filter(({ def }) => {
+    return def.kind === UnitKind.Ship && def.team === defs[self.definitionIndex].team;
+  });
+  populateShipList(availableShips, self);
+  console.log("available ships", availableShips);
+  for (const { def, index } of availableShips) {
+    const button = document.getElementById(`purchase${index}`);
+    if (button) {
+      button.addEventListener("click", () => {
+        sendPurchase(me, index);
+        const self = state.players.get(me);
+        const station = state.players.get(self?.docked);
+        showDialog(dockDialog(station, self));
+        setupDockingUI(station, self);
+      });
+    } else {
+      console.log("button not found", `purchase${index}`);
+    }
+    const preview = document.getElementById(`previewShip${index}`);
+    if (preview) {
+      preview.addEventListener("click", () => {
+        populateShipPreviewer(index);
+      });
+    } else {
+      console.log("preview not found", `previewShip${index}`);
+    }
+  }
+  document.getElementById("back")?.addEventListener("click", () => {
+    popDialog();
+  });
 };
 
 const dockDialog = (station: Player | undefined, self: Player) => {
@@ -383,7 +517,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
   }
   return horizontalCenter([
     `<h2>Docked with ${station.name}</h2>`,
-    `${shipViewer(self.definitionIndex)}`,
+    `${shipViewer()}`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">
   <div style="width: 45%; float: left;">
@@ -462,6 +596,9 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   cargoPostUpdate(self.cargo);
   armsPostUpdate(self.armIndices);
   shipPostUpdate(self.definitionIndex);
+  document.getElementById("changeShip")?.addEventListener("click", () => {
+    pushDialog(shipShop(), setupShipShop);
+  });
 };
 
 const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {

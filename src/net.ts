@@ -143,6 +143,15 @@ const sendChat = (id: number, message: string) => {
   );
 };
 
+const sendPurchase = (id: number, index: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "purchase",
+      payload: { id, index },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -158,4 +167,5 @@ export {
   sendSellCargo,
   sendEquip,
   sendChat,
+  sendPurchase,
 };

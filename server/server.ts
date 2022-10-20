@@ -20,6 +20,7 @@ import {
   CargoEntry,
   equip,
   Missile,
+  purchaseShip,
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout } from "../src/defs";
 import { assert } from "console";
@@ -183,7 +184,7 @@ wss.on("connection", (ws) => {
         energy: defs[defIndex].energy,
         definitionIndex: defIndex,
         armIndices: emptyLoadout(defIndex),
-        slotData: [{}, {}],
+        slotData: [{}, {}, {}],
         cargo: [{ what: "Teddy Bears", amount: 30 }],
         credits: 500,
       };
@@ -324,7 +325,16 @@ wss.on("connection", (ws) => {
           client.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
         }
       }
-    }else {
+    } else if (data.type === "purchase") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const player = state.players.get(client.id);
+        if (player) {
+          purchaseShip(player, data.payload.index);
+          state.players.set(client.id, player);
+        }
+      }   
+    } else {
       console.log("Message from client: ", data);
     }
   });

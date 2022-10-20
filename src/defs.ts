@@ -62,6 +62,7 @@ type UnitDefinition = {
   turnRate?: number;
   acceleration?: number;
   healthRegen: number;
+  price?: number;
 };
 
 enum ArmUsage {
@@ -146,6 +147,7 @@ const initDefs = () => {
     turnRate: 0.1,
     acceleration: 0.1,
     healthRegen: 0.03,
+    price: 100,
   });
   defs.push({
     name: "Drone",
@@ -166,6 +168,7 @@ const initDefs = () => {
     turnRate: 0.1,
     acceleration: 0.1,
     healthRegen: 0.03,
+    price: 100,
   });
   defs.push({
     name: "Alliance Starbase",
@@ -234,6 +237,7 @@ const initDefs = () => {
     turnRate: 0.07,
     acceleration: 0.09,
     healthRegen: 0.05,
+    price: 300,
   });
   defs.push({
     name: "Seeker",
@@ -241,19 +245,20 @@ const initDefs = () => {
     sprite: { x: 320, y: 256, width: 64, height: 64 },
     health: 250,
     speed: 8,
-    energy: 160,
+    energy: 150,
     energyRegen: 0.2,
     primaryReloadTime: 10,
     primaryDamage: 20,
-    team: 0,
-    radius: 37,
+    team: 1,
+    radius: 30,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
     cargoCapacity: 200,
     deathEffect: 3,
     turnRate: 0.07,
     acceleration: 0.09,
-    healthRegen: 0.06,
+    healthRegen: 0.05,
+    price: 300,
   });
 
   for (let i = 0; i < defs.length; i++) {
@@ -533,7 +538,7 @@ enum EmptySlot {
 
 const emptyLoadout = (index: number) => {
   const def = defs[index];
-  return def.slots as unknown as EmptySlot[];
+  return [...def.slots] as unknown as EmptySlot[];
 };
 
 export {

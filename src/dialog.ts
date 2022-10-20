@@ -78,6 +78,11 @@ const pop = () => {
   showStack();
 };
 
+const clearStack = () => {
+  stack.length = 0;
+  showStack();
+};
+
 const horizontalCenter = (html: string[]) => {
   return `<div style="text-align: center;">${html.map((html) => `<div style="display: inline-block;">${html}</div>`).join("<br/>")}</div>`;
 };
@@ -172,6 +177,7 @@ export {
   unbindKey,
   push,
   pop,
+  clearStack,
   setDialogBackground,
   runPostUpdaterOnly,
   isShown,

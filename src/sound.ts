@@ -18,7 +18,14 @@ const loadSound = (url: string) => {
     .then((arrayBuffer) => ctx.decodeAudioData(arrayBuffer));
 };
 
+let soundInitialized = false;
+
 const initSound = () => {
+  if (soundInitialized) {
+    return;
+  }
+  soundInitialized = true;
+
   ctx = new AudioContext();
   volume = ctx.createGain();
   volume.connect(ctx.destination);

@@ -56,7 +56,7 @@ app.get("/dist/app.js", (req, res) => {
   res.sendFile("dist/app.js", { root });
 });
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.sendFile("index.html", { root });
 });
 
@@ -281,66 +281,76 @@ market.set("Teddy Bears", 5);
 // Websocket stuff (TODO Move to its own file)
 const wss = new WebSocketServer({ server });
 
+// TODO Need to protect from intentionally bad data
 wss.on("connection", (ws) => {
   console.log("Client connected");
 
   ws.on("message", (msg) => {
     const data = JSON.parse(msg.toString());
-    if (data.type === "register") {
-      const id = uid();
-      const name = data.payload.name.substring(0, maxNameLength);
-      clients.set(ws, { id, name, input: { up: false, down: false, left: false, right: false, primary: false, secondary: false } });
+    if (data.type === "login") {
+      const name = data.payload.name;
+      const password = data.payload.password;
 
-      let defIndex: number;
-      const faction = data.payload.faction as Faction;
-      if (faction === Faction.Alliance) {
-        // defIndex = defMap.get("Fighter")!.index;
-        defIndex = defMap.get("Advanced Fighter")!.index;
-      } else if (faction === Faction.Confederation) {
-        // defIndex = defMap.get("Drone")!.index;
-        defIndex = defMap.get("Seeker")!.index;
-      } else {
-        console.log(`Invalid faction ${faction}`);
-        return;
-      }
+      // Check if the user is in the database
+      User.findOne({ name, password }, (err, user) => {
+        if (err) {
+          ws.send(JSON.stringify({ type: "loginFail", payload: {} }));
+          console.log(err);
+          return;
+        }
+        if (!user) {
+          ws.send(JSON.stringify({ type: "loginFail", payload: {} }));
+          return;
+        }
 
-      const player = {
-        position: { x: -1600, y: -1600 },
-        radius: defs[defIndex].radius,
-        speed: 0,
-        heading: 0,
-        health: defs[defIndex].health,
-        id,
-        sinceLastShot: [10000],
-        projectileId: 0,
-        name,
-        energy: defs[defIndex].energy,
-        definitionIndex: defIndex,
-        armIndices: emptyLoadout(defIndex),
-        slotData: [{}, {}, {}],
-        cargo: [{ what: "Teddy Bears", amount: 30 }],
-        credits: 500,
-      };
+        clients.set(ws, { id: user.id, name, input: { up: false, down: false, left: false, right: false, primary: false, secondary: false } });
 
-      equip(player, 0, "Basic mining laser");
-      equip(player, 1, "Tomahawk Missile");
-      equip(player, 2, "Laser Beam");
+        let defIndex: number;
+        const faction = data.payload.faction as Faction;
+        if (faction === Faction.Alliance) {
+          // defIndex = defMap.get("Fighter")!.index;
+          defIndex = defMap.get("Advanced Fighter")!.index;
+        } else if (faction === Faction.Confederation) {
+          // defIndex = defMap.get("Drone")!.index;
+          defIndex = defMap.get("Seeker")!.index;
+        } else {
+          console.log(`Invalid faction ${faction}`);
+          return;
+        }
 
-      state.players.set(id, player);
-      const respawnKey = uid();
-      respawnKeys.set(respawnKey, id);
-      checkpoints.set(id, copyPlayer(player));
+        const player = {
+          position: { x: -1600, y: -1600 },
+          radius: defs[defIndex].radius,
+          speed: 0,
+          heading: 0,
+          health: defs[defIndex].health,
+          id: user.id,
+          sinceLastShot: [10000],
+          projectileId: 0,
+          name,
+          energy: defs[defIndex].energy,
+          definitionIndex: defIndex,
+          armIndices: emptyLoadout(defIndex),
+          slotData: [{}, {}, {}],
+          cargo: [{ what: "Teddy Bears", amount: 30 }],
+          credits: 500,
+        };
 
-      targets.set(id, [TargetKind.None, 0]);
-      secondaries.set(id, 0);
+        equip(player, 0, "Basic mining laser", true);
+        equip(player, 1, "Tomahawk Missile", true);
+        equip(player, 2, "Laser Beam", true);
 
-      ws.send(JSON.stringify({ type: "init", payload: { id, respawnKey } }));
-      console.log("Registered client with id: ", id);
-      // } else if (data.type === "debug") {
-      //   console.log("Debugging");
-      //   for (const [client, data] of clients) {
-      //     console.log("Client: ", data);
-      //   }
+        state.players.set(user.id, player);
+        const respawnKey = uid();
+        respawnKeys.set(respawnKey, user.id);
+        checkpoints.set(user.id, copyPlayer(player));
+
+        targets.set(user.id, [TargetKind.None, 0]);
+        secondaries.set(user.id, 0);
+
+        ws.send(JSON.stringify({ type: "init", payload: { id: user.id, respawnKey } }));
+        console.log("Registered client with id: ", user.id);
+      });
     } else if (data.type === "input") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {

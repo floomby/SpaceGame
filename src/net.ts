@@ -4,11 +4,11 @@ import { wsUrl } from "./config";
 
 let serverSocket: WebSocket;
 
-const register = (name: string, faction: Faction) => {
+const login = (name: string, password: string, faction: Faction) => {
   serverSocket.send(
     JSON.stringify({
-      type: "register",
-      payload: { name, faction },
+      type: "login",
+      payload: { name, password, faction },
     })
   );
 };
@@ -157,7 +157,7 @@ export {
   connect,
   bindAction,
   unbindAllActions,
-  register,
+  login,
   sendInput,
   sendPlayerInfo,
   sendDock,

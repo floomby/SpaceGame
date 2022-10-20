@@ -1,7 +1,7 @@
 import {
   connect,
   bindAction,
-  register,
+  login,
   sendInput,
   sendDock,
   sendUndock,
@@ -40,6 +40,7 @@ import {
   clear as clearDialog,
   pop as popDialog,
   push as pushDialog,
+  clearStack as clearDialogStack,
   isShown as isDialogShown,
   horizontalCenter,
   updateDom,
@@ -56,7 +57,7 @@ import { initSound, setVolume, getVolume } from "./sound";
 import { defaultKeyLayout } from "./config";
 import { domFromRest } from "./rest";
 
-// The server will assign our id after we register
+// The server will assign our id after we login
 let me: number;
 
 let keybind = useKeybindings(defaultKeyLayout);
@@ -621,7 +622,6 @@ const loop = () => {
   if (self && !self.docked) {
     if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
       target = state.players.get(targetId);
-      console.log(targetEnemy);
       [target, targetId] = input.nextTarget ? findNextTarget(self, target, state, targetEnemy) : findPreviousTarget(self, target, state, targetEnemy);
       input.nextTarget = false;
       input.previousTarget = false;
@@ -707,11 +707,11 @@ const loop = () => {
 
 let faction: Faction = Faction.Alliance;
 
-const registerer = (username: string) => {
-  register(username, faction);
-  clearDialog();
-  hideDialog();
-  initInputHandlers();
+const loggingInDialog = horizontalCenter(["<h3>Logging in...</h3>"]);
+
+const doLogin = (username: string, password: string) => {
+  login(username, password, faction);
+  pushDialog(loggingInDialog, () => {});
 };
 
 const keylayoutSelector = () => `<fieldset>
@@ -778,7 +778,14 @@ const setupSettingsDialog = () => {
   keylayoutSelectorSetup();
 };
 
+let settingsInitialized = false;
+
 const initSettings = () => {
+  if (settingsInitialized) {
+    return;
+  }
+  settingsInitialized = true;
+
   const settingsIcon = document.getElementById("settingsIcon");
   if (settingsIcon) {
     settingsIcon.addEventListener("click", () => {
@@ -792,24 +799,27 @@ const initSettings = () => {
   }
 };
 
-const doRegister = () => {
-  // Sound init and setting menu init feel strange being here (we need sound somewhere after page interaction since autoplay is not allowed)
-  // and this is the first place that page interaction is guaranteed to have happened. Setting menu should be drawn after the game starts which
-  // is after the registration.
+const loginHandler = () => {
+  // This is the first place that interacting with the page is guaranteed and so we setup the sound here
+  // Is idempotent, so we can just call it even if we get kicked back to the login dialog due to invalid login
   initSound();
-  initSettings();
+
   const input = document.getElementById("username") as HTMLInputElement;
+  const password = document.getElementById("password") as HTMLInputElement;
   const visited = localStorage.getItem("visited") !== null;
   if (visited) {
-    registerer(input.value);
+    doLogin(input.value, password.value);
   } else {
-    showFirstTimeHelp(input.value);
+    // TODO Fix first time help
+    // showFirstTimeHelp(input.value);
+    console.log("TODO Fix first time help");
+    doLogin(input.value, password.value);
   }
 };
 
-const registerHandler = (e: KeyboardEvent) => {
+const loginKeyHandler = (e: KeyboardEvent) => {
   if (e.key === "Enter") {
-    doRegister();
+    loginHandler();
   }
 };
 
@@ -922,9 +932,11 @@ const keybindingHelpText = (bindings: KeyBindings) => {
 </div>`;
 };
 
-const registerDialog = horizontalCenter([
-  "<h3>Input username</h3>",
-  '<input type="text" placeholder="Username" id="username"/>',
+const loginDialog = horizontalCenter([
+  "<h2>Login</h2>",
+  `<h2 style="color: red; display: none;" id="invalidLogin">Invalid login<h2>`,
+  `<input type="text" placeholder="Username" id="username"/>`,
+  `<input type="password" placeholder="Password" id="password"/>`,
   `<br/>
 <fieldset>
   <legend>Select Faction</legend>
@@ -937,10 +949,10 @@ const registerDialog = horizontalCenter([
     <label for="confederation">${getFactionString(Faction.Confederation)}</label>
 </fieldset>`,
   `<br/>${keylayoutSelector()}`,
-  '<br/><button id="register">Play</button>',
+  '<br/><button id="loginButton">Login</button>',
 ]);
 
-const showFirstTimeHelp = (username: string) => {
+const showFirstTimeHelp = (username: string, password: string) => {
   const help = horizontalCenter([
     "<h2>Welcome</h2>",
     "<h3>This appears to be your first time. Take a couple seconds to familiarize yourself with the controls.</h3>",
@@ -950,14 +962,20 @@ const showFirstTimeHelp = (username: string) => {
 
   showDialog(help);
   document.getElementById("continue").addEventListener("click", () => {
-    registerer(username);
+    doLogin(username, password);
   });
   localStorage.setItem("visited", "true");
 };
 
-const setupRegisterDialog = () => {
+const setupLoginDialog = () => {
+  const passwordInput = document.getElementById("password") as HTMLInputElement;
   const usernameInput = document.getElementById("username") as HTMLInputElement;
-  usernameInput.addEventListener("keydown", registerHandler);
+  usernameInput.addEventListener("keyup", (event) => {
+    if (event.key === "Enter") {
+      passwordInput.focus();
+    }
+  });
+  passwordInput.addEventListener("keydown", loginKeyHandler);
   keylayoutSelectorSetup();
   const alliance = document.getElementById("alliance") as HTMLInputElement;
   const confederation = document.getElementById("confederation") as HTMLInputElement;
@@ -973,7 +991,7 @@ const setupRegisterDialog = () => {
       setDialogBackground(confederationColor);
     }
   });
-  document.getElementById("register")?.addEventListener("click", doRegister);
+  document.getElementById("loginButton")?.addEventListener("click", loginHandler);
 };
 
 let respawnKey = 0;
@@ -994,8 +1012,8 @@ const setupDeadDialog = () => {
 };
 
 const run = () => {
-  showDialog(registerDialog);
-  setupRegisterDialog();
+  showDialog(loginDialog);
+  setupLoginDialog();
 
   state = {
     players: new Map(),
@@ -1007,7 +1025,20 @@ const run = () => {
   bindAction("init", (data: { id: number; respawnKey: number }) => {
     me = data.id;
     respawnKey = data.respawnKey;
+    initSettings();
+    clearDialogStack();
+    clearDialog();
+    hideDialog();
+    initInputHandlers();
     chatInput.blur();
+  });
+
+  bindAction("loginFail", (data: {}) => {
+    const invalidLogin = document.getElementById("invalidLogin");
+    if (invalidLogin) {
+      invalidLogin.style.display = "block";
+    }
+    clearDialogStack();
   });
 
   bindUpdater("cargo", cargoHtml);

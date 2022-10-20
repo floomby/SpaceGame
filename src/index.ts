@@ -582,6 +582,8 @@ const loop = () => {
       showDocked = true;
       const station = state.players.get(self.docked);
       showDialog(dockDialog(station, self));
+      chatInput.blur();
+      chatInput.style.display = "none";
       setupDockingUI(station, self);
     }
   }

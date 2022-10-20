@@ -838,6 +838,8 @@ const purchaseShip = (player: Player, index: number) => {
     player.definitionIndex = index;
     player.slotData = (new Array(def.slots.length)).map(() => ({}));
     player.armIndices = emptyLoadout(index);
+    player.health = def.health;
+    player.energy = def.energy;
   }
 };
 

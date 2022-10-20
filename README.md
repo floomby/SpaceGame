@@ -16,7 +16,6 @@ A simple multiplayer game where you have a ship and do things.
 
 ### MMO Stuff
 
-- Registration
 - Play as guest (low priority)
 - Change password (low priority)
 - Decide on how stations work

@@ -13,6 +13,7 @@ import {
   unbindAllActions,
   sendChat,
   sendPurchase,
+  register,
 } from "./net";
 import {
   GlobalState,
@@ -708,6 +709,12 @@ const loop = () => {
 let faction: Faction = Faction.Alliance;
 
 const loggingInDialog = horizontalCenter(["<h3>Logging in...</h3>"]);
+const registeringDialog = horizontalCenter(["<h3>Registering...</h3>"]);
+
+const doRegister = (username: string, password: string) => {
+  register(username, password, faction);
+  pushDialog(registeringDialog, () => {});
+};
 
 const doLogin = (username: string, password: string) => {
   login(username, password, faction);
@@ -814,6 +821,22 @@ const loginHandler = () => {
     // showFirstTimeHelp(input.value);
     console.log("TODO Fix first time help");
     doLogin(input.value, password.value);
+  }
+};
+
+const registerHandler = () => {
+  initSound();
+
+  const input = document.getElementById("username") as HTMLInputElement;
+  const password = document.getElementById("password") as HTMLInputElement;
+  const visited = localStorage.getItem("visited") !== null;
+  if (visited) {
+    doRegister(input.value, password.value);
+  } else {
+    // TODO Fix first time help
+    // showFirstTimeHelp(input.value);
+    console.log("TODO Fix first time help");
+    doRegister(input.value, password.value);
   }
 };
 
@@ -934,9 +957,9 @@ const keybindingHelpText = (bindings: KeyBindings) => {
 
 const loginDialog = horizontalCenter([
   "<h2>Login</h2>",
-  `<h2 style="color: red; display: none;" id="invalidLogin">Invalid login<h2>`,
+  `<div id="errorSpot"></div>`,
   `<input type="text" placeholder="Username" id="username"/>`,
-  `<input type="password" placeholder="Password" id="password"/>`,
+  `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,
   `<br/>
 <fieldset>
   <legend>Select Faction</legend>
@@ -949,7 +972,8 @@ const loginDialog = horizontalCenter([
     <label for="confederation">${getFactionString(Faction.Confederation)}</label>
 </fieldset>`,
   `<br/>${keylayoutSelector()}`,
-  '<br/><button id="loginButton">Login</button>',
+  `<br/><button id="registerButton">Register</button>`,
+  `<button style="margin-top: 10px;" id="loginButton">Login</button>`,
 ]);
 
 const showFirstTimeHelp = (username: string, password: string) => {
@@ -992,6 +1016,7 @@ const setupLoginDialog = () => {
     }
   });
   document.getElementById("loginButton")?.addEventListener("click", loginHandler);
+  document.getElementById("registerButton")?.addEventListener("click", registerHandler);
 };
 
 let respawnKey = 0;
@@ -1034,9 +1059,17 @@ const run = () => {
   });
 
   bindAction("loginFail", (data: {}) => {
-    const invalidLogin = document.getElementById("invalidLogin");
-    if (invalidLogin) {
-      invalidLogin.style.display = "block";
+    const errorSpot = document.getElementById("errorSpot") as HTMLDivElement;
+    if (errorSpot) {
+      errorSpot.innerHTML = `<h2 style="color: red;">Invalid login<h2>`;
+    }
+    clearDialogStack();
+  });
+
+  bindAction("registerFail", (data: { error: string }) => {
+    const errorSpot = document.getElementById("errorSpot") as HTMLDivElement;
+    if (errorSpot) {
+      errorSpot.innerHTML = `<h2 style="color: red;">Unable to register: ${data.error}<h2>`;
     }
     clearDialogStack();
   });
@@ -1094,14 +1127,6 @@ const run = () => {
     }
     applyEffects(data.effects);
   });
-
-  // bindAction("input", (data: any) => {
-  //   const { input, id } = data;
-  //   const player = state.players.get(id);
-  //   if (player) {
-  //     applyInputs(input, player);
-  //   }
-  // });
 
   bindAction("win", (data: { faction: Faction }) => {
     showDialog(horizontalCenter([`<h2>${getFactionString(data.faction)} wins!</h2>`, '<button onclick="location.reload();">Play Again</button>']));

@@ -13,6 +13,15 @@ const login = (name: string, password: string, faction: Faction) => {
   );
 };
 
+const register = (name: string, password: string, faction: Faction) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "register",
+      payload: { name, password, faction },
+    })
+  );
+};
+
 // Client connection code
 const connect = (callback: (socket: WebSocket) => void) => {
   const socket = new WebSocket(wsUrl);
@@ -158,6 +167,7 @@ export {
   bindAction,
   unbindAllActions,
   login,
+  register,
   sendInput,
   sendPlayerInfo,
   sendDock,

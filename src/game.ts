@@ -774,7 +774,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
   return ret;
 };
 
-const equip = (player: Player, slotIndex: number, what: string | number, noCost = false) => {
+const equip = (player: Player, slotIndex: number, what: string | number, noCost?: boolean) => {
   const def = defs[player.definitionIndex];
   if (slotIndex >= def.slots.length) {
     console.log("Warning: slot number too high");
@@ -809,7 +809,9 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost 
   }
 
   if ((player.credits !== undefined && armDef.cost <= player.credits) || noCost) {
-    player.credits -= armDef.cost;
+    if (!noCost) {
+      player.credits -= armDef.cost;
+    }
     player.armIndices[slotIndex] = defIndex;
     if (armDef.equipMutator) {
       armDef.equipMutator(player, slotIndex);

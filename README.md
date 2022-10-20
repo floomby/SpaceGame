@@ -14,9 +14,14 @@ A simple multiplayer game where you have a ship and do things.
 - Defining units, missiles, effects, etc should be easier
 - Economy is very boring right now
 
-### Next version
+### MMO Stuff
 
-- Do the mmo aspects of the game
+- Registration
+- Play as guest (low priority)
+- Change password (low priority)
+- Decide on how stations work
+- Sectors stuff?
+
 
 ### Next next version steps
 

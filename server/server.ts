@@ -177,12 +177,21 @@ const sectors: Map<number, GlobalState> = new Map();
 const sectorList = [1, 2, 3];
 
 // Game state
-const state: GlobalState = {
-  players: new Map(),
-  projectiles: new Map(),
-  asteroids: new Map(),
-  missiles: new Map(),
-};
+// const state: GlobalState = {
+//   players: new Map(),
+//   projectiles: new Map(),
+//   asteroids: new Map(),
+//   missiles: new Map(),
+// };
+
+sectorList.forEach((sector) => {
+  sectors.set(sector, {
+    players: new Map(),
+    projectiles: new Map(),
+    asteroids: new Map(),
+    missiles: new Map(),
+  });
+});
 
 let frame = 0;
 
@@ -198,6 +207,7 @@ type ClientData = {
   id: number;
   input: Input;
   name: string;
+  currentSector: number;
 };
 
 const checkpoints = new Map<number, Player>();
@@ -206,19 +216,19 @@ const respawnKeys = new Map<number, number>();
 const clients: Map<WebSocket, ClientData> = new Map();
 
 // Clears everything for resetting everything
-const resetState = () => {
-  state.players.clear();
-  state.projectiles.clear();
-  state.asteroids.clear();
-  state.missiles.clear();
-  targets.clear();
-  secondaries.clear();
-  clients.clear();
-  checkpoints.clear();
-  respawnKeys.clear();
+// const resetState = () => {
+//   state.players.clear();
+//   state.projectiles.clear();
+//   state.asteroids.clear();
+//   state.missiles.clear();
+//   targets.clear();
+//   secondaries.clear();
+//   clients.clear();
+//   checkpoints.clear();
+//   respawnKeys.clear();
 
-  frame = 0;
-};
+//   frame = 0;
+// };
 
 // Make some stations so that we have something for testing
 const initEnvironment = (state: GlobalState) => {
@@ -268,7 +278,9 @@ const initEnvironment = (state: GlobalState) => {
   }
 };
 
-initEnvironment(state);
+for (const sector of sectors.values()) {
+  initEnvironment(sector);
+}
 
 // Market stuff
 const market = new Map<string, number>();
@@ -279,7 +291,13 @@ market.set("Teddy Bears", 5);
 const wss = new WebSocketServer({ server });
 
 const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) => {
-  clients.set(ws, { id: id, name, input: { up: false, down: false, left: false, right: false, primary: false, secondary: false } });
+  const defaultSector = sectorList[0];
+  clients.set(ws, {
+    id: id,
+    name,
+    input: { up: false, down: false, left: false, right: false, primary: false, secondary: false },
+    currentSector: defaultSector,
+  });
 
   let defIndex: number;
   if (faction === Faction.Alliance) {
@@ -315,7 +333,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
   equip(player, 1, "Tomahawk Missile", true);
   equip(player, 2, "Laser Beam", true);
 
-  state.players.set(id, player);
+  sectors.get(defaultSector)!.players.set(id, player);
   const respawnKey = uid();
   respawnKeys.set(respawnKey, id);
   checkpoints.set(id, copyPlayer(player));
@@ -386,6 +404,7 @@ wss.on("connection", (ws) => {
     } else if (data.type === "dock") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
         const player = state.players.get(client.id);
         if (player) {
           const station = state.players.get(data.payload.stationId);
@@ -414,6 +433,7 @@ wss.on("connection", (ws) => {
     } else if (data.type === "undock") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
         const player = state.players.get(client.id);
         if (player) {
           player.docked = undefined;
@@ -430,6 +450,7 @@ wss.on("connection", (ws) => {
       const id = respawnKeys.get(data.payload.respawnKey);
       console.log("Respawning: ", id, data.payload.respawnKey);
       if (id && client && id === client.id) {
+        const state = sectors.get(client.currentSector)!;
         const player = checkpoints.get(id);
         if (player) {
           state.players.set(id, copyPlayer(player));
@@ -450,6 +471,7 @@ wss.on("connection", (ws) => {
     } else if (data.type === "sellCargo") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
         const player = state.players.get(client.id);
         if (player && player.cargo) {
           const selling: CargoEntry[] = [];
@@ -480,6 +502,7 @@ wss.on("connection", (ws) => {
     } else if (data.type === "equip") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
         const player = state.players.get(client.id);
         if (player) {
           equip(player, data.payload.slotIndex, data.payload.what);
@@ -496,6 +519,7 @@ wss.on("connection", (ws) => {
     } else if (data.type === "purchase") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
         const player = state.players.get(client.id);
         if (player) {
           purchaseShip(player, data.payload.index);
@@ -511,6 +535,7 @@ wss.on("connection", (ws) => {
     console.log("Client disconnected");
     const removedClient = clients.get(ws);
     if (removedClient) {
+      const state = sectors.get(removedClient.currentSector)!;
       state.players.delete(removedClient.id);
       checkpoints.delete(removedClient.id);
       targets.delete(removedClient.id);
@@ -529,49 +554,52 @@ wss.on("connection", (ws) => {
 // Updating the game state
 setInterval(() => {
   frame++;
-  for (const [client, data] of clients) {
-    const player = state.players.get(data.id);
-    if (data.input && player) {
-      applyInputs(data.input, player);
+  for (const [sector, state] of sectors) {
+    for (const [client, data] of clients) {
+      const player = state.players.get(data.id);
+      if (data.input && player) {
+        applyInputs(data.input, player);
+      }
+    }
+    const triggers: EffectTrigger[] = [];
+    update(
+      state,
+      frame,
+      () => {},
+      targets,
+      secondaries,
+      (trigger) => triggers.push(trigger)
+    );
+
+    // TODO Consider culling the state information to only send nearby players and projectiles
+    const playerData: Player[] = [];
+    for (const player of state.players.values()) {
+      playerData.push(player);
+    }
+    const projectileData: Ballistic[] = [];
+    for (const [id, projectiles] of state.projectiles) {
+      projectileData.push(...projectiles);
+    }
+    const asteroidData: Asteroid[] = [];
+    for (const asteroid of state.asteroids.values()) {
+      asteroidData.push(asteroid);
+    }
+    const missileData: Missile[] = [];
+    for (const missile of state.missiles.values()) {
+      missileData.push(missile);
+    }
+
+    const serialized = JSON.stringify({
+      type: "state",
+      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers, missiles: missileData },
+    });
+
+    for (const [client, data] of clients) {
+      if (data.currentSector === sector) {
+        client.send(serialized);
+      }
     }
   }
-  const triggers: EffectTrigger[] = [];
-  update(
-    state,
-    frame,
-    () => {},
-    targets,
-    secondaries,
-    (trigger) => triggers.push(trigger)
-  );
-
-  // TODO Consider culling the state information to only send nearby players and projectiles
-  const playerData: Player[] = [];
-  for (const player of state.players.values()) {
-    playerData.push(player);
-  }
-  const projectileData: Ballistic[] = [];
-  for (const [id, projectiles] of state.projectiles) {
-    projectileData.push(...projectiles);
-  }
-  const asteroidData: Asteroid[] = [];
-  for (const asteroid of state.asteroids.values()) {
-    asteroidData.push(asteroid);
-  }
-  const missileData: Missile[] = [];
-  for (const missile of state.missiles.values()) {
-    missileData.push(missile);
-  }
-
-  const serialized = JSON.stringify({
-    type: "state",
-    payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers, missiles: missileData },
-  });
-
-  for (const [client, data] of clients) {
-    client.send(serialized);
-  }
-
   // checkWin(state);
 }, 1000 / ticksPerSecond);
 

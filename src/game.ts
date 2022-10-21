@@ -57,6 +57,7 @@ type Player = Entity & {
   slotData: any[];
   cargo?: CargoEntry[];
   credits?: number;
+  inoperable?: boolean;
 };
 
 type Asteroid = Circle & {
@@ -124,6 +125,9 @@ const canDock = (player: Player | undefined, station: Player | undefined, strict
     return false;
   }
   const stationDef = defs[station.definitionIndex];
+  if (stationDef.kind !== UnitKind.Station || !stationDef.dockable || station.inoperable) {
+    return false;
+  }
   const distance = l2Norm(player.position, station.position);
   if (strict) {
     return distance < stationDef.radius;
@@ -268,7 +272,7 @@ const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false
     def = defs[player.definitionIndex];
   }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
     if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
@@ -294,7 +298,7 @@ const findFurthestTarget = (player: Player, state: GlobalState, onlyEnemy = fals
     def = defs[player.definitionIndex];
   }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
     if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
@@ -325,7 +329,7 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
     def = defs[player.definitionIndex];
   }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
     if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
@@ -360,7 +364,7 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
     def = defs[player.definitionIndex];
   }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
     if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
@@ -409,14 +413,22 @@ const update = (
     }
     const def = defs[player.definitionIndex];
     if (player.health <= 0) {
-      state.players.delete(id);
-      applyEffect({
-        effectIndex: def.deathEffect,
-        from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
-      });
-      onDeath(id);
+      if (def.kind === UnitKind.Station && def.dockable) {
+        player.health = 0;
+        player.energy = 0;
+        player.inoperable = true;
+      } else {
+        state.players.delete(id);
+        applyEffect({
+          effectIndex: def.deathEffect,
+          from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+        });
+        onDeath(id);
+      }
     }
-    player.health = Math.min(player.health + def.healthRegen, def.health);
+    if (!player.inoperable) {
+      player.health = Math.min(player.health + def.healthRegen, def.health);
+    }
 
     if (def.kind === UnitKind.Ship) {
       player.position.x += player.speed * Math.cos(player.heading);
@@ -476,50 +488,52 @@ const update = (
       // Have stations spin slowly
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
 
-      let closestEnemy: Player | undefined;
-      let closestEnemyDistanceSquared = Infinity;
-      for (const [otherId, otherPlayer] of state.players) {
-        if (otherPlayer.docked) {
-          continue;
+      if (!player.inoperable) {
+        let closestEnemy: Player | undefined;
+        let closestEnemyDistanceSquared = Infinity;
+        for (const [otherId, otherPlayer] of state.players) {
+          if (otherPlayer.docked || otherPlayer.inoperable) {
+            continue;
+          }
+          if (player.id === otherId) {
+            continue;
+          }
+          const otherDef = defs[otherPlayer.definitionIndex];
+          if (otherDef.team === def.team) {
+            continue;
+          }
+          const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+          if (distanceSquared < closestEnemyDistanceSquared) {
+            closestEnemy = otherPlayer;
+            closestEnemyDistanceSquared = distanceSquared;
+          }
         }
-        if (player.id === otherId) {
-          continue;
-        }
-        const otherDef = defs[otherPlayer.definitionIndex];
-        if (otherDef.team === def.team) {
-          continue;
-        }
-        const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
-        if (distanceSquared < closestEnemyDistanceSquared) {
-          closestEnemy = otherPlayer;
-          closestEnemyDistanceSquared = distanceSquared;
-        }
-      }
-      if (closestEnemy) {
-        const hardpointLocations = hardpointPositions(player, def);
-        const targetingVectors = hardpointLocations.map((hardpoint) =>
-          findInterceptAimingHeading(hardpoint, closestEnemy, primarySpeed, primaryRange)
-        );
-        for (let i = 0; i < def.hardpoints.length; i++) {
-          const targeting = targetingVectors[i];
-          if (targeting && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
-            const projectile = {
-              position: hardpointLocations[i],
-              radius: primaryRadius,
-              speed: primarySpeed,
-              heading: targeting,
-              damage: def.primaryDamage,
-              team: def.team,
-              id: player.projectileId,
-              parent: id,
-              frameTillEXpire: primaryFramesToExpire,
-            };
-            const projectiles = state.projectiles.get(id) || [];
-            projectiles.push(projectile);
-            state.projectiles.set(id, projectiles);
-            player.projectileId++;
-            player.energy -= 10;
-            player.sinceLastShot[i] = 0;
+        if (closestEnemy) {
+          const hardpointLocations = hardpointPositions(player, def);
+          const targetingVectors = hardpointLocations.map((hardpoint) =>
+            findInterceptAimingHeading(hardpoint, closestEnemy, primarySpeed, primaryRange)
+          );
+          for (let i = 0; i < def.hardpoints.length; i++) {
+            const targeting = targetingVectors[i];
+            if (targeting && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
+              const projectile = {
+                position: hardpointLocations[i],
+                radius: primaryRadius,
+                speed: primarySpeed,
+                heading: targeting,
+                damage: def.primaryDamage,
+                team: def.team,
+                id: player.projectileId,
+                parent: id,
+                frameTillEXpire: primaryFramesToExpire,
+              };
+              const projectiles = state.projectiles.get(id) || [];
+              projectiles.push(projectile);
+              state.projectiles.set(id, projectiles);
+              player.projectileId++;
+              player.energy -= 10;
+              player.sinceLastShot[i] = 0;
+            }
           }
         }
       }
@@ -527,9 +541,11 @@ const update = (
     for (let i = 0; i < player.sinceLastShot.length; i++) {
       player.sinceLastShot[i] += 1;
     }
-    player.energy += def.energyRegen;
-    if (player.energy > def.energy) {
-      player.energy = def.energy;
+    if (!player.inoperable) {
+      player.energy += def.energyRegen;
+      if (player.energy > def.energy) {
+        player.energy = def.energy;
+      }
     }
   }
   for (const [id, projectiles] of state.projectiles) {
@@ -540,19 +556,25 @@ const update = (
       projectile.frameTillEXpire -= 1;
       let didRemove = false;
       for (const [otherId, otherPlayer] of state.players) {
-        if (otherPlayer.docked) {
+        if (otherPlayer.docked || otherPlayer.inoperable) {
           continue;
         }
         const def = defs[otherPlayer.definitionIndex];
         if (projectile.team !== def.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
-            state.players.delete(otherId);
-            applyEffect({
-              effectIndex: def.deathEffect,
-              from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
-            });
-            onDeath(otherId);
+            if (def.kind === UnitKind.Station && def.dockable) {
+              otherPlayer.health = 0;
+              otherPlayer.energy = 0;
+              otherPlayer.inoperable = true;
+            } else {
+              state.players.delete(otherId);
+              applyEffect({
+                effectIndex: def.deathEffect,
+                from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
+              });
+              onDeath(otherId);
+            }
           }
           projectiles.splice(i, 1);
           i--;
@@ -586,26 +608,32 @@ const update = (
         effectIndex: 5,
         from: {
           kind: EffectAnchorKind.Missile,
-          value: id
+          value: id,
         },
       });
     }
     missile.lifetime -= 1;
     let didRemove = false;
     for (const [otherId, otherPlayer] of state.players) {
-      if (otherPlayer.docked) {
+      if (otherPlayer.docked || otherPlayer.inoperable) {
         continue;
       }
       const def = defs[otherPlayer.definitionIndex];
       if (missile.team !== def.team && circlesIntersect(missile, otherPlayer)) {
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
-          state.players.delete(otherId);
-          applyEffect({
-            effectIndex: def.deathEffect,
-            from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
-          });
-          onDeath(otherId);
+          if (def.kind === UnitKind.Station && def.dockable) {
+            otherPlayer.health = 0;
+            otherPlayer.energy = 0;
+            otherPlayer.inoperable = true;
+          } else {
+            state.players.delete(otherId);
+            applyEffect({
+              effectIndex: def.deathEffect,
+              from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
+            });
+            onDeath(otherId);
+          }
         }
         state.missiles.delete(id);
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
@@ -837,7 +865,7 @@ const purchaseShip = (player: Player, index: number) => {
   if (player.credits !== undefined && def.price <= player.credits) {
     player.credits -= def.price;
     player.definitionIndex = index;
-    player.slotData = (new Array(def.slots.length)).map(() => ({}));
+    player.slotData = new Array(def.slots.length).map(() => ({}));
     player.armIndices = emptyLoadout(index);
     player.health = def.health;
     player.energy = def.energy;

@@ -646,6 +646,11 @@ const loop = () => {
     }
   }
 
+  if (target?.inoperable) {
+    target = undefined;
+    targetId = 0;
+  }
+
   const unifiedTargetId = targetId || targetAsteroidId;
   const unifiedTargetKind = targetId ? TargetKind.Player : targetAsteroidId ? TargetKind.Asteroid : TargetKind.None;
 

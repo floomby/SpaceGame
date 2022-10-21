@@ -342,6 +342,9 @@ const initDefs = () => {
     stateMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
       const slotData = player.slotData[slotIndex];
       if (targetKind === TargetKind.Player && player.energy > 35 && slotData.sinceFired > 45) {
+        if ((target as Player).inoperable) {
+          return;
+        }
         target = target as Player;
         if (l2NormSquared(player.position, target.position) < 700 * 700) {
           player.energy -= 35;
@@ -486,6 +489,9 @@ const initDefs = () => {
     stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
+        if ((target as Player).inoperable) {
+          return;
+        }
         player.energy -= 1;
         slotData.sinceFired = 0;
         slotData.ammo--;

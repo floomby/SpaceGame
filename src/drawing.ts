@@ -303,28 +303,34 @@ const drawAsteroid = (asteroid: Asteroid, self: Player) => {
   ctx.restore();
 };
 
-const drawShip = (player: Player, self: Player) => {
+const drawPlayer = (player: Player, self: Player) => {
   ctx.save();
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
   let sprite = sprites[player.definitionIndex];
-  drawBar(
-    { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
-    sprite.width,
-    5,
-    "#00EE00CC",
-    "#EE0000CC",
-    Math.max(player.health, 0) / defs[player.definitionIndex].health
-  );
-  drawBar(
-    { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
-    sprite.width,
-    5,
-    "#0022FFCC",
-    "#333333CC",
-    player.energy / defs[player.definitionIndex].energy
-  );
-  ctx.rotate(player.heading);
+  if (player.inoperable) {
+    ctx.filter = "grayscale(80%)";
+    ctx.rotate(player.heading);
+  } else {
+    drawBar(
+      { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
+      sprite.width,
+      5,
+      "#00EE00CC",
+      "#EE0000CC",
+      Math.max(player.health, 0) / defs[player.definitionIndex].health
+    );
+    drawBar(
+      { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
+      sprite.width,
+      5,
+      "#0022FFCC",
+      "#333333CC",
+      player.energy / defs[player.definitionIndex].energy
+    );
+    ctx.rotate(player.heading);
+  }
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+
   ctx.restore();
 };
 
@@ -534,11 +540,11 @@ const drawEverything = (
       if (target && id === target.id) {
         drawHighlight(lastSelf, player);
       }
-      drawShip(player, lastSelf);
+      drawPlayer(player, lastSelf);
     }
   }
   if (self && !self.docked) {
-    drawShip(self, self);
+    drawPlayer(self, self);
   }
   for (const [id, missile] of state.missiles) {
     drawMissile(missile, lastSelf);

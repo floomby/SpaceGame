@@ -21,7 +21,6 @@ A simple multiplayer game where you have a ship and do things.
 - Decide on how stations work
 - Sectors stuff?
 
-
 ### Next next version steps
 
 - Point to target key

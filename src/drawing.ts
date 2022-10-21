@@ -15,6 +15,7 @@ import {
   Rectangle,
 } from "./game";
 import { KeyBindings } from "./keybindings";
+import { sfc32 } from "./prng";
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -26,11 +27,13 @@ let effectSprites: ImageBitmap[] = [];
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
 
-const initStars = () => {
+const initStars = (sector: number) => {
+  const prng = sfc32(sector, 3437, 916, 3158);
+
   for (let i = 0; i < 1000; i++) {
     stars.push({
-      position: { x: Math.random() * starTilingSize.x, y: Math.random() * starTilingSize.y },
-      radius: Math.random() * 2 + 1,
+      position: { x: prng() * starTilingSize.x, y: prng() * starTilingSize.y },
+      radius: prng() * 2 + 1,
     });
   }
 };
@@ -74,7 +77,6 @@ const loadAsteroidSprites = (spriteSheet: HTMLImageElement, callback: () => void
 };
 
 const initDrawing = (callback: () => void) => {
-  initStars();
   initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
   canvas.width = window.innerWidth;
@@ -588,4 +590,4 @@ const flashSecondary = () => {
   secondaryFlashTimeRemaining = 90;
 };
 
-export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites, sprites, ChatMessage };
+export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites, sprites, ChatMessage, initStars };

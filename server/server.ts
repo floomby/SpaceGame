@@ -172,6 +172,10 @@ if (useSsl) {
 // Initialize the definitions (Needs to be done to use them)
 initDefs();
 
+const sectors: Map<number, GlobalState> = new Map();
+
+const sectorList = [1, 2, 3];
+
 // Game state
 const state: GlobalState = {
   players: new Map(),
@@ -201,11 +205,6 @@ const respawnKeys = new Map<number, number>();
 
 const clients: Map<WebSocket, ClientData> = new Map();
 
-let winUids = {
-  [Faction.Alliance]: 0,
-  [Faction.Confederation]: 0,
-};
-
 // Clears everything for resetting everything
 const resetState = () => {
   state.players.clear();
@@ -219,14 +218,12 @@ const resetState = () => {
   respawnKeys.clear();
 
   frame = 0;
-  winUids[Faction.Alliance] = 0;
-  winUids[Faction.Confederation] = 0;
 };
 
 // Make some stations so that we have something for testing
 const initEnvironment = (state: GlobalState) => {
   const testStarbaseId = uid();
-  winUids[Faction.Alliance] = testStarbaseId;
+  // winUids[Faction.Alliance] = testStarbaseId;
   const testStarbase = {
     position: { x: -1600, y: -1600 },
     radius: defs[2].radius,
@@ -246,7 +243,7 @@ const initEnvironment = (state: GlobalState) => {
   state.players.set(testStarbaseId, testStarbase);
 
   const testStarbase2Id = uid();
-  winUids[Faction.Confederation] = testStarbase2Id;
+  // winUids[Faction.Confederation] = testStarbase2Id;
   const testStarbase2 = {
     position: { x: 2500, y: 100 },
     radius: defs[3].radius,
@@ -326,7 +323,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
 
-  ws.send(JSON.stringify({ type: "init", payload: { id: id, respawnKey } }));
+  ws.send(JSON.stringify({ type: "init", payload: { id: id, respawnKey, sector: 1 } }));
   console.log("Registered client with id: ", id);
 };
 
@@ -529,37 +526,6 @@ wss.on("connection", (ws) => {
   });
 });
 
-// Temporary win condition for players
-const checkWin = (state: GlobalState) => {
-  if (winUids[Faction.Alliance] && !state.players.has(winUids[Faction.Alliance])) {
-    for (const [client, data] of clients) {
-      client.send(
-        JSON.stringify({
-          type: "win",
-          payload: {
-            faction: Faction.Confederation,
-          },
-        })
-      );
-    }
-    resetState();
-    initEnvironment(state);
-  } else if (winUids[Faction.Confederation] && !state.players.has(winUids[Faction.Confederation])) {
-    for (const [client, data] of clients) {
-      client.send(
-        JSON.stringify({
-          type: "win",
-          payload: {
-            faction: Faction.Alliance,
-          },
-        })
-      );
-    }
-    resetState();
-    initEnvironment(state);
-  }
-};
-
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -606,7 +572,7 @@ setInterval(() => {
     client.send(serialized);
   }
 
-  checkWin(state);
+  // checkWin(state);
 }, 1000 / ticksPerSecond);
 
 server.listen(wsPort, () => {

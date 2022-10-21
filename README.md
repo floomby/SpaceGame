@@ -17,9 +17,9 @@ A simple multiplayer game where you have a ship and do things.
 ### MMO Stuff
 
 - Play as guest (low priority)
-- Change password (low priority)
-- Decide on how stations work
-- Sectors stuff?
+- Option to change password (low priority)
+- Repairing stations
+- Figure out sector stuff
 
 ### Next next version steps
 

@@ -51,7 +51,7 @@ import {
   runPostUpdaterOnly,
 } from "./dialog";
 import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, UnitKind, UnitDefinition } from "./defs";
-import { canvas, drawEverything, flashSecondary, initDrawing, sprites } from "./drawing";
+import { canvas, drawEverything, flashSecondary, initDrawing, initStars, sprites } from "./drawing";
 import { dvorakBindings, KeyBindings, qwertyBindings, useKeybindings } from "./keybindings";
 import { applyEffects } from "./effects";
 import { initSound, setVolume, getVolume } from "./sound";
@@ -1052,9 +1052,10 @@ const run = () => {
     missiles: new Map(),
   };
 
-  bindAction("init", (data: { id: number; respawnKey: number }) => {
+  bindAction("init", (data: { id: number; respawnKey: number, sector: number }) => {
     me = data.id;
     respawnKey = data.respawnKey;
+    initStars(data.sector);
     initSettings();
     clearDialogStack();
     clearDialog();

@@ -63,6 +63,8 @@ type UnitDefinition = {
   acceleration?: number;
   healthRegen: number;
   price?: number;
+  warpTime?: number;
+  warpEffect?: number;
 };
 
 enum ArmUsage {
@@ -148,6 +150,8 @@ const initDefs = () => {
     acceleration: 0.1,
     healthRegen: 0.03,
     price: 100,
+    warpTime: 90,
+    warpEffect: 7,
   });
   defs.push({
     name: "Drone",
@@ -169,6 +173,8 @@ const initDefs = () => {
     acceleration: 0.1,
     healthRegen: 0.03,
     price: 100,
+    warpTime: 90,
+    warpEffect: 7,
   });
   defs.push({
     name: "Alliance Starbase",
@@ -238,6 +244,8 @@ const initDefs = () => {
     acceleration: 0.09,
     healthRegen: 0.05,
     price: 300,
+    warpTime: 120,
+    warpEffect: 7,
   });
   defs.push({
     name: "Seeker",
@@ -259,6 +267,8 @@ const initDefs = () => {
     acceleration: 0.09,
     healthRegen: 0.05,
     price: 300,
+    warpTime: 120,
+    warpEffect: 7,
   });
 
   for (let i = 0; i < defs.length; i++) {

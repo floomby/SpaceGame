@@ -58,6 +58,8 @@ type Player = Entity & {
   cargo?: CargoEntry[];
   credits?: number;
   inoperable?: boolean;
+  warping?: number;
+  warpTo?: number;
 };
 
 type Asteroid = Circle & {
@@ -399,14 +401,17 @@ const hardpointPositions = (player: Player, def: UnitDefinition) => {
 };
 
 // Like usual the update function is a monstrosity
+// It could probably use some refactoring
 const update = (
   state: GlobalState,
   frameNumber: number,
-  onDeath: (id: number) => void,
   serverTargets: Map<number, [TargetKind, number]>,
   serverSecondaries: Map<number, number>,
-  applyEffect: (effect: EffectTrigger) => void
+  applyEffect: (effect: EffectTrigger) => void,
+  serverWarpList: { player: Player; to: number }[],
+  onDeath: (id: number) => void,
 ) => {
+  // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
     if (player.docked) {
       continue;
@@ -547,7 +552,20 @@ const update = (
         player.energy = def.energy;
       }
     }
+    if (player.warping) {
+      player.warping += 1;
+      if (player.warping > def.warpTime) {
+        player.warping = 0;
+        state.players.delete(id);
+        serverWarpList.push({ player, to: player.warpTo });
+        applyEffect({
+          effectIndex: def.warpEffect,
+          from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+        });
+      }
+    }
   }
+  // Quadratic loop for the projectiles
   for (const [id, projectiles] of state.projectiles) {
     for (let i = 0; i < projectiles.length; i++) {
       const projectile = projectiles[i];
@@ -588,6 +606,7 @@ const update = (
       }
     }
   }
+  // Another quadratic loop for the missiles
   for (const [id, missile] of state.missiles) {
     const missileDef = missileDefs[missile.definitionIndex];
     missile.position.x += missile.speed * Math.cos(missile.heading);

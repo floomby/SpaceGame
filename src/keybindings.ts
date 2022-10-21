@@ -26,6 +26,8 @@ type KeyBindings = {
   selectSecondary8: string;
   selectSecondary9: string;
   chat: string;
+  map: string;
+  warp: string;
 };
 
 const qwertyBindings: KeyBindings = {
@@ -51,6 +53,8 @@ const qwertyBindings: KeyBindings = {
   selectSecondary8: "8",
   selectSecondary9: "9",
   chat: "Enter",
+  map: "m",
+  warp: "w",
 };
 
 const dvorakBindings: KeyBindings = {
@@ -76,6 +80,8 @@ const dvorakBindings: KeyBindings = {
   selectSecondary8: "8",
   selectSecondary9: "9",
   chat: "Enter",
+  map: "m",
+  warp: ",",
 };
 
 const useKeybindings = (layout: KeyLayouts) => {

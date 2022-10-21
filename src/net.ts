@@ -162,6 +162,15 @@ const sendPurchase = (id: number, index: number) => {
   );
 };
 
+const sendWarp = (id: number, warpTo: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "warp",
+      payload: { id, warpTo },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -179,4 +188,5 @@ export {
   sendEquip,
   sendChat,
   sendPurchase,
+  sendWarp,
 };

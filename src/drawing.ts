@@ -227,11 +227,7 @@ const drawMiniMap = (position: Position, width: number, height: number, self: Pl
   }
 };
 
-// I may want to go back to using this if I change to have the update (not just the fractional update) being run on the clients
-// let starAntiJitter = { x: 0, y: 0 };
-
 const drawStars = (self: Player) => {
-  // const topLeft = { x: self.position.x - starAntiJitter.x - canvas.width / 2, y: self.position.y - starAntiJitter.y - canvas.height / 2 };
   const topLeft = { x: self.position.x - canvas.width / 2, y: self.position.y - canvas.height / 2 };
   topLeft.x /= 2;
   topLeft.y /= 2;

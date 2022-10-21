@@ -47,6 +47,9 @@ if (useSsl) {
 const wsPort = 8080;
 const httpPort = 8081;
 
+// This data will ultimately be stored in the database
+const sectorList = [1, 2, 3];
+
 // Http server stuff
 const root = resolve(__dirname + "/..");
 
@@ -54,6 +57,14 @@ const app = express();
 
 app.get("/dist/app.js", (req, res) => {
   res.sendFile("dist/app.js", { root });
+});
+
+app.get("/dist/require.min.js", (req, res) => {
+  res.sendFile("dist/require.min.js", { root });
+});
+
+app.get("/dist/require.min.js.map", (req, res) => {
+  res.sendFile("dist/require.min.js.map", { root });
 });
 
 app.get("/", (req, res) => {
@@ -81,6 +92,10 @@ app.get("/available", (req, res) => {
     }
     res.send("true");
   });
+});
+
+app.get("/sectorList", (req, res) => {
+  res.send(JSON.stringify({ value: sectorList }));
 });
 
 app.get("/nameOf", (req, res) => {
@@ -173,8 +188,7 @@ if (useSsl) {
 initDefs();
 
 const sectors: Map<number, GlobalState> = new Map();
-
-const sectorList = [1, 2, 3];
+const warpList: { player: Player, to: number }[] = [];
 
 // Game state
 // const state: GlobalState = {
@@ -214,6 +228,7 @@ const checkpoints = new Map<number, Player>();
 const respawnKeys = new Map<number, number>();
 
 const clients: Map<WebSocket, ClientData> = new Map();
+const idToWebsocket = new Map<number, WebSocket>();
 
 // Clears everything for resetting everything
 // const resetState = () => {
@@ -368,6 +383,7 @@ wss.on("connection", (ws) => {
         }
 
         tmpSetupPlayer(user.id, ws, name, data.payload.faction);
+        idToWebsocket.set(user.id, ws);
       });
     } else if (data.type === "register") {
       const name = data.payload.name;
@@ -385,6 +401,10 @@ wss.on("connection", (ws) => {
           ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username already taken" } }));
           return;
         }
+        if (name.length > maxNameLength) {
+          ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username too long" } }));
+          return;
+        }
         User.create({ name, password, faction, id: uid() }, (err, user) => {
           if (err) {
             ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Database error" } }));
@@ -392,6 +412,7 @@ wss.on("connection", (ws) => {
             return;
           }
           tmpSetupPlayer(user.id, ws, name, faction);
+          idToWebsocket.set(user.id, ws);
         });
       });
     } else if (data.type === "input") {
@@ -526,6 +547,17 @@ wss.on("connection", (ws) => {
           state.players.set(client.id, player);
         }
       }
+    } else if (data.type === "warp") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
+        const player = state.players.get(client.id);
+        if (player) {
+          player.warpTo = data.payload.warpTo;
+          player.warping = 1;
+          state.players.set(client.id, player);
+        }
+      }
     } else {
       console.log("Message from client: ", data);
     }
@@ -547,9 +579,17 @@ wss.on("connection", (ws) => {
         }
       }
       clients.delete(ws);
+      idToWebsocket.delete(removedClient.id);
     }
   });
 });
+
+const informDead = (id: number) => {
+  const ws = idToWebsocket.get(id);
+  if (ws) {
+    ws.send(JSON.stringify({ type: "dead" }));
+  }
+};
 
 // Updating the game state
 setInterval(() => {
@@ -565,10 +605,11 @@ setInterval(() => {
     update(
       state,
       frame,
-      () => {},
       targets,
       secondaries,
-      (trigger) => triggers.push(trigger)
+      (trigger) => triggers.push(trigger),
+      warpList,
+      informDead,
     );
 
     // TODO Consider culling the state information to only send nearby players and projectiles
@@ -598,6 +639,18 @@ setInterval(() => {
       if (data.currentSector === sector) {
         client.send(serialized);
       }
+    }
+  }
+  while (warpList.length > 0) {
+    const { player, to } = warpList.shift()!;
+    const state = sectors.get(to);
+    if (state) {
+      const ws = idToWebsocket.get(player.id);
+      if (ws) {
+        clients.get(ws)!.currentSector = to;
+        ws.send(JSON.stringify({ type: "warp", payload: { to } }));
+      }
+      state.players.set(player.id, player);
     }
   }
   // checkWin(state);

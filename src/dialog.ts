@@ -40,7 +40,7 @@ const clear = () => {
 
 let shownFromStack = false;
 
-const stack: { html: string; callback: () => void }[] = [];
+const stack: { html: string; callback: () => void, tag: string }[] = [];
 
 const showStack = () => {
   if (stack.length > 0) {
@@ -68,14 +68,18 @@ const showStack = () => {
   }
 };
 
-const push = (html: string, callback: () => void) => {
-  stack.push({ html, callback });
+const push = (html: string, callback: () => void, tag?: string) => {
+  stack.push({ html, callback, tag: tag || "" });
   showStack();
 };
 
 const pop = () => {
   stack.pop();
   showStack();
+};
+
+const peekTag = () => {
+  return stack[stack.length - 1].tag;
 };
 
 const clearStack = () => {
@@ -177,6 +181,7 @@ export {
   unbindKey,
   push,
   pop,
+  peekTag,
   clearStack,
   setDialogBackground,
   runPostUpdaterOnly,

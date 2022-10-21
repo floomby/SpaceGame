@@ -14,6 +14,7 @@ import {
   sendChat,
   sendPurchase,
   register,
+  sendWarp,
 } from "./net";
 import {
   GlobalState,
@@ -41,6 +42,7 @@ import {
   clear as clearDialog,
   pop as popDialog,
   push as pushDialog,
+  peekTag as peekDialogTag,
   clearStack as clearDialogStack,
   isShown as isDialogShown,
   horizontalCenter,
@@ -53,7 +55,7 @@ import {
 import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, UnitKind, UnitDefinition } from "./defs";
 import { canvas, drawEverything, flashSecondary, initDrawing, initStars, sprites } from "./drawing";
 import { dvorakBindings, KeyBindings, qwertyBindings, useKeybindings } from "./keybindings";
-import { applyEffects } from "./effects";
+import { applyEffects, clearEffects } from "./effects";
 import { initSound, setVolume, getVolume } from "./sound";
 import { defaultKeyLayout } from "./config";
 import { domFromRest } from "./rest";
@@ -186,6 +188,15 @@ const initInputHandlers = () => {
           chatInput.focus();
         }
         break;
+      case keybind.map:
+        if (!isDialogShown()) {
+          pushDialog(mapDialog(), setupMapDialog, "map");
+        } else if (peekDialogTag() === "map") {
+          popDialog();
+        }
+      // Temporary keybind for testing
+      case keybind.warp:
+        sendWarp(me, 2);
     }
     if (changed) {
       sendInput(input, me);
@@ -425,6 +436,9 @@ const populateShipList = (availableShips: { def: UnitDefinition; index: number }
 };
 
 const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: string) => {
+  if (!isDialogShown()) {
+    return;
+  }
   const canvas = document.getElementById(shipViewId) as HTMLCanvasElement;
   if (!canvas) {
     console.log("no canvas for ship preview");
@@ -790,6 +804,16 @@ const setupSettingsDialog = () => {
   keylayoutSelectorSetup();
 };
 
+const mapDialog = () => {
+  return horizontalCenter([`<h1>Map</h1>`, domFromRest("sectorList", (list) => list.toString()), `<br/><button id="closeMap">Close</button>`]);
+};
+
+const setupMapDialog = () => {
+  document.getElementById("closeMap")?.addEventListener("click", () => {
+    popDialog();
+  });
+};
+
 let settingsInitialized = false;
 
 const initSettings = () => {
@@ -1025,16 +1049,14 @@ const setupLoginDialog = () => {
 };
 
 let respawnKey = 0;
-let didDie = false;
+let currentSector: number;
 
 const deadDialog = horizontalCenter(["<h2>You are dead</h2>", "<button id='respawn'>Respawn</button>"]);
 const setupDeadDialog = () => {
-  didDie = true;
   document.getElementById("respawn")?.addEventListener("click", () => {
     if (respawnKey !== 0) {
       sendRespawn(respawnKey);
-      clearDialog();
-      hideDialog();
+      popDialog();
     } else {
       console.error("No respawn key");
     }
@@ -1052,9 +1074,10 @@ const run = () => {
     missiles: new Map(),
   };
 
-  bindAction("init", (data: { id: number; respawnKey: number, sector: number }) => {
+  bindAction("init", (data: { id: number; respawnKey: number; sector: number }) => {
     me = data.id;
     respawnKey = data.respawnKey;
+    currentSector = data.sector;
     initStars(data.sector);
     initSettings();
     clearDialogStack();
@@ -1113,25 +1136,44 @@ const run = () => {
       }
       state.projectiles.set(parentId, projectileGroup);
     }
-    // lastUpdate = Date.now();
     const self = state.players.get(me);
-    if (!self && !didDie) {
-      targetId = 0;
-      showDialog(deadDialog);
-      setupDeadDialog();
+    if (!self) {
+      // The old assumption was that if we didn't have a self, we were dead.
+      // This is no longer true (also this is wrong because it spams the dialog stack with dead dialogs)
+      // targetId = 0;
+      // targetAsteroidId = 0;
+      // pushDialog(deadDialog, setupDeadDialog, "dead");
     }
     if (self) {
       updateDom("cargo", self.cargo);
       updateDom("credits", self.credits);
       updateDom("arms", self.armIndices);
       runPostUpdaterOnly("ship", self.definitionIndex);
-      didDie = false;
       if (self.docked) {
         targetId = 0;
         targetAsteroidId = 0;
       }
     }
     applyEffects(data.effects);
+  });
+
+  bindAction("dead", (data: {}) => {
+    // Not strictly necessary to clear the targets, but it avoids potential incorrect in yet to be written code
+    targetId = 0;
+    targetAsteroidId = 0;
+    pushDialog(deadDialog, setupDeadDialog, "dead");
+  });
+
+  bindAction("warp", (data: {to: number}) => {
+    console.log("Warping to sector " + data.to);
+    // hideDialog();
+    if (data.to !== currentSector) {
+      initStars(data.to);
+      clearEffects();
+      currentSector = data.to;
+    }
+    targetId = 0;
+    targetAsteroidId = 0;
   });
 
   bindAction("win", (data: { faction: Faction }) => {

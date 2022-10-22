@@ -32,6 +32,8 @@ import { resolve } from "path";
 import { User } from "./datamodels";
 import mongoose from "mongoose";
 
+import { createHash } from "crypto";
+
 // connect to the database
 mongoose.connect("mongodb://localhost:27017/SpaceGame", {});
 
@@ -120,6 +122,12 @@ app.get("/nameOf", (req, res) => {
   });
 });
 
+const salt = "Lithium Chloride, Lanthanum(III) Chloride, and Strontium Chloride";
+
+const hash = (str: string) => {
+  return createHash("sha256").update(salt + str).digest("hex");
+};
+
 app.get("/register", (req, res) => {
   const name = req.query.name;
   const password = req.query.password;
@@ -146,7 +154,7 @@ app.get("/register", (req, res) => {
     // create the user
     const newUser = new User({
       name,
-      password,
+      password: hash(password),
       id,
     });
     newUser.save((err) => {
@@ -370,8 +378,10 @@ wss.on("connection", (ws) => {
       const name = data.payload.name;
       const password = data.payload.password;
 
+      const hashedPassword = hash(password);
+
       // Check if the user is in the database
-      User.findOne({ name, password }, (err, user) => {
+      User.findOne({ name, password: hashedPassword }, (err, user) => {
         if (err) {
           ws.send(JSON.stringify({ type: "loginFail", payload: {} }));
           console.log(err);
@@ -405,7 +415,7 @@ wss.on("connection", (ws) => {
           ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username too long" } }));
           return;
         }
-        User.create({ name, password, faction, id: uid() }, (err, user) => {
+        User.create({ name, password: hash(password), faction, id: uid() }, (err, user) => {
           if (err) {
             ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Database error" } }));
             console.log(err);
@@ -420,7 +430,7 @@ wss.on("connection", (ws) => {
       if (client && data.payload.id === client.id) {
         clients.set(ws, { ...client, input: data.payload.input });
       } else {
-        console.log("Input data from unknown client");
+        console.log("Warning: Input data from unknown client");
       }
     } else if (data.type === "dock") {
       const client = clients.get(ws);
@@ -476,7 +486,7 @@ wss.on("connection", (ws) => {
         if (player) {
           state.players.set(id, copyPlayer(player));
         } else {
-          console.log("No checkpoint found for player", id);
+          console.log("Warning: No checkpoint found for player", id);
         }
       }
     } else if (data.type === "target") {
@@ -533,8 +543,10 @@ wss.on("connection", (ws) => {
     } else if (data.type === "chat") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
-        for (const [client, clientData] of clients) {
-          client.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
+        for (const [otherClient, otherClientData] of clients) {
+          if (otherClientData.currentSector === client.currentSector) {
+            otherClient.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
+          }
         }
       }
     } else if (data.type === "purchase") {
@@ -561,7 +573,7 @@ wss.on("connection", (ws) => {
         }
       }
     } else {
-      console.log("Message from client: ", data);
+      console.log("Unknown message from client: ", data);
     }
   });
 

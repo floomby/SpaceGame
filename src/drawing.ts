@@ -328,6 +328,12 @@ const drawPlayer = (player: Player, self: Player) => {
     );
     ctx.rotate(player.heading);
   }
+  // This effect is pretty bad, but I want something visual to indicate a warp is in progress
+  if (player.warping) {
+    const def = defs[player.definitionIndex];
+    const warpAmount = player.warping / def.warpTime;
+    ctx.filter = `hue-rotate(${warpAmount * Math.PI * 2}rad) saturate(${(1 - warpAmount) * 100}%)`;
+  }
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
 
   ctx.restore();

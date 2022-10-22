@@ -200,7 +200,7 @@ app.get("/register", (req, res) => {
   });
 });
 
-// Admin stuff
+// Admin stuff, the password is: "something"
 app.get("/init", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {
@@ -355,56 +355,12 @@ const idToWebsocket = new Map<number, WebSocket>();
 //   frame = 0;
 // };
 
-// Make some stations so that we have something for testing
-const initEnvironment = (state: GlobalState) => {
-  // const testStarbaseId = uid();
-  // // winUids[Faction.Alliance] = testStarbaseId;
-  // const testStarbase = {
-  //   position: { x: -1600, y: -1600 },
-  //   radius: defs[2].radius,
-  //   speed: 0,
-  //   heading: 0,
-  //   health: defs[2].health,
-  //   testStarbaseId,
-  //   sinceLastShot: [10000, 10000, 10000, 10000],
-  //   projectileId: 0,
-  //   energy: defs[2].energy,
-  //   definitionIndex: 2,
-  //   id: testStarbaseId,
-  //   name: "Outpost 476",
-  //   armIndices: [],
-  //   slotData: [],
-  // };
-  // state.players.set(testStarbaseId, testStarbase);
-
-  // const testStarbase2Id = uid();
-  // // winUids[Faction.Confederation] = testStarbase2Id;
-  // const testStarbase2 = {
-  //   position: { x: 2500, y: 100 },
-  //   radius: defs[3].radius,
-  //   speed: 0,
-  //   heading: 0,
-  //   health: defs[3].health,
-  //   testStarbase2Id,
-  //   sinceLastShot: [10000, 10000, 10000, 10000],
-  //   projectileId: 0,
-  //   energy: defs[3].energy,
-  //   definitionIndex: 3,
-  //   id: testStarbase2Id,
-  //   name: "Incubation center 17",
-  //   armIndices: [],
-  //   slotData: [],
-  // };
-  // state.players.set(testStarbase2Id, testStarbase2);
-
-  const testAsteroids = randomAsteroids(30, { x: -3000, y: -3000, width: 6000, height: 6000 });
+for (let i = 0; i < sectorList.length; i++) {
+  const sector = sectors.get(sectorList[i])!;
+  const testAsteroids = randomAsteroids(30, { x: -3000, y: -3000, width: 6000, height: 6000 }, sectorList[i]);
   for (const asteroid of testAsteroids) {
-    state.asteroids.set(asteroid.id, asteroid);
+    sector.asteroids.set(asteroid.id, asteroid);
   }
-};
-
-for (const sector of sectors.values()) {
-  initEnvironment(sector);
 }
 
 const initFromDatabase = async () => {

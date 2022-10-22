@@ -1,6 +1,7 @@
 // This is shared by the server and the client
 
 import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs, ArmamentDef, emptyLoadout } from "./defs";
+import { sfc32 } from "./prng";
 
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
@@ -719,20 +720,21 @@ const uid = () => {
   return ret;
 };
 
-const randomAsteroids = (count: number, bounds: Rectangle) => {
+const randomAsteroids = (count: number, bounds: Rectangle, seed: number) => {
   if (asteroidDefs.length === 0) {
     throw new Error("Asteroid defs not initialized");
   }
+  const prng = sfc32(seed, 4398, 25, 6987);
   const asteroids: Asteroid[] = [];
   for (let i = 0; i < count; i++) {
-    const index = Math.floor(Math.random() * asteroidDefs.length);
+    const index = Math.floor(prng() * asteroidDefs.length);
     const def = asteroidDefs[index];
     const asteroid: Asteroid = {
       position: {
-        x: Math.random() * bounds.width + bounds.x,
-        y: Math.random() * bounds.height + bounds.y,
+        x: prng() * bounds.width + bounds.x,
+        y: prng() * bounds.height + bounds.y,
       },
-      heading: Math.random() * 2 * Math.PI,
+      heading: prng() * 2 * Math.PI,
       resources: def.resources,
       definitionIndex: index,
       id: uid(),

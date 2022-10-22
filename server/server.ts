@@ -550,12 +550,14 @@ wss.on("connection", (ws) => {
     } else if (data.type === "warp") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player) {
-          player.warpTo = data.payload.warpTo;
-          player.warping = 1;
-          state.players.set(client.id, player);
+        if (client.currentSector !== data.payload.warpTo) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            player.warpTo = data.payload.warpTo;
+            player.warping = 1;
+            state.players.set(client.id, player);
+          }
         }
       }
     } else {
@@ -641,6 +643,7 @@ setInterval(() => {
       }
     }
   }
+  // Handle all warps
   while (warpList.length > 0) {
     const { player, to } = warpList.shift()!;
     const state = sectors.get(to);
@@ -657,7 +660,6 @@ setInterval(() => {
       state.players.set(player.id, player);
     }
   }
-  // checkWin(state);
 }, 1000 / ticksPerSecond);
 
 server.listen(wsPort, () => {

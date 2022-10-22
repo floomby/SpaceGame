@@ -400,6 +400,29 @@ const hardpointPositions = (player: Player, def: UnitDefinition) => {
   return ret;
 };
 
+const kill = (
+  def: UnitDefinition,
+  player: Player,
+  state: GlobalState,
+  applyEffect: (effect: EffectTrigger) => void,
+  onDeath: (id: number) => void
+) => {
+  // Dead stations that are dockable become "inoperable" until repaired (repairing is not implemented yet)
+  if (def.kind === UnitKind.Station && def.dockable) {
+    player.health = 0;
+    player.energy = 0;
+    player.inoperable = true;
+  } else {
+    // Dead ships just get removed
+    state.players.delete(player.id);
+    applyEffect({
+      effectIndex: def.deathEffect,
+      from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+    });
+    onDeath(player.id);
+  }
+};
+
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
 const update = (
@@ -409,7 +432,7 @@ const update = (
   serverSecondaries: Map<number, number>,
   applyEffect: (effect: EffectTrigger) => void,
   serverWarpList: { player: Player; to: number }[],
-  onDeath: (id: number) => void,
+  onDeath: (id: number) => void
 ) => {
   // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
@@ -418,21 +441,7 @@ const update = (
     }
     const def = defs[player.definitionIndex];
     if (player.health <= 0) {
-      if (def.kind === UnitKind.Station && def.dockable) {
-        player.health = 0;
-        player.energy = 0;
-        player.inoperable = true;
-      } else {
-        state.players.delete(id);
-        applyEffect({
-          effectIndex: def.deathEffect,
-          from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
-        });
-        onDeath(id);
-      }
-    }
-    if (!player.inoperable) {
-      player.health = Math.min(player.health + def.healthRegen, def.health);
+      kill(def, player, state, applyEffect, onDeath);
     }
 
     if (def.kind === UnitKind.Ship) {
@@ -457,15 +466,18 @@ const update = (
         player.toFirePrimary = false;
         player.energy -= 10;
       }
+      // Run the secondary frameMutators
       player.armIndices.forEach((armament, index) => {
         const armDef = armDefs[armament];
         if (armDef.frameMutator) {
           armDef.frameMutator(player, index);
         }
       });
+      // Fire secondaries
       if (player.toFireSecondary) {
         const slotId = serverSecondaries.get(id);
         const armDef = armDefs[player.armIndices[slotId]];
+        // Targeted weapons
         if (armDef.targeted === TargetedKind.Targeted) {
           const [targetKind, targetId] = serverTargets.get(id) || [TargetKind.None, 0];
           if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
@@ -481,6 +493,7 @@ const update = (
               }
             }
           }
+          // Untargeted weapons
         } else if (armDef.targeted === TargetedKind.Untargeted) {
           if (slotId !== undefined && slotId < player.armIndices.length) {
             if (armDef.stateMutator) {
@@ -492,7 +505,7 @@ const update = (
     } else {
       // Have stations spin slowly
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
-
+      // Have the stations fire their primary weapons
       if (!player.inoperable) {
         let closestEnemy: Player | undefined;
         let closestEnemyDistanceSquared = Infinity;
@@ -543,15 +556,16 @@ const update = (
         }
       }
     }
+    // Update primary times since last shot (secondaries are handled in the frameMutators in the armDefs)
     for (let i = 0; i < player.sinceLastShot.length; i++) {
       player.sinceLastShot[i] += 1;
     }
+    // Don't apply regen to players which are inoperable
     if (!player.inoperable) {
-      player.energy += def.energyRegen;
-      if (player.energy > def.energy) {
-        player.energy = def.energy;
-      }
+      player.health = Math.min(player.health + def.healthRegen, def.health);
+      player.energy = Math.min(player.energy + def.energyRegen, def.energy);
     }
+    // If a warp is in progress, update the warp progress, then trigger the warp once time has elapsed
     if (player.warping) {
       player.warping += 1;
       if (player.warping > def.warpTime) {
@@ -581,18 +595,7 @@ const update = (
         if (projectile.team !== def.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
-            if (def.kind === UnitKind.Station && def.dockable) {
-              otherPlayer.health = 0;
-              otherPlayer.energy = 0;
-              otherPlayer.inoperable = true;
-            } else {
-              state.players.delete(otherId);
-              applyEffect({
-                effectIndex: def.deathEffect,
-                from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
-              });
-              onDeath(otherId);
-            }
+            kill(def, otherPlayer, state, applyEffect, onDeath);
           }
           projectiles.splice(i, 1);
           i--;
@@ -641,18 +644,7 @@ const update = (
       if (missile.team !== def.team && circlesIntersect(missile, otherPlayer)) {
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
-          if (def.kind === UnitKind.Station && def.dockable) {
-            otherPlayer.health = 0;
-            otherPlayer.energy = 0;
-            otherPlayer.inoperable = true;
-          } else {
-            state.players.delete(otherId);
-            applyEffect({
-              effectIndex: def.deathEffect,
-              from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
-            });
-            onDeath(otherId);
-          }
+          kill(def, otherPlayer, state, applyEffect, onDeath);
         }
         state.missiles.delete(id);
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });

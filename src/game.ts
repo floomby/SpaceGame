@@ -43,6 +43,7 @@ type Entity = Circle & { id: number; speed: number; heading: number };
 
 type CargoEntry = { what: string; amount: number };
 
+// This has a corresponding data model (ses server/dataModels.ts)
 type Player = Entity & {
   health: number;
   sinceLastShot: number[];

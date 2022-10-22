@@ -29,10 +29,13 @@ import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
 
-import { User, Station } from "./datamodels";
+import { User, Station } from "./dataModels";
 import mongoose from "mongoose";
 
 import { createHash } from "crypto";
+
+// Initialize the definitions (Needs to be done to use them)
+initDefs();
 
 mongoose
   .connect("mongodb://localhost:27017/SpaceGame", {})
@@ -294,19 +297,8 @@ if (useSsl) {
   server = createServer();
 }
 
-// Initialize the definitions (Needs to be done to use them)
-initDefs();
-
 const sectors: Map<number, GlobalState> = new Map();
 const warpList: { player: Player; to: number }[] = [];
-
-// Game state
-// const state: GlobalState = {
-//   players: new Map(),
-//   projectiles: new Map(),
-//   asteroids: new Map(),
-//   missiles: new Map(),
-// };
 
 sectorList.forEach((sector) => {
   sectors.set(sector, {
@@ -418,7 +410,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
   }
 
   const player = {
-    position: { x: -1600, y: -1600 },
+    position: { x: 0, y: 0 },
     radius: defs[defIndex].radius,
     speed: 0,
     heading: 0,

@@ -29,13 +29,21 @@ import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
 
-import { User } from "./datamodels";
+import { User, Station } from "./datamodels";
 import mongoose from "mongoose";
 
 import { createHash } from "crypto";
 
-// connect to the database
-mongoose.connect("mongodb://localhost:27017/SpaceGame", {});
+mongoose
+  .connect("mongodb://localhost:27017/SpaceGame", {})
+  .catch((err) => {
+    console.log("Error connecting to database: " + err);
+  })
+  .then(() => {
+    console.log("Connected to database");
+    // Initialize the server state stuff
+    initFromDatabase();
+  });
 
 // Server stuff
 const credentials: { key?: string; cert?: string; ca?: string } = {};
@@ -122,10 +130,34 @@ app.get("/nameOf", (req, res) => {
   });
 });
 
+app.get("/stationName", (req, res) => {
+  const id = req.query.id;
+  if (!id || typeof id !== "string") {
+    // send error json
+    res.send(JSON.stringify({ error: "Invalid id" }));
+    return;
+  }
+  // find the user from the database
+  Station.findOne({ id }, (err, station) => {
+    if (err) {
+      console.log(err);
+      res.send(JSON.stringify({ error: "Error finding station" }));
+      return;
+    }
+    if (station) {
+      res.send(JSON.stringify({ value: station.name }));
+      return;
+    }
+    res.send(JSON.stringify({ error: "Station not found" }));
+  });
+});
+
 const salt = "Lithium Chloride, Lanthanum(III) Chloride, and Strontium Chloride";
 
 const hash = (str: string) => {
-  return createHash("sha256").update(salt + str).digest("hex");
+  return createHash("sha256")
+    .update(salt + str)
+    .digest("hex");
 };
 
 app.get("/register", (req, res) => {
@@ -168,6 +200,76 @@ app.get("/register", (req, res) => {
   });
 });
 
+// Admin stuff
+app.get("/init", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== "90d4e14de110c29c4feaaaa4f4b49d38d96a9cafe9f750414e0c577779fafc3f") {
+    res.send("Invalid password");
+    return;
+  }
+  // Create a bunch of stations
+  const stationObjects = sectorList
+    .map((sector) => {
+      return [
+        {
+          name: `Starbase ${Math.floor(Math.random() * 200)}`,
+          id: uid(),
+          sector,
+          definitionIndex: defMap.get("Alliance Starbase")?.index,
+          position: { x: -1600, y: -1600 },
+        },
+        {
+          name: `Incubation Center ${Math.floor(Math.random() * 200)}`,
+          id: uid(),
+          sector,
+          definitionIndex: defMap.get("Confederacy Starbase")?.index,
+          position: { x: 1600, y: 1600 },
+        },
+      ];
+    })
+    .flat();
+  Station.insertMany(stationObjects, (err) => {
+    if (err) {
+      res.send("Database error" + err);
+      return;
+    }
+    res.send("true");
+  });
+});
+
+app.get("/resetEverything", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== "90d4e14de110c29c4feaaaa4f4b49d38d96a9cafe9f750414e0c577779fafc3f") {
+    res.send("Invalid password");
+    return;
+  }
+  // Delete all the stations
+  Station.deleteMany({}, (err) => {
+    if (err) {
+      res.send("Database error: " + err);
+      return;
+    }
+    // Delete all the users
+    User.deleteMany({}, (err) => {
+      if (err) {
+        res.send("Database error: " + err);
+        return;
+      }
+      res.send("true");
+    });
+  });
+});
+
 if (useSsl) {
   app.use(express.static("resources"));
 
@@ -196,7 +298,7 @@ if (useSsl) {
 initDefs();
 
 const sectors: Map<number, GlobalState> = new Map();
-const warpList: { player: Player, to: number }[] = [];
+const warpList: { player: Player; to: number }[] = [];
 
 // Game state
 // const state: GlobalState = {
@@ -255,45 +357,45 @@ const idToWebsocket = new Map<number, WebSocket>();
 
 // Make some stations so that we have something for testing
 const initEnvironment = (state: GlobalState) => {
-  const testStarbaseId = uid();
-  // winUids[Faction.Alliance] = testStarbaseId;
-  const testStarbase = {
-    position: { x: -1600, y: -1600 },
-    radius: defs[2].radius,
-    speed: 0,
-    heading: 0,
-    health: defs[2].health,
-    testStarbaseId,
-    sinceLastShot: [10000, 10000, 10000, 10000],
-    projectileId: 0,
-    energy: defs[2].energy,
-    definitionIndex: 2,
-    id: testStarbaseId,
-    name: "Outpost 476",
-    armIndices: [],
-    slotData: [],
-  };
-  state.players.set(testStarbaseId, testStarbase);
+  // const testStarbaseId = uid();
+  // // winUids[Faction.Alliance] = testStarbaseId;
+  // const testStarbase = {
+  //   position: { x: -1600, y: -1600 },
+  //   radius: defs[2].radius,
+  //   speed: 0,
+  //   heading: 0,
+  //   health: defs[2].health,
+  //   testStarbaseId,
+  //   sinceLastShot: [10000, 10000, 10000, 10000],
+  //   projectileId: 0,
+  //   energy: defs[2].energy,
+  //   definitionIndex: 2,
+  //   id: testStarbaseId,
+  //   name: "Outpost 476",
+  //   armIndices: [],
+  //   slotData: [],
+  // };
+  // state.players.set(testStarbaseId, testStarbase);
 
-  const testStarbase2Id = uid();
-  // winUids[Faction.Confederation] = testStarbase2Id;
-  const testStarbase2 = {
-    position: { x: 2500, y: 100 },
-    radius: defs[3].radius,
-    speed: 0,
-    heading: 0,
-    health: defs[3].health,
-    testStarbase2Id,
-    sinceLastShot: [10000, 10000, 10000, 10000],
-    projectileId: 0,
-    energy: defs[3].energy,
-    definitionIndex: 3,
-    id: testStarbase2Id,
-    name: "Incubation center 17",
-    armIndices: [],
-    slotData: [],
-  };
-  state.players.set(testStarbase2Id, testStarbase2);
+  // const testStarbase2Id = uid();
+  // // winUids[Faction.Confederation] = testStarbase2Id;
+  // const testStarbase2 = {
+  //   position: { x: 2500, y: 100 },
+  //   radius: defs[3].radius,
+  //   speed: 0,
+  //   heading: 0,
+  //   health: defs[3].health,
+  //   testStarbase2Id,
+  //   sinceLastShot: [10000, 10000, 10000, 10000],
+  //   projectileId: 0,
+  //   energy: defs[3].energy,
+  //   definitionIndex: 3,
+  //   id: testStarbase2Id,
+  //   name: "Incubation center 17",
+  //   armIndices: [],
+  //   slotData: [],
+  // };
+  // state.players.set(testStarbase2Id, testStarbase2);
 
   const testAsteroids = randomAsteroids(30, { x: -3000, y: -3000, width: 6000, height: 6000 });
   for (const asteroid of testAsteroids) {
@@ -304,6 +406,31 @@ const initEnvironment = (state: GlobalState) => {
 for (const sector of sectors.values()) {
   initEnvironment(sector);
 }
+
+const initFromDatabase = async () => {
+  const stations = await Station.find({});
+  for (const station of stations) {
+    const def = defs[station.definitionIndex];
+    const player: Player = {
+      position: station.position,
+      radius: def.radius,
+      speed: 0,
+      heading: 0,
+      health: def.health,
+      id: station.id,
+      sinceLastShot: [10000, 10000, 10000, 10000],
+      projectileId: 0,
+      energy: def.energy,
+      definitionIndex: station.definitionIndex,
+      armIndices: [],
+      slotData: [],
+    };
+    const sector = sectors.get(station.sector);
+    if (sector) {
+      sector.players.set(station.id, player);
+    }
+  }
+};
 
 // Market stuff
 const market = new Map<string, number>();
@@ -616,15 +743,7 @@ setInterval(() => {
       }
     }
     const triggers: EffectTrigger[] = [];
-    update(
-      state,
-      frame,
-      targets,
-      secondaries,
-      (trigger) => triggers.push(trigger),
-      warpList,
-      informDead,
-    );
+    update(state, frame, targets, secondaries, (trigger) => triggers.push(trigger), warpList, informDead);
 
     // TODO Consider culling the state information to only send nearby players and projectiles
     const playerData: Player[] = [];
@@ -667,7 +786,7 @@ setInterval(() => {
       }
       player.position.x = 0;
       player.position.y = 0;
-      player.heading = 3 * Math.PI / 2;
+      player.heading = (3 * Math.PI) / 2;
       player.speed = 0;
       state.players.set(player.id, player);
     }

@@ -546,7 +546,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     return `Docking error - station ${self.docked} not found`;
   }
   return horizontalCenter([
-    domFromRest(`nameOf?id=${station.id}`, (name) => `<h2>Docked with station ${name}</h2>`),
+    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2>Docked with station ${name}</h2>`),
     `${shipViewer()}`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">

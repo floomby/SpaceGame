@@ -66,7 +66,6 @@ import {
   setCurrentSector,
   setFaction,
   setMe,
-  setRespawnKey,
 } from "./globals";
 import { initSettings } from "./dialogs/settings";
 import { keylayoutSelector, keylayoutSelectorSetup } from "./dialogs/keyboardLayout";
@@ -920,9 +919,8 @@ const run = () => {
     missiles: new Map(),
   };
 
-  bindAction("init", (data: { id: number; respawnKey: number; sector: number }) => {
+  bindAction("init", (data: { id: number; sector: number }) => {
     setMe(data.id);
-    setRespawnKey(data.respawnKey);
     setCurrentSector(data.sector);
     initStars(data.sector);
     initSettings();
@@ -947,6 +945,10 @@ const run = () => {
       errorSpot.innerHTML = `<h2 style="color: red;">Unable to register: ${data.error}<h2>`;
     }
     clearDialogStack();
+  });
+
+  bindAction("error", (data: { message: string }) => {
+    console.error("Error from server: " + data.message);
   });
 
   bindUpdater("cargo", cargoHtml);
@@ -1014,6 +1016,7 @@ const run = () => {
     console.log("Warping to sector " + data.to);
     // hideDialog();
     if (data.to !== currentSector) {
+      state.asteroids.clear();
       initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);

@@ -29,7 +29,7 @@ import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
 
-import { User, Station } from "./dataModels";
+import { User, Station, Checkpoint } from "./dataModels";
 import mongoose from "mongoose";
 
 import { createHash } from "crypto";
@@ -326,8 +326,8 @@ type ClientData = {
   currentSector: number;
 };
 
-const checkpoints = new Map<number, Player>();
-const respawnKeys = new Map<number, number>();
+// const checkpoints = new Map<number, Player>();
+// const respawnKeys = new Map<number, number>();
 
 const clients: Map<WebSocket, ClientData> = new Map();
 const idToWebsocket = new Map<number, WebSocket>();
@@ -432,15 +432,30 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
   equip(player, 2, "Laser Beam", true);
 
   sectors.get(defaultSector)!.players.set(id, player);
-  const respawnKey = uid();
-  respawnKeys.set(respawnKey, id);
-  checkpoints.set(id, copyPlayer(player));
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
 
-  ws.send(JSON.stringify({ type: "init", payload: { id: id, respawnKey, sector: 1 } }));
-  console.log("Registered client with id: ", id);
+  // find one checkpoint for the id and update it, upserting if needed
+  Checkpoint.findOneAndUpdate({ id }, { id, sector: defaultSector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
+    if (err) {
+      ws.send(JSON.stringify({ type: "error", payload: { message: "Server error creating default player" } }));
+      console.log("Error saving checkpoint: " + err);
+      return;
+    }
+
+    ws.send(JSON.stringify({ type: "init", payload: { id: id, sector: defaultSector } }));
+    console.log("Registered client with id: ", id);
+  });
+};
+
+const saveCheckpoint = (id: number, sector: number, player: Player) => {
+  Checkpoint.findOneAndUpdate({ id }, { id, sector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
+    if (err) {
+      console.log("Error saving checkpoint: " + err);
+      return;
+    }
+  });
 };
 
 // TODO Need to protect from intentionally bad data
@@ -467,8 +482,36 @@ wss.on("connection", (ws) => {
           return;
         }
 
-        tmpSetupPlayer(user.id, ws, name, data.payload.faction);
         idToWebsocket.set(user.id, ws);
+        Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
+          if (err) {
+            ws.send(JSON.stringify({ type: "loginFail", payload: {} }));
+            console.log(err);
+            return;
+          }
+          if (!checkpoint) {
+            tmpSetupPlayer(user.id, ws, name, data.payload.faction);
+          } else {
+            const state = sectors.get(checkpoint.sector);
+            if (!state) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
+              console.log("Warning: Checkpoint sector not found (programming error)");
+              tmpSetupPlayer(user.id, ws, name, data.payload.faction);
+              return;
+            }
+            const playerState = JSON.parse(checkpoint.data);
+            state.players.set(user.id, playerState);
+            clients.set(ws, {
+              id: user.id,
+              name,
+              input: { up: false, down: false, left: false, right: false, primary: false, secondary: false },
+              currentSector: checkpoint.sector,
+            });
+            targets.set(user.id, [TargetKind.None, 0]);
+            secondaries.set(user.id, 0);
+            ws.send(JSON.stringify({ type: "init", payload: { id: user.id, sector: checkpoint.sector } }));
+          }
+        });
       });
     } else if (data.type === "register") {
       const name = data.payload.name;
@@ -532,7 +575,8 @@ wss.on("connection", (ws) => {
             state.players.set(client.id, player);
             const playerCopy = copyPlayer(player);
             playerCopy.docked = undefined;
-            checkpoints.set(client.id, playerCopy);
+
+            saveCheckpoint(client.id, client.currentSector, playerCopy);
           }
         }
       }
@@ -548,21 +592,34 @@ wss.on("connection", (ws) => {
           state.players.set(client.id, player);
           const playerCopy = copyPlayer(player);
           playerCopy.docked = undefined;
-          checkpoints.set(client.id, playerCopy);
+
+          saveCheckpoint(client.id, client.currentSector, playerCopy);
         }
       }
     } else if (data.type === "respawn") {
       const client = clients.get(ws);
-      const id = respawnKeys.get(data.payload.respawnKey);
-      console.log("Respawning: ", id, data.payload.respawnKey);
-      if (id && client && id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = checkpoints.get(id);
-        if (player) {
-          state.players.set(id, copyPlayer(player));
-        } else {
-          console.log("Warning: No checkpoint found for player", id);
-        }
+      if (client && data.payload.id === client.id) {
+        Checkpoint.findOne({ id: data.payload.id }, (err, checkpoint) => {
+          if (err) {
+            ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading checkpoint" } }));
+            console.log("Error loading checkpoint: " + err);
+            return;
+          }
+          if (!checkpoint) {
+            ws.send(JSON.stringify({ type: "error", payload: { message: "Checkpoint not found" } }));
+            console.log("Error loading checkpoint: " + err);
+            return;
+          }
+          const state = sectors.get(checkpoint.sector);
+          if (!state) {
+            ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
+            console.log("Warning: Checkpoint sector not found (programming error)");
+            return;
+          }
+          const playerState = JSON.parse(checkpoint.data);
+          state.players.set(client.id, playerState);
+          client.currentSector = checkpoint.sector;
+        });
       }
     } else if (data.type === "target") {
       const client = clients.get(ws);
@@ -658,15 +715,8 @@ wss.on("connection", (ws) => {
     if (removedClient) {
       const state = sectors.get(removedClient.currentSector)!;
       state.players.delete(removedClient.id);
-      checkpoints.delete(removedClient.id);
       targets.delete(removedClient.id);
       secondaries.delete(removedClient.id);
-      for (const [respawnKey, id] of respawnKeys) {
-        if (id === removedClient.id) {
-          respawnKeys.delete(respawnKey);
-          break;
-        }
-      }
       clients.delete(ws);
       idToWebsocket.delete(removedClient.id);
     }

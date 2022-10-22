@@ -99,11 +99,11 @@ const sendUndock = (id: number) => {
   );
 };
 
-const sendRespawn = (respawnKey: number) => {
+const sendRespawn = (id: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "respawn",
-      payload: { respawnKey },
+      payload: { id },
     })
   );
 };

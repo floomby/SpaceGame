@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { SchemaType } from "mongoose";
 
 const Schema = mongoose.Schema;
 
@@ -26,4 +26,13 @@ const stationSchema = new Schema({
 
 const Station = mongoose.model("Station", stationSchema);
 
-export { User, Station };
+// I may want a schema for the the Player type from src/game.ts but for now I am just using serialization
+const checkpointSchema = new Schema({
+  id: { type: Number, required: true },
+  sector: { type: Number, required: true },
+  data: { type: String, required: true },
+});
+
+const Checkpoint = mongoose.model("Checkpoint", checkpointSchema);
+
+export { User, Station, Checkpoint };

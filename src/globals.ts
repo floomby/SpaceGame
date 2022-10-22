@@ -26,12 +26,6 @@ const setMe = (newMe: number) => {
   me = newMe;
 };
 
-let respawnKey = 0;
-
-const setRespawnKey = (newRespawnKey: number) => {
-  respawnKey = newRespawnKey;
-};
-
 let currentSector: number;
 
 const setCurrentSector = (newCurrentSector: number) => {
@@ -49,8 +43,6 @@ export {
   setKeybind,
   me,
   setMe,
-  respawnKey,
-  setRespawnKey,
   currentSector,
   setCurrentSector,
 };

@@ -13,6 +13,11 @@ A simple multiplayer game where you have a ship and do things.
 - Defining units, missiles, effects, etc should be easier
 - Economy is very boring right now
 
+### More stuff to do
+
+- Finish dialog refactoring (finishing for station dialogs is somewhat more complex than settings and map)
+- Find and fix the absolute anchor speed bug
+
 ### MMO Stuff
 
 - Play as guest (low priority)

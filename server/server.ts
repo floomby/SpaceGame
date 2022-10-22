@@ -650,6 +650,10 @@ setInterval(() => {
         clients.get(ws)!.currentSector = to;
         ws.send(JSON.stringify({ type: "warp", payload: { to } }));
       }
+      player.position.x = 0;
+      player.position.y = 0;
+      player.heading = 3 * Math.PI / 2;
+      player.speed = 0;
       state.players.set(player.id, player);
     }
   }

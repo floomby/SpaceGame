@@ -5,7 +5,6 @@ import {
   sendInput,
   sendDock,
   sendUndock,
-  sendRespawn,
   sendTarget,
   sendSecondary,
   sendSellCargo,
@@ -20,7 +19,6 @@ import {
   GlobalState,
   Input,
   Player,
-  applyInputs,
   Ballistic,
   setCanDock,
   findNextTarget,
@@ -44,7 +42,7 @@ import {
   push as pushDialog,
   peekTag as peekDialogTag,
   clearStack as clearDialogStack,
-  isShown as isDialogShown,
+  shown as isDialogShown,
   horizontalCenter,
   updateDom,
   bindUpdater,
@@ -53,17 +51,27 @@ import {
   runPostUpdaterOnly,
 } from "./dialog";
 import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, UnitKind, UnitDefinition } from "./defs";
-import { canvas, drawEverything, flashSecondary, initDrawing, initStars, sprites } from "./drawing";
-import { dvorakBindings, KeyBindings, qwertyBindings, useKeybindings } from "./keybindings";
+import { drawEverything, flashSecondary, initDrawing, initStars, sprites } from "./drawing";
+import { KeyBindings } from "./keybindings";
 import { applyEffects, clearEffects } from "./effects";
-import { initSound, setVolume, getVolume } from "./sound";
-import { defaultKeyLayout } from "./config";
+import { initSound } from "./sound";
 import { domFromRest } from "./rest";
-
-// The server will assign our id after we login
-let me: number;
-
-let keybind = useKeybindings(defaultKeyLayout);
+import {
+  allianceColor,
+  confederationColor,
+  currentSector,
+  faction,
+  keybind,
+  me,
+  setCurrentSector,
+  setFaction,
+  setMe,
+  setRespawnKey,
+} from "./globals";
+import { initSettings } from "./dialogs/settings";
+import { keylayoutSelector, keylayoutSelectorSetup } from "./dialogs/keyboardLayout";
+import { mapDialog, setupMapDialog } from "./dialogs/map";
+import { deadDialog, setupDeadDialog } from "./dialogs/dead";
 
 let targetEnemy = false;
 let selectedSecondary = 0;
@@ -183,13 +191,13 @@ const initInputHandlers = () => {
         selectedSecondary = 9;
         break;
       case keybind.chat:
-        if (!isDialogShown()) {
+        if (!isDialogShown) {
           chatInput.style.display = "block";
           chatInput.focus();
         }
         break;
       case keybind.map:
-        if (!isDialogShown()) {
+        if (!isDialogShown) {
           pushDialog(mapDialog(), setupMapDialog, "map");
         } else if (peekDialogTag() === "map") {
           popDialog();
@@ -436,7 +444,7 @@ const populateShipList = (availableShips: { def: UnitDefinition; index: number }
 };
 
 const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: string) => {
-  if (!isDialogShown()) {
+  if (!isDialogShown) {
     return;
   }
   const canvas = document.getElementById(shipViewId) as HTMLCanvasElement;
@@ -725,8 +733,6 @@ const loop = () => {
   requestAnimationFrame(loop);
 };
 
-let faction: Faction = Faction.Alliance;
-
 const loggingInDialog = horizontalCenter(["<h3>Logging in...</h3>"]);
 const registeringDialog = horizontalCenter(["<h3>Registering...</h3>"]);
 
@@ -738,101 +744,6 @@ const doRegister = (username: string, password: string) => {
 const doLogin = (username: string, password: string) => {
   login(username, password, faction);
   pushDialog(loggingInDialog, () => {});
-};
-
-const keylayoutSelector = () => `<fieldset>
-<legend>Keyboard Layout</legend>
-<div style="text-align: left;">
-  <input type="radio" id="qwerty" name="keyboard" value="qwerty">
-  <label for="qwerty">QWERTY</label>
-  <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(qwertyBindings)}&nbsp;</span></div>
-</div>
-<div style="text-align: left;">
-  <input type="radio" id="dvorak" name="keyboard" value="dvorak">
-  <label for="dvorak">Dvorak</label>
-  <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>
-</div>
-</fieldset>`;
-
-const keylayoutSelectorSetup = () => {
-  const qwerty = document.getElementById("qwerty") as HTMLInputElement;
-  const dvorak = document.getElementById("dvorak") as HTMLInputElement;
-  qwerty?.addEventListener("change", () => {
-    if (qwerty.checked) {
-      keybind = qwertyBindings;
-    }
-  });
-  dvorak?.addEventListener("change", () => {
-    if (dvorak.checked) {
-      keybind = dvorakBindings;
-    }
-  });
-  if (keybind === qwertyBindings) {
-    qwerty.checked = true;
-  } else {
-    dvorak.checked = true;
-  }
-};
-
-const allianceColor = "rgba(22, 45, 34, 0.341)";
-const confederationColor = "rgba(49, 25, 25, 0.341)";
-const allianceColorDark = "rgba(22, 45, 34, 0.8)";
-const confederationColorDark = "rgba(49, 25, 25, 0.8)";
-
-const settingsDialog = () =>
-  horizontalCenter([
-    `<h1>Settings</h1>`,
-    `Volume:`,
-    `<input type="range" min="0" max="1" value="${getVolume()}" class="slider" id="volumeSlider" step="0.05"><br/>`,
-    keylayoutSelector(),
-    `<br/><button id="closeSettings">Close</button>`,
-  ]);
-
-let settingShown = false;
-
-const setupSettingsDialog = () => {
-  document.getElementById("closeSettings")?.addEventListener("click", () => {
-    settingShown = false;
-    setDialogBackground(faction === Faction.Alliance ? allianceColor : confederationColor);
-    popDialog();
-  });
-  const volumeSlider = document.getElementById("volumeSlider") as HTMLInputElement;
-  volumeSlider?.addEventListener("input", () => {
-    setVolume(parseFloat(volumeSlider.value));
-  });
-  volumeSlider.value = getVolume().toString();
-  keylayoutSelectorSetup();
-};
-
-const mapDialog = () => {
-  return horizontalCenter([`<h1>Map</h1>`, domFromRest("sectorList", (list) => list.toString()), `<br/><button id="closeMap">Close</button>`]);
-};
-
-const setupMapDialog = () => {
-  document.getElementById("closeMap")?.addEventListener("click", () => {
-    popDialog();
-  });
-};
-
-let settingsInitialized = false;
-
-const initSettings = () => {
-  if (settingsInitialized) {
-    return;
-  }
-  settingsInitialized = true;
-
-  const settingsIcon = document.getElementById("settingsIcon");
-  if (settingsIcon) {
-    settingsIcon.addEventListener("click", () => {
-      if (!settingShown) {
-        pushDialog(settingsDialog(), setupSettingsDialog);
-        settingShown = true;
-        setDialogBackground(faction === Faction.Alliance ? allianceColorDark : confederationColorDark);
-      }
-    });
-    settingsIcon.style.display = "flex";
-  }
 };
 
 const loginHandler = () => {
@@ -873,56 +784,6 @@ const loginKeyHandler = (e: KeyboardEvent) => {
   if (e.key === "Enter") {
     loginHandler();
   }
-};
-
-const keybindingTooltipText = (bindings: KeyBindings) => {
-  let keys = { ...bindings };
-
-  for (const [k, v] of Object.entries(keys)) {
-    if (v === " ") {
-      keys[k] = "Space";
-    }
-    if (v === "ArrowLeft") {
-      keys[k] = "Left";
-    }
-    if (v === "ArrowRight") {
-      keys[k] = "Right";
-    }
-    if (v === "ArrowUp") {
-      keys[k] = "Up";
-    }
-    if (v === "ArrowDown") {
-      keys[k] = "Down";
-    }
-  }
-
-  return `<table style="width: 100%; text-align: left; white-space: nowrap;">
-  <tr><th>Key</th><th>Action</th></tr>
-  <tr><td style="padding-right: 3vw;">${keys.dock}</td><td>Dock</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.primary}</td><td>Fire primary</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.secondary}</td><td>Fire secondary</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.nextTarget}</td><td>Target next closest ship/station</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.previousTarget}</td><td>Target next furthest ship/station</td></tr>
-  <tr><td style="padding-right: 3vw;">Ctrl + ${keys.nextTarget}</td><td>Target next closest enemy</td></tr>
-  <tr><td style="padding-right: 3vw;">Ctrl + ${keys.previousTarget}</td><td>Target next furthest enemy</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.nextTargetAsteroid}</td><td>Target next closest asteroid</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.previousTargetAsteroid}</td><td>Target next furthest asteroid</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary0}</td><td>Select secondary 0</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary1}</td><td>Select secondary 1</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary2}</td><td>Select secondary 2</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary3}</td><td>Select secondary 3</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary4}</td><td>Select secondary 4</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary5}</td><td>Select secondary 5</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary6}</td><td>Select secondary 6</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary7}</td><td>Select secondary 7</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary8}</td><td>Select secondary 8</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.selectSecondary9}</td><td>Select secondary 9</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.up}</td><td>Accelerate</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.down}</td><td>Decelerate</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.left}</td><td>Rotate left</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.right}</td><td>Rotate right</td></tr>
-  <tr><td style="padding-right: 3vw;">${keys.chat}</td><td>Chat</td></tr>
-</table>`;
 };
 
 const keybindingHelpText = (bindings: KeyBindings) => {
@@ -1034,33 +895,18 @@ const setupLoginDialog = () => {
   const confederation = document.getElementById("confederation") as HTMLInputElement;
   alliance.addEventListener("change", () => {
     if (alliance.checked) {
-      faction = Faction.Alliance;
+      setFaction(Faction.Alliance);
       setDialogBackground(allianceColor);
     }
   });
   confederation.addEventListener("change", () => {
     if (confederation.checked) {
-      faction = Faction.Confederation;
+      setFaction(Faction.Confederation);
       setDialogBackground(confederationColor);
     }
   });
   document.getElementById("loginButton")?.addEventListener("click", loginHandler);
   document.getElementById("registerButton")?.addEventListener("click", registerHandler);
-};
-
-let respawnKey = 0;
-let currentSector: number;
-
-const deadDialog = horizontalCenter(["<h2>You are dead</h2>", "<button id='respawn'>Respawn</button>"]);
-const setupDeadDialog = () => {
-  document.getElementById("respawn")?.addEventListener("click", () => {
-    if (respawnKey !== 0) {
-      sendRespawn(respawnKey);
-      popDialog();
-    } else {
-      console.error("No respawn key");
-    }
-  });
 };
 
 const run = () => {
@@ -1075,9 +921,9 @@ const run = () => {
   };
 
   bindAction("init", (data: { id: number; respawnKey: number; sector: number }) => {
-    me = data.id;
-    respawnKey = data.respawnKey;
-    currentSector = data.sector;
+    setMe(data.id);
+    setRespawnKey(data.respawnKey);
+    setCurrentSector(data.sector);
     initStars(data.sector);
     initSettings();
     clearDialogStack();
@@ -1164,13 +1010,13 @@ const run = () => {
     pushDialog(deadDialog, setupDeadDialog, "dead");
   });
 
-  bindAction("warp", (data: {to: number}) => {
+  bindAction("warp", (data: { to: number }) => {
     console.log("Warping to sector " + data.to);
     // hideDialog();
     if (data.to !== currentSector) {
       initStars(data.to);
       clearEffects();
-      currentSector = data.to;
+      setCurrentSector(data.to);
     }
     targetId = 0;
     targetAsteroidId = 0;

@@ -110,8 +110,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        console.log("Playing laser sound", midX, midY);
-        const panner = play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
+        const panner = play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.3);
         panner.positionZ.value = 10;
       }
 
@@ -159,7 +158,6 @@ const initEffects = () => {
         const midX = ((from as Position).x + to.x) / 2;
         const midY = ((from as Position).y + to.y) / 2;
         effect.extra.needSound = false;
-        console.log("Playing laser sound", midX, midY);
         const panner = play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
       }
 
@@ -484,7 +482,7 @@ const applyEffects = (triggers: EffectTrigger[]) => {
 const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
   effects = effects.filter((effect) => effect.frame > 0);
 
-  // TODO Culling if the effect is offscreen
+  // The effect culling is done in the draw functions (if we did it here it would be to inflexible)
   for (const effect of effects) {
     effect.frame -= sixtieths;
     if (effect.frame <= 0) {

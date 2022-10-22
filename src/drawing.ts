@@ -28,6 +28,7 @@ let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
 
 const initStars = (sector: number) => {
+  stars.length = 0;
   const prng = sfc32(sector, 3437, 916, 3158);
 
   for (let i = 0; i < 1000; i++) {

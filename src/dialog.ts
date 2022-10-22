@@ -165,10 +165,6 @@ const unbindKey = (key: string) => {
   lastStates.delete(key);
 };
 
-const isShown = () => {
-  return shown;
-};
-
 export {
   init,
   show,
@@ -185,5 +181,5 @@ export {
   clearStack,
   setDialogBackground,
   runPostUpdaterOnly,
-  isShown,
+  shown,
 };

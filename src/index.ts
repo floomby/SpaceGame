@@ -201,9 +201,11 @@ const initInputHandlers = () => {
         } else if (peekDialogTag() === "map") {
           popDialog();
         }
+        break;
       // Temporary keybind for testing
       case keybind.warp:
         sendWarp(me, 2);
+        break;
     }
     if (changed) {
       sendInput(input, me);

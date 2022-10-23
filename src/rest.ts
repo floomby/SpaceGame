@@ -1,6 +1,6 @@
 import { uid } from "./game";
 
-const domFromRest = (query: string, template: (value: string) => string) => {
+const domFromRest = (query: string, template: (value: string) => string, postCompletion?: () => void) => {
   const id = uid();
   const html = `<div id="${id}"></div>`;
   fetch(query)
@@ -19,6 +19,9 @@ const domFromRest = (query: string, template: (value: string) => string) => {
         const element = document.getElementById(id.toString());
         if (element) {
           element.innerHTML = template(data.value);
+          if (postCompletion) {
+            postCompletion();
+          }
         }
       }
     });

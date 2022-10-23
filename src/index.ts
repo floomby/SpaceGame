@@ -2,7 +2,6 @@ import {
   connect,
   bindAction,
   login,
-  sendInput,
   sendDock,
   sendUndock,
   sendTarget,
@@ -10,14 +9,11 @@ import {
   sendSellCargo,
   sendEquip,
   unbindAllActions,
-  sendChat,
   sendPurchase,
   register,
-  sendWarp,
 } from "./net";
 import {
   GlobalState,
-  Input,
   Player,
   Ballistic,
   setCanDock,
@@ -40,7 +36,6 @@ import {
   clear as clearDialog,
   pop as popDialog,
   push as pushDialog,
-  peekTag as peekDialogTag,
   clearStack as clearDialogStack,
   shown as isDialogShown,
   horizontalCenter,
@@ -61,554 +56,26 @@ import {
   confederationColor,
   currentSector,
   faction,
+  initBlankState,
   keybind,
   me,
+  selectedSecondary,
   setCurrentSector,
   setFaction,
   setMe,
+  setSelectedSecondary,
+  state,
 } from "./globals";
 import { initSettings } from "./dialogs/settings";
 import { keylayoutSelector, keylayoutSelectorSetup } from "./dialogs/keyboardLayout";
-import { mapDialog, setupMapDialog } from "./dialogs/map";
 import { deadDialog, setupDeadDialog } from "./dialogs/dead";
+import { hideChat, initInputHandlers, input, selectedSecondaryChanged, setSelectedSecondaryChanged, targetEnemy } from "./input";
+import { bindDockingUpdaters, dockDialog, docker, setDocker, setShowDocked, setupDockingUI, showDocked } from "./dialogs/dock";
 
-let targetEnemy = false;
-let selectedSecondary = 0;
-let selectedSecondaryChanged = false;
-
-let input: Input = {
-  up: false,
-  down: false,
-  left: false,
-  right: false,
-  primary: false,
-  secondary: false,
-  dock: false,
-  nextTarget: false,
-  previousTarget: false,
-  nextTargetAsteroid: false,
-  previousTargetAsteroid: false,
-};
-
-let chatInput: HTMLInputElement;
-
-const initInputHandlers = () => {
-  chatInput = document.getElementById("chatInput") as HTMLInputElement;
-  // if the chat is unfocused and empty we need to hide it
-  chatInput.addEventListener("blur", () => {
-    if (chatInput.value === "") {
-      chatInput.style.display = "none";
-    }
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (chatInput === document.activeElement) {
-      if (e.key === "Enter" && chatInput.value !== "") {
-        sendChat(me, chatInput.value);
-        chatInput.value = "";
-        chatInput.blur();
-        chatInput.style.display = "none";
-      } else if (e.key === "Enter") {
-        chatInput.blur();
-        chatInput.style.display = "none";
-      }
-      return;
-    }
-
-    let changed = false;
-    const oldSecondary = selectedSecondary;
-    switch (e.key) {
-      case keybind.up:
-        changed = !input.up;
-        input.up = true;
-        break;
-      case keybind.down:
-        changed = !input.down;
-        input.down = true;
-        break;
-      case keybind.left:
-        changed = !input.left;
-        input.left = true;
-        break;
-      case keybind.right:
-        changed = !input.right;
-        input.right = true;
-        break;
-      case keybind.primary:
-        changed = !input.primary;
-        input.primary = true;
-        break;
-      case keybind.secondary:
-        changed = !input.secondary;
-        input.secondary = true;
-        break;
-      case keybind.dock:
-        input.dock = true;
-        break;
-      case keybind.nextTarget:
-        input.nextTarget = true;
-        targetEnemy = e.getModifierState("Control");
-        break;
-      case keybind.previousTarget:
-        input.previousTarget = true;
-        targetEnemy = e.getModifierState("Control");
-        break;
-      case keybind.nextTargetAsteroid:
-        input.nextTargetAsteroid = true;
-        break;
-      case keybind.previousTargetAsteroid:
-        input.previousTargetAsteroid = true;
-        break;
-      case keybind.selectSecondary0:
-        selectedSecondary = 0;
-        break;
-      case keybind.selectSecondary1:
-        selectedSecondary = 1;
-        break;
-      case keybind.selectSecondary2:
-        selectedSecondary = 2;
-        break;
-      case keybind.selectSecondary3:
-        selectedSecondary = 3;
-        break;
-      case keybind.selectSecondary4:
-        selectedSecondary = 4;
-        break;
-      case keybind.selectSecondary5:
-        selectedSecondary = 5;
-        break;
-      case keybind.selectSecondary6:
-        selectedSecondary = 6;
-        break;
-      case keybind.selectSecondary7:
-        selectedSecondary = 7;
-        break;
-      case keybind.selectSecondary8:
-        selectedSecondary = 8;
-        break;
-      case keybind.selectSecondary9:
-        selectedSecondary = 9;
-        break;
-      case keybind.chat:
-        if (!isDialogShown) {
-          chatInput.style.display = "block";
-          chatInput.focus();
-        }
-        break;
-      case keybind.map:
-        if (!isDialogShown) {
-          pushDialog(mapDialog(), setupMapDialog, "map");
-        } else if (peekDialogTag() === "map") {
-          popDialog();
-        }
-        break;
-      // Temporary keybind for testing
-      case keybind.warp:
-        sendWarp(me, 2);
-        break;
-    }
-    if (changed) {
-      sendInput(input, me);
-    }
-    if (oldSecondary !== selectedSecondary) {
-      selectedSecondaryChanged = true;
-    }
-  });
-  document.addEventListener("keyup", (e) => {
-    if (chatInput === document.activeElement) {
-      return;
-    }
-
-    let changed = false;
-    switch (e.key) {
-      case keybind.up:
-        changed = input.up;
-        input.up = false;
-        break;
-      case keybind.down:
-        changed = input.down;
-        input.down = false;
-        break;
-      case keybind.left:
-        changed = input.left;
-        input.left = false;
-        break;
-      case keybind.right:
-        changed = input.right;
-        input.right = false;
-        break;
-      case keybind.primary:
-        changed = input.primary;
-        input.primary = false;
-        break;
-      case keybind.secondary:
-        changed = input.secondary;
-        input.secondary = false;
-        break;
-      case keybind.dock:
-        input.dock = false;
-        break;
-      case keybind.nextTarget:
-        input.nextTarget = false;
-        break;
-      case keybind.previousTarget:
-        input.previousTarget = false;
-        break;
-      case keybind.nextTargetAsteroid:
-        input.nextTargetAsteroid = false;
-        break;
-      case keybind.previousTargetAsteroid:
-        input.previousTargetAsteroid = false;
-        break;
-    }
-    if (changed) {
-      sendInput(input, me);
-    }
-  });
-};
-
-let state: GlobalState;
 let chats: ChatMessage[] = [];
-
-let docker = () => {};
-let showDocked = false;
 
 let targetId = 0;
 let targetAsteroidId = 0;
-
-const creditsHtml = (credits: number | undefined) => {
-  if (credits === undefined) {
-    credits = 0;
-  }
-  return `<span class="credits">Credits: ${credits}</span>`;
-};
-
-const cargoHtml = (cargo?: CargoEntry[]) => {
-  if (!cargo) {
-    return "";
-  }
-  let html = '<table style="width: 100%; text-align: left;">';
-  // html += "<tr><th>Item</th><th>Quantity</th><th>Sell</th></tr>";
-  let index = 0;
-  for (const entry of cargo) {
-    html += `<tr>
-  <td>${entry.what}</td>
-  <td>${entry.amount}</td>
-  <td style="text-align: right;"><button id="sellCargo${index}">Sell</button></td></tr>`;
-    index++;
-  }
-  html += "</table>";
-  return html;
-};
-
-const cargoPostUpdate = (cargo?: CargoEntry[]) => {
-  if (cargo) {
-    for (let i = 0; i < cargo.length; i++) {
-      const button = document.getElementById(`sellCargo${i}`);
-      if (button) {
-        button.addEventListener("click", () => {
-          sendSellCargo(me, cargo[i].what);
-        });
-      } else {
-        console.log("button not found", `sellCargo${i}`);
-      }
-    }
-  }
-};
-
-const disableTooExpensive = (player: Player | undefined, cost: number) => {
-  if (player) {
-    if (player.credits < cost) {
-      return "disabled";
-    } else {
-      return "";
-    }
-  } else {
-    return "disabled";
-  }
-};
-
-const armsHtml = (armIndices: number[]) => {
-  let html = '<table style="width: 100%; text-align: left;">';
-  // html += "<tr><th>Item</th><th></th><th></th></tr>";
-  let index = 0;
-  for (const entry of armIndices) {
-    const armDef = armDefs[entry];
-    html += `<tr>
-  <td>${armDef.name}</td>
-  <td style="text-align: right;"><button id="arm${index++}">Change</button></td></tr>`;
-  }
-  html += "</table>";
-  return html;
-};
-
-const armsPostUpdate = (armIndices: number[]) => {
-  for (let i = 0; i < armIndices.length; i++) {
-    const button = document.getElementById(`arm${i}`);
-    if (button) {
-      button.addEventListener("click", () => {
-        const slotIndex = i;
-        const index = parseInt(button.id.substring(3));
-        const self = state.players.get(me);
-        if (self) {
-          const def = defs[self.definitionIndex];
-          if (def.slots.length > index) {
-            const kind = def.slots[index];
-            showDialog(equipMenu(kind, slotIndex));
-            setupEquipMenu(kind, slotIndex);
-          } else {
-            console.log("no slot for index", index);
-          }
-        }
-      });
-    } else {
-      console.log("button not found", `arm${i}`);
-    }
-  }
-};
-
-let equipMenu = (kind: SlotKind, slotIndex: number) => {
-  let index = 0;
-  let html = `<table style="width: 80vw; text-align: left;">
-  <colgroup>
-    <col span="1" style="width: 30vw;">
-    <col span="1" style="width: 10vw;">
-    <col span="1" style="width: 20vw;">
-    <col span="1" style="width: 20vw;">
-  </colgroup>`;
-  html += '<tr><th>Armament</th><th></th><th style="text-align: left;">Price</th><th></th></tr>';
-  for (const armDef of armDefs) {
-    if (armDef.kind === kind) {
-      html += `<tr>
-  <td>${armDef.name}</td>
-  <td><div class="tooltip">?<span class="tooltipText">&nbsp;${armDef.description}&nbsp;</span></div></td>
-  <td>${armDef.cost}</td>
-  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(me), armDef.cost)}>Equip</button></td></tr>`;
-    }
-  }
-  html += "</table>";
-  return horizontalCenter([html, '<br><button id="back">Back</button>']);
-};
-
-const shipViewer = () => {
-  return `<div style="display: flex; flex-direction: row;">
-  <div>
-    <canvas id="shipView" width="200" height="200"></canvas>
-    <button id="changeShip" style="top: 0;">Change</button>
-  </div>
-  <div style="width: 60vw;">
-    <div id="shipStats" style="width: 100%">
-    </div>
-  </div>
-</div>`;
-};
-
-const shipPreviewer = (definitionIndex: number) => {
-  const def = defs[definitionIndex];
-  return `<div style="display: flex; flex-direction: row;">
-  <canvas id="shipPreview" width="200" height="200"></canvas>
-  <div style="width: 60vw;">
-    <div id="shipStatsPreview" style="width: 100%">
-    </div>
-  </div>
-</div>`;
-};
-
-const shipShop = () => {
-  const self = state.players.get(me);
-  return horizontalCenter([shipPreviewer(self.definitionIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`]);
-};
-
-const populateShipList = (availableShips: { def: UnitDefinition; index: number }[], self: Player) => {
-  const shipList = document.getElementById("shipList");
-  if (shipList) {
-    shipList.innerHTML = `<table style="width: 80vw; text-align: left;">
-  <colgroup>
-    <col span="1" style="width: 30vw;">
-    <col span="1" style="width: 10vw;">
-    <col span="1" style="width: 20vw;">
-    <col span="1" style="width: 20vw;">
-  </colgroup>
-  <tbody>
-    ${availableShips
-      .map(
-        ({ def, index }) => `<tr>
-    <td>${def.name}</td>
-    <td><button id="previewShip${index}">Preview</button></td>
-    <td>${def.price}</td>
-    <td><button id="purchase${index}" ${self.credits >= def.price ? "" : "disabled"}>Purchase</button></td></tr>`
-      )
-      .join("")}
-  </tbody>
-  </table>`;
-  }
-};
-
-const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: string) => {
-  if (!isDialogShown) {
-    return;
-  }
-  const canvas = document.getElementById(shipViewId) as HTMLCanvasElement;
-  if (!canvas) {
-    console.log("no canvas for ship preview");
-    return;
-  }
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    console.log("no context for ship preview");
-    return;
-  }
-  const def = defs[defIndex];
-  const sprite = sprites[defIndex];
-  if (!sprite) {
-    console.log("no sprite for ship preview");
-    return;
-  }
-  const widthScale = canvas.width / sprite.width;
-  const heightScale = canvas.height / sprite.height;
-  let scale = Math.min(widthScale, heightScale);
-  if (scale > 1) {
-    scale = 1;
-  }
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  ctx.drawImage(sprite, centerX - (sprite.width * scale) / 2, centerY - (sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
-
-  const stats = document.getElementById(shipStatId);
-  if (stats) {
-    const normalSlotCount = def.slots.filter((kind) => kind === SlotKind.Normal).length;
-    const utilitySlotCount = def.slots.filter((kind) => kind === SlotKind.Utility).length;
-    const mineSlotCount = def.slots.filter((kind) => kind === SlotKind.Mine).length;
-    const largeSlotCount = def.slots.filter((kind) => kind === SlotKind.Large).length;
-
-    stats.innerHTML = `<table style="width: 100%; text-align: left;">
-  <tr><th>Name</th><td>${def.name}</td></tr>
-  <tr><th>Speed</th><td>${maxDecimals(def.speed * ticksPerSecond, 2)} Units/sec</td></tr>
-  <tr><th>Turn Rate</th><td>${maxDecimals(def.turnRate * ticksPerSecond, 2)} Radians/sec</td></tr>
-  <tr><th>Acceleration</th><td>${maxDecimals(def.acceleration * ticksPerSecond, 2)} Units/sec<sup>2</sup></td></tr>
-  <tr><th>Health</th><td>${maxDecimals(def.health, 2)}</td></tr>
-  ${normalSlotCount > 0 ? `<tr><th>Normal Slots</th><td>${normalSlotCount}</td></tr>` : ""}
-  ${utilitySlotCount > 0 ? `<tr><th>Utility Slots</th><td>${utilitySlotCount}</td></tr>` : ""}
-  ${mineSlotCount > 0 ? `<tr><th>Mine Slots</th><td>${mineSlotCount}</td></tr>` : ""}
-  ${largeSlotCount > 0 ? `<tr><th>Large Slots</th><td>${largeSlotCount}</td></tr>` : ""}
-  <tr><th>Energy Regen</th><td>${maxDecimals(def.energyRegen * ticksPerSecond, 2)} Energy/sec</td></tr>
-  <tr><th>Health Regen</th><td>${maxDecimals(def.healthRegen * ticksPerSecond, 2)} Health/sec</td></tr>
-  <tr><th>Cargo Capacity</th><td>${maxDecimals(def.cargoCapacity, 2)}</td></tr>
-</table>`;
-  }
-};
-
-const populateShipPreviewer = (definitionIndex: number) => {
-  shipViewerHelper(definitionIndex, "shipPreview", "shipStatsPreview");
-};
-
-const setupShipShop = () => {
-  const self = state.players.get(me);
-  const availableShips = defs
-    .map((def, index) => {
-      return { def, index };
-    })
-    .filter(({ def }) => {
-      return def.kind === UnitKind.Ship && def.team === defs[self.definitionIndex].team;
-    });
-  populateShipList(availableShips, self);
-  console.log("available ships", availableShips);
-  for (const { def, index } of availableShips) {
-    const button = document.getElementById(`purchase${index}`);
-    if (button) {
-      button.addEventListener("click", () => {
-        sendPurchase(me, index);
-        const self = state.players.get(me);
-        const station = state.players.get(self?.docked);
-        showDialog(dockDialog(station, self));
-        setupDockingUI(station, self);
-      });
-    } else {
-      console.log("button not found", `purchase${index}`);
-    }
-    const preview = document.getElementById(`previewShip${index}`);
-    if (preview) {
-      preview.addEventListener("click", () => {
-        populateShipPreviewer(index);
-      });
-    } else {
-      console.log("preview not found", `previewShip${index}`);
-    }
-  }
-  document.getElementById("back")?.addEventListener("click", () => {
-    popDialog();
-  });
-};
-
-const dockDialog = (station: Player | undefined, self: Player) => {
-  if (!station) {
-    return `Docking error - station ${self.docked} not found`;
-  }
-  return horizontalCenter([
-    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2>Docked with station ${name}</h2>`),
-    `${shipViewer()}`,
-    `<div id="credits">${creditsHtml(self.credits)}</div>`,
-    `<div style="width: 80vw;">
-  <div style="width: 45%; float: left;">
-    <h3>Cargo</h3>
-    <div id="cargo">${cargoHtml(self.cargo)}</div>
-  </div>
-  <div style="width: 45%; float: right;">
-    <h3>Armaments</h3>
-    <div id="arms">${armsHtml(self.armIndices)}</div>
-  </div>
-</div>`,
-    `<br/><button id="undock">Undock</button>`,
-  ]);
-};
-
-const shipPostUpdate = (defIndex: number) => {
-  shipViewerHelper(defIndex, "shipView", "shipStats");
-};
-
-const setupDockingUI = (station: Player | undefined, self: Player | undefined) => {
-  if (!station || !self) {
-    return;
-  }
-  document.getElementById("undock")?.addEventListener("click", () => {
-    sendUndock(me);
-  });
-  cargoPostUpdate(self.cargo);
-  armsPostUpdate(self.armIndices);
-  shipPostUpdate(self.definitionIndex);
-  document.getElementById("changeShip")?.addEventListener("click", () => {
-    pushDialog(shipShop(), setupShipShop);
-  });
-};
-
-const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
-  let index = 0;
-  for (const armDef of armDefs) {
-    if (armDef.kind === kind) {
-      const button = document.getElementById(`equip${index++}`);
-      if (button) {
-        button.addEventListener("click", () => {
-          const idx = armDefs.indexOf(armDef);
-          sendEquip(me, slotIndex, idx);
-          const self = state.players.get(me);
-          const station = state.players.get(self?.docked);
-          showDialog(dockDialog(station, self));
-          setupDockingUI(station, self);
-        });
-      } else {
-        console.log("button not found", `equip${index}`);
-      }
-    }
-  }
-  document.getElementById("back")?.addEventListener("click", () => {
-    const self = state.players.get(me);
-    const station = state.players.get(self?.docked);
-    showDialog(dockDialog(station, self));
-    setupDockingUI(station, self);
-  });
-};
 
 let lastValidSecondary = 0;
 let serverTarget: [TargetKind, number] = [TargetKind.None, 0];
@@ -617,6 +84,7 @@ let lastFrameTime = Date.now();
 
 const lastChats = new Map<number, ChatMessage>();
 
+// TODO There is a bunch of business logic in here that should be refactored into better places
 const loop = () => {
   const elapsed = Date.now() - lastFrameTime;
   lastFrameTime = Date.now();
@@ -638,9 +106,9 @@ const loop = () => {
       flashSecondary();
       sendSecondary(me, selectedSecondary);
     } else {
-      selectedSecondary = lastValidSecondary;
+      setSelectedSecondary(lastValidSecondary);
     }
-    selectedSecondaryChanged = false;
+    setSelectedSecondaryChanged(false);
   }
 
   if (self && !self.docked) {
@@ -688,25 +156,24 @@ const loop = () => {
   }
 
   if (self && !self.docked && showDocked) {
-    showDocked = false;
+    setShowDocked(false);
     clearDialog();
     hideDialog();
   }
   setCanDock(self, state);
   if (self && self.canDock) {
-    docker = () => {
+    setDocker(() => {
       sendDock(me, self.canDock);
-    };
+    });
   } else {
-    docker = () => {};
+    setDocker(() => {});
   }
   if (self && self.docked) {
     if (!showDocked) {
-      showDocked = true;
+      setShowDocked(true);
       const station = state.players.get(self.docked);
       showDialog(dockDialog(station, self));
-      chatInput.blur();
-      chatInput.style.display = "none";
+      hideChat();
       setupDockingUI(station, self);
     }
   }
@@ -914,12 +381,7 @@ const run = () => {
   showDialog(loginDialog);
   setupLoginDialog();
 
-  state = {
-    players: new Map(),
-    projectiles: new Map(),
-    asteroids: new Map(),
-    missiles: new Map(),
-  };
+  initBlankState();
 
   bindAction("init", (data: { id: number; sector: number }) => {
     setMe(data.id);
@@ -930,7 +392,6 @@ const run = () => {
     clearDialog();
     hideDialog();
     initInputHandlers();
-    chatInput.blur();
   });
 
   bindAction("loginFail", (data: {}) => {
@@ -953,12 +414,7 @@ const run = () => {
     console.error("Error from server: " + data.message);
   });
 
-  bindUpdater("cargo", cargoHtml);
-  bindPostUpdater("cargo", cargoPostUpdate);
-  bindUpdater("credits", creditsHtml);
-  bindUpdater("arms", armsHtml);
-  bindPostUpdater("arms", armsPostUpdate);
-  bindPostUpdater("ship", shipPostUpdate);
+  bindDockingUpdaters();
 
   bindAction("state", (data: any) => {
     state.players.clear();

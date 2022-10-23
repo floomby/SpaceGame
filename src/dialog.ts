@@ -79,7 +79,10 @@ const pop = () => {
 };
 
 const peekTag = () => {
-  return stack[stack.length - 1].tag;
+  if (stack.length > 0) {
+    return stack[stack.length - 1].tag;
+  }
+  return "";
 };
 
 const clearStack = () => {

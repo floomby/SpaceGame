@@ -1,5 +1,6 @@
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
+import { GlobalState } from "./game";
 import { useKeybindings } from "./keybindings";
 
 let faction: Faction = Faction.Alliance;
@@ -32,6 +33,23 @@ const setCurrentSector = (newCurrentSector: number) => {
   currentSector = newCurrentSector;
 };
 
+let selectedSecondary = 0;
+
+const setSelectedSecondary = (newSelectedSecondary: number) => {
+  selectedSecondary = newSelectedSecondary;
+};
+
+let state: GlobalState;
+
+const initBlankState = () => {
+  state = {
+    players: new Map(),
+    projectiles: new Map(),
+    asteroids: new Map(),
+    missiles: new Map(),
+  };
+};
+
 export {
   faction,
   setFaction,
@@ -45,4 +63,8 @@ export {
   setMe,
   currentSector,
   setCurrentSector,
+  selectedSecondary,
+  setSelectedSecondary,
+  state,
+  initBlankState,
 };

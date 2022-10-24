@@ -3,8 +3,9 @@ import { horizontalCenter, setDialogBackground, push as pushDialog, pop as popDi
 import { faction, keybind, setFaction, allianceColor, confederationColor } from "../globals";
 import { KeyBindings } from "../keybindings";
 import { register, login } from "../net";
+import { getRestRaw } from "../rest";
 import { initSound } from "../sound";
-import { keylayoutSelector, keylayoutSelectorSetup } from "./keyboardLayout";
+import { Debouncer } from "./helpers";
 
 const loggingInDialog = horizontalCenter(["<h3>Logging in...</h3>"]);
 const registeringDialog = horizontalCenter(["<h3>Registering...</h3>"]);
@@ -69,6 +70,27 @@ const registerDialog = horizontalCenter([
 const setupRegisterDialog = (username: string, password: string) => {
   const passwordInput = document.getElementById("registerPassword") as HTMLInputElement;
   const usernameInput = document.getElementById("registerUsername") as HTMLInputElement;
+
+  const validator = (value: string) => {
+    getRestRaw(`/available?name=${value}`, (data: string) => {
+      const available = JSON.parse(data) as boolean;
+      if (usernameInput.value === value) {
+        if (available) {
+          usernameInput.style.backgroundColor = "#aaffaa";
+        } else {
+          usernameInput.style.backgroundColor = "#ffaaaa";
+        }
+      }
+    });
+  }
+
+  validator(username);
+
+  const debouncer = new Debouncer(300);
+
+  usernameInput.addEventListener("keyup", () => {
+    debouncer.debounce(() => validator(usernameInput.value));
+  });
 
   usernameInput.value = username;
   passwordInput.value = password;

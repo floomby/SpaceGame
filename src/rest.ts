@@ -28,4 +28,17 @@ const domFromRest = (query: string, template: (value: string) => string, postCom
   return html;
 };
 
-export { domFromRest };
+const getRestRaw = (query: string, callback: (value: string) => void) => {
+  fetch(query)
+    .catch((error) => {
+      console.error(error);
+    })
+    .then((response) => {
+      if (response && response.ok) {
+        return response.json();
+      }
+    })
+    ?.then(callback);
+};
+
+export { domFromRest, getRestRaw };

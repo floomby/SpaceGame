@@ -4,6 +4,7 @@ import { allianceColor, allianceColorDark, confederationColor, confederationColo
 import { getVolume, setVolume } from "../sound";
 import { pop as popDialog, push as pushDialog } from "../dialog";
 import { keylayoutSelector, keylayoutSelectorSetup } from "./keyboardLayout";
+import { showControls } from "./controls";
 
 const settingsDialog = () =>
   horizontalCenter([
@@ -11,13 +12,17 @@ const settingsDialog = () =>
     `Volume:`,
     `<input type="range" min="0" max="1" value="${getVolume()}" class="slider" id="volumeSlider" step="0.05"><br/>`,
     keylayoutSelector(),
-    `<br/><button id="closeSettings">Close</button>`,
+    `<button style="margin-top: 10px;" id="viewControls">View Controls</button>`,
+    `<button style="margin-top: 10px;" id="closeSettings">Close</button>`,
   ]);
 
 const setupSettingsDialog = () => {
   document.getElementById("closeSettings")?.addEventListener("click", () => {
     setDialogBackground(faction === Faction.Alliance ? allianceColor : confederationColor);
     popDialog();
+  });
+  document.getElementById("viewControls")?.addEventListener("click", () => {
+    showControls();
   });
   const volumeSlider = document.getElementById("volumeSlider") as HTMLInputElement;
   volumeSlider?.addEventListener("input", () => {

@@ -21,10 +21,10 @@ const setKeybind = (newKeybind: typeof keybind) => {
 };
 
 // The id that the players ship is
-let me: number;
+let ownId: number;
 
-const setMe = (newMe: number) => {
-  me = newMe;
+const setOwnId = (newOwnId: number) => {
+  ownId = newOwnId;
 };
 
 let currentSector: number;
@@ -59,8 +59,8 @@ export {
   confederationColorDark,
   keybind,
   setKeybind,
-  me,
-  setMe,
+  ownId,
+  setOwnId,
   currentSector,
   setCurrentSector,
   selectedSecondary,

@@ -149,7 +149,6 @@ const runPostUpdaterOnly = (id: string, value: any) => {
       thisState = JSON.stringify(value);
     }
     lastStates.set(id, thisState);
-    console.log("runPostUpdaterOnly", id, value);
     postUpdater(value);
   }
 };

@@ -1,7 +1,7 @@
 import { peekTag, pop, push } from "./dialog";
 import { mapDialog, setupMapDialog } from "./dialogs/map";
 import { Input } from "./game";
-import { keybind, me, selectedSecondary, setSelectedSecondary } from "./globals";
+import { keybind, ownId, selectedSecondary, setSelectedSecondary } from "./globals";
 import { sendChat, sendInput, sendWarp } from "./net";
 import { shown as isDialogShown } from "./dialog";
 
@@ -41,7 +41,7 @@ const initInputHandlers = () => {
   document.addEventListener("keydown", (e) => {
     if (chatInput === document.activeElement) {
       if (e.key === "Enter" && chatInput.value !== "") {
-        sendChat(me, chatInput.value);
+        sendChat(ownId, chatInput.value);
         chatInput.value = "";
         chatInput.blur();
         chatInput.style.display = "none";
@@ -140,12 +140,12 @@ const initInputHandlers = () => {
         }
         break;
       // Temporary keybind for testing
-      case keybind.warp:
-        sendWarp(me, 2);
-        break;
+      // case keybind.warp:
+      //   sendWarp(ownId, 2);
+      //   break;
     }
     if (changed) {
-      sendInput(input, me);
+      sendInput(input, ownId);
     }
     if (oldSecondary !== selectedSecondary) {
       selectedSecondaryChanged = true;
@@ -199,7 +199,7 @@ const initInputHandlers = () => {
         break;
     }
     if (changed) {
-      sendInput(input, me);
+      sendInput(input, ownId);
     }
   });
 

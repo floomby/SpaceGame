@@ -23,6 +23,7 @@ A simple multiplayer game where you have a ship and do things.
 - Play as guest (low priority)
 - Option to change password (low priority)
 - Repairing stations
+- Think about trade and the economy
 
 ### Next next version steps
 

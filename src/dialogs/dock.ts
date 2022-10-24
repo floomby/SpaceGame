@@ -3,7 +3,7 @@
 
 import { armDefs, defs, SlotKind, UnitDefinition, UnitKind } from "../defs";
 import { CargoEntry, maxDecimals, Player, ticksPerSecond } from "../game";
-import { me, state } from "../globals";
+import { ownId, state } from "../globals";
 import { sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
@@ -53,7 +53,7 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
       const button = document.getElementById(`sellCargo${i}`);
       if (button) {
         button.addEventListener("click", () => {
-          sendSellCargo(me, cargo[i].what);
+          sendSellCargo(ownId, cargo[i].what);
         });
       } else {
         console.log("button not found", `sellCargo${i}`);
@@ -83,7 +83,7 @@ const armsPostUpdate = (armIndices: number[]) => {
       button.addEventListener("click", () => {
         const slotIndex = i;
         const index = parseInt(button.id.substring(3));
-        const self = state.players.get(me);
+        const self = state.players.get(ownId);
         if (self) {
           const def = defs[self.definitionIndex];
           if (def.slots.length > index) {
@@ -117,7 +117,7 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   <td>${armDef.name}</td>
   <td><div class="tooltip">?<span class="tooltipText">&nbsp;${armDef.description}&nbsp;</span></div></td>
   <td>${armDef.cost}</td>
-  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(me), armDef.cost)}>Equip</button></td></tr>`;
+  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(ownId), armDef.cost)}>Equip</button></td></tr>`;
     }
   }
   html += "</table>";
@@ -149,7 +149,7 @@ const shipPreviewer = (definitionIndex: number) => {
 };
 
 const shipShop = () => {
-  const self = state.players.get(me);
+  const self = state.players.get(ownId);
   return horizontalCenter([shipPreviewer(self.definitionIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`]);
 };
 
@@ -239,7 +239,7 @@ const populateShipPreviewer = (definitionIndex: number) => {
 };
 
 const setupShipShop = () => {
-  const self = state.players.get(me);
+  const self = state.players.get(ownId);
   const availableShips = defs
     .map((def, index) => {
       return { def, index };
@@ -253,8 +253,8 @@ const setupShipShop = () => {
     const button = document.getElementById(`purchase${index}`);
     if (button) {
       button.addEventListener("click", () => {
-        sendPurchase(me, index);
-        const self = state.players.get(me);
+        sendPurchase(ownId, index);
+        const self = state.players.get(ownId);
         const station = state.players.get(self?.docked);
         showDialog(dockDialog(station, self));
         setupDockingUI(station, self);
@@ -307,7 +307,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
     return;
   }
   document.getElementById("undock")?.addEventListener("click", () => {
-    sendUndock(me);
+    sendUndock(ownId);
   });
   cargoPostUpdate(self.cargo);
   armsPostUpdate(self.armIndices);
@@ -325,8 +325,8 @@ const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
       if (button) {
         button.addEventListener("click", () => {
           const idx = armDefs.indexOf(armDef);
-          sendEquip(me, slotIndex, idx);
-          const self = state.players.get(me);
+          sendEquip(ownId, slotIndex, idx);
+          const self = state.players.get(ownId);
           const station = state.players.get(self?.docked);
           showDialog(dockDialog(station, self));
           setupDockingUI(station, self);
@@ -337,7 +337,7 @@ const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
     }
   }
   document.getElementById("back")?.addEventListener("click", () => {
-    const self = state.players.get(me);
+    const self = state.players.get(ownId);
     const station = state.players.get(self?.docked);
     showDialog(dockDialog(station, self));
     setupDockingUI(station, self);

@@ -12,4 +12,17 @@ const disableTooExpensive = (player: Player | undefined, cost: number) => {
   }
 };
 
-export { disableTooExpensive };
+class Debouncer {
+  private timeout: number | undefined;
+
+  constructor(private delay: number) {}
+
+  public debounce(func: () => void) {
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+    }
+    this.timeout = setTimeout(func, this.delay);
+  }
+}
+
+export { disableTooExpensive, Debouncer };

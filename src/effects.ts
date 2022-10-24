@@ -22,7 +22,7 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Player) {
     const player = state.players.get(anchor.value as number);
     if (!player) {
-      console.log("Invalid player id during anchor resolution: ", anchor.value);
+      // console.log("Invalid player id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
     return [player.position, player as Player];
@@ -30,7 +30,7 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Asteroid) {
     const asteroid = state.asteroids.get(anchor.value as number);
     if (!asteroid) {
-      console.log("Invalid asteroid id during anchor resolution: ", anchor.value);
+      // console.log("Invalid asteroid id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
     return [asteroid.position, asteroid as Asteroid];
@@ -38,7 +38,7 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Missile) {
     const missile = state.missiles.get(anchor.value as number);
     if (!missile) {
-      console.log("Invalid missile id during anchor resolution: ", anchor.value);
+      // console.log("Invalid missile id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
     return [missile.position, missile as Missile];
@@ -110,8 +110,8 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        const panner = play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.3);
-        panner.positionZ.value = 10;
+        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.7);
+        // panner.positionZ.value = 10;
       }
 
       ctx.save();

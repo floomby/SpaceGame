@@ -21,8 +21,9 @@ import {
   equip,
   Missile,
   purchaseShip,
+  effectiveInfinity,
 } from "../src/game";
-import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout } from "../src/defs";
+import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
 import { assert } from "console";
 import { readFileSync } from "fs";
 import { useSsl } from "../src/config";
@@ -366,7 +367,7 @@ const initFromDatabase = async () => {
       heading: 0,
       health: def.health,
       id: station.id,
-      sinceLastShot: [10000, 10000, 10000, 10000],
+      sinceLastShot: [effectiveInfinity, effectiveInfinity, effectiveInfinity, effectiveInfinity],
       projectileId: 0,
       energy: def.energy,
       definitionIndex: station.definitionIndex,
@@ -416,7 +417,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     heading: 0,
     health: defs[defIndex].health,
     id: id,
-    sinceLastShot: [10000],
+    sinceLastShot: [effectiveInfinity],
     projectileId: 0,
     name,
     energy: defs[defIndex].energy,
@@ -473,19 +474,24 @@ wss.on("connection", (ws) => {
       // Check if the user is in the database
       User.findOne({ name, password: hashedPassword }, (err, user) => {
         if (err) {
-          ws.send(JSON.stringify({ type: "loginFail", payload: {} }));
+          ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Database error" } }));
           console.log(err);
           return;
         }
         if (!user) {
-          ws.send(JSON.stringify({ type: "loginFail", payload: {} }));
+          ws.send(JSON.stringify({ type: "loginFail", payload: { error: "User not found" } }));
+          return;
+        }
+
+        if (idToWebsocket.has(user.id)) {
+          ws.send(JSON.stringify({ type: "loginFail", payload: { error: "User already logged in" } }));
           return;
         }
 
         idToWebsocket.set(user.id, ws);
         Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
           if (err) {
-            ws.send(JSON.stringify({ type: "loginFail", payload: {} }));
+            ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Database error" } }));
             console.log(err);
             return;
           }
@@ -723,10 +729,13 @@ wss.on("connection", (ws) => {
   });
 });
 
-const informDead = (id: number) => {
-  const ws = idToWebsocket.get(id);
-  if (ws) {
-    ws.send(JSON.stringify({ type: "dead" }));
+const informDead = (player: Player) => {
+  const def = defs[player.definitionIndex];
+  if (def.kind === UnitKind.Ship) {
+    const ws = idToWebsocket.get(player.id);
+    if (ws) {
+      ws.send(JSON.stringify({ type: "dead" }));
+    }
   }
 };
 

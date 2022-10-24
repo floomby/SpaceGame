@@ -1,5 +1,5 @@
 import { horizontalCenter, pop } from "../dialog";
-import { me } from "../globals";
+import { ownId } from "../globals";
 import { sendWarp } from "../net";
 import { domFromRest } from "../rest";
 
@@ -11,7 +11,7 @@ const mapPostRest = () => {
       button.addEventListener("click", () => {
         const sectorToWarpTo = button.id.split("-")[1];
         console.log(`Warping to ${sectorToWarpTo}`);
-        sendWarp(me, parseInt(sectorToWarpTo));
+        sendWarp(ownId, parseInt(sectorToWarpTo));
         pop();
       });
     }

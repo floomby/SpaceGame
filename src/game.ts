@@ -406,7 +406,7 @@ const kill = (
   player: Player,
   state: GlobalState,
   applyEffect: (effect: EffectTrigger) => void,
-  onDeath: (id: number) => void
+  onDeath: (player: Player) => void
 ) => {
   // Dead stations that are dockable become "inoperable" until repaired (repairing is not implemented yet)
   if (def.kind === UnitKind.Station && def.dockable) {
@@ -420,7 +420,7 @@ const kill = (
       effectIndex: def.deathEffect,
       from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
     });
-    onDeath(player.id);
+    onDeath(player);
   }
 };
 
@@ -433,7 +433,7 @@ const update = (
   serverSecondaries: Map<number, number>,
   applyEffect: (effect: EffectTrigger) => void,
   serverWarpList: { player: Player; to: number }[],
-  onDeath: (id: number) => void
+  onDeath: (player: Player) => void
 ) => {
   // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
@@ -885,8 +885,20 @@ const purchaseShip = (player: Player, index: number) => {
   }
 };
 
+const repairStation = (player: Player) => {
+  if (player.inoperable) {
+    const def = defs[player.definitionIndex];
+    player.health = def.health;
+    // IDK if they should have full energy on being repaired
+    // player.energy = def.energy;
+    player.inoperable = false;
+  }
+};
+
 const maxNameLength = 20;
 const ticksPerSecond = 60;
+// Infinity is not serializable with JSON.stringify...
+const effectiveInfinity = 1000000000;
 
 export {
   GlobalState,
@@ -926,6 +938,8 @@ export {
   equip,
   maxDecimals,
   purchaseShip,
+  repairStation,
   ticksPerSecond,
   maxNameLength,
+  effectiveInfinity,
 };

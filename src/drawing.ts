@@ -6,8 +6,11 @@ import {
   Ballistic,
   ChatMessage,
   Circle,
+  currentlyFacing,
   findHeadingBetween,
+  findLinesTangentToCircleThroughPoint,
   GlobalState,
+  Line,
   Missile,
   Player,
   Position,
@@ -503,6 +506,20 @@ const drawChats = (self: Player, players: Map<number, Player>, chats: IterableIt
       drawChat(self, player, chat);
     }
   }
+};
+
+const drawLine = (self: Player, line: Line) => {
+  const to = { x:line.to.x - self.position.x + canvas.width / 2, y:line.to.y - self.position.y + canvas.height / 2 };
+  const from = { x:line.from.x - self.position.x + canvas.width / 2, y:line.from.y - self.position.y + canvas.height / 2 };
+  ctx.save();
+  ctx.strokeStyle = "green";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
 };
 
 const drawEverything = (

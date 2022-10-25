@@ -2,7 +2,7 @@
 
 A simple multiplayer game where you have a ship and do things.
 
-### TODO
+### Random list of things to do
 
 - Shields? (maybe)
 - Mines
@@ -13,20 +13,24 @@ A simple multiplayer game where you have a ship and do things.
 - Defining units, missiles, effects, etc should be easier
 - Economy is very boring right now
 
-### More stuff to do
-
-- Finish dialog refactoring (finishing for station dialogs is somewhat more complex than settings and map)
-
 ### MMO Stuff
 
 - Play as guest (low priority)
 - Option to change password (low priority)
-- Repairing stations
-- Think about trade and the economy
 
-### Next next version steps
+### Steps to get to the minimal game loop
 
-- Point to target key
-- Collectables
-- Killed/kill message with names
-- Ability to dump cargo
+- Collectables (dropping spare parts)
+- Repairing station
+- Purchasing at station list
+- Checkpoint fixing if station allegiance changes
+- Teams no longer in def
+- NPC Ships to fight
+- Home station or stations
+- Sector bounds and global map
+- Asteroid mineral regeneration
+
+### Things I really should have
+
+- Engines (no warp by default, but can purchase)
+- Sensors (max range) - also I should redo the target arrows in the hud somewhat

@@ -4,6 +4,7 @@ import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, Targe
 import { NPC } from "./npc";
 import { sfc32 } from "./prng";
 
+// TODO Move the geometry stuff to a separate file
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
 type Rectangle = { x: number; y: number; width: number; height: number };
@@ -38,6 +39,35 @@ const circlesIntersect = (a: Circle, b: Circle) => {
 
 const positiveMod = (a: number, b: number) => {
   return ((a % b) + b) % b;
+};
+
+const findLinesTangentToCircleThroughPoint = (point: Position, circle: Circle) => {
+  if (pointInCircle(point, circle)) {
+    return undefined;
+  }
+
+  // find the two lines that are tangent to the circle and go through the point
+  const dx = point.x - circle.position.x;
+  const dy = point.y - circle.position.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  const theta = Math.atan2(dy, dx);
+  const phi = Math.acos(circle.radius / d);
+  const ret: Line[] = [];
+  ret.push({
+    from: point,
+    to: {
+      x: circle.position.x + circle.radius * Math.cos(theta + phi),
+      y: circle.position.y + circle.radius * Math.sin(theta + phi),
+    },
+  });
+  ret.push({
+    from: point,
+    to: {
+      x: circle.position.x + circle.radius * Math.cos(theta - phi),
+      y: circle.position.y + circle.radius * Math.sin(theta - phi),
+    },
+  });
+  return ret;
 };
 
 type Entity = Circle & { id: number; speed: number; heading: number };
@@ -232,6 +262,22 @@ const findHeadingBetween = (a: Position, b: Position) => {
   return Math.atan2(b.y - a.y, b.x - a.x);
 };
 
+const findLineHeading = (line: Line) => {
+  return findHeadingBetween(line.from, line.to);
+};
+
+const isAngleBetween = (angle: number, start: number, end: number) => {
+  // Normalize the angles
+  angle = positiveMod(angle, 2 * Math.PI);
+  start = positiveMod(start, 2 * Math.PI);
+  end = positiveMod(end, 2 * Math.PI);
+  if (start < end) {
+    return angle >= start && angle <= end;
+  } else {
+    return angle >= start || angle <= end;
+  }
+};
+
 const seek = (entity: Entity, target: Entity, maxTurn: number) => {
   const heading = findHeadingBetween(entity.position, target.position);
   let diff = heading - entity.heading;
@@ -269,6 +315,7 @@ const findInterceptAimingHeading = (from: Position, target: Entity, projectileSp
   return interceptHeading;
 };
 
+// REFACTOR ME Idk why this is returning [Player, number] instead of just the player since the player has the id
 const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
   let ret: [Player | undefined, number] = [undefined, 0];
   let minDistance = Infinity;
@@ -673,12 +720,12 @@ const update = (
   }
 };
 
-const processAllNpcs = (state: GlobalState) => {
+const processAllNpcs = (state: GlobalState, frame: number) => {
   for (const [id, player] of state.players) {
     if (!player.npc) {
       continue;
     }
-    player.npc.process();
+    player.npc.process(state, frame);
   }
 };
 
@@ -982,6 +1029,48 @@ const arrivePosition = (player: Player, position: Position, input: Input, epsilo
   }
 };
 
+const stopPlayer = (player: Player, input: Input, stopRotation = true) => {
+  input.up = false;
+  if (player.speed > 0) {
+    input.down = true;
+  } else {
+    input.down = false;
+  }
+  if (stopRotation) {
+    input.left = false;
+    input.right = false;
+  }
+};
+
+// This function is not exactly optimal
+const currentlyFacing = (entity: Entity, circle: Circle) => {
+  if (pointInCircle(entity.position, circle)) {
+    return true;
+  }
+  const lines = findLinesTangentToCircleThroughPoint(entity.position, circle)!;
+  const heading = entity.heading;
+  const angleA = findLineHeading(lines[0]);
+  const angleB = findLineHeading(lines[1]);
+  const diff = positiveMod(angleA - angleB, 2 * Math.PI);
+  if (diff > Math.PI) {
+    return isAngleBetween(heading, angleA, angleB);
+  } else {
+    return isAngleBetween(heading, angleB, angleA);
+  }
+};
+
+// This is a faster version that should work most of the time
+// THIS IS BROKEN
+const currentlyFacingApprox = (entity: Entity, circle: Circle) => {
+  if (pointInCircle(entity.position, circle)) {
+    return true;
+  }
+  const distance = l2Norm(entity.position, circle.position);
+  const heading = findHeadingBetween(entity.position, circle.position);
+  const arcLength = Math.abs(entity.heading - heading) * distance;
+  return arcLength < circle.radius;
+};
+
 const maxNameLength = 20;
 const ticksPerSecond = 60;
 // Infinity is not serializable with JSON.stringify...
@@ -991,6 +1080,7 @@ export {
   GlobalState,
   Position,
   Circle,
+  Line,
   Rectangle,
   Input,
   Player,
@@ -1028,7 +1118,14 @@ export {
   purchaseShip,
   repairStation,
   seekPosition,
+  stopPlayer,
   arrivePosition,
+  findLinesTangentToCircleThroughPoint,
+  findLineHeading,
+  isAngleBetween,
+  currentlyFacing,
+  currentlyFacingApprox,
+  findClosestTarget,
   ticksPerSecond,
   maxNameLength,
   effectiveInfinity,

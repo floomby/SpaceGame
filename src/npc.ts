@@ -1,5 +1,18 @@
 import { defMap, defs, emptyLoadout, UnitDefinition } from "./defs";
-import { applyInputs, arrivePosition, effectiveInfinity, GlobalState, Input, Player, seekPosition, uid } from "./game";
+import {
+  applyInputs,
+  arrivePosition,
+  currentlyFacing,
+  currentlyFacingApprox,
+  effectiveInfinity,
+  findClosestTarget,
+  GlobalState,
+  Input,
+  Player,
+  seekPosition,
+  stopPlayer,
+  uid,
+} from "./game";
 
 class NPC {
   public player: Player;
@@ -50,15 +63,37 @@ class NPC {
     };
   }
 
-  public process() {
-    seekPosition(this.player, { x: -1600, y: -1600 }, this.input);
-    // arrivePosition(this.player, { x: -1600, y: -1600 }, this.input);
+  public targetId = 0;
+
+  public process(state: GlobalState, frame: number) {
+    let target: Player | undefined = undefined;
+    if (frame % 60 === 0) {
+      const [newTarget, id] = findClosestTarget(this.player, state, true);
+      this.targetId = id;
+      target = newTarget;
+    }
+
+    if (this.targetId !== 0) {
+      if (!target) {
+        target = state.players.get(this.targetId);
+      }
+      if (target) {
+        seekPosition(this.player, target.position, this.input);
+        if (currentlyFacing(this.player, target)) {
+          this.input.primary = true;
+        } else {
+          this.input.primary = false;
+        }
+      } else {
+        stopPlayer(this.player, this.input);
+      }
+    }
     applyInputs(this.input, this.player);
   }
 }
 
 const addNpc = (state: GlobalState) => {
-  const npc = new NPC("Fighter");
+  const npc = new NPC("Drone");
   state.players.set(npc.player.id, npc.player);
 };
 

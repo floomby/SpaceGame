@@ -779,7 +779,7 @@ setInterval(() => {
     }
     const triggers: EffectTrigger[] = [];
     update(state, frame, targets, secondaries, (trigger) => triggers.push(trigger), warpList, informDead);
-    processAllNpcs(state);
+    processAllNpcs(state, frame);
 
     // TODO Consider culling the state information to only send nearby players and projectiles
     const playerData: Player[] = [];

@@ -65,6 +65,7 @@ type UnitDefinition = {
   price?: number;
   warpTime?: number;
   warpEffect?: number;
+  brakeDistance?: number;
 };
 
 enum ArmUsage {
@@ -117,6 +118,10 @@ type MissileDef = {
   // TODO this should be easier to use (having all these indices is error prone)
   deathEffect: number;
   turnRate?: number;
+};
+
+const computeBrakeDistance = (acceleration: number, speed: number) => {
+  return (speed * speed) / (2 * acceleration);
 };
 
 const defs: UnitDefinition[] = [];
@@ -274,6 +279,9 @@ const initDefs = () => {
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];
     defMap.set(def.name, { index: i, def });
+    if (def.acceleration !== undefined) {
+      def.brakeDistance = computeBrakeDistance(def.acceleration, def.speed);
+    }
   }
 
   armDefs.push({
@@ -360,10 +368,14 @@ const initDefs = () => {
           player.energy -= 35;
           target.health -= 30;
           slotData.sinceFired = 0;
+          const to =
+            target.health > 0
+              ? { kind: EffectAnchorKind.Player, value: target.id }
+              : { kind: EffectAnchorKind.Absolute, value: target.position, heading: target.heading, speed: target.speed };
           applyEffect({
             effectIndex: 1,
             from: { kind: EffectAnchorKind.Player, value: player.id },
-            to: { kind: EffectAnchorKind.Player, value: target.id },
+            to,
           });
         }
       }

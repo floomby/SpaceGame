@@ -1,5 +1,5 @@
 import { defMap, defs, emptyLoadout, UnitDefinition } from "./defs";
-import { applyInputs, effectiveInfinity, GlobalState, Input, Player, uid } from "./game";
+import { applyInputs, arrivePosition, effectiveInfinity, GlobalState, Input, Player, seekPosition, uid } from "./game";
 
 class NPC {
   public player: Player;
@@ -51,8 +51,8 @@ class NPC {
   }
 
   public process() {
-    this.input.primary = true;
-    this.input.up = true;
+    seekPosition(this.player, { x: -1600, y: -1600 }, this.input);
+    // arrivePosition(this.player, { x: -1600, y: -1600 }, this.input);
     applyInputs(this.input, this.player);
   }
 }

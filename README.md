@@ -16,7 +16,6 @@ A simple multiplayer game where you have a ship and do things.
 ### More stuff to do
 
 - Finish dialog refactoring (finishing for station dialogs is somewhat more complex than settings and map)
-- Find and fix the absolute anchor speed bug
 
 ### MMO Stuff
 

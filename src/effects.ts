@@ -139,15 +139,17 @@ const initEffects = () => {
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
       let [to, toCircle] = resolveAnchor(effect.to, state);
-      if (!from || !to || !toCircle) {
+      if (!from || !to) {
         return;
       }
 
       const heading = findHeadingBetween(from as Position, to as Position);
-      to = {
-        x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
-        y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
-      };
+      if (toCircle) {
+        to = {
+          x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
+          y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
+        };
+      }
 
       if (self) {
         effect.extra.lastSelfX = self.position.x;
@@ -155,10 +157,10 @@ const initEffects = () => {
       }
 
       if (effect.extra.needSound) {
-        const midX = ((from as Position).x + to.x) / 2;
-        const midY = ((from as Position).y + to.y) / 2;
+        const midX = ((from as Position).x + (to as Position).x) / 2;
+        const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        const panner = play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
+        play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
       }
 
       const cos = Math.cos(heading);
@@ -177,18 +179,25 @@ const initEffects = () => {
       ctx.shadowBlur = 4;
       ctx.shadowColor = "red";
       ctx.beginPath();
-      ctx.moveTo(to.x - (from as Position).x + offsets[1].x, to.y - (from as Position).y + offsets[1].y);
+      ctx.moveTo((to as Position).x - (from as Position).x + offsets[1].x, (to as Position).y - (from as Position).y + offsets[1].y);
       ctx.moveTo(offsets[1].x, offsets[1].y);
       ctx.arc(0, 0, halfBeamWidth, heading - Math.PI / 2, heading + Math.PI / 2, true);
       ctx.lineTo(offsets[0].x, offsets[0].y);
-      ctx.arc(to.x - (from as Position).x, to.y - (from as Position).y, halfBeamWidth, heading + Math.PI / 2, heading - Math.PI / 2, true);
+      ctx.arc(
+        (to as Position).x - (from as Position).x,
+        (to as Position).y - (from as Position).y,
+        halfBeamWidth,
+        heading + Math.PI / 2,
+        heading - Math.PI / 2,
+        true
+      );
       ctx.fillStyle = color;
       ctx.fill();
 
       ctx.filter = "blur(20px)";
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.arc(to.x - (from as Position).x, to.y - (from as Position).y, 30, 0, Math.PI * 2);
+      ctx.arc((to as Position).x - (from as Position).x, (to as Position).y - (from as Position).y, 30, 0, Math.PI * 2);
       ctx.closePath();
       ctx.fill();
 

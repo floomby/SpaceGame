@@ -77,7 +77,8 @@ const loop = () => {
   if (self && !self.docked) {
     if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
       target = state.players.get(targetId);
-      [target, targetId] = input.nextTarget ? findNextTarget(self, target, state, targetEnemy) : findPreviousTarget(self, target, state, targetEnemy);
+      target = input.nextTarget ? findNextTarget(self, target, state, targetEnemy) : findPreviousTarget(self, target, state, targetEnemy);
+      targetId = target?.id ?? 0;
       input.nextTarget = false;
       input.previousTarget = false;
       if (target) {
@@ -85,9 +86,10 @@ const loop = () => {
       }
     } else if (input.nextTargetAsteroid || input.previousTargetAsteroid) {
       targetAsteroid = state.asteroids.get(targetAsteroidId);
-      [targetAsteroid, targetAsteroidId] = input.nextTargetAsteroid
+      targetAsteroid = input.nextTargetAsteroid
         ? findNextTargetAsteroid(self, targetAsteroid, state)
         : findPreviousTargetAsteroid(self, targetAsteroid, state);
+      targetAsteroidId = targetAsteroid?.id ?? 0;
       input.nextTargetAsteroid = false;
       input.previousTargetAsteroid = false;
       if (targetAsteroidId) {

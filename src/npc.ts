@@ -68,8 +68,8 @@ class NPC {
   public process(state: GlobalState, frame: number) {
     let target: Player | undefined = undefined;
     if (frame % 60 === 0) {
-      const [newTarget, id] = findClosestTarget(this.player, state, true);
-      this.targetId = id;
+      const newTarget = findClosestTarget(this.player, state, true);
+      this.targetId = newTarget?.id ?? 0;
       target = newTarget;
     }
 

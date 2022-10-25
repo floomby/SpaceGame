@@ -317,7 +317,7 @@ const findInterceptAimingHeading = (from: Position, target: Entity, projectileSp
 
 // REFACTOR ME Idk why this is returning [Player, number] instead of just the player since the player has the id
 const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
-  let ret: [Player | undefined, number] = [undefined, 0];
+  let ret: Player | undefined = undefined;
   let minDistance = Infinity;
   let def: UnitDefinition;
   if (onlyEnemy) {
@@ -336,14 +336,14 @@ const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared < minDistance) {
       minDistance = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
     }
   }
   return ret;
 };
 
 const findFurthestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
-  let ret: [Player | undefined, number] = [undefined, 0];
+  let ret: Player | undefined = undefined;
   let maxDistance = 0;
   let def: UnitDefinition;
   if (onlyEnemy) {
@@ -362,7 +362,7 @@ const findFurthestTarget = (player: Player, state: GlobalState, onlyEnemy = fals
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared > maxDistance) {
       maxDistance = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
     }
   }
   return ret;
@@ -372,7 +372,7 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
   if (!current) {
     return findClosestTarget(player, state, onlyEnemy);
   }
-  let ret: [Player | undefined, number] = [current, current?.id || 0];
+  let ret: Player | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let minDistanceGreaterThanCurrent = Infinity;
   let foundFurther = false;
@@ -393,7 +393,7 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared > currentDistanceSquared && distanceSquared < minDistanceGreaterThanCurrent) {
       minDistanceGreaterThanCurrent = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
       foundFurther = true;
     }
   }
@@ -407,7 +407,7 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
   if (!current) {
     return findClosestTarget(player, state, onlyEnemy);
   }
-  let ret: [Player | undefined, number] = [current, current?.id || 0];
+  let ret: Player | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let maxDistanceLessThanCurrent = 0;
   let foundCloser = false;
@@ -428,7 +428,7 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared < currentDistanceSquared && distanceSquared > maxDistanceLessThanCurrent) {
       maxDistanceLessThanCurrent = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
       foundCloser = true;
     }
   }
@@ -809,26 +809,26 @@ const randomAsteroids = (count: number, bounds: Rectangle, seed: number) => {
 };
 
 const findClosestTargetAsteroid = (player: Player, state: GlobalState) => {
-  let ret: [Asteroid | undefined, number] = [undefined, 0];
+  let ret: Asteroid | undefined = undefined;
   let minDistance = Infinity;
   for (const [id, asteroid] of state.asteroids) {
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared < minDistance) {
       minDistance = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
     }
   }
   return ret;
 };
 
 const findFurthestTargetAsteroid = (player: Player, state: GlobalState) => {
-  let ret: [Asteroid | undefined, number] = [undefined, 0];
+  let ret: Asteroid | undefined = undefined;
   let maxDistance = 0;
   for (const [id, asteroid] of state.asteroids) {
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared > maxDistance) {
       maxDistance = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
     }
   }
   return ret;
@@ -838,7 +838,7 @@ const findNextTargetAsteroid = (player: Player, current: Asteroid | undefined, s
   if (!current) {
     return findClosestTargetAsteroid(player, state);
   }
-  let ret: [Asteroid | undefined, number] = [current, current?.id || 0];
+  let ret: Asteroid | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let minDistanceGreaterThanCurrent = Infinity;
   let foundFurther = false;
@@ -846,7 +846,7 @@ const findNextTargetAsteroid = (player: Player, current: Asteroid | undefined, s
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared > currentDistanceSquared && distanceSquared < minDistanceGreaterThanCurrent) {
       minDistanceGreaterThanCurrent = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
       foundFurther = true;
     }
   }
@@ -860,7 +860,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
   if (!current) {
     return findClosestTargetAsteroid(player, state);
   }
-  let ret: [Asteroid | undefined, number] = [current, current?.id || 0];
+  let ret: Asteroid | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let maxDistanceLessThanCurrent = 0;
   let foundCloser = false;
@@ -868,7 +868,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared < currentDistanceSquared && distanceSquared > maxDistanceLessThanCurrent) {
       maxDistanceLessThanCurrent = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
       foundCloser = true;
     }
   }

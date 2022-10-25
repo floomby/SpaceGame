@@ -1,5 +1,5 @@
 import { horizontalCenter, pop } from "../dialog";
-import { ownId } from "../globals";
+import { currentSector, ownId } from "../globals";
 import { sendWarp } from "../net";
 import { domFromRest } from "../rest";
 
@@ -21,14 +21,19 @@ const mapPostRest = () => {
 const mapDialog = () => {
   return horizontalCenter([
     `<h1>Map</h1>`,
-    domFromRest("sectorList", (list) => {
-      let html = `<ul id="sectorList">`;
-      for (const sector of list) {
-        html += `<li><button id="sector-${sector}">Warp to ${sector}</button></li>`;
-      }
-      html += `</ul>`;
-      return html;
-    }, mapPostRest),
+    `<h3>Current Sector: ${currentSector}</h3>`,
+    domFromRest(
+      "sectorList",
+      (list) => {
+        let html = `<ul id="sectorList">`;
+        for (const sector of list) {
+          html += `<li><button id="sector-${sector}" ${parseInt(sector) === currentSector ? "disabled" : ""}>Warp to ${sector}</button></li>`;
+        }
+        html += `</ul>`;
+        return html;
+      },
+      mapPostRest
+    ),
     `<br/><button id="closeMap">Close</button>`,
   ]);
 };

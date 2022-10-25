@@ -1,6 +1,7 @@
 // This is shared by the server and the client
 
 import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs, ArmamentDef, emptyLoadout } from "./defs";
+import { NPC } from "./npc";
 import { sfc32 } from "./prng";
 
 type Position = { x: number; y: number };
@@ -41,7 +42,7 @@ const positiveMod = (a: number, b: number) => {
 
 type Entity = Circle & { id: number; speed: number; heading: number };
 
-type CargoEntry = { what: string; amount: number };
+type CargoEntry = { what: string; amount: number }
 
 type Player = Entity & {
   health: number;
@@ -61,6 +62,7 @@ type Player = Entity & {
   inoperable?: boolean;
   warping?: number;
   warpTo?: number;
+  npc?: NPC;
 };
 
 type Asteroid = Circle & {
@@ -476,7 +478,12 @@ const update = (
       });
       // Fire secondaries
       if (player.toFireSecondary) {
-        const slotId = serverSecondaries.get(id);
+        let slotId: number;
+        if (player.npc) {
+          player.npc.selectedSecondary;
+        } else {
+          slotId = serverSecondaries.get(id);
+        }
         const armDef = armDefs[player.armIndices[slotId]];
         // Targeted weapons
         if (armDef.targeted === TargetedKind.Targeted) {
@@ -663,6 +670,15 @@ const update = (
       state.missiles.delete(id);
       applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
     }
+  }
+};
+
+const processAllNpcs = (state: GlobalState) => {
+  for (const [id, player] of state.players) {
+    if (!player.npc) {
+      continue;
+    }
+    player.npc.process();
   }
 };
 
@@ -918,6 +934,7 @@ export {
   ChatMessage,
   update,
   applyInputs,
+  processAllNpcs,
   infinityNorm,
   positiveMod,
   fractionalUpdate,

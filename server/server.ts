@@ -22,6 +22,7 @@ import {
   Missile,
   purchaseShip,
   effectiveInfinity,
+  processAllNpcs,
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
 import { assert } from "console";
@@ -34,6 +35,7 @@ import { User, Station, Checkpoint } from "./dataModels";
 import mongoose from "mongoose";
 
 import { createHash } from "crypto";
+import { addNpc, NPC } from "../src/npc";
 
 // Initialize the definitions (Needs to be done to use them)
 initDefs();
@@ -246,6 +248,8 @@ app.get("/init", (req, res) => {
   });
 });
 
+
+
 app.get("/resetEverything", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {
@@ -272,6 +276,28 @@ app.get("/resetEverything", (req, res) => {
       res.send("true");
     });
   });
+});
+
+// Test stuff
+
+app.get("/addNPC", (req, res) => {
+  const sector = req.query.sector;
+  if (!sector || typeof sector !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const sectorIndex = parseInt(sector);
+  if (!sectorList.includes(sectorIndex)) {
+    res.send("Invalid sector");
+    return;
+  }
+  try {
+    addNpc(sectors.get(sectorIndex)!);
+  } catch (e) {
+    res.send("Error: " + e);
+    return;
+  }
+  res.send("true");
 });
 
 if (useSsl) {
@@ -419,7 +445,6 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     id: id,
     sinceLastShot: [effectiveInfinity],
     projectileId: 0,
-    name,
     energy: defs[defIndex].energy,
     definitionIndex: defIndex,
     armIndices: emptyLoadout(defIndex),
@@ -730,6 +755,9 @@ wss.on("connection", (ws) => {
 });
 
 const informDead = (player: Player) => {
+  if (player.npc) {
+    return;
+  }
   const def = defs[player.definitionIndex];
   if (def.kind === UnitKind.Ship) {
     const ws = idToWebsocket.get(player.id);
@@ -751,10 +779,14 @@ setInterval(() => {
     }
     const triggers: EffectTrigger[] = [];
     update(state, frame, targets, secondaries, (trigger) => triggers.push(trigger), warpList, informDead);
+    processAllNpcs(state);
 
     // TODO Consider culling the state information to only send nearby players and projectiles
     const playerData: Player[] = [];
+    const npcs: (NPC | undefined)[] = [];
     for (const player of state.players.values()) {
+      npcs.push(player.npc);
+      player.npc = undefined;
       playerData.push(player);
     }
     const projectileData: Ballistic[] = [];
@@ -780,7 +812,11 @@ setInterval(() => {
         client.send(serialized);
       }
     }
+    for (const player of state.players.values()) {
+      player.npc = npcs.shift()!;
+    }
   }
+
   // Handle all warps
   while (warpList.length > 0) {
     const { player, to } = warpList.shift()!;

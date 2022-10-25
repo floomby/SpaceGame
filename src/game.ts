@@ -72,7 +72,7 @@ const findLinesTangentToCircleThroughPoint = (point: Position, circle: Circle) =
 
 type Entity = Circle & { id: number; speed: number; heading: number };
 
-type CargoEntry = { what: string; amount: number }
+type CargoEntry = { what: string; amount: number };
 
 type Player = Entity & {
   health: number;
@@ -82,6 +82,7 @@ type Player = Entity & {
   projectileId: number;
   energy: number;
   definitionIndex: number;
+  team: number;
   canDock?: number;
   docked?: number;
   armIndices: number[];
@@ -213,11 +214,10 @@ const setCanDock = (player: Player, state: GlobalState) => {
       player.canDock = undefined;
       return;
     }
-    const playerDef = defs[player.definitionIndex];
     player.canDock = undefined;
     state.players.forEach((otherPlayer) => {
       const def = defs[otherPlayer.definitionIndex];
-      if (def.kind === UnitKind.Station && playerDef.team === def.team) {
+      if (def.kind === UnitKind.Station && player.team === otherPlayer.team) {
         if (canDock(player, otherPlayer)) {
           player.canDock = otherPlayer.id;
           return;
@@ -327,7 +327,7 @@ const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false
     if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -353,7 +353,7 @@ const findFurthestTarget = (player: Player, state: GlobalState, onlyEnemy = fals
     if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -384,7 +384,7 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
     if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -419,7 +419,7 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
     if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -482,7 +482,8 @@ const update = (
   serverSecondaries: Map<number, number>,
   applyEffect: (effect: EffectTrigger) => void,
   serverWarpList: { player: Player; to: number }[],
-  onDeath: (player: Player) => void
+  onDeath: (player: Player) => void,
+  flashServerMessage: (id: number, message: string) => void
 ) => {
   // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
@@ -504,7 +505,7 @@ const update = (
           speed: primarySpeed,
           heading: player.heading,
           damage: def.primaryDamage,
-          team: def.team,
+          team: player.team,
           id: player.projectileId,
           parent: id,
           frameTillEXpire: primaryFramesToExpire,
@@ -544,7 +545,7 @@ const update = (
                 target = state.asteroids.get(targetId);
               }
               if (target) {
-                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId);
+                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage);
               }
             }
           }
@@ -552,7 +553,7 @@ const update = (
         } else if (armDef.targeted === TargetedKind.Untargeted) {
           if (slotId !== undefined && slotId < player.armIndices.length) {
             if (armDef.stateMutator) {
-              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId);
+              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage);
             }
           }
         }
@@ -572,7 +573,7 @@ const update = (
             continue;
           }
           const otherDef = defs[otherPlayer.definitionIndex];
-          if (otherDef.team === def.team) {
+          if (otherPlayer.team === player.team) {
             continue;
           }
           const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
@@ -595,7 +596,7 @@ const update = (
                 speed: primarySpeed,
                 heading: targeting,
                 damage: def.primaryDamage,
-                team: def.team,
+                team: player.team,
                 id: player.projectileId,
                 parent: id,
                 frameTillEXpire: primaryFramesToExpire,
@@ -647,7 +648,7 @@ const update = (
           continue;
         }
         const def = defs[otherPlayer.definitionIndex];
-        if (projectile.team !== def.team && pointInCircle(projectile.position, otherPlayer)) {
+        if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
             kill(def, otherPlayer, state, applyEffect, onDeath);
@@ -696,7 +697,7 @@ const update = (
         continue;
       }
       const def = defs[otherPlayer.definitionIndex];
-      if (missile.team !== def.team && circlesIntersect(missile, otherPlayer)) {
+      if (missile.team !== otherPlayer.team && circlesIntersect(missile, otherPlayer)) {
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
           kill(def, otherPlayer, state, applyEffect, onDeath);
@@ -923,19 +924,22 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   }
 };
 
-const purchaseShip = (player: Player, index: number) => {
+const purchaseShip = (player: Player, index: number, stationShipOptions: string[]) => {
   if (index >= defs.length || index < 0) {
     console.log("Warning: ship index out of range");
     return;
   }
   const def = defs[index];
-  const playerDef = defs[player.definitionIndex];
   if (def.price === undefined) {
     console.log("Warning: ship not purchasable");
     return;
   }
-  if (playerDef.team !== def.team) {
-    console.log("Warning: ship not on same team");
+  // if (playerDef.team !== def.team) {
+  //   console.log("Warning: ship not on same team");
+  //   return;
+  // }
+  if (!stationShipOptions.includes(def.name)) {
+    console.log("Warning: ship not available at this station");
     return;
   }
   if (player.credits !== undefined && def.price <= player.credits) {
@@ -992,7 +996,7 @@ const arrivePosition = (player: Player, position: Position, input: Input, epsilo
   if (distance > def.brakeDistance!) {
     targetSpeed = def.speed;
   } else {
-    targetSpeed = def.speed * distance / def.brakeDistance!;
+    targetSpeed = (def.speed * distance) / def.brakeDistance!;
   }
 
   if (headingMod > 0 && player.speed > 0) {
@@ -1006,7 +1010,7 @@ const arrivePosition = (player: Player, position: Position, input: Input, epsilo
     input.right = false;
   }
 
-  if (distance < epsilon && player.speed < def.speed * distance / (def.brakeDistance! + epsilon)) {
+  if (distance < epsilon && player.speed < (def.speed * distance) / (def.brakeDistance! + epsilon)) {
     if (player.speed > 0) {
       input.down = true;
       input.up = false;
@@ -1015,7 +1019,7 @@ const arrivePosition = (player: Player, position: Position, input: Input, epsilo
       input.up = false;
     }
     return;
-  } 
+  }
 
   if (player.speed === targetSpeed) {
     input.up = false;
@@ -1071,6 +1075,7 @@ const currentlyFacingApprox = (entity: Entity, circle: Circle) => {
   return arcLength < circle.radius;
 };
 
+const serverMessagePersistTime = 3000;
 const maxNameLength = 20;
 const ticksPerSecond = 60;
 // Infinity is not serializable with JSON.stringify...
@@ -1129,4 +1134,5 @@ export {
   ticksPerSecond,
   maxNameLength,
   effectiveInfinity,
+  serverMessagePersistTime,
 };

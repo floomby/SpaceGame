@@ -8,13 +8,13 @@ import { sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
 import { sprites } from "../drawing";
-import { domFromRest } from "../rest";
+import { domFromRest, getRestRaw } from "../rest";
 
 let docker = () => {};
 
 const setDocker = (d: () => void) => {
   docker = d;
-}; 
+};
 
 let showDocked = false;
 
@@ -238,39 +238,42 @@ const populateShipPreviewer = (definitionIndex: number) => {
   shipViewerHelper(definitionIndex, "shipPreview", "shipStatsPreview");
 };
 
-const setupShipShop = () => {
+const setupShipShop = (station: Player) => {
   const self = state.players.get(ownId);
-  const availableShips = defs
-    .map((def, index) => {
-      return { def, index };
-    })
-    .filter(({ def }) => {
-      return def.kind === UnitKind.Ship && def.team === defs[self.definitionIndex].team;
-    });
-  populateShipList(availableShips, self);
-  console.log("available ships", availableShips);
-  for (const { def, index } of availableShips) {
-    const button = document.getElementById(`purchase${index}`);
-    if (button) {
-      button.addEventListener("click", () => {
-        sendPurchase(ownId, index);
-        const self = state.players.get(ownId);
-        const station = state.players.get(self?.docked);
-        showDialog(dockDialog(station, self));
-        setupDockingUI(station, self);
-      });
-    } else {
-      console.log("button not found", `purchase${index}`);
-    }
-    const preview = document.getElementById(`previewShip${index}`);
-    if (preview) {
-      preview.addEventListener("click", () => {
-        populateShipPreviewer(index);
-      });
-    } else {
-      console.log("preview not found", `previewShip${index}`);
-    }
+  if (!self) {
+    return;
   }
+  const callback = (availability: { value: string[] }) => {
+    const availableShips = defs
+      .map((def, index) => {
+        return { def, index };
+      })
+      .filter(({ def }) => {
+        return def.kind === UnitKind.Ship && availability.value.includes(def.name);
+      });
+    populateShipList(availableShips, self);
+    console.log("available ships", availableShips);
+    for (const { def, index } of availableShips) {
+      const button = document.getElementById(`purchase${index}`);
+      if (button) {
+        button.addEventListener("click", () => {
+          sendPurchase(ownId, index);
+          pop();
+        });
+      } else {
+        console.log("button not found", `purchase${index}`);
+      }
+      const preview = document.getElementById(`previewShip${index}`);
+      if (preview) {
+        preview.addEventListener("click", () => {
+          populateShipPreviewer(index);
+        });
+      } else {
+        console.log("preview not found", `previewShip${index}`);
+      }
+    }
+  };
+  getRestRaw(`/shipsAvailable?id=${station.id}`, callback);
   document.getElementById("back")?.addEventListener("click", () => {
     pop();
   });
@@ -313,7 +316,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   armsPostUpdate(self.armIndices);
   shipPostUpdate(self.definitionIndex);
   document.getElementById("changeShip")?.addEventListener("click", () => {
-    push(shipShop(), setupShipShop);
+    push(shipShop(), () => setupShipShop(station));
   });
 };
 
@@ -353,4 +356,4 @@ const bindDockingUpdaters = () => {
   bindPostUpdater("ship", shipPostUpdate);
 };
 
-export { docker, setDocker, showDocked, setShowDocked, dockDialog, setupDockingUI, bindDockingUpdaters }
+export { docker, setDocker, showDocked, setShowDocked, dockDialog, setupDockingUI, bindDockingUpdaters };

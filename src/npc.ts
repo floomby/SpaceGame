@@ -60,6 +60,7 @@ class NPC {
       cargo: [{ what: "Teddy Bears", amount: 30 }],
       credits: 500,
       npc: this,
+      team: 1,
     };
   }
 

@@ -22,10 +22,7 @@ A simple multiplayer game where you have a ship and do things.
 
 - Collectables (dropping spare parts)
 - Repairing station
-- Purchasing at station list
 - Checkpoint fixing if station allegiance changes
-- Teams no longer in def
-- NPC Ships to fight
 - Home station or stations
 - Sector bounds and global map
 - Asteroid mineral regeneration

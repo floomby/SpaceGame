@@ -22,6 +22,8 @@ const stationSchema = new Schema({
   sector: { type: Number, required: true },
   definitionIndex: { type: Number, required: true },
   position: { type: positionSchema, required: true },
+  team: { type: Number, required: true },
+  shipsAvailable: { type: [String], required: true },
 });
 
 const Station = mongoose.model("Station", stationSchema);

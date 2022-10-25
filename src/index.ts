@@ -25,8 +25,8 @@ import {
   runPostUpdaterOnly,
   peekTag,
 } from "./dialog";
-import { defs, initDefs, Faction, getFactionString } from "./defs";
-import { drawEverything, flashSecondary, initDrawing, initStars } from "./drawing";
+import { defs, initDefs, Faction, getFactionString, armDefs } from "./defs";
+import { drawEverything, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import { currentSector, initBlankState, keybind, ownId, selectedSecondary, setCurrentSector, setOwnId, setSelectedSecondary, state } from "./globals";
 import { initSettings } from "./dialogs/settings";
@@ -66,7 +66,8 @@ const loop = () => {
   if (self && selectedSecondaryChanged) {
     if (selectedSecondary < def.slots.length) {
       lastValidSecondary = selectedSecondary;
-      flashSecondary();
+      const armamentDef = armDefs[self.armIndices[selectedSecondary]];
+      pushMessage(`${selectedSecondary} - ${armamentDef.name}`);
       sendSecondary(ownId, selectedSecondary);
     } else {
       setSelectedSecondary(lastValidSecondary);
@@ -288,6 +289,10 @@ const run = () => {
       message: data.message,
       showUntil: Date.now() + 8000,
     });
+  });
+
+  bindAction("serverMessage", (data: { message: string }) => {
+    pushMessage(data.message);
   });
 
   loop();

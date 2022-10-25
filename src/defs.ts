@@ -51,7 +51,6 @@ type UnitDefinition = {
   energyRegen: number;
   primaryReloadTime: number;
   primaryDamage: number;
-  team: number;
   radius: number;
   kind: UnitKind;
   hardpoints?: Position[];
@@ -95,7 +94,8 @@ type ArmamentDef = {
     targetKind: TargetKind,
     target: Player | Asteroid,
     applyEffect: (trigger: EffectTrigger) => void,
-    slotIndex: number
+    slotIndex: number,
+    flashServerMessage?: (id: number, message: string) => void
   ) => void;
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
   equipMutator?: (player: Player, slotIndex: number) => void;
@@ -145,7 +145,6 @@ const initDefs = () => {
     energyRegen: 0.1,
     primaryReloadTime: 20,
     primaryDamage: 10,
-    team: 0,
     radius: 16,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal],
@@ -168,7 +167,6 @@ const initDefs = () => {
     energyRegen: 0.1,
     primaryReloadTime: 20,
     primaryDamage: 10,
-    team: 1,
     radius: 16,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal],
@@ -191,7 +189,6 @@ const initDefs = () => {
     energyRegen: 0.5,
     primaryReloadTime: 10,
     primaryDamage: 15,
-    team: 0,
     radius: 120,
     kind: UnitKind.Station,
     hardpoints: [
@@ -215,7 +212,6 @@ const initDefs = () => {
     energyRegen: 0.5,
     primaryReloadTime: 10,
     primaryDamage: 15,
-    team: 1,
     radius: 144,
     kind: UnitKind.Station,
     hardpoints: [
@@ -239,7 +235,6 @@ const initDefs = () => {
     energyRegen: 0.2,
     primaryReloadTime: 10,
     primaryDamage: 20,
-    team: 0,
     radius: 30,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
@@ -262,7 +257,6 @@ const initDefs = () => {
     energyRegen: 0.2,
     primaryReloadTime: 10,
     primaryDamage: 20,
-    team: 1,
     radius: 30,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
@@ -331,10 +325,14 @@ const initDefs = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 0.5,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.5) {
         target = target as Asteroid;
-        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 500 * 500 && availableCargoCapacity(player) > 0) {
+        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 500 * 500) {
+          if (availableCargoCapacity(player) <= 0) {
+            flashServerMessage(player.id, "Cargo bay full");
+            return;
+          }
           player.energy -= 0.3;
           const amount = Math.min(target.resources, 0.5);
           target.resources -= amount;
@@ -414,14 +412,13 @@ const initDefs = () => {
         slotData.sinceFired = 0;
         slotData.ammo--;
         const id = uid();
-        const def = defs[player.definitionIndex];
         const missile: Missile = {
           id,
           position: { x: player.position.x, y: player.position.y },
           speed: player.speed + 1,
           heading: player.heading,
           radius: missileDefs[javelinIndex].radius,
-          team: def.team,
+          team: player.team,
           damage: missileDefs[javelinIndex].damage,
           target: 0,
           definitionIndex: javelinIndex,
@@ -464,14 +461,13 @@ const initDefs = () => {
         slotData.sinceFired = 0;
         slotData.ammo--;
         const id = uid();
-        const def = defs[player.definitionIndex];
         const missile: Missile = {
           id,
           position: { x: player.position.x, y: player.position.y },
           speed: player.speed + 1,
           heading: player.heading,
           radius: missileDefs[heavyJavelinIndex].radius,
-          team: def.team,
+          team: player.team,
           damage: missileDefs[heavyJavelinIndex].damage,
           target: 0,
           definitionIndex: heavyJavelinIndex,
@@ -518,14 +514,13 @@ const initDefs = () => {
         slotData.sinceFired = 0;
         slotData.ammo--;
         const id = uid();
-        const def = defs[player.definitionIndex];
         const missile: Missile = {
           id,
           position: { x: player.position.x, y: player.position.y },
           speed: player.speed + 1,
           heading: player.heading,
           radius: missileDefs[tomahawkIndex].radius,
-          team: def.team,
+          team: player.team,
           damage: missileDefs[tomahawkIndex].damage,
           target: target.id,
           definitionIndex: tomahawkIndex,

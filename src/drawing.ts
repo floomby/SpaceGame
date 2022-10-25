@@ -176,7 +176,7 @@ const drawMiniMapPlayer = (center: Position, player: Player, self: Player, miniM
     (player.position.x - self.position.x) * miniMapScaleFactor + center.x,
     (player.position.y - self.position.y) * miniMapScaleFactor + center.y
   );
-  ctx.fillStyle = defs[player.definitionIndex].team ? "red" : "aqua";
+  ctx.fillStyle = player.team ? "red" : "aqua";
   if (defs[player.definitionIndex].kind === UnitKind.Ship) {
     ctx.rotate(player.heading);
     ctx.beginPath();
@@ -383,15 +383,15 @@ const drawDockText = (dockKey: string) => {
   ctx.fillText(`Press ${dockKey} to dock`, canvas.width / 2, canvas.height / 2 + 200);
 };
 
-let secondaryFlashTimeRemaining = 0;
+// let secondaryFlashTimeRemaining = 0;
 
-const drawSecondaryText = (self: Player, selectedSecondary: number) => {
-  ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, secondaryFlashTimeRemaining / 50)})`;
-  ctx.font = "18px Arial";
-  ctx.textAlign = "center";
-  const armamentDef = armDefs[self.armIndices[selectedSecondary]];
-  ctx.fillText(`${selectedSecondary} - ${armamentDef.name}`, canvas.width / 2, 20);
-};
+// const drawSecondaryText = (self: Player, selectedSecondary: number) => {
+//   ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, secondaryFlashTimeRemaining / 50)})`;
+//   ctx.font = "18px Arial";
+//   ctx.textAlign = "center";
+//   const armamentDef = armDefs[self.armIndices[selectedSecondary]];
+//   ctx.fillText(`${selectedSecondary} - ${armamentDef.name}`, canvas.width / 2, 20);
+// };
 
 // This is only for drawing purposes (if we die we need to keep the last position)
 let lastSelf: Player;
@@ -508,9 +508,39 @@ const drawChats = (self: Player, players: Map<number, Player>, chats: IterableIt
   }
 };
 
+type Message = {
+  what: string;
+  framesRemaining: number;
+};
+
+let messages: Message[] = [];
+
+const pushMessage = (what: string, framesRemaining: number = 180) => {
+  messages.push({ what, framesRemaining });
+};
+
+const reduceMessageTimeRemaining = (sixtieths: number) => {
+  messages = messages.filter((message) => {
+    message.framesRemaining -= sixtieths;
+    return message.framesRemaining > 0;
+  });
+};
+
+const drawMessages = () => {
+  // draw all the messages at the top of the screen
+  ctx.font = "20px Arial";
+  ctx.textAlign = "center";
+  let y = 30;
+  for (const message of messages) {
+    ctx.fillStyle = `rgb(255, 255, 255, ${Math.min(message.framesRemaining / 60, 1)})`;
+    ctx.fillText(message.what, canvas.width / 2, y);
+    y += 30;
+  }
+};
+
 const drawLine = (self: Player, line: Line) => {
-  const to = { x:line.to.x - self.position.x + canvas.width / 2, y:line.to.y - self.position.y + canvas.height / 2 };
-  const from = { x:line.from.x - self.position.x + canvas.width / 2, y:line.from.y - self.position.y + canvas.height / 2 };
+  const to = { x: line.to.x - self.position.x + canvas.width / 2, y: line.to.y - self.position.y + canvas.height / 2 };
+  const from = { x: line.from.x - self.position.x + canvas.width / 2, y: line.from.y - self.position.y + canvas.height / 2 };
   ctx.save();
   ctx.strokeStyle = "green";
   ctx.lineWidth = 2;
@@ -522,6 +552,8 @@ const drawLine = (self: Player, line: Line) => {
   ctx.restore();
 };
 
+let didWarn = false;
+
 const drawEverything = (
   state: GlobalState,
   self: Player,
@@ -531,23 +563,33 @@ const drawEverything = (
   selectedSecondary: number,
   keybind: KeyBindings,
   sixtieths: number,
-  chats: Map<number, ChatMessage>,
+  chats: Map<number, ChatMessage>
 ) => {
   highlightPhase += 0.1 * sixtieths;
   if (highlightPhase > 2 * Math.PI) {
     highlightPhase -= 2 * Math.PI;
   }
-  if (secondaryFlashTimeRemaining > 0) {
-    secondaryFlashTimeRemaining -= sixtieths;
-  }
+  // if (secondaryFlashTimeRemaining > 0) {
+  //   secondaryFlashTimeRemaining -= sixtieths;
+  // }
+  reduceMessageTimeRemaining(sixtieths);
 
   clearCanvas();
   if (self) {
     lastSelf = self;
   }
+  if (!self && !lastSelf) {
+    if (!didWarn) {
+      // Seems to happen on server startup (I think the server is just sending a state update before the init message)
+      console.log("Warning: Missing self reference (FIXME)");
+      didWarn = true;
+    }
+    return;
+  }
   if (lastSelf) {
     drawStars(lastSelf);
   }
+
   for (const [id, asteroid] of state.asteroids) {
     drawAsteroid(asteroid, lastSelf);
     if (targetAsteroid && targetAsteroid.id === id) {
@@ -586,13 +628,14 @@ const drawEverything = (
     if (self.canDock) {
       drawDockText(keybind.dock);
     }
-    if (secondaryFlashTimeRemaining > 0) {
-      drawSecondaryText(self, selectedSecondary);
-    }
+    // if (secondaryFlashTimeRemaining > 0) {
+    //   drawSecondaryText(self, selectedSecondary);
+    // }
+    drawMessages();
     if (target) {
       drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
       if (Math.abs(self.position.x - target.position.x) > canvas.width / 2 || Math.abs(self.position.y - target.position.y) > canvas.height / 2) {
-        drawTargetArrow(self, target, defs[target.definitionIndex].team ? "red" : "aqua");
+        drawTargetArrow(self, target, target.team ? "red" : "aqua");
       }
     } else if (targetAsteroid) {
       drawTargetAsteroid({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, targetAsteroid);
@@ -606,8 +649,8 @@ const drawEverything = (
   }
 };
 
-const flashSecondary = () => {
-  secondaryFlashTimeRemaining = 90;
-};
+// const flashSecondary = () => {
+//   secondaryFlashTimeRemaining = 90;
+// };
 
-export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites, sprites, ChatMessage, initStars };
+export { drawEverything, initDrawing, ctx, canvas, effectSprites, sprites, ChatMessage, initStars, pushMessage };

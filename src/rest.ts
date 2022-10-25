@@ -28,7 +28,7 @@ const domFromRest = (query: string, template: (value: string) => string, postCom
   return html;
 };
 
-const getRestRaw = (query: string, callback: (value: string) => void) => {
+const getRestRaw = (query: string, callback: (value: any) => void) => {
   fetch(query)
     .catch((error) => {
       console.error(error);

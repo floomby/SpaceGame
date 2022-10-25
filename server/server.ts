@@ -23,6 +23,7 @@ import {
   purchaseShip,
   effectiveInfinity,
   processAllNpcs,
+  serverMessagePersistTime,
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
 import { assert } from "console";
@@ -206,6 +207,27 @@ app.get("/register", (req, res) => {
   });
 });
 
+app.get("/shipsAvailable", (req, res) => {
+  const id = req.query.id;
+  if (!id || typeof id !== "string") {
+    res.send("false");
+    return;
+  }
+  // check the database
+  Station.findOne({ id }, (err, station) => {
+    if (err) {
+      console.log(err);
+      res.send("false");
+      return;
+    }
+    if (!station) {
+      res.send("false");
+      return;
+    }
+    res.send(JSON.stringify({ value: station.shipsAvailable }));
+  });
+});
+
 // Admin stuff, the password is: "something"
 app.get("/init", (req, res) => {
   const password = req.query.password;
@@ -228,6 +250,8 @@ app.get("/init", (req, res) => {
           sector,
           definitionIndex: defMap.get("Alliance Starbase")?.index,
           position: { x: -1600, y: -1600 },
+          team: Faction.Alliance,
+          shipsAvailable: ["Advanced Fighter", "Fighter"],
         },
         {
           name: `Incubation Center ${Math.floor(Math.random() * 200)}`,
@@ -235,6 +259,8 @@ app.get("/init", (req, res) => {
           sector,
           definitionIndex: defMap.get("Confederacy Starbase")?.index,
           position: { x: 1600, y: 1600 },
+          team: Faction.Confederation,
+          shipsAvailable: ["Drone", "Seeker"],
         },
       ];
     })
@@ -247,8 +273,6 @@ app.get("/init", (req, res) => {
     res.send("true");
   });
 });
-
-
 
 app.get("/resetEverything", (req, res) => {
   const password = req.query.password;
@@ -351,6 +375,8 @@ type ClientData = {
   input: Input;
   name: string;
   currentSector: number;
+  lastMessage: string;
+  lastMessageTime: number;
 };
 
 // const checkpoints = new Map<number, Player>();
@@ -399,6 +425,7 @@ const initFromDatabase = async () => {
       definitionIndex: station.definitionIndex,
       armIndices: [],
       slotData: [],
+      team: station.team,
     };
     const sector = sectors.get(station.sector);
     if (sector) {
@@ -422,6 +449,8 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     name,
     input: { up: false, down: false, left: false, right: false, primary: false, secondary: false },
     currentSector: defaultSector,
+    lastMessage: "",
+    lastMessageTime: Date.now(),
   });
 
   let defIndex: number;
@@ -451,6 +480,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     slotData: [{}, {}, {}],
     cargo: [{ what: "Teddy Bears", amount: 30 }],
     credits: 500,
+    team: faction,
   };
 
   equip(player, 0, "Basic mining laser", true);
@@ -475,8 +505,8 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
   });
 };
 
-const saveCheckpoint = (id: number, sector: number, player: Player) => {
-  Checkpoint.findOneAndUpdate({ id }, { id, sector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
+const saveCheckpoint = (id: number, sector: number, data: string) => {
+  Checkpoint.findOneAndUpdate({ id }, { id, sector, data }, { upsert: true }, (err) => {
     if (err) {
       console.log("Error saving checkpoint: " + err);
       return;
@@ -537,6 +567,8 @@ wss.on("connection", (ws) => {
               name,
               input: { up: false, down: false, left: false, right: false, primary: false, secondary: false },
               currentSector: checkpoint.sector,
+              lastMessage: "",
+              lastMessageTime: Date.now(),
             });
             targets.set(user.id, [TargetKind.None, 0]);
             secondaries.set(user.id, 0);
@@ -577,7 +609,8 @@ wss.on("connection", (ws) => {
     } else if (data.type === "input") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
-        clients.set(ws, { ...client, input: data.payload.input });
+        client.input = data.payload.input;
+        // clients.set(ws, { ...client, input: data.payload.input });
       } else {
         console.log("Warning: Input data from unknown client");
       }
@@ -605,9 +638,9 @@ wss.on("connection", (ws) => {
 
             state.players.set(client.id, player);
             const playerCopy = copyPlayer(player);
-            playerCopy.docked = undefined;
+            const checkpointData = JSON.stringify(playerCopy);
 
-            saveCheckpoint(client.id, client.currentSector, playerCopy);
+            saveCheckpoint(client.id, client.currentSector, checkpointData);
           }
         }
       }
@@ -622,9 +655,9 @@ wss.on("connection", (ws) => {
 
           state.players.set(client.id, player);
           const playerCopy = copyPlayer(player);
-          playerCopy.docked = undefined;
+          const checkpointData = JSON.stringify(playerCopy);
 
-          saveCheckpoint(client.id, client.currentSector, playerCopy);
+          saveCheckpoint(client.id, client.currentSector, checkpointData);
         }
       }
     } else if (data.type === "respawn") {
@@ -690,7 +723,7 @@ wss.on("connection", (ws) => {
             }
           }
 
-          state.players.set(client.id, player);
+          // state.players.set(client.id, player);
         }
       }
     } else if (data.type === "equip") {
@@ -700,7 +733,7 @@ wss.on("connection", (ws) => {
         const player = state.players.get(client.id);
         if (player) {
           equip(player, data.payload.slotIndex, data.payload.what);
-          state.players.set(client.id, player);
+          // state.players.set(client.id, player);
         }
       }
     } else if (data.type === "chat") {
@@ -718,8 +751,8 @@ wss.on("connection", (ws) => {
         const state = sectors.get(client.currentSector)!;
         const player = state.players.get(client.id);
         if (player) {
-          purchaseShip(player, data.payload.index);
-          state.players.set(client.id, player);
+          purchaseShip(player, data.payload.index, ["Advanced Fighter", "Fighter"]);
+          // state.players.set(client.id, player);
         }
       }
     } else if (data.type === "warp") {
@@ -731,7 +764,7 @@ wss.on("connection", (ws) => {
           if (player) {
             player.warpTo = data.payload.warpTo;
             player.warping = 1;
-            state.players.set(client.id, player);
+            // state.players.set(client.id, player);
           }
         }
       }
@@ -767,6 +800,25 @@ const informDead = (player: Player) => {
   }
 };
 
+const flashServerMessage = (id: number, message: string) => {
+  const ws = idToWebsocket.get(id);
+  if (ws) {
+    const client = clients.get(ws);
+    if (client && message.length > 0) {
+      if (message !== client.lastMessage) {
+        ws.send(JSON.stringify({ type: "serverMessage", payload: { message } }));
+        client.lastMessage = message;
+        client.lastMessageTime = Date.now();
+      } else {
+        if (Date.now() - client.lastMessageTime > serverMessagePersistTime) {
+          ws.send(JSON.stringify({ type: "serverMessage", payload: { message } }));
+          client.lastMessageTime = Date.now();
+        }
+      }
+    }
+  }
+};
+
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -778,7 +830,7 @@ setInterval(() => {
       }
     }
     const triggers: EffectTrigger[] = [];
-    update(state, frame, targets, secondaries, (trigger) => triggers.push(trigger), warpList, informDead);
+    update(state, frame, targets, secondaries, (trigger) => triggers.push(trigger), warpList, informDead, flashServerMessage);
     processAllNpcs(state, frame);
 
     // TODO Consider culling the state information to only send nearby players and projectiles

@@ -403,11 +403,13 @@ const drawPlayer = (player: Player, self: Player) => {
     drawBar({ x: -sprite.width / 2, y: -sprite.height / 2 - 5 }, sprite.width, 5, "#0022FFCC", "#333333CC", player.energy / def.energy);
   }
   // This effect is pretty bad, but I want something visual to indicate a warp is in progress
+  ctx.rotate(player.heading);
   if (player.warping) {
     const warpAmount = player.warping / def.warpTime;
-    ctx.filter = `hue-rotate(${warpAmount * Math.PI * 2}rad) saturate(${(1 - warpAmount) * 100}%)`;
+    const warpFramesLeft = def.warpTime - player.warping;
+    ctx.filter = `drop-shadow(0 0 ${warpAmount * 10}px #FFFFFF)`;
+    ctx.transform(Math.max(1, 10 / (warpFramesLeft + 3)), 0, 0, Math.min(1, warpFramesLeft / 10), 0, 0);
   }
-  ctx.rotate(player.heading);
   // if (sprite !== sprites[player.definitionIndex]) {
   //   ctx.transform(1 + perspectiveRescaling[perspectiveIndex].x, 0, 0, Math.sign(player.side), 0, 0);
   // }

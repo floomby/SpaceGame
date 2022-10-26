@@ -587,7 +587,7 @@ type Message = {
 
 let messages: Message[] = [];
 
-const pushMessage = (what: string, framesRemaining: number = 180) => {
+const pushMessage = (what: string, framesRemaining: number = 240) => {
   messages.push({ what, framesRemaining });
 };
 
@@ -604,9 +604,10 @@ const drawMessages = () => {
   ctx.textAlign = "center";
   let y = 30;
   for (const message of messages) {
-    ctx.fillStyle = `rgb(255, 255, 255, ${Math.min(message.framesRemaining / 60, 1)})`;
+    const alpha = Math.min(message.framesRemaining / 60, 1);
+    ctx.fillStyle = `rgb(255, 255, 255, ${alpha})`;
     ctx.fillText(message.what, canvas.width / 2, y);
-    y += 30;
+    y += 30 * alpha;
   }
 };
 

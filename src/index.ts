@@ -31,7 +31,7 @@ import {
   runPostUpdaterOnly,
   peekTag,
 } from "./dialog";
-import { defs, initDefs, Faction, getFactionString, armDefs } from "./defs";
+import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, EmptySlot } from "./defs";
 import { drawEverything, fadeOutCollectable, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
@@ -67,6 +67,20 @@ const lastChats = new Map<number, ChatMessage>();
 
 let oldAngle = 0;
 
+const selectFirstSecondary = (self: Player) => {
+  let index = 1;
+  // All the low arm defs are for empty slots
+  while (index < self.armIndices.length && self.armIndices[index] < SlotKind.Mining) {
+    index++;
+  }
+  if (index < self.armIndices.length) {
+    setSelectedSecondary(index);
+    setSelectedSecondaryChanged(true);
+  }
+};
+
+let forceSetSecondary = false;
+
 // TODO There is a bunch of business logic in here that should be refactored into better places
 const loop = () => {
   const elapsed = Date.now() - lastFrameTime;
@@ -81,19 +95,6 @@ const loop = () => {
   let targetAsteroid: Asteroid | undefined = undefined;
 
   const self = state.players.get(ownId);
-
-  const def = self ? defs[self.definitionIndex] : undefined;
-  if (self && selectedSecondaryChanged) {
-    if (selectedSecondary < def.slots.length) {
-      lastValidSecondary = selectedSecondary;
-      const armamentDef = armDefs[self.armIndices[selectedSecondary]];
-      pushMessage(`${selectedSecondary} - ${armamentDef.name}`);
-      sendSecondary(ownId, selectedSecondary);
-    } else {
-      setSelectedSecondary(lastValidSecondary);
-    }
-    setSelectedSecondaryChanged(false);
-  }
 
   if (self && !self.docked) {
     if (oldAngle !== targetAngle) {
@@ -140,6 +141,7 @@ const loop = () => {
       targetAsteroid = undefined;
       targetAsteroidId = 0;
       input.quickTargetClosestEnemy = false;
+      forceSetSecondary = true;
     }
   }
 
@@ -159,6 +161,37 @@ const loop = () => {
   if (target?.docked) {
     target = undefined;
     targetId = 0;
+  }
+
+  if (forceSetSecondary && self && selectedSecondary === 0 && !targetAsteroid && target && target.team !== self.team) {
+    selectFirstSecondary(self);
+    forceSetSecondary = false;
+  }
+
+  if (
+    forceSetSecondary &&
+    self &&
+    selectedSecondary !== 0 &&
+    targetAsteroid &&
+    self.armIndices.length > 0 &&
+    self.armIndices[0] !== EmptySlot.Mining
+  ) {
+    setSelectedSecondary(0);
+    setSelectedSecondaryChanged(true);
+    forceSetSecondary = false;
+  }
+
+  const def = self ? defs[self.definitionIndex] : undefined;
+  if (self && selectedSecondaryChanged) {
+    if (selectedSecondary < def.slots.length) {
+      lastValidSecondary = selectedSecondary;
+      const armamentDef = armDefs[self.armIndices[selectedSecondary]];
+      pushMessage(`${selectedSecondary} - ${armamentDef.name}`);
+      sendSecondary(ownId, selectedSecondary);
+    } else {
+      setSelectedSecondary(lastValidSecondary);
+    }
+    setSelectedSecondaryChanged(false);
   }
 
   if (self && !self.docked && showDocked) {
@@ -213,12 +246,14 @@ const targetAtCoords = (coords: Position) => {
     const target = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
     targetId = target.id;
     targetAsteroidId = 0;
+    forceSetSecondary = true;
   } else {
     const possibleAsteroids = findAllAsteroidsOverlappingPoint(coords, state.asteroids.values());
     if (possibleAsteroids.length) {
       const target = possibleAsteroids[Math.floor(Math.random() * possibleAsteroids.length)];
       targetId = 0;
       targetAsteroidId = target.id;
+      forceSetSecondary = true;
     }
   }
 };

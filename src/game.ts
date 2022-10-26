@@ -59,7 +59,6 @@ const findLinesTangentToCircleThroughPoint = (point: Position, circle: Circle) =
     return undefined;
   }
 
-  // find the two lines that are tangent to the circle and go through the point
   const dx = point.x - circle.position.x;
   const dy = point.y - circle.position.y;
   const d = Math.sqrt(dx * dx + dy * dy);
@@ -508,7 +507,7 @@ const update = (
         player.position.x += player.side * -Math.sin(player.heading);
         player.position.y += player.side * Math.cos(player.heading);
       }
-      if (player.toFirePrimary && player.energy > 10) {
+      if (player.toFirePrimary && player.energy > primaryEnergy) {
         const projectile = {
           position: { x: player.position.x, y: player.position.y },
           radius: primaryRadius,
@@ -525,7 +524,7 @@ const update = (
         state.projectiles.set(id, projectiles);
         player.projectileId++;
         player.toFirePrimary = false;
-        player.energy -= 10;
+        player.energy -= primaryEnergy;
       }
       // Run the secondary frameMutators
       player.armIndices.forEach((armament, index) => {

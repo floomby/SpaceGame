@@ -8,7 +8,6 @@ type KeyBindings = {
   down: string;
   left: string;
   right: string;
-  primary: string;
   secondary: string;
   dock: string;
   nextTarget: string;
@@ -28,20 +27,21 @@ type KeyBindings = {
   chat: string;
   map: string;
   // warp: string;
+  quickTargetClosestEnemy: string;
 };
 
 const qwertyBindings: KeyBindings = {
-  up: "ArrowUp",
-  down: "ArrowDown",
-  left: "ArrowLeft",
-  right: "ArrowRight",
-  primary: " ",
-  secondary: "c",
-  dock: "v",
+  up: "w",
+  down: "s",
+  left: "a",
+  right: "d",
+  // primary: " ",
+  secondary: " ",
+  dock: "r",
   nextTarget: "x",
   previousTarget: "z",
-  nextTargetAsteroid: "s",
-  previousTargetAsteroid: "a",
+  nextTargetAsteroid: "v",
+  previousTargetAsteroid: "c",
   selectSecondary0: "0",
   selectSecondary1: "1",
   selectSecondary2: "2",
@@ -55,20 +55,20 @@ const qwertyBindings: KeyBindings = {
   chat: "Enter",
   map: "m",
   // warp: "w",
+  quickTargetClosestEnemy: "e",
 };
 
 const dvorakBindings: KeyBindings = {
-  up: "ArrowUp",
-  down: "ArrowDown",
-  left: "ArrowLeft",
-  right: "ArrowRight",
-  primary: " ",
-  secondary: "j",
-  dock: "k",
+  up: ",",
+  down: "o",
+  left: "a",
+  right: "e",
+  secondary: " ",
+  dock: "p",
   nextTarget: "q",
   previousTarget: ";",
-  nextTargetAsteroid: "o",
-  previousTargetAsteroid: "a",
+  nextTargetAsteroid: "k",
+  previousTargetAsteroid: "j",
   selectSecondary0: "0",
   selectSecondary1: "1",
   selectSecondary2: "2",
@@ -82,6 +82,7 @@ const dvorakBindings: KeyBindings = {
   chat: "Enter",
   map: "m",
   // warp: ",",
+  quickTargetClosestEnemy: ".",
 };
 
 const useKeybindings = (layout: KeyLayouts) => {

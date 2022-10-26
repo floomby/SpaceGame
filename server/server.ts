@@ -375,6 +375,7 @@ const secondaries: Map<number, number> = new Map();
 type ClientData = {
   id: number;
   input: Input;
+  angle: number;
   name: string;
   currentSector: number;
   lastMessage: string;
@@ -429,6 +430,7 @@ const initFromDatabase = async () => {
       armIndices: [],
       slotData: [],
       team: station.team,
+      side: 0,
     };
     const sector = sectors.get(station.sector);
     if (sector) {
@@ -450,7 +452,8 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
   clients.set(ws, {
     id: id,
     name,
-    input: { up: false, down: false, left: false, right: false, primary: false, secondary: false },
+    input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
+    angle: 0,
     currentSector: defaultSector,
     lastMessage: "",
     lastMessageTime: Date.now(),
@@ -485,6 +488,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     cargo: [{ what: "Teddy Bears", amount: 30 }],
     credits: 500,
     team: faction,
+    side: 0,
   };
 
   equip(player, 0, "Basic mining laser", true);
@@ -565,11 +569,15 @@ wss.on("connection", (ws) => {
               return;
             }
             const playerState = JSON.parse(checkpoint.data);
+            if (playerState.side === undefined || isNaN(playerState.side)) {
+              playerState.side = 0;
+            }
             state.players.set(user.id, playerState);
             clients.set(ws, {
               id: user.id,
               name,
-              input: { up: false, down: false, left: false, right: false, primary: false, secondary: false },
+              input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
+              angle: 0,
               currentSector: checkpoint.sector,
               lastMessage: "",
               lastMessageTime: Date.now(),
@@ -615,9 +623,15 @@ wss.on("connection", (ws) => {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
         client.input = data.payload.input;
-        // clients.set(ws, { ...client, input: data.payload.input });
       } else {
         console.log("Warning: Input data from unknown client");
+      }
+    } else if (data.type === "angle") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        client.angle = data.payload.angle;
+      } else {
+        console.log("Warning: Angle data from unknown client");
       }
     } else if (data.type === "dock") {
       const client = clients.get(ws);
@@ -631,6 +645,7 @@ wss.on("connection", (ws) => {
             player.docked = data.payload.stationId;
             player.heading = 0;
             player.speed = 0;
+            player.side = 0;
             player.energy = def.energy;
             player.health = def.health;
             player.position = { x: station!.position.x, y: station!.position.y };
@@ -855,7 +870,7 @@ setInterval(() => {
     for (const [client, data] of clients) {
       const player = state.players.get(data.id);
       if (data.input && player) {
-        applyInputs(data.input, player);
+        applyInputs(data.input, player, data.angle);
       }
       if (!data.sectorDataSent) {
         sendSectorData(client, state);

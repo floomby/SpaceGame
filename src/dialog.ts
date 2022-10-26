@@ -73,8 +73,11 @@ const push = (html: string, callback: () => void, tag?: string) => {
   showStack();
 };
 
-const pop = () => {
-  stack.pop();
+const pop = (count = 1) => {
+  while (count > 0) {
+    stack.pop();
+    count--;
+  }
   showStack();
 };
 

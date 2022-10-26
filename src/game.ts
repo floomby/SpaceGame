@@ -107,6 +107,7 @@ type Player = Entity & {
   warping?: number;
   warpTo?: number;
   npc?: NPC;
+  side?: number;
 };
 
 type Asteroid = Circle & {
@@ -192,6 +193,7 @@ const primaryRange = 1500;
 const primarySpeed = 20;
 const primaryFramesToExpire = primaryRange / primarySpeed;
 const primaryRadius = 1;
+const primaryEnergy = 3;
 
 type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
 
@@ -262,6 +264,10 @@ const isAngleBetween = (angle: number, start: number, end: number) => {
   }
 };
 
+const findSmallAngleBetween = (a: number, b: number) => {
+  return positiveMod(b - a + Math.PI, 2 * Math.PI) - Math.PI;
+};
+
 const seek = (entity: Entity, target: Entity, maxTurn: number) => {
   const heading = findHeadingBetween(entity.position, target.position);
   let diff = heading - entity.heading;
@@ -279,18 +285,27 @@ const seek = (entity: Entity, target: Entity, maxTurn: number) => {
 };
 
 const findInterceptAimingHeading = (from: Position, target: Entity, projectileSpeed: number, maxRange: number) => {
-  const heading = findHeadingBetween(from, target.position);
-  const A = Math.PI - heading + target.heading;
+  let strafedTarget = target;
+  if ((target as Player).side) {
+    const vx = target.speed * Math.cos(target.heading) - (target as Player).side * Math.sin(target.heading);
+    const vy = target.speed * Math.sin(target.heading) + (target as Player).side * Math.cos(target.heading);
+    const v = Math.sqrt(vx * vx + vy * vy);
+    const h = Math.atan2(vy, vx);
+    strafedTarget = { position: target.position, heading: h, speed: v } as Entity;
+  }
 
-  const a = target.speed * target.speed - projectileSpeed * projectileSpeed;
-  const b = -2 * Math.cos(A) * target.speed * l2Norm(target.position, from);
-  const c = l2NormSquared(target.position, from);
+  const heading = findHeadingBetween(from, strafedTarget.position);
+  const A = Math.PI - heading + strafedTarget.heading;
+
+  const a = strafedTarget.speed * strafedTarget.speed - projectileSpeed * projectileSpeed;
+  const b = -2 * Math.cos(A) * strafedTarget.speed * l2Norm(strafedTarget.position, from);
+  const c = l2NormSquared(strafedTarget.position, from);
   const discriminate = b * b - 4 * a * c;
 
   const t = (-b - Math.sqrt(discriminate)) / (2 * a);
   const intercept = {
-    x: target.position.x + target.speed * Math.cos(target.heading) * t,
-    y: target.position.y + target.speed * Math.sin(target.heading) * t,
+    x: strafedTarget.position.x + strafedTarget.speed * Math.cos(strafedTarget.heading) * t,
+    y: strafedTarget.position.y + strafedTarget.speed * Math.sin(strafedTarget.heading) * t,
   };
   if (l2NormSquared(from, intercept) > maxRange * maxRange) {
     return undefined;
@@ -489,6 +504,10 @@ const update = (
     if (def.kind === UnitKind.Ship) {
       player.position.x += player.speed * Math.cos(player.heading);
       player.position.y += player.speed * Math.sin(player.heading);
+      if (player.side) {
+        player.position.x += player.side * -Math.sin(player.heading);
+        player.position.y += player.side * Math.cos(player.heading);
+      }
       if (player.toFirePrimary && player.energy > 10) {
         const projectile = {
           position: { x: player.position.x, y: player.position.y },
@@ -580,7 +599,7 @@ const update = (
           );
           for (let i = 0; i < def.hardpoints.length; i++) {
             const targeting = targetingVectors[i];
-            if (targeting && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
+            if (targeting && player.energy > primaryEnergy && player.sinceLastShot[i] > def.primaryReloadTime) {
               const projectile = {
                 position: hardpointLocations[i],
                 radius: primaryRadius,
@@ -596,7 +615,7 @@ const update = (
               projectiles.push(projectile);
               state.projectiles.set(id, projectiles);
               player.projectileId++;
-              player.energy -= 10;
+              player.energy -= primaryEnergy;
               player.sinceLastShot[i] = 0;
             }
           }
@@ -742,9 +761,10 @@ type Input = {
   nextTargetAsteroid?: boolean;
   previousTargetAsteroid?: boolean;
   ctl?: boolean;
+  quickTargetClosestEnemy?: boolean;
 };
 
-const applyInputs = (input: Input, player: Player) => {
+const applyInputs = (input: Input, player: Player, angle?: number) => {
   const def = defs[player.definitionIndex];
   if (input.up) {
     player.speed += def.acceleration;
@@ -752,11 +772,42 @@ const applyInputs = (input: Input, player: Player) => {
   if (input.down) {
     player.speed -= def.acceleration;
   }
-  if (input.left) {
-    player.heading -= def.turnRate;
-  }
-  if (input.right) {
-    player.heading += def.turnRate;
+  if (angle === undefined) {
+    if (input.left) {
+      player.heading -= def.turnRate;
+    }
+    if (input.right) {
+      player.heading += def.turnRate;
+    }
+  } else {
+    const delta = findSmallAngleBetween(player.heading, angle);
+    const rotation = Math.min(Math.abs(delta), def.turnRate) * Math.sign(delta);
+    player.heading += rotation;
+    if (input.left) {
+      player.side -= def.sideThrustAcceleration;
+      if (player.side < -def.sideThrustMaxSpeed) {
+        player.side = -def.sideThrustMaxSpeed;
+      }
+    }
+    if (input.right) {
+      player.side += def.sideThrustAcceleration;
+      if (player.side > def.sideThrustMaxSpeed) {
+        player.side = def.sideThrustMaxSpeed;
+      }
+    }
+    if (!input.left && !input.right) {
+      if (player.side < 0) {
+        player.side += def.sideThrustAcceleration;
+        if (player.side > 0) {
+          player.side = 0;
+        }
+      } else if (player.side > 0) {
+        player.side -= def.sideThrustAcceleration;
+        if (player.side < 0) {
+          player.side = 0;
+        }
+      }
+    }
   }
   if (player.speed > def.speed) {
     player.speed = def.speed;
@@ -1074,6 +1125,26 @@ const currentlyFacingApprox = (entity: Entity, circle: Circle) => {
   return arcLength < circle.radius;
 };
 
+const findAllPlayersOverlappingPoint = (point: Position, players: IterableIterator<Player>) => {
+  const overlappingPlayers: Player[] = [];
+  for (const player of players) {
+    if (pointInCircle(point, player)) {
+      overlappingPlayers.push(player);
+    }
+  }
+  return overlappingPlayers;
+};
+
+const findAllAsteroidsOverlappingPoint = (point: Position, asteroids: IterableIterator<Asteroid>) => {
+  const overlappingAsteroids: Asteroid[] = [];
+  for (const asteroid of asteroids) {
+    if (pointInCircle(point, asteroid)) {
+      overlappingAsteroids.push(asteroid);
+    }
+  }
+  return overlappingAsteroids;
+};
+
 const serverMessagePersistTime = 3000;
 const maxNameLength = 20;
 const ticksPerSecond = 60;
@@ -1127,9 +1198,12 @@ export {
   findLinesTangentToCircleThroughPoint,
   findLineHeading,
   isAngleBetween,
+  findSmallAngleBetween,
   currentlyFacing,
   currentlyFacingApprox,
   findClosestTarget,
+  findAllPlayersOverlappingPoint,
+  findAllAsteroidsOverlappingPoint,
   ticksPerSecond,
   maxNameLength,
   effectiveInfinity,

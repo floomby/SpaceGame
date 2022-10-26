@@ -68,6 +68,15 @@ const sendInput = (input: Input, id: number) => {
   );
 };
 
+const sendAngle = (id: number, angle: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "angle",
+      payload: { id, angle },
+    })
+  );
+};
+
 const sendPlayerInfo = (player: Player) => {
   serverSocket.send(
     JSON.stringify({
@@ -178,6 +187,7 @@ export {
   login,
   register,
   sendInput,
+  sendAngle,
   sendPlayerInfo,
   sendDock,
   sendUndock,

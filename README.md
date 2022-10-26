@@ -11,13 +11,9 @@ A simple multiplayer game where you have a ship and do things.
 - Trade
 - NPCs
 - Handle network interruptions
-- Network optimization
-- Defining units, missiles, effects, etc should be easier
+- Network optimizations
 - Economy is very boring right now
-
-### Refactoring stuff
-
-- Move asteroids over to being sector data like the collectables
+- Try and make the strafe animations work in a way that looks tolerable
 
 ### MMO Stuff
 
@@ -26,12 +22,12 @@ A simple multiplayer game where you have a ship and do things.
 
 ### Steps to get to the minimal game loop
 
-- Collectables (dropping spare parts)
 - Repairing station
 - Checkpoint fixing if station allegiance changes
 - Home station or stations
 - Sector bounds and global map
 - Asteroid mineral regeneration
+- System to spawn npc (the machinery exists, but nothing uses it)
 
 ### Things I really should have
 

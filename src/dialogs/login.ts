@@ -119,7 +119,7 @@ const setupRegisterDialog = (username: string, password: string) => {
     }
   });
   document.getElementById("registerButton")?.addEventListener("click", registerHandler);
-  document.getElementById("backToLogin")?.addEventListener("click", popDialog);
+  document.getElementById("backToLogin")?.addEventListener("click", () => popDialog());
 };
 
 const loginDialog = horizontalCenter([

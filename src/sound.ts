@@ -1,3 +1,5 @@
+import { getVolumePref } from "./globals";
+
 let ctx: AudioContext;
 let volume: GainNode;
 
@@ -29,7 +31,8 @@ const initSound = () => {
   ctx = new AudioContext();
   volume = ctx.createGain();
   volume.connect(ctx.destination);
-  volume.gain.value = 0.5;
+  const volumePref = getVolumePref();
+  volume.gain.value = volumePref ?? 0.5;
 
   const promises: Promise<AudioBuffer>[] = sounds.map((sound) => `resources/sounds/${sound}`).map(loadSound);
 
@@ -39,6 +42,7 @@ const initSound = () => {
 };
 
 const setVolume = (value: number) => {
+  localStorage.setItem("volume", JSON.stringify(value));
   volume.gain.value = value;
 };
 

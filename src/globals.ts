@@ -1,7 +1,7 @@
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { GlobalState, Player } from "./game";
-import { useKeybindings } from "./keybindings";
+import { KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
 
 let faction: Faction = Faction.Alliance;
 
@@ -14,9 +14,30 @@ const setFaction = (newFaction: Faction) => {
   faction = newFaction;
 };
 
-let keybind = useKeybindings(defaultKeyLayout);
+const getKeybindPref = () => {
+  const layout = localStorage.getItem("layout");
+  if (layout !== undefined) {
+    return JSON.parse(layout);
+  }
+  return null;
+};
 
-const setKeybind = (newKeybind: typeof keybind) => {
+const getVolumePref = () => {
+  const volume = localStorage.getItem("volume");
+  if (volume) {
+    return JSON.parse(volume);
+  }
+  return null;
+};
+
+let keybind = useKeybindings(getKeybindPref() ?? defaultKeyLayout);
+
+const setKeybind = (newKeybind: KeyBindings) => {
+  if (newKeybind === qwertyBindings) {
+    localStorage.setItem("layout", JSON.stringify(KeyLayouts.Qwerty));
+  } else {
+    localStorage.setItem("layout", JSON.stringify(KeyLayouts.Dvorak));
+  }
   keybind = newKeybind;
 };
 
@@ -76,4 +97,5 @@ export {
   initBlankState,
   lastSelf,
   setLastSelf,
+  getVolumePref,
 };

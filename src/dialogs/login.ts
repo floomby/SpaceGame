@@ -127,8 +127,8 @@ const loginDialog = horizontalCenter([
   `<div id="errorSpot"></div>`,
   `<input type="text" placeholder="Username" id="username"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,
-  `<br/><button style="margin-top: 10px;" id="openRegister">Register</button>`,
-  `<button style="margin-top: 10px;" id="loginButton">Login</button>`,
+  `<br/><button id="loginButton">Login</button>`,
+  `<button style="margin-top: 10px;" id="openRegister">Register</button>`,
 ]);
 
 const setupLoginDialog = () => {

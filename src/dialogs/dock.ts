@@ -126,7 +126,7 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
 
 const shipViewer = () => {
   return `<div style="display: flex; flex-direction: row;">
-  <div>
+  <div style="display: flex; flex-direction: column; margin-right: 5px;">
     <canvas id="shipView" width="200" height="200"></canvas>
     <button id="changeShip" style="top: 0;">Change</button>
   </div>

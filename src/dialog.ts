@@ -40,7 +40,7 @@ const clear = () => {
 
 let shownFromStack = false;
 
-const stack: { html: string; callback: () => void }[] = [];
+const stack: { html: string; callback: () => void, tag: string }[] = [];
 
 const showStack = () => {
   if (stack.length > 0) {
@@ -68,13 +68,25 @@ const showStack = () => {
   }
 };
 
-const push = (html: string, callback: () => void) => {
-  stack.push({ html, callback });
+const push = (html: string, callback: () => void, tag?: string) => {
+  stack.push({ html, callback, tag: tag || "" });
   showStack();
 };
 
 const pop = () => {
   stack.pop();
+  showStack();
+};
+
+const peekTag = () => {
+  if (stack.length > 0) {
+    return stack[stack.length - 1].tag;
+  }
+  return "";
+};
+
+const clearStack = () => {
+  stack.length = 0;
   showStack();
 };
 
@@ -137,7 +149,6 @@ const runPostUpdaterOnly = (id: string, value: any) => {
       thisState = JSON.stringify(value);
     }
     lastStates.set(id, thisState);
-    console.log("runPostUpdaterOnly", id, value);
     postUpdater(value);
   }
 };
@@ -156,10 +167,6 @@ const unbindKey = (key: string) => {
   lastStates.delete(key);
 };
 
-const isShown = () => {
-  return shown;
-};
-
 export {
   init,
   show,
@@ -172,7 +179,9 @@ export {
   unbindKey,
   push,
   pop,
+  peekTag,
+  clearStack,
   setDialogBackground,
   runPostUpdaterOnly,
-  isShown,
+  shown,
 };

@@ -1,7 +1,23 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs, ArmamentDef, emptyLoadout } from "./defs";
+import {
+  UnitDefinition,
+  UnitKind,
+  defs,
+  asteroidDefs,
+  armDefs,
+  armDefMap,
+  TargetedKind,
+  missileDefs,
+  ArmamentDef,
+  emptyLoadout,
+  collectableDefs,
+  createCollectableFromDef,
+} from "./defs";
+import { NPC, processLootTable } from "./npc";
+import { sfc32 } from "./prng";
 
+// TODO Move the geometry stuff to a separate file
 type Position = { x: number; y: number };
 type Circle = { position: Position; radius: number };
 type Rectangle = { x: number; y: number; width: number; height: number };
@@ -38,6 +54,35 @@ const positiveMod = (a: number, b: number) => {
   return ((a % b) + b) % b;
 };
 
+const findLinesTangentToCircleThroughPoint = (point: Position, circle: Circle) => {
+  if (pointInCircle(point, circle)) {
+    return undefined;
+  }
+
+  // find the two lines that are tangent to the circle and go through the point
+  const dx = point.x - circle.position.x;
+  const dy = point.y - circle.position.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  const theta = Math.atan2(dy, dx);
+  const phi = Math.acos(circle.radius / d);
+  const ret: Line[] = [];
+  ret.push({
+    from: point,
+    to: {
+      x: circle.position.x + circle.radius * Math.cos(theta + phi),
+      y: circle.position.y + circle.radius * Math.sin(theta + phi),
+    },
+  });
+  ret.push({
+    from: point,
+    to: {
+      x: circle.position.x + circle.radius * Math.cos(theta - phi),
+      y: circle.position.y + circle.radius * Math.sin(theta - phi),
+    },
+  });
+  return ret;
+};
+
 type Entity = Circle & { id: number; speed: number; heading: number };
 
 type CargoEntry = { what: string; amount: number };
@@ -48,9 +93,9 @@ type Player = Entity & {
   toFirePrimary?: boolean;
   toFireSecondary?: boolean;
   projectileId: number;
-  name?: string;
   energy: number;
   definitionIndex: number;
+  team: number;
   canDock?: number;
   docked?: number;
   armIndices: number[];
@@ -58,6 +103,10 @@ type Player = Entity & {
   slotData: any[];
   cargo?: CargoEntry[];
   credits?: number;
+  inoperable?: boolean;
+  warping?: number;
+  warpTo?: number;
+  npc?: NPC;
 };
 
 type Asteroid = Circle & {
@@ -125,6 +174,9 @@ const canDock = (player: Player | undefined, station: Player | undefined, strict
     return false;
   }
   const stationDef = defs[station.definitionIndex];
+  if (stationDef.kind !== UnitKind.Station || !stationDef.dockable || station.inoperable) {
+    return false;
+  }
   const distance = l2Norm(player.position, station.position);
   if (strict) {
     return distance < stationDef.radius;
@@ -137,10 +189,11 @@ type Ballistic = Entity & { damage: number; team: number; parent: number; frameT
 
 // Primary laser stats (TODO put this in a better place)
 const primaryRange = 1500;
-const primaryRangeSquared = primaryRange * primaryRange;
 const primarySpeed = 20;
 const primaryFramesToExpire = primaryRange / primarySpeed;
 const primaryRadius = 1;
+
+type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
 
 enum EffectAnchorKind {
   Absolute,
@@ -167,6 +220,7 @@ type GlobalState = {
   projectiles: Map<number, Ballistic[]>;
   asteroids: Map<number, Asteroid>;
   missiles: Map<number, Missile>;
+  collectables: Map<number, Collectable>;
 };
 
 const setCanDock = (player: Player, state: GlobalState) => {
@@ -175,11 +229,10 @@ const setCanDock = (player: Player, state: GlobalState) => {
       player.canDock = undefined;
       return;
     }
-    const playerDef = defs[player.definitionIndex];
     player.canDock = undefined;
     state.players.forEach((otherPlayer) => {
       const def = defs[otherPlayer.definitionIndex];
-      if (def.kind === UnitKind.Station && playerDef.team === def.team) {
+      if (def.kind === UnitKind.Station && player.team === otherPlayer.team) {
         if (canDock(player, otherPlayer)) {
           player.canDock = otherPlayer.id;
           return;
@@ -189,39 +242,24 @@ const setCanDock = (player: Player, state: GlobalState) => {
   }
 };
 
-// For smoothing the animations
-const fractionalUpdate = (state: GlobalState, fraction: number) => {
-  const ret: GlobalState = { players: new Map(), projectiles: new Map(), asteroids: new Map(), missiles: new Map() };
-  for (const [id, player] of state.players) {
-    if (player.docked) {
-      ret.players.set(id, player);
-      continue;
-    }
-    ret.players.set(id, {
-      ...player,
-      position: {
-        x: player.position.x + player.speed * Math.cos(player.heading) * fraction,
-        y: player.position.y + player.speed * Math.sin(player.heading) * fraction,
-      },
-    });
-  }
-  for (const [id, projectiles] of state.projectiles) {
-    ret.projectiles.set(
-      id,
-      projectiles.map((projectile) => ({
-        ...projectile,
-        position: {
-          x: projectile.position.x + projectile.speed * Math.cos(projectile.heading) * fraction,
-          y: projectile.position.y + projectile.speed * Math.sin(projectile.heading) * fraction,
-        },
-      }))
-    );
-  }
-  return ret;
-};
-
 const findHeadingBetween = (a: Position, b: Position) => {
   return Math.atan2(b.y - a.y, b.x - a.x);
+};
+
+const findLineHeading = (line: Line) => {
+  return findHeadingBetween(line.from, line.to);
+};
+
+const isAngleBetween = (angle: number, start: number, end: number) => {
+  // Normalize the angles
+  angle = positiveMod(angle, 2 * Math.PI);
+  start = positiveMod(start, 2 * Math.PI);
+  end = positiveMod(end, 2 * Math.PI);
+  if (start < end) {
+    return angle >= start && angle <= end;
+  } else {
+    return angle >= start || angle <= end;
+  }
 };
 
 const seek = (entity: Entity, target: Entity, maxTurn: number) => {
@@ -262,17 +300,17 @@ const findInterceptAimingHeading = (from: Position, target: Entity, projectileSp
 };
 
 const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
-  let ret: [Player | undefined, number] = [undefined, 0];
+  let ret: Player | undefined = undefined;
   let minDistance = Infinity;
   let def: UnitDefinition;
   if (onlyEnemy) {
     def = defs[player.definitionIndex];
   }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -281,24 +319,20 @@ const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared < minDistance) {
       minDistance = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
     }
   }
   return ret;
 };
 
 const findFurthestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
-  let ret: [Player | undefined, number] = [undefined, 0];
+  let ret: Player | undefined = undefined;
   let maxDistance = 0;
-  let def: UnitDefinition;
-  if (onlyEnemy) {
-    def = defs[player.definitionIndex];
-  }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -307,7 +341,7 @@ const findFurthestTarget = (player: Player, state: GlobalState, onlyEnemy = fals
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared > maxDistance) {
       maxDistance = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
     }
   }
   return ret;
@@ -317,19 +351,15 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
   if (!current) {
     return findClosestTarget(player, state, onlyEnemy);
   }
-  let ret: [Player | undefined, number] = [current, current?.id || 0];
+  let ret: Player | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let minDistanceGreaterThanCurrent = Infinity;
   let foundFurther = false;
-  let def: UnitDefinition;
-  if (onlyEnemy) {
-    def = defs[player.definitionIndex];
-  }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -338,7 +368,7 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared > currentDistanceSquared && distanceSquared < minDistanceGreaterThanCurrent) {
       minDistanceGreaterThanCurrent = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
       foundFurther = true;
     }
   }
@@ -352,19 +382,15 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
   if (!current) {
     return findClosestTarget(player, state, onlyEnemy);
   }
-  let ret: [Player | undefined, number] = [current, current?.id || 0];
+  let ret: Player | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let maxDistanceLessThanCurrent = 0;
   let foundCloser = false;
-  let def: UnitDefinition;
-  if (onlyEnemy) {
-    def = defs[player.definitionIndex];
-  }
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked) {
+    if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
     }
-    if (onlyEnemy && def.team === defs[otherPlayer.definitionIndex].team) {
+    if (onlyEnemy && player.team === otherPlayer.team) {
       continue;
     }
     if (player === otherPlayer) {
@@ -373,7 +399,7 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
     if (distanceSquared < currentDistanceSquared && distanceSquared > maxDistanceLessThanCurrent) {
       maxDistanceLessThanCurrent = distanceSquared;
-      ret = [otherPlayer, id];
+      ret = otherPlayer;
       foundCloser = true;
     }
   }
@@ -395,29 +421,70 @@ const hardpointPositions = (player: Player, def: UnitDefinition) => {
   return ret;
 };
 
+const kill = (
+  def: UnitDefinition,
+  player: Player,
+  state: GlobalState,
+  applyEffect: (effect: EffectTrigger) => void,
+  onDeath: (player: Player) => void,
+  drop: (collectable: Collectable) => void
+) => {
+  // Dead stations that are dockable become "inoperable" until repaired (repairing is not implemented yet)
+  if (def.kind === UnitKind.Station && def.dockable) {
+    player.health = 0;
+    player.energy = 0;
+    player.inoperable = true;
+  } else {
+    // Dead ships just get removed
+    state.players.delete(player.id);
+    applyEffect({
+      effectIndex: def.deathEffect,
+      from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+    });
+    onDeath(player);
+    if (player.npc) {
+      const toDrop = processLootTable(player.npc.lootTable);
+      if (toDrop !== undefined) {
+        drop(createCollectableFromDef(toDrop, player.position));
+      }
+    }
+  }
+};
+
 // Like usual the update function is a monstrosity
+// It could probably use some refactoring
 const update = (
   state: GlobalState,
   frameNumber: number,
-  onDeath: (id: number) => void,
   serverTargets: Map<number, [TargetKind, number]>,
   serverSecondaries: Map<number, number>,
-  applyEffect: (effect: EffectTrigger) => void
+  applyEffect: (effect: EffectTrigger) => void,
+  serverWarpList: { player: Player; to: number }[],
+  onDeath: (player: Player) => void,
+  flashServerMessage: (id: number, message: string) => void,
+  drop: (collectable: Collectable) => void,
+  removeCollectable: (id: number, collected: boolean) => void
 ) => {
+  // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
     if (player.docked) {
       continue;
     }
     const def = defs[player.definitionIndex];
     if (player.health <= 0) {
-      state.players.delete(id);
-      applyEffect({
-        effectIndex: def.deathEffect,
-        from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
-      });
-      onDeath(id);
+      kill(def, player, state, applyEffect, onDeath, drop);
     }
-    player.health = Math.min(player.health + def.healthRegen, def.health);
+
+    if (def.kind !== UnitKind.Station) {
+      for (const collectable of state.collectables.values()) {
+        const collectableDef = collectableDefs[collectable.index];
+        if (circlesIntersect(player, collectable) && collectableDef.canBeCollected(player)) {
+          state.collectables.delete(collectable.id);
+          removeCollectable(collectable.id, true);
+          collectableDef.collectMutator(player);
+        }
+      }
+    }
 
     if (def.kind === UnitKind.Ship) {
       player.position.x += player.speed * Math.cos(player.heading);
@@ -429,7 +496,7 @@ const update = (
           speed: primarySpeed,
           heading: player.heading,
           damage: def.primaryDamage,
-          team: def.team,
+          team: player.team,
           id: player.projectileId,
           parent: id,
           frameTillEXpire: primaryFramesToExpire,
@@ -441,15 +508,23 @@ const update = (
         player.toFirePrimary = false;
         player.energy -= 10;
       }
+      // Run the secondary frameMutators
       player.armIndices.forEach((armament, index) => {
         const armDef = armDefs[armament];
         if (armDef.frameMutator) {
           armDef.frameMutator(player, index);
         }
       });
+      // Fire secondaries
       if (player.toFireSecondary) {
-        const slotId = serverSecondaries.get(id);
+        let slotId: number;
+        if (player.npc) {
+          player.npc.selectedSecondary;
+        } else {
+          slotId = serverSecondaries.get(id);
+        }
         const armDef = armDefs[player.armIndices[slotId]];
+        // Targeted weapons
         if (armDef.targeted === TargetedKind.Targeted) {
           const [targetKind, targetId] = serverTargets.get(id) || [TargetKind.None, 0];
           if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
@@ -461,14 +536,15 @@ const update = (
                 target = state.asteroids.get(targetId);
               }
               if (target) {
-                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId);
+                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage);
               }
             }
           }
+          // Untargeted weapons
         } else if (armDef.targeted === TargetedKind.Untargeted) {
           if (slotId !== undefined && slotId < player.armIndices.length) {
             if (armDef.stateMutator) {
-              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId);
+              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage);
             }
           }
         }
@@ -476,63 +552,89 @@ const update = (
     } else {
       // Have stations spin slowly
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
-
-      let closestEnemy: Player | undefined;
-      let closestEnemyDistanceSquared = Infinity;
-      for (const [otherId, otherPlayer] of state.players) {
-        if (otherPlayer.docked) {
-          continue;
+      // Have the stations fire their primary weapons
+      if (!player.inoperable) {
+        let closestEnemy: Player | undefined;
+        let closestEnemyDistanceSquared = Infinity;
+        for (const [otherId, otherPlayer] of state.players) {
+          if (otherPlayer.docked || otherPlayer.inoperable) {
+            continue;
+          }
+          if (player.id === otherId) {
+            continue;
+          }
+          const otherDef = defs[otherPlayer.definitionIndex];
+          if (otherPlayer.team === player.team) {
+            continue;
+          }
+          const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+          if (distanceSquared < closestEnemyDistanceSquared) {
+            closestEnemy = otherPlayer;
+            closestEnemyDistanceSquared = distanceSquared;
+          }
         }
-        if (player.id === otherId) {
-          continue;
-        }
-        const otherDef = defs[otherPlayer.definitionIndex];
-        if (otherDef.team === def.team) {
-          continue;
-        }
-        const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
-        if (distanceSquared < closestEnemyDistanceSquared) {
-          closestEnemy = otherPlayer;
-          closestEnemyDistanceSquared = distanceSquared;
-        }
-      }
-      if (closestEnemy) {
-        const hardpointLocations = hardpointPositions(player, def);
-        const targetingVectors = hardpointLocations.map((hardpoint) =>
-          findInterceptAimingHeading(hardpoint, closestEnemy, primarySpeed, primaryRange)
-        );
-        for (let i = 0; i < def.hardpoints.length; i++) {
-          const targeting = targetingVectors[i];
-          if (targeting && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
-            const projectile = {
-              position: hardpointLocations[i],
-              radius: primaryRadius,
-              speed: primarySpeed,
-              heading: targeting,
-              damage: def.primaryDamage,
-              team: def.team,
-              id: player.projectileId,
-              parent: id,
-              frameTillEXpire: primaryFramesToExpire,
-            };
-            const projectiles = state.projectiles.get(id) || [];
-            projectiles.push(projectile);
-            state.projectiles.set(id, projectiles);
-            player.projectileId++;
-            player.energy -= 10;
-            player.sinceLastShot[i] = 0;
+        if (closestEnemy) {
+          const hardpointLocations = hardpointPositions(player, def);
+          const targetingVectors = hardpointLocations.map((hardpoint) =>
+            findInterceptAimingHeading(hardpoint, closestEnemy, primarySpeed, primaryRange)
+          );
+          for (let i = 0; i < def.hardpoints.length; i++) {
+            const targeting = targetingVectors[i];
+            if (targeting && player.energy > 10 && player.sinceLastShot[i] > def.primaryReloadTime) {
+              const projectile = {
+                position: hardpointLocations[i],
+                radius: primaryRadius,
+                speed: primarySpeed,
+                heading: targeting,
+                damage: def.primaryDamage,
+                team: player.team,
+                id: player.projectileId,
+                parent: id,
+                frameTillEXpire: primaryFramesToExpire,
+              };
+              const projectiles = state.projectiles.get(id) || [];
+              projectiles.push(projectile);
+              state.projectiles.set(id, projectiles);
+              player.projectileId++;
+              player.energy -= 10;
+              player.sinceLastShot[i] = 0;
+            }
           }
         }
       }
     }
+    // Update primary times since last shot (secondaries are handled in the frameMutators in the armDefs)
     for (let i = 0; i < player.sinceLastShot.length; i++) {
       player.sinceLastShot[i] += 1;
     }
-    player.energy += def.energyRegen;
-    if (player.energy > def.energy) {
-      player.energy = def.energy;
+    // Don't apply regen to players which are inoperable
+    if (!player.inoperable) {
+      player.health = Math.min(player.health + def.healthRegen, def.health);
+      player.energy = Math.min(player.energy + def.energyRegen, def.energy);
+    }
+    // If a warp is in progress, update the warp progress, then trigger the warp once time has elapsed
+    if (player.warping) {
+      player.warping += 1;
+      if (player.warping > def.warpTime) {
+        player.warping = 0;
+        state.players.delete(id);
+        serverWarpList.push({ player, to: player.warpTo });
+        applyEffect({
+          effectIndex: def.warpEffect,
+          from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+        });
+      }
     }
   }
+  for (const collectable of state.collectables.values()) {
+    if (collectable.framesLeft <= 0) {
+      state.collectables.delete(collectable.id);
+      removeCollectable(collectable.id, false);
+      continue;
+    }
+    collectable.framesLeft -= 1;
+  }
+  // Quadratic loop for the projectiles
   for (const [id, projectiles] of state.projectiles) {
     for (let i = 0; i < projectiles.length; i++) {
       const projectile = projectiles[i];
@@ -541,19 +643,14 @@ const update = (
       projectile.frameTillEXpire -= 1;
       let didRemove = false;
       for (const [otherId, otherPlayer] of state.players) {
-        if (otherPlayer.docked) {
+        if (otherPlayer.docked || otherPlayer.inoperable) {
           continue;
         }
         const def = defs[otherPlayer.definitionIndex];
-        if (projectile.team !== def.team && pointInCircle(projectile.position, otherPlayer)) {
+        if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
-            state.players.delete(otherId);
-            applyEffect({
-              effectIndex: def.deathEffect,
-              from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
-            });
-            onDeath(otherId);
+            kill(def, otherPlayer, state, applyEffect, onDeath, drop);
           }
           projectiles.splice(i, 1);
           i--;
@@ -567,6 +664,7 @@ const update = (
       }
     }
   }
+  // Another quadratic loop for the missiles
   for (const [id, missile] of state.missiles) {
     const missileDef = missileDefs[missile.definitionIndex];
     missile.position.x += missile.speed * Math.cos(missile.heading);
@@ -587,26 +685,21 @@ const update = (
         effectIndex: 5,
         from: {
           kind: EffectAnchorKind.Missile,
-          value: id
+          value: id,
         },
       });
     }
     missile.lifetime -= 1;
     let didRemove = false;
     for (const [otherId, otherPlayer] of state.players) {
-      if (otherPlayer.docked) {
+      if (otherPlayer.docked || otherPlayer.inoperable) {
         continue;
       }
       const def = defs[otherPlayer.definitionIndex];
-      if (missile.team !== def.team && circlesIntersect(missile, otherPlayer)) {
+      if (missile.team !== otherPlayer.team && circlesIntersect(missile, otherPlayer)) {
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
-          state.players.delete(otherId);
-          applyEffect({
-            effectIndex: def.deathEffect,
-            from: { kind: EffectAnchorKind.Absolute, value: otherPlayer.position, heading: otherPlayer.heading, speed: otherPlayer.speed },
-          });
-          onDeath(otherId);
+          kill(def, otherPlayer, state, applyEffect, onDeath, drop);
         }
         state.missiles.delete(id);
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
@@ -624,6 +717,15 @@ const update = (
       state.missiles.delete(id);
       applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
     }
+  }
+};
+
+const processAllNpcs = (state: GlobalState, frame: number) => {
+  for (const [id, player] of state.players) {
+    if (!player.npc) {
+      continue;
+    }
+    player.npc.process(state, frame);
   }
 };
 
@@ -681,20 +783,21 @@ const uid = () => {
   return ret;
 };
 
-const randomAsteroids = (count: number, bounds: Rectangle) => {
+const randomAsteroids = (count: number, bounds: Rectangle, seed: number) => {
   if (asteroidDefs.length === 0) {
     throw new Error("Asteroid defs not initialized");
   }
+  const prng = sfc32(seed, 4398, 25, 6987);
   const asteroids: Asteroid[] = [];
   for (let i = 0; i < count; i++) {
-    const index = Math.floor(Math.random() * asteroidDefs.length);
+    const index = Math.floor(prng() * asteroidDefs.length);
     const def = asteroidDefs[index];
     const asteroid: Asteroid = {
       position: {
-        x: Math.random() * bounds.width + bounds.x,
-        y: Math.random() * bounds.height + bounds.y,
+        x: prng() * bounds.width + bounds.x,
+        y: prng() * bounds.height + bounds.y,
       },
-      heading: Math.random() * 2 * Math.PI,
+      heading: prng() * 2 * Math.PI,
       resources: def.resources,
       definitionIndex: index,
       id: uid(),
@@ -706,26 +809,26 @@ const randomAsteroids = (count: number, bounds: Rectangle) => {
 };
 
 const findClosestTargetAsteroid = (player: Player, state: GlobalState) => {
-  let ret: [Asteroid | undefined, number] = [undefined, 0];
+  let ret: Asteroid | undefined = undefined;
   let minDistance = Infinity;
   for (const [id, asteroid] of state.asteroids) {
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared < minDistance) {
       minDistance = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
     }
   }
   return ret;
 };
 
 const findFurthestTargetAsteroid = (player: Player, state: GlobalState) => {
-  let ret: [Asteroid | undefined, number] = [undefined, 0];
+  let ret: Asteroid | undefined = undefined;
   let maxDistance = 0;
   for (const [id, asteroid] of state.asteroids) {
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared > maxDistance) {
       maxDistance = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
     }
   }
   return ret;
@@ -735,7 +838,7 @@ const findNextTargetAsteroid = (player: Player, current: Asteroid | undefined, s
   if (!current) {
     return findClosestTargetAsteroid(player, state);
   }
-  let ret: [Asteroid | undefined, number] = [current, current?.id || 0];
+  let ret: Asteroid | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let minDistanceGreaterThanCurrent = Infinity;
   let foundFurther = false;
@@ -743,7 +846,7 @@ const findNextTargetAsteroid = (player: Player, current: Asteroid | undefined, s
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared > currentDistanceSquared && distanceSquared < minDistanceGreaterThanCurrent) {
       minDistanceGreaterThanCurrent = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
       foundFurther = true;
     }
   }
@@ -757,7 +860,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
   if (!current) {
     return findClosestTargetAsteroid(player, state);
   }
-  let ret: [Asteroid | undefined, number] = [current, current?.id || 0];
+  let ret: Asteroid | undefined = current;
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let maxDistanceLessThanCurrent = 0;
   let foundCloser = false;
@@ -765,7 +868,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
     const distanceSquared = l2NormSquared(player.position, asteroid.position);
     if (distanceSquared < currentDistanceSquared && distanceSquared > maxDistanceLessThanCurrent) {
       maxDistanceLessThanCurrent = distanceSquared;
-      ret = [asteroid, id];
+      ret = asteroid;
       foundCloser = true;
     }
   }
@@ -775,7 +878,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
   return ret;
 };
 
-const equip = (player: Player, slotIndex: number, what: string | number, noCost = false) => {
+const equip = (player: Player, slotIndex: number, what: string | number, noCost?: boolean) => {
   const def = defs[player.definitionIndex];
   if (slotIndex >= def.slots.length) {
     console.log("Warning: slot number too high");
@@ -810,7 +913,9 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost 
   }
 
   if ((player.credits !== undefined && armDef.cost <= player.credits) || noCost) {
-    player.credits -= armDef.cost;
+    if (!noCost) {
+      player.credits -= armDef.cost;
+    }
     player.armIndices[slotIndex] = defIndex;
     if (armDef.equipMutator) {
       armDef.equipMutator(player, slotIndex);
@@ -818,36 +923,168 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost 
   }
 };
 
-const purchaseShip = (player: Player, index: number) => {
+const purchaseShip = (player: Player, index: number, stationShipOptions: string[]) => {
   if (index >= defs.length || index < 0) {
     console.log("Warning: ship index out of range");
     return;
   }
   const def = defs[index];
-  const playerDef = defs[player.definitionIndex];
   if (def.price === undefined) {
     console.log("Warning: ship not purchasable");
     return;
   }
-  if (playerDef.team !== def.team) {
-    console.log("Warning: ship not on same team");
+  // if (playerDef.team !== def.team) {
+  //   console.log("Warning: ship not on same team");
+  //   return;
+  // }
+  if (!stationShipOptions.includes(def.name)) {
+    console.log("Warning: ship not available at this station");
     return;
   }
   if (player.credits !== undefined && def.price <= player.credits) {
     player.credits -= def.price;
     player.definitionIndex = index;
-    player.slotData = (new Array(def.slots.length)).map(() => ({}));
+    player.slotData = new Array(def.slots.length).map(() => ({}));
     player.armIndices = emptyLoadout(index);
+    player.health = def.health;
+    player.energy = def.energy;
   }
 };
 
+const repairStation = (player: Player) => {
+  if (player.inoperable) {
+    const def = defs[player.definitionIndex];
+    player.health = def.health;
+    // IDK if they should have full energy on being repaired
+    // player.energy = def.energy;
+    player.inoperable = false;
+  }
+};
+
+const seekPosition = (player: Player, position: Position, input: Input) => {
+  const heading = findHeadingBetween(player.position, position);
+  let headingMod = positiveMod(heading - player.heading, 2 * Math.PI);
+  if (headingMod > Math.PI) {
+    headingMod -= 2 * Math.PI;
+  }
+  if (headingMod > 0) {
+    input.right = true;
+    input.left = false;
+  } else if (headingMod < 0) {
+    input.left = true;
+    input.right = false;
+  } else {
+    input.left = false;
+    input.right = false;
+  }
+  input.up = true;
+  input.down = false;
+};
+
+const arrivePosition = (player: Player, position: Position, input: Input, epsilon = 10) => {
+  const def = defs[player.definitionIndex];
+  const heading = findHeadingBetween(player.position, position);
+  let headingMod = positiveMod(heading - player.heading, 2 * Math.PI);
+  if (headingMod > Math.PI) {
+    headingMod -= 2 * Math.PI;
+  }
+
+  const distance = l2Norm(player.position, position);
+
+  let targetSpeed: number;
+  if (distance > def.brakeDistance!) {
+    targetSpeed = def.speed;
+  } else {
+    targetSpeed = (def.speed * distance) / def.brakeDistance!;
+  }
+
+  if (headingMod > 0 && player.speed > 0) {
+    input.right = true;
+    input.left = false;
+  } else if (headingMod < 0 && player.speed > 0) {
+    input.left = true;
+    input.right = false;
+  } else {
+    input.left = false;
+    input.right = false;
+  }
+
+  if (distance < epsilon && player.speed < (def.speed * distance) / (def.brakeDistance! + epsilon)) {
+    if (player.speed > 0) {
+      input.down = true;
+      input.up = false;
+    } else {
+      input.down = false;
+      input.up = false;
+    }
+    return;
+  }
+
+  if (player.speed === targetSpeed) {
+    input.up = false;
+    input.down = false;
+  } else if (player.speed < targetSpeed) {
+    input.up = true;
+    input.down = false;
+  } else {
+    input.up = false;
+    input.down = true;
+  }
+};
+
+const stopPlayer = (player: Player, input: Input, stopRotation = true) => {
+  input.up = false;
+  if (player.speed > 0) {
+    input.down = true;
+  } else {
+    input.down = false;
+  }
+  if (stopRotation) {
+    input.left = false;
+    input.right = false;
+  }
+};
+
+// This function is not exactly optimal
+const currentlyFacing = (entity: Entity, circle: Circle) => {
+  if (pointInCircle(entity.position, circle)) {
+    return true;
+  }
+  const lines = findLinesTangentToCircleThroughPoint(entity.position, circle)!;
+  const heading = entity.heading;
+  const angleA = findLineHeading(lines[0]);
+  const angleB = findLineHeading(lines[1]);
+  const diff = positiveMod(angleA - angleB, 2 * Math.PI);
+  if (diff > Math.PI) {
+    return isAngleBetween(heading, angleA, angleB);
+  } else {
+    return isAngleBetween(heading, angleB, angleA);
+  }
+};
+
+// This is a faster version that should work most of the time
+// THIS IS BROKEN
+const currentlyFacingApprox = (entity: Entity, circle: Circle) => {
+  if (pointInCircle(entity.position, circle)) {
+    return true;
+  }
+  const distance = l2Norm(entity.position, circle.position);
+  const heading = findHeadingBetween(entity.position, circle.position);
+  const arcLength = Math.abs(entity.heading - heading) * distance;
+  return arcLength < circle.radius;
+};
+
+const serverMessagePersistTime = 3000;
 const maxNameLength = 20;
 const ticksPerSecond = 60;
+// Infinity is not serializable with JSON.stringify...
+const effectiveInfinity = 1000000000;
 
 export {
   GlobalState,
   Position,
   Circle,
+  Line,
   Rectangle,
   Input,
   Player,
@@ -860,11 +1097,12 @@ export {
   EffectTrigger,
   CargoEntry,
   ChatMessage,
+  Collectable,
   update,
   applyInputs,
+  processAllNpcs,
   infinityNorm,
   positiveMod,
-  fractionalUpdate,
   canDock,
   setCanDock,
   copyPlayer,
@@ -882,6 +1120,18 @@ export {
   equip,
   maxDecimals,
   purchaseShip,
+  repairStation,
+  seekPosition,
+  stopPlayer,
+  arrivePosition,
+  findLinesTangentToCircleThroughPoint,
+  findLineHeading,
+  isAngleBetween,
+  currentlyFacing,
+  currentlyFacingApprox,
+  findClosestTarget,
   ticksPerSecond,
   maxNameLength,
+  effectiveInfinity,
+  serverMessagePersistTime,
 };

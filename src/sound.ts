@@ -3,7 +3,7 @@ let volume: GainNode;
 
 const soundBuffers: AudioBuffer[] = [];
 
-const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav"];
+const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav", "twinkle0.wav"];
 
 const soundMap: Map<string, number> = new Map<string, number>();
 
@@ -18,7 +18,14 @@ const loadSound = (url: string) => {
     .then((arrayBuffer) => ctx.decodeAudioData(arrayBuffer));
 };
 
+let soundInitialized = false;
+
 const initSound = () => {
+  if (soundInitialized) {
+    return;
+  }
+  soundInitialized = true;
+
   ctx = new AudioContext();
   volume = ctx.createGain();
   volume.connect(ctx.destination);
@@ -50,7 +57,7 @@ const playSound = (index: number) => {
   source.start(0);
 };
 
-const play3dSound = (index: number, x: number, y: number) => {
+const play3dSound = (index: number, x: number, y: number, gain = 1.0) => {
   if (!ctx || index < 0 || index >= soundBuffers.length) {
     console.log(ctx ? `Invalid sound index ${index}` : "Sound not initialized");
     return undefined;
@@ -62,7 +69,12 @@ const play3dSound = (index: number, x: number, y: number) => {
   panner.positionX.value = x;
   panner.positionY.value = y;
   panner.positionZ.value = 1;
-  source.connect(panner);
+
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = gain;
+
+  source.connect(gainNode);
+  gainNode.connect(panner);
   panner.connect(volume);
   source.start(0);
   return panner;

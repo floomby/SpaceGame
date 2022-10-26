@@ -2,9 +2,10 @@
 
 A simple multiplayer game where you have a ship and do things.
 
-### TODO
+[Live alpha](https://inharmonious.floomby.us/)
 
-- Decide on what happens when stations die (if they even do, and how respawning works between sessions, and all that stuff)
+### Random list of things to do
+
 - Shields? (maybe)
 - Mines
 - Trade
@@ -14,10 +15,25 @@ A simple multiplayer game where you have a ship and do things.
 - Defining units, missiles, effects, etc should be easier
 - Economy is very boring right now
 
-### Next version steps
+### Refactoring stuff
 
-- Point to target key
-- Collectables
-- Killed/kill message with names
-- Ability to dump cargo
-- Ship purchasing UI in station
+- Move asteroids over to being sector data like the collectables
+
+### MMO Stuff
+
+- Play as guest (low priority)
+- Option to change password (low priority)
+
+### Steps to get to the minimal game loop
+
+- Collectables (dropping spare parts)
+- Repairing station
+- Checkpoint fixing if station allegiance changes
+- Home station or stations
+- Sector bounds and global map
+- Asteroid mineral regeneration
+
+### Things I really should have
+
+- Engines (no warp by default, but can purchase)
+- Sensors (max range) - also I should redo the target arrows in the hud somewhat

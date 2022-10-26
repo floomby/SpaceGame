@@ -1,4 +1,4 @@
-import { armDefs, ArmUsage, asteroidDefs, defs, missileDefs, UnitKind } from "./defs";
+import { armDefs, ArmUsage, asteroidDefs, collectableDefs, defs, missileDefs, UnitKind } from "./defs";
 import { drawEffects, initEffects, effectSpriteDefs } from "./effects";
 import {
   Asteroid,
@@ -6,8 +6,13 @@ import {
   Ballistic,
   ChatMessage,
   Circle,
+  Collectable,
+  currentlyFacing,
   findHeadingBetween,
+  findLinesTangentToCircleThroughPoint,
   GlobalState,
+  infinityNorm,
+  Line,
   Missile,
   Player,
   Position,
@@ -15,6 +20,7 @@ import {
   Rectangle,
 } from "./game";
 import { KeyBindings } from "./keybindings";
+import { sfc32 } from "./prng";
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -22,17 +28,33 @@ let sprites: ImageBitmap[] = [];
 let asteroidSprites: ImageBitmap[] = [];
 let missileSprites: ImageBitmap[] = [];
 let effectSprites: ImageBitmap[] = [];
+let collectableSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
 
-const initStars = () => {
+const initStars = (sector: number) => {
+  stars.length = 0;
+  const prng = sfc32(sector, 3437, 916, 3158);
+
   for (let i = 0; i < 1000; i++) {
     stars.push({
-      position: { x: Math.random() * starTilingSize.x, y: Math.random() * starTilingSize.y },
-      radius: Math.random() * 2 + 1,
+      position: { x: prng() * starTilingSize.x, y: prng() * starTilingSize.y },
+      radius: prng() * 2 + 1,
     });
   }
+};
+
+const loadCollectableSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
+  const spritePromises: Promise<ImageBitmap>[] = [];
+  for (let i = 0; i < collectableDefs.length; i++) {
+    const sprite = collectableDefs[i].sprite;
+    spritePromises.push(createImageBitmap(spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height));
+  }
+  Promise.all(spritePromises).then((completed) => {
+    collectableSprites = completed;
+    callback();
+  });
 };
 
 // Arguably thing should be in effects.ts, but crosscutting is basically unavoidable and it is almost identical the the other loading functions
@@ -74,7 +96,6 @@ const loadAsteroidSprites = (spriteSheet: HTMLImageElement, callback: () => void
 };
 
 const initDrawing = (callback: () => void) => {
-  initStars();
   initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
   canvas.width = window.innerWidth;
@@ -94,7 +115,9 @@ const initDrawing = (callback: () => void) => {
       sprites = completed;
       loadAsteroidSprites(spriteSheet, () => {
         loadMissileSprites(spriteSheet, () => {
-          loadEffectSprites(spriteSheet, callback);
+          loadEffectSprites(spriteSheet, () => {
+            loadCollectableSprites(spriteSheet, callback);
+          });
         });
       });
     });
@@ -170,7 +193,7 @@ const drawMiniMapPlayer = (center: Position, player: Player, self: Player, miniM
     (player.position.x - self.position.x) * miniMapScaleFactor + center.x,
     (player.position.y - self.position.y) * miniMapScaleFactor + center.y
   );
-  ctx.fillStyle = defs[player.definitionIndex].team ? "red" : "aqua";
+  ctx.fillStyle = player.team ? "red" : "aqua";
   if (defs[player.definitionIndex].kind === UnitKind.Ship) {
     ctx.rotate(player.heading);
     ctx.beginPath();
@@ -225,11 +248,7 @@ const drawMiniMap = (position: Position, width: number, height: number, self: Pl
   }
 };
 
-// I may want to go back to using this if I change to have the update (not just the fractional update) being run on the clients
-// let starAntiJitter = { x: 0, y: 0 };
-
 const drawStars = (self: Player) => {
-  // const topLeft = { x: self.position.x - starAntiJitter.x - canvas.width / 2, y: self.position.y - starAntiJitter.y - canvas.height / 2 };
   const topLeft = { x: self.position.x - canvas.width / 2, y: self.position.y - canvas.height / 2 };
   topLeft.x /= 2;
   topLeft.y /= 2;
@@ -303,28 +322,40 @@ const drawAsteroid = (asteroid: Asteroid, self: Player) => {
   ctx.restore();
 };
 
-const drawShip = (player: Player, self: Player) => {
+const drawPlayer = (player: Player, self: Player) => {
   ctx.save();
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
   let sprite = sprites[player.definitionIndex];
-  drawBar(
-    { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
-    sprite.width,
-    5,
-    "#00EE00CC",
-    "#EE0000CC",
-    Math.max(player.health, 0) / defs[player.definitionIndex].health
-  );
-  drawBar(
-    { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
-    sprite.width,
-    5,
-    "#0022FFCC",
-    "#333333CC",
-    player.energy / defs[player.definitionIndex].energy
-  );
-  ctx.rotate(player.heading);
+  if (player.inoperable) {
+    ctx.filter = "grayscale(80%)";
+    ctx.rotate(player.heading);
+  } else {
+    drawBar(
+      { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
+      sprite.width,
+      5,
+      "#00EE00CC",
+      "#EE0000CC",
+      Math.max(player.health, 0) / defs[player.definitionIndex].health
+    );
+    drawBar(
+      { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
+      sprite.width,
+      5,
+      "#0022FFCC",
+      "#333333CC",
+      player.energy / defs[player.definitionIndex].energy
+    );
+    ctx.rotate(player.heading);
+  }
+  // This effect is pretty bad, but I want something visual to indicate a warp is in progress
+  if (player.warping) {
+    const def = defs[player.definitionIndex];
+    const warpAmount = player.warping / def.warpTime;
+    ctx.filter = `hue-rotate(${warpAmount * Math.PI * 2}rad) saturate(${(1 - warpAmount) * 100}%)`;
+  }
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+
   ctx.restore();
 };
 
@@ -369,15 +400,15 @@ const drawDockText = (dockKey: string) => {
   ctx.fillText(`Press ${dockKey} to dock`, canvas.width / 2, canvas.height / 2 + 200);
 };
 
-let secondaryFlashTimeRemaining = 0;
+// let secondaryFlashTimeRemaining = 0;
 
-const drawSecondaryText = (self: Player, selectedSecondary: number) => {
-  ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, secondaryFlashTimeRemaining / 50)})`;
-  ctx.font = "18px Arial";
-  ctx.textAlign = "center";
-  const armamentDef = armDefs[self.armIndices[selectedSecondary]];
-  ctx.fillText(`${selectedSecondary} - ${armamentDef.name}`, canvas.width / 2, 20);
-};
+// const drawSecondaryText = (self: Player, selectedSecondary: number) => {
+//   ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, secondaryFlashTimeRemaining / 50)})`;
+//   ctx.font = "18px Arial";
+//   ctx.textAlign = "center";
+//   const armamentDef = armDefs[self.armIndices[selectedSecondary]];
+//   ctx.fillText(`${selectedSecondary} - ${armamentDef.name}`, canvas.width / 2, 20);
+// };
 
 // This is only for drawing purposes (if we die we need to keep the last position)
 let lastSelf: Player;
@@ -494,6 +525,111 @@ const drawChats = (self: Player, players: Map<number, Player>, chats: IterableIt
   }
 };
 
+type Message = {
+  what: string;
+  framesRemaining: number;
+};
+
+let messages: Message[] = [];
+
+const pushMessage = (what: string, framesRemaining: number = 180) => {
+  messages.push({ what, framesRemaining });
+};
+
+const reduceMessageTimeRemaining = (sixtieths: number) => {
+  messages = messages.filter((message) => {
+    message.framesRemaining -= sixtieths;
+    return message.framesRemaining > 0;
+  });
+};
+
+const drawMessages = () => {
+  // draw all the messages at the top of the screen
+  ctx.font = "20px Arial";
+  ctx.textAlign = "center";
+  let y = 30;
+  for (const message of messages) {
+    ctx.fillStyle = `rgb(255, 255, 255, ${Math.min(message.framesRemaining / 60, 1)})`;
+    ctx.fillText(message.what, canvas.width / 2, y);
+    y += 30;
+  }
+};
+
+const drawLine = (self: Player, line: Line) => {
+  const to = { x: line.to.x - self.position.x + canvas.width / 2, y: line.to.y - self.position.y + canvas.height / 2 };
+  const from = { x: line.from.x - self.position.x + canvas.width / 2, y: line.from.y - self.position.y + canvas.height / 2 };
+  ctx.save();
+  ctx.strokeStyle = "green";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+};
+
+type FadingCollectable = Collectable & { framesRemaining: number };
+
+let fadingCollectables: FadingCollectable[] = [];
+
+const fadeOutCollectable = (collectable: Collectable) => {
+  fadingCollectables.push({ ...collectable, framesRemaining: 180 });
+};
+
+const reduceCollectableTimeRemaining = (sixtieths: number) => {
+  fadingCollectables = fadingCollectables.filter((fadingCollectable) => {
+    fadingCollectable.framesRemaining -= sixtieths;
+    return fadingCollectable.framesRemaining > 0;
+  });
+};
+
+const drawCollectable = (self: Player, collectable: Collectable) => {
+  if (infinityNorm(collectable.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + collectable.radius) {
+    return;
+  }
+  ctx.save();
+  const scale = 0.85 + 0.15 * Math.sin(collectable.phase);
+  ctx.translate(collectable.position.x - self.position.x + canvas.width / 2, collectable.position.y - self.position.y + canvas.height / 2);
+  ctx.rotate(collectable.heading);
+  const sprite = collectableSprites[collectable.index];
+  ctx.drawImage(sprite, (-sprite.width * scale) / 2, (-sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
+  ctx.restore();
+};
+
+const drawCollectables = (self: Player, collectables: IterableIterator<Collectable>, sixtieths: number) => {
+  for (const collectable of collectables) {
+    collectable.phase += sixtieths * 0.03;
+    collectable.heading += sixtieths * 0.04;
+    drawCollectable(self, collectable);
+  }
+};
+
+const drawFadingCollectable = (self: Player, fadingCollectable: FadingCollectable) => {
+  if (infinityNorm(fadingCollectable.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + fadingCollectable.radius) {
+    return;
+  }
+  ctx.save();
+  ctx.filter = `grayscale(100%)`;
+  const scale = (0.85 + 0.15 * Math.sin(fadingCollectable.phase)) * Math.min(fadingCollectable.framesRemaining / 90, 1);
+  ctx.translate(
+    fadingCollectable.position.x - self.position.x + canvas.width / 2,
+    fadingCollectable.position.y - self.position.y + canvas.height / 2
+  );
+  ctx.rotate(fadingCollectable.heading);
+  const sprite = collectableSprites[fadingCollectable.index];
+  ctx.drawImage(sprite, (-sprite.width * scale) / 2, (-sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
+  ctx.restore();
+};
+
+const drawFadingCollectables = (self: Player) => {
+  for (const fadingCollectable of fadingCollectables) {
+    drawFadingCollectable(self, fadingCollectable);
+  }
+};
+
+let didWarn = false;
+
 const drawEverything = (
   state: GlobalState,
   self: Player,
@@ -503,23 +639,32 @@ const drawEverything = (
   selectedSecondary: number,
   keybind: KeyBindings,
   sixtieths: number,
-  chats: Map<number, ChatMessage>,
+  chats: Map<number, ChatMessage>
 ) => {
   highlightPhase += 0.1 * sixtieths;
   if (highlightPhase > 2 * Math.PI) {
     highlightPhase -= 2 * Math.PI;
   }
-  if (secondaryFlashTimeRemaining > 0) {
-    secondaryFlashTimeRemaining -= sixtieths;
-  }
+
+  reduceMessageTimeRemaining(sixtieths);
+  reduceCollectableTimeRemaining(sixtieths);
 
   clearCanvas();
   if (self) {
     lastSelf = self;
   }
+  if (!self && !lastSelf) {
+    if (!didWarn) {
+      // Seems to happen on server startup (I think the server is just sending a state update before the init message)
+      console.log("Warning: Missing self reference (FIXME)");
+      didWarn = true;
+    }
+    return;
+  }
   if (lastSelf) {
     drawStars(lastSelf);
   }
+
   for (const [id, asteroid] of state.asteroids) {
     drawAsteroid(asteroid, lastSelf);
     if (targetAsteroid && targetAsteroid.id === id) {
@@ -534,11 +679,13 @@ const drawEverything = (
       if (target && id === target.id) {
         drawHighlight(lastSelf, player);
       }
-      drawShip(player, lastSelf);
+      drawPlayer(player, lastSelf);
     }
   }
+  drawFadingCollectables(lastSelf);
+  drawCollectables(lastSelf, state.collectables.values(), sixtieths);
   if (self && !self.docked) {
-    drawShip(self, self);
+    drawPlayer(self, self);
   }
   for (const [id, missile] of state.missiles) {
     drawMissile(missile, lastSelf);
@@ -558,13 +705,11 @@ const drawEverything = (
     if (self.canDock) {
       drawDockText(keybind.dock);
     }
-    if (secondaryFlashTimeRemaining > 0) {
-      drawSecondaryText(self, selectedSecondary);
-    }
+    drawMessages();
     if (target) {
       drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
       if (Math.abs(self.position.x - target.position.x) > canvas.width / 2 || Math.abs(self.position.y - target.position.y) > canvas.height / 2) {
-        drawTargetArrow(self, target, defs[target.definitionIndex].team ? "red" : "aqua");
+        drawTargetArrow(self, target, target.team ? "red" : "aqua");
       }
     } else if (targetAsteroid) {
       drawTargetAsteroid({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, targetAsteroid);
@@ -578,8 +723,4 @@ const drawEverything = (
   }
 };
 
-const flashSecondary = () => {
-  secondaryFlashTimeRemaining = 90;
-};
-
-export { drawEverything, initDrawing, flashSecondary, ctx, canvas, effectSprites, sprites, ChatMessage };
+export { drawEverything, initDrawing, ctx, canvas, effectSprites, sprites, ChatMessage, initStars, pushMessage, fadeOutCollectable };

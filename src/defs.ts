@@ -12,6 +12,7 @@ import {
   addCargo,
   uid,
   Missile,
+  Collectable,
 } from "../src/game";
 
 enum Faction {
@@ -51,7 +52,6 @@ type UnitDefinition = {
   energyRegen: number;
   primaryReloadTime: number;
   primaryDamage: number;
-  team: number;
   radius: number;
   kind: UnitKind;
   hardpoints?: Position[];
@@ -63,6 +63,9 @@ type UnitDefinition = {
   acceleration?: number;
   healthRegen: number;
   price?: number;
+  warpTime?: number;
+  warpEffect?: number;
+  brakeDistance?: number;
 };
 
 enum ArmUsage {
@@ -92,7 +95,8 @@ type ArmamentDef = {
     targetKind: TargetKind,
     target: Player | Asteroid,
     applyEffect: (trigger: EffectTrigger) => void,
-    slotIndex: number
+    slotIndex: number,
+    flashServerMessage?: (id: number, message: string) => void
   ) => void;
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
   equipMutator?: (player: Player, slotIndex: number) => void;
@@ -117,6 +121,19 @@ type MissileDef = {
   turnRate?: number;
 };
 
+type CollectableDef = {
+  sprite: Rectangle;
+  radius: number;
+  name: string;
+  description: string;
+  canBeCollected: (player: Player) => boolean;
+  collectMutator: (player: Player) => void;
+};
+
+const computeBrakeDistance = (acceleration: number, speed: number) => {
+  return (speed * speed) / (2 * acceleration);
+};
+
 const defs: UnitDefinition[] = [];
 const defMap = new Map<string, { index: number; def: UnitDefinition }>();
 
@@ -126,6 +143,9 @@ const armDefMap = new Map<string, { index: number; def: ArmamentDef }>();
 const asteroidDefs: AsteroidDef[] = [];
 
 const missileDefs: MissileDef[] = [];
+
+const collectableDefs: CollectableDef[] = [];
+const collectableDefMap = new Map<string, { index: number; def: CollectableDef }>();
 
 const initDefs = () => {
   defs.push({
@@ -138,7 +158,6 @@ const initDefs = () => {
     energyRegen: 0.1,
     primaryReloadTime: 20,
     primaryDamage: 10,
-    team: 0,
     radius: 16,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal],
@@ -148,6 +167,8 @@ const initDefs = () => {
     acceleration: 0.1,
     healthRegen: 0.03,
     price: 100,
+    warpTime: 90,
+    warpEffect: 7,
   });
   defs.push({
     name: "Drone",
@@ -159,7 +180,6 @@ const initDefs = () => {
     energyRegen: 0.1,
     primaryReloadTime: 20,
     primaryDamage: 10,
-    team: 1,
     radius: 16,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal],
@@ -169,6 +189,8 @@ const initDefs = () => {
     acceleration: 0.1,
     healthRegen: 0.03,
     price: 100,
+    warpTime: 90,
+    warpEffect: 7,
   });
   defs.push({
     name: "Alliance Starbase",
@@ -180,7 +202,6 @@ const initDefs = () => {
     energyRegen: 0.5,
     primaryReloadTime: 10,
     primaryDamage: 15,
-    team: 0,
     radius: 120,
     kind: UnitKind.Station,
     hardpoints: [
@@ -204,7 +225,6 @@ const initDefs = () => {
     energyRegen: 0.5,
     primaryReloadTime: 10,
     primaryDamage: 15,
-    team: 1,
     radius: 144,
     kind: UnitKind.Station,
     hardpoints: [
@@ -228,7 +248,6 @@ const initDefs = () => {
     energyRegen: 0.2,
     primaryReloadTime: 10,
     primaryDamage: 20,
-    team: 0,
     radius: 30,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
@@ -238,6 +257,8 @@ const initDefs = () => {
     acceleration: 0.09,
     healthRegen: 0.05,
     price: 300,
+    warpTime: 120,
+    warpEffect: 7,
   });
   defs.push({
     name: "Seeker",
@@ -249,7 +270,6 @@ const initDefs = () => {
     energyRegen: 0.2,
     primaryReloadTime: 10,
     primaryDamage: 20,
-    team: 1,
     radius: 30,
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
@@ -259,11 +279,16 @@ const initDefs = () => {
     acceleration: 0.09,
     healthRegen: 0.05,
     price: 300,
+    warpTime: 120,
+    warpEffect: 7,
   });
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];
     defMap.set(def.name, { index: i, def });
+    if (def.acceleration !== undefined) {
+      def.brakeDistance = computeBrakeDistance(def.acceleration, def.speed);
+    }
   }
 
   armDefs.push({
@@ -313,10 +338,14 @@ const initDefs = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 0.5,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.5) {
         target = target as Asteroid;
-        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 500 * 500 && availableCargoCapacity(player) > 0) {
+        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 500 * 500) {
+          if (availableCargoCapacity(player) <= 0) {
+            flashServerMessage(player.id, "Cargo bay full");
+            return;
+          }
           player.energy -= 0.3;
           const amount = Math.min(target.resources, 0.5);
           target.resources -= amount;
@@ -342,15 +371,22 @@ const initDefs = () => {
     stateMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
       const slotData = player.slotData[slotIndex];
       if (targetKind === TargetKind.Player && player.energy > 35 && slotData.sinceFired > 45) {
+        if ((target as Player).inoperable) {
+          return;
+        }
         target = target as Player;
         if (l2NormSquared(player.position, target.position) < 700 * 700) {
           player.energy -= 35;
           target.health -= 30;
           slotData.sinceFired = 0;
+          const to =
+            target.health > 0
+              ? { kind: EffectAnchorKind.Player, value: target.id }
+              : { kind: EffectAnchorKind.Absolute, value: target.position, heading: target.heading, speed: target.speed };
           applyEffect({
             effectIndex: 1,
             from: { kind: EffectAnchorKind.Player, value: player.id },
-            to: { kind: EffectAnchorKind.Player, value: target.id },
+            to,
           });
         }
       }
@@ -389,14 +425,13 @@ const initDefs = () => {
         slotData.sinceFired = 0;
         slotData.ammo--;
         const id = uid();
-        const def = defs[player.definitionIndex];
         const missile: Missile = {
           id,
           position: { x: player.position.x, y: player.position.y },
           speed: player.speed + 1,
           heading: player.heading,
           radius: missileDefs[javelinIndex].radius,
-          team: def.team,
+          team: player.team,
           damage: missileDefs[javelinIndex].damage,
           target: 0,
           definitionIndex: javelinIndex,
@@ -439,14 +474,13 @@ const initDefs = () => {
         slotData.sinceFired = 0;
         slotData.ammo--;
         const id = uid();
-        const def = defs[player.definitionIndex];
         const missile: Missile = {
           id,
           position: { x: player.position.x, y: player.position.y },
           speed: player.speed + 1,
           heading: player.heading,
           radius: missileDefs[heavyJavelinIndex].radius,
-          team: def.team,
+          team: player.team,
           damage: missileDefs[heavyJavelinIndex].damage,
           target: 0,
           definitionIndex: heavyJavelinIndex,
@@ -486,18 +520,20 @@ const initDefs = () => {
     stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
+        if ((target as Player).inoperable) {
+          return;
+        }
         player.energy -= 1;
         slotData.sinceFired = 0;
         slotData.ammo--;
         const id = uid();
-        const def = defs[player.definitionIndex];
         const missile: Missile = {
           id,
           position: { x: player.position.x, y: player.position.y },
           speed: player.speed + 1,
           heading: player.heading,
           radius: missileDefs[tomahawkIndex].radius,
-          team: def.team,
+          team: player.team,
           damage: missileDefs[tomahawkIndex].damage,
           target: target.id,
           definitionIndex: tomahawkIndex,
@@ -526,6 +562,24 @@ const initDefs = () => {
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 24,
   });
+
+  collectableDefs.push({
+    sprite: { x: 320, y: 64, width: 64, height: 64 },
+    radius: 26,
+    name: "Spare Parts",
+    description: "Collect spare parts to repair stations",
+    canBeCollected: (player) => {
+      return availableCargoCapacity(player) > 0;
+    },
+    collectMutator: (player) => {
+      addCargo(player, "Spare Parts", 5);
+    },
+  });
+
+  for (let i = 0; i < collectableDefs.length; i++) {
+    const def = collectableDefs[i];
+    collectableDefMap.set(def.name, { index: i, def });
+  }
 };
 
 enum EmptySlot {
@@ -539,6 +593,19 @@ enum EmptySlot {
 const emptyLoadout = (index: number) => {
   const def = defs[index];
   return [...def.slots] as unknown as EmptySlot[];
+};
+
+const createCollectableFromDef = (index: number, where: Position) => {
+  const def = collectableDefs[index];
+  return {
+    id: uid(),
+    position: { x: where.x, y: where.y },
+    radius: def.radius,
+    heading: Math.random() * Math.PI * 2,
+    speed: 0,
+    index,
+    framesLeft: 600,
+  };
 };
 
 export {
@@ -557,7 +624,10 @@ export {
   armDefs,
   armDefMap,
   missileDefs,
+  collectableDefs,
+  collectableDefMap,
   initDefs,
   getFactionString,
   emptyLoadout,
+  createCollectableFromDef,
 };

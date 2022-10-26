@@ -4,11 +4,20 @@ import { wsUrl } from "./config";
 
 let serverSocket: WebSocket;
 
-const register = (name: string, faction: Faction) => {
+const login = (name: string, password: string, faction: Faction) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "login",
+      payload: { name, password, faction },
+    })
+  );
+};
+
+const register = (name: string, password: string, faction: Faction) => {
   serverSocket.send(
     JSON.stringify({
       type: "register",
-      payload: { name, faction },
+      payload: { name, password, faction },
     })
   );
 };
@@ -65,7 +74,8 @@ const sendPlayerInfo = (player: Player) => {
       type: "player",
       payload: {
         ...player,
-        name: player.name.substring(0, maxNameLength),
+        // name: player.name.substring(0, maxNameLength),
+        name: "test",
       },
     })
   );
@@ -89,11 +99,11 @@ const sendUndock = (id: number) => {
   );
 };
 
-const sendRespawn = (respawnKey: number) => {
+const sendRespawn = (id: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "respawn",
-      payload: { respawnKey },
+      payload: { id },
     })
   );
 };
@@ -152,10 +162,20 @@ const sendPurchase = (id: number, index: number) => {
   );
 };
 
+const sendWarp = (id: number, warpTo: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "warp",
+      payload: { id, warpTo },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
   unbindAllActions,
+  login,
   register,
   sendInput,
   sendPlayerInfo,
@@ -168,4 +188,5 @@ export {
   sendEquip,
   sendChat,
   sendPurchase,
+  sendWarp,
 };

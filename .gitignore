@@ -6,3 +6,4 @@ deployer.sh
 server/resources
 soundCandidates
 resources/.*
+server/*.js

@@ -22,7 +22,7 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Player) {
     const player = state.players.get(anchor.value as number);
     if (!player) {
-      console.log("Invalid player id during anchor resolution: ", anchor.value);
+      // console.log("Invalid player id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
     return [player.position, player as Player];
@@ -30,7 +30,7 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Asteroid) {
     const asteroid = state.asteroids.get(anchor.value as number);
     if (!asteroid) {
-      console.log("Invalid asteroid id during anchor resolution: ", anchor.value);
+      // console.log("Invalid asteroid id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
     return [asteroid.position, asteroid as Asteroid];
@@ -38,7 +38,7 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Missile) {
     const missile = state.missiles.get(anchor.value as number);
     if (!missile) {
-      console.log("Invalid missile id during anchor resolution: ", anchor.value);
+      // console.log("Invalid missile id during anchor resolution: ", anchor.value);
       return [undefined, undefined];
     }
     return [missile.position, missile as Missile];
@@ -89,6 +89,7 @@ const initEffects = () => {
   const popSound = getSound("pop0.wav");
   const fireSound = getSound("fire0.wav");
   const miningLaserSound = getSound("laser1.wav");
+  const twinkleSound = getSound("twinkle0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -109,9 +110,8 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        console.log("Playing laser sound", midX, midY);
-        const panner = play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
-        panner.positionZ.value = 10;
+        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.7);
+        // panner.positionZ.value = 10;
       }
 
       ctx.save();
@@ -139,15 +139,17 @@ const initEffects = () => {
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
       let [to, toCircle] = resolveAnchor(effect.to, state);
-      if (!from || !to || !toCircle) {
+      if (!from || !to) {
         return;
       }
 
       const heading = findHeadingBetween(from as Position, to as Position);
-      to = {
-        x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
-        y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
-      };
+      if (toCircle) {
+        to = {
+          x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
+          y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
+        };
+      }
 
       if (self) {
         effect.extra.lastSelfX = self.position.x;
@@ -155,11 +157,10 @@ const initEffects = () => {
       }
 
       if (effect.extra.needSound) {
-        const midX = ((from as Position).x + to.x) / 2;
-        const midY = ((from as Position).y + to.y) / 2;
+        const midX = ((from as Position).x + (to as Position).x) / 2;
+        const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        console.log("Playing laser sound", midX, midY);
-        const panner = play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
+        play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
       }
 
       const cos = Math.cos(heading);
@@ -178,18 +179,25 @@ const initEffects = () => {
       ctx.shadowBlur = 4;
       ctx.shadowColor = "red";
       ctx.beginPath();
-      ctx.moveTo(to.x - (from as Position).x + offsets[1].x, to.y - (from as Position).y + offsets[1].y);
+      ctx.moveTo((to as Position).x - (from as Position).x + offsets[1].x, (to as Position).y - (from as Position).y + offsets[1].y);
       ctx.moveTo(offsets[1].x, offsets[1].y);
       ctx.arc(0, 0, halfBeamWidth, heading - Math.PI / 2, heading + Math.PI / 2, true);
       ctx.lineTo(offsets[0].x, offsets[0].y);
-      ctx.arc(to.x - (from as Position).x, to.y - (from as Position).y, halfBeamWidth, heading + Math.PI / 2, heading - Math.PI / 2, true);
+      ctx.arc(
+        (to as Position).x - (from as Position).x,
+        (to as Position).y - (from as Position).y,
+        halfBeamWidth,
+        heading + Math.PI / 2,
+        heading - Math.PI / 2,
+        true
+      );
       ctx.fillStyle = color;
       ctx.fill();
 
       ctx.filter = "blur(20px)";
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.arc(to.x - (from as Position).x, to.y - (from as Position).y, 30, 0, Math.PI * 2);
+      ctx.arc((to as Position).x - (from as Position).x, (to as Position).y - (from as Position).y, 30, 0, Math.PI * 2);
       ctx.closePath();
       ctx.fill();
 
@@ -394,7 +402,54 @@ const initEffects = () => {
       return { heading: Math.random() * Math.PI * 2 };
     },
   });
+  // Warp effect - 7
+  effectDefs.push({
+    frames: 50,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
 
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        effect.extra.panner = play3dSound(
+          twinkleSound,
+          ((from as Position).x - self.position.x) / soundScale,
+          ((from as Position).y - self.position.y) / soundScale
+        );
+      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
+        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
+        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+      }
+
+      const spriteIdx = 4;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.from.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { needSound: true };
+    },
+  });
+
+  // Consult the spreadsheet for understanding where things are on the spritesheet
   effectSpriteDefs.push({
     sprite: { x: 256, y: 64, width: 64, height: 64 },
   });
@@ -406,6 +461,9 @@ const initEffects = () => {
   });
   effectSpriteDefs.push({
     sprite: { x: 320, y: 0, width: 64, height: 64 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 128, y: 0, width: 64, height: 32 },
   });
 };
 
@@ -433,7 +491,7 @@ const applyEffects = (triggers: EffectTrigger[]) => {
 const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
   effects = effects.filter((effect) => effect.frame > 0);
 
-  // TODO Culling if the effect is offscreen
+  // The effect culling is done in the draw functions (if we did it here it would be to inflexible)
   for (const effect of effects) {
     effect.frame -= sixtieths;
     if (effect.frame <= 0) {
@@ -457,4 +515,8 @@ const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
   }
 };
 
-export { applyEffects, drawEffects, initEffects, effectSpriteDefs };
+const clearEffects = () => {
+  effects.length = 0;
+};
+
+export { applyEffects, drawEffects, initEffects, clearEffects, effectSpriteDefs };

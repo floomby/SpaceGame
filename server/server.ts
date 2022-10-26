@@ -24,6 +24,7 @@ import {
   effectiveInfinity,
   processAllNpcs,
   serverMessagePersistTime,
+  Collectable,
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
 import { assert } from "console";
@@ -357,6 +358,7 @@ sectorList.forEach((sector) => {
     projectiles: new Map(),
     asteroids: new Map(),
     missiles: new Map(),
+    collectables: new Map(),
   });
 });
 
@@ -377,6 +379,7 @@ type ClientData = {
   currentSector: number;
   lastMessage: string;
   lastMessageTime: number;
+  sectorDataSent: boolean;
 };
 
 // const checkpoints = new Map<number, Player>();
@@ -451,6 +454,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     currentSector: defaultSector,
     lastMessage: "",
     lastMessageTime: Date.now(),
+    sectorDataSent: false,
   });
 
   let defIndex: number;
@@ -569,6 +573,7 @@ wss.on("connection", (ws) => {
               currentSector: checkpoint.sector,
               lastMessage: "",
               lastMessageTime: Date.now(),
+              sectorDataSent: false,
             });
             targets.set(user.id, [TargetKind.None, 0]);
             secondaries.set(user.id, 0);
@@ -800,6 +805,14 @@ const informDead = (player: Player) => {
   }
 };
 
+const removeCollectable = (sector: number, id: number, collected: boolean) => {
+  for (const [client, clientData] of clients) {
+    if (clientData.currentSector === sector) {
+      client.send(JSON.stringify({ type: "removeCollectable", payload: { id, collected } }));
+    }
+  }
+};
+
 const flashServerMessage = (id: number, message: string) => {
   const ws = idToWebsocket.get(id);
   if (ws) {
@@ -819,6 +832,11 @@ const flashServerMessage = (id: number, message: string) => {
   }
 };
 
+// Asteroid could be part of the sector data
+const sendSectorData = (ws: WebSocket, state: GlobalState) => {
+  ws.send(JSON.stringify({ type: "addCollectables", payload: Array.from(state.collectables.values()) }));
+};
+
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -828,12 +846,32 @@ setInterval(() => {
       if (data.input && player) {
         applyInputs(data.input, player);
       }
+      if (!data.sectorDataSent) {
+        sendSectorData(client, state);
+        data.sectorDataSent = true;
+      }
     }
     const triggers: EffectTrigger[] = [];
-    update(state, frame, targets, secondaries, (trigger) => triggers.push(trigger), warpList, informDead, flashServerMessage);
+    const collectables: Collectable[] = [];
+    update(
+      state,
+      frame,
+      targets,
+      secondaries,
+      (trigger) => triggers.push(trigger),
+      warpList,
+      informDead,
+      flashServerMessage,
+      (collectable) => collectables.push(collectable),
+      (id, collected) => removeCollectable(sector, id, collected)
+    );
     processAllNpcs(state, frame);
+    // This maybe should just be in the update function?
+    for (const collectable of collectables) {
+      state.collectables.set(collectable.id, collectable);
+    }
 
-    // TODO Consider culling the state information to only send nearby players and projectiles
+    // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for CPU)
     const playerData: Player[] = [];
     const npcs: (NPC | undefined)[] = [];
     for (const player of state.players.values()) {
@@ -841,26 +879,23 @@ setInterval(() => {
       player.npc = undefined;
       playerData.push(player);
     }
-    const projectileData: Ballistic[] = [];
-    for (const [id, projectiles] of state.projectiles) {
-      projectileData.push(...projectiles);
-    }
-    const asteroidData: Asteroid[] = [];
-    for (const asteroid of state.asteroids.values()) {
-      asteroidData.push(asteroid);
-    }
-    const missileData: Missile[] = [];
-    for (const missile of state.missiles.values()) {
-      missileData.push(missile);
-    }
+
+    const projectileData: Ballistic[] = Array.from(state.projectiles.values()).flat();
+    const asteroidData: Asteroid[] = Array.from(state.asteroids.values());
+    const missileData: Missile[] = Array.from(state.missiles.values());
 
     const serialized = JSON.stringify({
       type: "state",
       payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers, missiles: missileData },
     });
 
+    const collectablesSerialized = collectables.length > 0 ? JSON.stringify({ type: "addCollectables", payload: collectables }) : undefined;
+
     for (const [client, data] of clients) {
       if (data.currentSector === sector) {
+        if (collectablesSerialized) {
+          client.send(collectablesSerialized);
+        }
         client.send(serialized);
       }
     }
@@ -876,7 +911,9 @@ setInterval(() => {
     if (state) {
       const ws = idToWebsocket.get(player.id);
       if (ws) {
-        clients.get(ws)!.currentSector = to;
+        const client = clients.get(ws)!;
+        client.currentSector = to;
+        client.sectorDataSent = false;
         ws.send(JSON.stringify({ type: "warp", payload: { to } }));
       }
       player.position.x = 0;

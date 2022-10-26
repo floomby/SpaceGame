@@ -14,6 +14,17 @@ import {
   uid,
 } from "./game";
 
+type LootTable = { index: number; probability: number }[];
+
+const processLootTable = (lootTable: LootTable) => {
+  for (const entry of lootTable) {
+    if (Math.random() < entry.probability) {
+      return entry.index;
+    }
+  }
+  return undefined;
+};
+
 class NPC {
   public player: Player;
 
@@ -26,6 +37,8 @@ class NPC {
     secondary: false,
   };
   public selectedSecondary = 0;
+
+  public lootTable: LootTable = [];
 
   constructor(what: string | number) {
     const id = uid();
@@ -62,6 +75,8 @@ class NPC {
       npc: this,
       team: 1,
     };
+
+    this.lootTable = [{ index: 0, probability: 0.5 }];
   }
 
   public targetId = 0;
@@ -98,4 +113,4 @@ const addNpc = (state: GlobalState) => {
   state.players.set(npc.player.id, npc.player);
 };
 
-export { NPC, addNpc };
+export { NPC, LootTable, addNpc, processLootTable };

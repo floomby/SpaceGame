@@ -1,4 +1,4 @@
-import { armDefs, ArmUsage, asteroidDefs, defs, missileDefs, UnitKind } from "./defs";
+import { armDefs, ArmUsage, asteroidDefs, collectableDefs, defs, missileDefs, UnitKind } from "./defs";
 import { drawEffects, initEffects, effectSpriteDefs } from "./effects";
 import {
   Asteroid,
@@ -6,10 +6,12 @@ import {
   Ballistic,
   ChatMessage,
   Circle,
+  Collectable,
   currentlyFacing,
   findHeadingBetween,
   findLinesTangentToCircleThroughPoint,
   GlobalState,
+  infinityNorm,
   Line,
   Missile,
   Player,
@@ -26,6 +28,7 @@ let sprites: ImageBitmap[] = [];
 let asteroidSprites: ImageBitmap[] = [];
 let missileSprites: ImageBitmap[] = [];
 let effectSprites: ImageBitmap[] = [];
+let collectableSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
@@ -40,6 +43,18 @@ const initStars = (sector: number) => {
       radius: prng() * 2 + 1,
     });
   }
+};
+
+const loadCollectableSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
+  const spritePromises: Promise<ImageBitmap>[] = [];
+  for (let i = 0; i < collectableDefs.length; i++) {
+    const sprite = collectableDefs[i].sprite;
+    spritePromises.push(createImageBitmap(spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height));
+  }
+  Promise.all(spritePromises).then((completed) => {
+    collectableSprites = completed;
+    callback();
+  });
 };
 
 // Arguably thing should be in effects.ts, but crosscutting is basically unavoidable and it is almost identical the the other loading functions
@@ -100,7 +115,9 @@ const initDrawing = (callback: () => void) => {
       sprites = completed;
       loadAsteroidSprites(spriteSheet, () => {
         loadMissileSprites(spriteSheet, () => {
-          loadEffectSprites(spriteSheet, callback);
+          loadEffectSprites(spriteSheet, () => {
+            loadCollectableSprites(spriteSheet, callback);
+          });
         });
       });
     });
@@ -552,6 +569,65 @@ const drawLine = (self: Player, line: Line) => {
   ctx.restore();
 };
 
+type FadingCollectable = Collectable & { framesRemaining: number };
+
+let fadingCollectables: FadingCollectable[] = [];
+
+const fadeOutCollectable = (collectable: Collectable) => {
+  fadingCollectables.push({ ...collectable, framesRemaining: 180 });
+};
+
+const reduceCollectableTimeRemaining = (sixtieths: number) => {
+  fadingCollectables = fadingCollectables.filter((fadingCollectable) => {
+    fadingCollectable.framesRemaining -= sixtieths;
+    return fadingCollectable.framesRemaining > 0;
+  });
+};
+
+const drawCollectable = (self: Player, collectable: Collectable) => {
+  if (infinityNorm(collectable.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + collectable.radius) {
+    return;
+  }
+  ctx.save();
+  const scale = 0.85 + 0.15 * Math.sin(collectable.phase);
+  ctx.translate(collectable.position.x - self.position.x + canvas.width / 2, collectable.position.y - self.position.y + canvas.height / 2);
+  ctx.rotate(collectable.heading);
+  const sprite = collectableSprites[collectable.index];
+  ctx.drawImage(sprite, (-sprite.width * scale) / 2, (-sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
+  ctx.restore();
+};
+
+const drawCollectables = (self: Player, collectables: IterableIterator<Collectable>, sixtieths: number) => {
+  for (const collectable of collectables) {
+    collectable.phase += sixtieths * 0.03;
+    collectable.heading += sixtieths * 0.04;
+    drawCollectable(self, collectable);
+  }
+};
+
+const drawFadingCollectable = (self: Player, fadingCollectable: FadingCollectable) => {
+  if (infinityNorm(fadingCollectable.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + fadingCollectable.radius) {
+    return;
+  }
+  ctx.save();
+  ctx.filter = `grayscale(100%)`;
+  const scale = (0.85 + 0.15 * Math.sin(fadingCollectable.phase)) * Math.min(fadingCollectable.framesRemaining / 90, 1);
+  ctx.translate(
+    fadingCollectable.position.x - self.position.x + canvas.width / 2,
+    fadingCollectable.position.y - self.position.y + canvas.height / 2
+  );
+  ctx.rotate(fadingCollectable.heading);
+  const sprite = collectableSprites[fadingCollectable.index];
+  ctx.drawImage(sprite, (-sprite.width * scale) / 2, (-sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
+  ctx.restore();
+};
+
+const drawFadingCollectables = (self: Player) => {
+  for (const fadingCollectable of fadingCollectables) {
+    drawFadingCollectable(self, fadingCollectable);
+  }
+};
+
 let didWarn = false;
 
 const drawEverything = (
@@ -569,10 +645,9 @@ const drawEverything = (
   if (highlightPhase > 2 * Math.PI) {
     highlightPhase -= 2 * Math.PI;
   }
-  // if (secondaryFlashTimeRemaining > 0) {
-  //   secondaryFlashTimeRemaining -= sixtieths;
-  // }
+
   reduceMessageTimeRemaining(sixtieths);
+  reduceCollectableTimeRemaining(sixtieths);
 
   clearCanvas();
   if (self) {
@@ -607,6 +682,8 @@ const drawEverything = (
       drawPlayer(player, lastSelf);
     }
   }
+  drawFadingCollectables(lastSelf);
+  drawCollectables(lastSelf, state.collectables.values(), sixtieths);
   if (self && !self.docked) {
     drawPlayer(self, self);
   }
@@ -628,9 +705,6 @@ const drawEverything = (
     if (self.canDock) {
       drawDockText(keybind.dock);
     }
-    // if (secondaryFlashTimeRemaining > 0) {
-    //   drawSecondaryText(self, selectedSecondary);
-    // }
     drawMessages();
     if (target) {
       drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
@@ -649,8 +723,4 @@ const drawEverything = (
   }
 };
 
-// const flashSecondary = () => {
-//   secondaryFlashTimeRemaining = 90;
-// };
-
-export { drawEverything, initDrawing, ctx, canvas, effectSprites, sprites, ChatMessage, initStars, pushMessage };
+export { drawEverything, initDrawing, ctx, canvas, effectSprites, sprites, ChatMessage, initStars, pushMessage, fadeOutCollectable };

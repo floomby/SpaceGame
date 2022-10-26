@@ -1,7 +1,20 @@
 // This is shared by the server and the client
 
-import { UnitDefinition, UnitKind, defs, asteroidDefs, armDefs, armDefMap, TargetedKind, missileDefs, ArmamentDef, emptyLoadout } from "./defs";
-import { NPC } from "./npc";
+import {
+  UnitDefinition,
+  UnitKind,
+  defs,
+  asteroidDefs,
+  armDefs,
+  armDefMap,
+  TargetedKind,
+  missileDefs,
+  ArmamentDef,
+  emptyLoadout,
+  collectableDefs,
+  createCollectableFromDef,
+} from "./defs";
+import { NPC, processLootTable } from "./npc";
 import { sfc32 } from "./prng";
 
 // TODO Move the geometry stuff to a separate file
@@ -176,10 +189,11 @@ type Ballistic = Entity & { damage: number; team: number; parent: number; frameT
 
 // Primary laser stats (TODO put this in a better place)
 const primaryRange = 1500;
-const primaryRangeSquared = primaryRange * primaryRange;
 const primarySpeed = 20;
 const primaryFramesToExpire = primaryRange / primarySpeed;
 const primaryRadius = 1;
+
+type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
 
 enum EffectAnchorKind {
   Absolute,
@@ -206,6 +220,7 @@ type GlobalState = {
   projectiles: Map<number, Ballistic[]>;
   asteroids: Map<number, Asteroid>;
   missiles: Map<number, Missile>;
+  collectables: Map<number, Collectable>;
 };
 
 const setCanDock = (player: Player, state: GlobalState) => {
@@ -225,37 +240,6 @@ const setCanDock = (player: Player, state: GlobalState) => {
       }
     });
   }
-};
-
-// For smoothing the animations
-const fractionalUpdate = (state: GlobalState, fraction: number) => {
-  const ret: GlobalState = { players: new Map(), projectiles: new Map(), asteroids: new Map(), missiles: new Map() };
-  for (const [id, player] of state.players) {
-    if (player.docked) {
-      ret.players.set(id, player);
-      continue;
-    }
-    ret.players.set(id, {
-      ...player,
-      position: {
-        x: player.position.x + player.speed * Math.cos(player.heading) * fraction,
-        y: player.position.y + player.speed * Math.sin(player.heading) * fraction,
-      },
-    });
-  }
-  for (const [id, projectiles] of state.projectiles) {
-    ret.projectiles.set(
-      id,
-      projectiles.map((projectile) => ({
-        ...projectile,
-        position: {
-          x: projectile.position.x + projectile.speed * Math.cos(projectile.heading) * fraction,
-          y: projectile.position.y + projectile.speed * Math.sin(projectile.heading) * fraction,
-        },
-      }))
-    );
-  }
-  return ret;
 };
 
 const findHeadingBetween = (a: Position, b: Position) => {
@@ -315,7 +299,6 @@ const findInterceptAimingHeading = (from: Position, target: Entity, projectileSp
   return interceptHeading;
 };
 
-// REFACTOR ME Idk why this is returning [Player, number] instead of just the player since the player has the id
 const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
   let ret: Player | undefined = undefined;
   let minDistance = Infinity;
@@ -345,10 +328,6 @@ const findClosestTarget = (player: Player, state: GlobalState, onlyEnemy = false
 const findFurthestTarget = (player: Player, state: GlobalState, onlyEnemy = false) => {
   let ret: Player | undefined = undefined;
   let maxDistance = 0;
-  let def: UnitDefinition;
-  if (onlyEnemy) {
-    def = defs[player.definitionIndex];
-  }
   for (const [id, otherPlayer] of state.players) {
     if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
@@ -376,10 +355,6 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let minDistanceGreaterThanCurrent = Infinity;
   let foundFurther = false;
-  let def: UnitDefinition;
-  if (onlyEnemy) {
-    def = defs[player.definitionIndex];
-  }
   for (const [id, otherPlayer] of state.players) {
     if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
@@ -411,10 +386,6 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
   const currentDistanceSquared = l2NormSquared(player.position, current.position);
   let maxDistanceLessThanCurrent = 0;
   let foundCloser = false;
-  let def: UnitDefinition;
-  if (onlyEnemy) {
-    def = defs[player.definitionIndex];
-  }
   for (const [id, otherPlayer] of state.players) {
     if (otherPlayer.docked || otherPlayer.inoperable) {
       continue;
@@ -455,7 +426,8 @@ const kill = (
   player: Player,
   state: GlobalState,
   applyEffect: (effect: EffectTrigger) => void,
-  onDeath: (player: Player) => void
+  onDeath: (player: Player) => void,
+  drop: (collectable: Collectable) => void
 ) => {
   // Dead stations that are dockable become "inoperable" until repaired (repairing is not implemented yet)
   if (def.kind === UnitKind.Station && def.dockable) {
@@ -470,6 +442,12 @@ const kill = (
       from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
     });
     onDeath(player);
+    if (player.npc) {
+      const toDrop = processLootTable(player.npc.lootTable);
+      if (toDrop !== undefined) {
+        drop(createCollectableFromDef(toDrop, player.position));
+      }
+    }
   }
 };
 
@@ -483,7 +461,9 @@ const update = (
   applyEffect: (effect: EffectTrigger) => void,
   serverWarpList: { player: Player; to: number }[],
   onDeath: (player: Player) => void,
-  flashServerMessage: (id: number, message: string) => void
+  flashServerMessage: (id: number, message: string) => void,
+  drop: (collectable: Collectable) => void,
+  removeCollectable: (id: number, collected: boolean) => void
 ) => {
   // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
@@ -492,7 +472,18 @@ const update = (
     }
     const def = defs[player.definitionIndex];
     if (player.health <= 0) {
-      kill(def, player, state, applyEffect, onDeath);
+      kill(def, player, state, applyEffect, onDeath, drop);
+    }
+
+    if (def.kind !== UnitKind.Station) {
+      for (const collectable of state.collectables.values()) {
+        const collectableDef = collectableDefs[collectable.index];
+        if (circlesIntersect(player, collectable) && collectableDef.canBeCollected(player)) {
+          state.collectables.delete(collectable.id);
+          removeCollectable(collectable.id, true);
+          collectableDef.collectMutator(player);
+        }
+      }
     }
 
     if (def.kind === UnitKind.Ship) {
@@ -635,6 +626,14 @@ const update = (
       }
     }
   }
+  for (const collectable of state.collectables.values()) {
+    if (collectable.framesLeft <= 0) {
+      state.collectables.delete(collectable.id);
+      removeCollectable(collectable.id, false);
+      continue;
+    }
+    collectable.framesLeft -= 1;
+  }
   // Quadratic loop for the projectiles
   for (const [id, projectiles] of state.projectiles) {
     for (let i = 0; i < projectiles.length; i++) {
@@ -651,7 +650,7 @@ const update = (
         if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
-            kill(def, otherPlayer, state, applyEffect, onDeath);
+            kill(def, otherPlayer, state, applyEffect, onDeath, drop);
           }
           projectiles.splice(i, 1);
           i--;
@@ -700,7 +699,7 @@ const update = (
       if (missile.team !== otherPlayer.team && circlesIntersect(missile, otherPlayer)) {
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
-          kill(def, otherPlayer, state, applyEffect, onDeath);
+          kill(def, otherPlayer, state, applyEffect, onDeath, drop);
         }
         state.missiles.delete(id);
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
@@ -1098,12 +1097,12 @@ export {
   EffectTrigger,
   CargoEntry,
   ChatMessage,
+  Collectable,
   update,
   applyInputs,
   processAllNpcs,
   infinityNorm,
   positiveMod,
-  fractionalUpdate,
   canDock,
   setCanDock,
   copyPlayer,

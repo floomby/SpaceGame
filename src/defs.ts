@@ -12,6 +12,7 @@ import {
   addCargo,
   uid,
   Missile,
+  Collectable,
 } from "../src/game";
 
 enum Faction {
@@ -120,6 +121,15 @@ type MissileDef = {
   turnRate?: number;
 };
 
+type CollectableDef = {
+  sprite: Rectangle;
+  radius: number;
+  name: string;
+  description: string;
+  canBeCollected: (player: Player) => boolean;
+  collectMutator: (player: Player) => void;
+};
+
 const computeBrakeDistance = (acceleration: number, speed: number) => {
   return (speed * speed) / (2 * acceleration);
 };
@@ -133,6 +143,9 @@ const armDefMap = new Map<string, { index: number; def: ArmamentDef }>();
 const asteroidDefs: AsteroidDef[] = [];
 
 const missileDefs: MissileDef[] = [];
+
+const collectableDefs: CollectableDef[] = [];
+const collectableDefMap = new Map<string, { index: number; def: CollectableDef }>();
 
 const initDefs = () => {
   defs.push({
@@ -549,6 +562,24 @@ const initDefs = () => {
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 24,
   });
+
+  collectableDefs.push({
+    sprite: { x: 320, y: 64, width: 64, height: 64 },
+    radius: 26,
+    name: "Spare Parts",
+    description: "Collect spare parts to repair stations",
+    canBeCollected: (player) => {
+      return availableCargoCapacity(player) > 0;
+    },
+    collectMutator: (player) => {
+      addCargo(player, "Spare Parts", 5);
+    },
+  });
+
+  for (let i = 0; i < collectableDefs.length; i++) {
+    const def = collectableDefs[i];
+    collectableDefMap.set(def.name, { index: i, def });
+  }
 };
 
 enum EmptySlot {
@@ -562,6 +593,19 @@ enum EmptySlot {
 const emptyLoadout = (index: number) => {
   const def = defs[index];
   return [...def.slots] as unknown as EmptySlot[];
+};
+
+const createCollectableFromDef = (index: number, where: Position) => {
+  const def = collectableDefs[index];
+  return {
+    id: uid(),
+    position: { x: where.x, y: where.y },
+    radius: def.radius,
+    heading: Math.random() * Math.PI * 2,
+    speed: 0,
+    index,
+    framesLeft: 600,
+  };
 };
 
 export {
@@ -580,7 +624,10 @@ export {
   armDefs,
   armDefMap,
   missileDefs,
+  collectableDefs,
+  collectableDefMap,
   initDefs,
   getFactionString,
   emptyLoadout,
+  createCollectableFromDef,
 };

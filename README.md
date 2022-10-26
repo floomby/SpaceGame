@@ -2,6 +2,8 @@
 
 A simple multiplayer game where you have a ship and do things.
 
+[Live alpha](https://inharmonious.floomby.us/)
+
 ### Random list of things to do
 
 - Shields? (maybe)
@@ -12,6 +14,10 @@ A simple multiplayer game where you have a ship and do things.
 - Network optimization
 - Defining units, missiles, effects, etc should be easier
 - Economy is very boring right now
+
+### Refactoring stuff
+
+- Move asteroids over to being sector data like the collectables
 
 ### MMO Stuff
 

@@ -11,6 +11,7 @@ import {
   TargetKind,
   Missile,
   ChatMessage,
+  Collectable,
 } from "./game";
 import {
   init as initDialog,
@@ -26,7 +27,7 @@ import {
   peekTag,
 } from "./dialog";
 import { defs, initDefs, Faction, getFactionString, armDefs } from "./defs";
-import { drawEverything, initDrawing, initStars, pushMessage } from "./drawing";
+import { drawEverything, fadeOutCollectable, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import { currentSector, initBlankState, keybind, ownId, selectedSecondary, setCurrentSector, setOwnId, setSelectedSecondary, state } from "./globals";
 import { initSettings } from "./dialogs/settings";
@@ -270,6 +271,7 @@ const run = () => {
     // hideDialog();
     if (data.to !== currentSector) {
       state.asteroids.clear();
+      state.collectables.clear();
       initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);
@@ -293,6 +295,21 @@ const run = () => {
 
   bindAction("serverMessage", (data: { message: string }) => {
     pushMessage(data.message);
+  });
+
+  bindAction("addCollectables", (data: Collectable[]) => {
+    for (const collectable of data) {
+      collectable.phase = 0;
+      state.collectables.set(collectable.id, collectable);
+    }
+  });
+  
+  bindAction("removeCollectable", (data: { id: number, collected: boolean }) => {
+    const collectable = state.collectables.get(data.id);
+    state.collectables.delete(data.id);
+    if (!data.collected) {
+      fadeOutCollectable(collectable);
+    }
   });
 
   loop();

@@ -47,6 +47,7 @@ const initBlankState = () => {
     projectiles: new Map(),
     asteroids: new Map(),
     missiles: new Map(),
+    collectables: new Map(),
   };
 };
 

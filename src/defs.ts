@@ -66,6 +66,8 @@ type UnitDefinition = {
   warpTime?: number;
   warpEffect?: number;
   brakeDistance?: number;
+  sideThrustMaxSpeed?: number;
+  sideThrustAcceleration?: number;
 };
 
 enum ArmUsage {
@@ -169,6 +171,8 @@ const initDefs = () => {
     price: 100,
     warpTime: 90,
     warpEffect: 7,
+    sideThrustMaxSpeed: 5,
+    sideThrustAcceleration: 0.1,
   });
   defs.push({
     name: "Drone",
@@ -191,6 +195,8 @@ const initDefs = () => {
     price: 100,
     warpTime: 90,
     warpEffect: 7,
+    sideThrustMaxSpeed: 5,
+    sideThrustAcceleration: 0.1,
   });
   defs.push({
     name: "Alliance Starbase",
@@ -259,6 +265,8 @@ const initDefs = () => {
     price: 300,
     warpTime: 120,
     warpEffect: 7,
+    sideThrustMaxSpeed: 3,
+    sideThrustAcceleration: 0.08,
   });
   defs.push({
     name: "Seeker",
@@ -281,6 +289,8 @@ const initDefs = () => {
     price: 300,
     warpTime: 120,
     warpEffect: 7,
+    sideThrustMaxSpeed: 3,
+    sideThrustAcceleration: 0.08,
   });
 
   for (let i = 0; i < defs.length; i++) {

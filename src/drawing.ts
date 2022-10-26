@@ -19,12 +19,14 @@ import {
   positiveMod,
   Rectangle,
 } from "./game";
+import { lastSelf } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 let sprites: ImageBitmap[] = [];
+let perspectiveSprites: (ImageBitmap | void)[] = [];
 let asteroidSprites: ImageBitmap[] = [];
 let missileSprites: ImageBitmap[] = [];
 let effectSprites: ImageBitmap[] = [];
@@ -32,6 +34,32 @@ let collectableSprites: ImageBitmap[] = [];
 
 let stars: Circle[] = [];
 let starTilingSize = { x: 5000, y: 5000 };
+
+let perspectiveRescaling: Position[] = [];
+
+// This is slower than snails but it only runs during loading
+const foreshortenImage = (image: ImageBitmap, amount: number) => {
+  const inputCanvas = document.createElement("canvas");
+  inputCanvas.width = image.width;
+  inputCanvas.height = image.height;
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = image.width;
+  outputCanvas.height = image.height;
+  const inCtx = inputCanvas.getContext("2d", { willReadFrequently: true })!;
+  const outCtx = outputCanvas.getContext("2d")!;
+  inCtx.drawImage(image, 0, 0);
+
+  for (let y = 0; y < image.height; y++) {
+    for (let x = 0; x < image.width; x++) {
+      const data = inCtx.getImageData(x, y, 1, 1).data;
+      const newX = (x - image.width / 2) * (1 - (amount * y) / image.height) + image.width / 2;
+      // const newY = (y - image.height / 2) * (1 - (amount * x) / image.height) + image.height / 2;
+      outCtx.putImageData(new ImageData(new Uint8ClampedArray(data), 1, 1), newX, y);
+    }
+  }
+
+  return createImageBitmap(outputCanvas);
+};
 
 const initStars = (sector: number) => {
   stars.length = 0;
@@ -95,6 +123,30 @@ const loadAsteroidSprites = (spriteSheet: HTMLImageElement, callback: () => void
   });
 };
 
+const loadPerspectiveSprites = (callback: () => void) => {
+  const thetas = [1, 2, 3, 4, 5].map((i) => (i * Math.PI) / 16);
+
+  thetas.forEach((theta) => {
+    perspectiveRescaling.push({ x: (1 - Math.cos(theta)) / 2, y: Math.sin(theta) });
+  });
+
+  const spritePromises: Promise<ImageBitmap | void>[] = [];
+  for (let i = 0; i < defs.length; i++) {
+    for (let j = 0; j < thetas.length; j++) {
+      if (defs[i].sideThrustMaxSpeed === undefined) {
+        spritePromises.push(Promise.resolve());
+      } else {
+        spritePromises.push(foreshortenImage(sprites[i], 1 - Math.cos(thetas[j])));
+      }
+    }
+  }
+  Promise.all(spritePromises).then((completed) => {
+    perspectiveSprites = completed;
+    console.log("Loaded perspective sprites", perspectiveSprites.length);
+    callback();
+  });
+};
+
 const initDrawing = (callback: () => void) => {
   initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -116,7 +168,10 @@ const initDrawing = (callback: () => void) => {
       loadAsteroidSprites(spriteSheet, () => {
         loadMissileSprites(spriteSheet, () => {
           loadEffectSprites(spriteSheet, () => {
-            loadCollectableSprites(spriteSheet, callback);
+            loadCollectableSprites(spriteSheet, () => {
+              // loadPerspectiveSprites(callback);
+              callback();
+            });
           });
         });
       });
@@ -323,39 +378,40 @@ const drawAsteroid = (asteroid: Asteroid, self: Player) => {
 };
 
 const drawPlayer = (player: Player, self: Player) => {
+  const def = defs[player.definitionIndex];
   ctx.save();
-  ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
   let sprite = sprites[player.definitionIndex];
+  // const steps = perspectiveRescaling.length;
+  // let perspectiveIndex: number;
+
+  // if (player.side && Math.abs(player.side) > def.sideThrustMaxSpeed / steps) {
+  //   perspectiveIndex = Math.floor((Math.abs(player.side) / def.sideThrustMaxSpeed) * steps) - 1;
+  //   sprite = perspectiveSprites[player.definitionIndex * steps + perspectiveIndex] as ImageBitmap;
+  // }
+
+  // if (!sprite) {
+  //   sprite = sprites[player.definitionIndex];
+  // }
+
+  ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
+
+
   if (player.inoperable) {
     ctx.filter = "grayscale(80%)";
-    ctx.rotate(player.heading);
   } else {
-    drawBar(
-      { x: -sprite.width / 2, y: -sprite.height / 2 - 10 },
-      sprite.width,
-      5,
-      "#00EE00CC",
-      "#EE0000CC",
-      Math.max(player.health, 0) / defs[player.definitionIndex].health
-    );
-    drawBar(
-      { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
-      sprite.width,
-      5,
-      "#0022FFCC",
-      "#333333CC",
-      player.energy / defs[player.definitionIndex].energy
-    );
-    ctx.rotate(player.heading);
+    drawBar({ x: -sprite.width / 2, y: -sprite.height / 2 - 10 }, sprite.width, 5, "#00EE00CC", "#EE0000CC", Math.max(player.health, 0) / def.health);
+    drawBar({ x: -sprite.width / 2, y: -sprite.height / 2 - 5 }, sprite.width, 5, "#0022FFCC", "#333333CC", player.energy / def.energy);
   }
   // This effect is pretty bad, but I want something visual to indicate a warp is in progress
   if (player.warping) {
-    const def = defs[player.definitionIndex];
     const warpAmount = player.warping / def.warpTime;
     ctx.filter = `hue-rotate(${warpAmount * Math.PI * 2}rad) saturate(${(1 - warpAmount) * 100}%)`;
   }
+  ctx.rotate(player.heading);
+  // if (sprite !== sprites[player.definitionIndex]) {
+  //   ctx.transform(1 + perspectiveRescaling[perspectiveIndex].x, 0, 0, Math.sign(player.side), 0, 0);
+  // }
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
-
   ctx.restore();
 };
 
@@ -411,7 +467,6 @@ const drawDockText = (dockKey: string) => {
 // };
 
 // This is only for drawing purposes (if we die we need to keep the last position)
-let lastSelf: Player;
 
 let highlightPhase = 0;
 
@@ -532,7 +587,7 @@ type Message = {
 
 let messages: Message[] = [];
 
-const pushMessage = (what: string, framesRemaining: number = 180) => {
+const pushMessage = (what: string, framesRemaining: number = 240) => {
   messages.push({ what, framesRemaining });
 };
 
@@ -549,9 +604,10 @@ const drawMessages = () => {
   ctx.textAlign = "center";
   let y = 30;
   for (const message of messages) {
-    ctx.fillStyle = `rgb(255, 255, 255, ${Math.min(message.framesRemaining / 60, 1)})`;
+    const alpha = Math.min(message.framesRemaining / 60, 1);
+    ctx.fillStyle = `rgb(255, 255, 255, ${alpha})`;
     ctx.fillText(message.what, canvas.width / 2, y);
-    y += 30;
+    y += 30 * alpha;
   }
 };
 
@@ -650,9 +706,6 @@ const drawEverything = (
   reduceCollectableTimeRemaining(sixtieths);
 
   clearCanvas();
-  if (self) {
-    lastSelf = self;
-  }
   if (!self && !lastSelf) {
     if (!didWarn) {
       // Seems to happen on server startup (I think the server is just sending a state update before the init message)
@@ -723,4 +776,14 @@ const drawEverything = (
   }
 };
 
-export { drawEverything, initDrawing, ctx, canvas, effectSprites, sprites, ChatMessage, initStars, pushMessage, fadeOutCollectable };
+const canvasCoordsToGameCoords = (x: number, y: number) => {
+  if (!lastSelf) {
+    return undefined;
+  }
+  return {
+    x: x - canvas.width / 2 + lastSelf.position.x,
+    y: y - canvas.height / 2 + lastSelf.position.y,
+  };
+};
+
+export { drawEverything, initDrawing, ctx, canvas, effectSprites, sprites, ChatMessage, initStars, pushMessage, fadeOutCollectable, canvasCoordsToGameCoords };

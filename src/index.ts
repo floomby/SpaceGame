@@ -1,4 +1,4 @@
-import { connect, bindAction, sendDock, sendTarget, sendSecondary, unbindAllActions } from "./net";
+import { connect, bindAction, sendDock, sendTarget, sendSecondary, unbindAllActions, sendInput, sendAngle } from "./net";
 import {
   Player,
   Ballistic,
@@ -12,6 +12,11 @@ import {
   Missile,
   ChatMessage,
   Collectable,
+  findSmallAngleBetween,
+  findClosestTarget,
+  Position,
+  findAllPlayersOverlappingPoint,
+  findAllAsteroidsOverlappingPoint,
 } from "./game";
 import {
   init as initDialog,
@@ -26,13 +31,25 @@ import {
   runPostUpdaterOnly,
   peekTag,
 } from "./dialog";
-import { defs, initDefs, Faction, getFactionString, armDefs } from "./defs";
+import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, EmptySlot } from "./defs";
 import { drawEverything, fadeOutCollectable, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
-import { currentSector, initBlankState, keybind, ownId, selectedSecondary, setCurrentSector, setOwnId, setSelectedSecondary, state } from "./globals";
+import {
+  currentSector,
+  initBlankState,
+  keybind,
+  lastSelf,
+  ownId,
+  selectedSecondary,
+  setCurrentSector,
+  setLastSelf,
+  setOwnId,
+  setSelectedSecondary,
+  state,
+} from "./globals";
 import { initSettings } from "./dialogs/settings";
 import { deadDialog, setupDeadDialog } from "./dialogs/dead";
-import { hideChat, initInputHandlers, input, selectedSecondaryChanged, setSelectedSecondaryChanged, targetEnemy } from "./input";
+import { hideChat, initInputHandlers, input, selectedSecondaryChanged, setSelectedSecondaryChanged, targetAngle, targetEnemy } from "./input";
 import { bindDockingUpdaters, dockDialog, docker, setDocker, setShowDocked, setupDockingUI, showDocked } from "./dialogs/dock";
 import { displayLoginDialog } from "./dialogs/login";
 
@@ -47,6 +64,22 @@ let serverTarget: [TargetKind, number] = [TargetKind.None, 0];
 let lastFrameTime = Date.now();
 
 const lastChats = new Map<number, ChatMessage>();
+
+let oldAngle = 0;
+
+const selectFirstSecondary = (self: Player) => {
+  let index = 1;
+  // All the low arm defs are for empty slots
+  while (index < self.armIndices.length && self.armIndices[index] < SlotKind.Mining) {
+    index++;
+  }
+  if (index < self.armIndices.length) {
+    setSelectedSecondary(index);
+    setSelectedSecondaryChanged(true);
+  }
+};
+
+let forceSetSecondary = false;
 
 // TODO There is a bunch of business logic in here that should be refactored into better places
 const loop = () => {
@@ -63,44 +96,52 @@ const loop = () => {
 
   const self = state.players.get(ownId);
 
-  const def = self ? defs[self.definitionIndex] : undefined;
-  if (self && selectedSecondaryChanged) {
-    if (selectedSecondary < def.slots.length) {
-      lastValidSecondary = selectedSecondary;
-      const armamentDef = armDefs[self.armIndices[selectedSecondary]];
-      pushMessage(`${selectedSecondary} - ${armamentDef.name}`);
-      sendSecondary(ownId, selectedSecondary);
-    } else {
-      setSelectedSecondary(lastValidSecondary);
+  if (self && !self.docked) {
+    if (oldAngle !== targetAngle) {
+      oldAngle = targetAngle;
+      const delta = findSmallAngleBetween(self.heading, targetAngle);
+      if (delta > 0.01) {
+        sendAngle(ownId, targetAngle);
+      } else if (delta < -0.01) {
+        sendAngle(ownId, targetAngle);
+      }
     }
-    setSelectedSecondaryChanged(false);
   }
 
   if (self && !self.docked) {
-    if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
-      target = state.players.get(targetId);
-      target = input.nextTarget ? findNextTarget(self, target, state, targetEnemy) : findPreviousTarget(self, target, state, targetEnemy);
-      targetId = target?.id ?? 0;
-      input.nextTarget = false;
-      input.previousTarget = false;
-      if (target) {
-        targetAsteroidId = 0;
-      }
-    } else if (input.nextTargetAsteroid || input.previousTargetAsteroid) {
-      targetAsteroid = state.asteroids.get(targetAsteroidId);
-      targetAsteroid = input.nextTargetAsteroid
-        ? findNextTargetAsteroid(self, targetAsteroid, state)
-        : findPreviousTargetAsteroid(self, targetAsteroid, state);
-      targetAsteroidId = targetAsteroid?.id ?? 0;
-      input.nextTargetAsteroid = false;
-      input.previousTargetAsteroid = false;
-      if (targetAsteroidId) {
-        target = undefined;
-        targetId = 0;
+    if (!input.quickTargetClosestEnemy) {
+      if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
+        target = state.players.get(targetId);
+        target = input.nextTarget ? findNextTarget(self, target, state, targetEnemy) : findPreviousTarget(self, target, state, targetEnemy);
+        targetId = target?.id ?? 0;
+        input.nextTarget = false;
+        input.previousTarget = false;
+        if (target) {
+          targetAsteroidId = 0;
+        }
+      } else if (input.nextTargetAsteroid || input.previousTargetAsteroid) {
+        targetAsteroid = state.asteroids.get(targetAsteroidId);
+        targetAsteroid = input.nextTargetAsteroid
+          ? findNextTargetAsteroid(self, targetAsteroid, state)
+          : findPreviousTargetAsteroid(self, targetAsteroid, state);
+        targetAsteroidId = targetAsteroid?.id ?? 0;
+        input.nextTargetAsteroid = false;
+        input.previousTargetAsteroid = false;
+        if (targetAsteroidId) {
+          target = undefined;
+          targetId = 0;
+        }
+      } else {
+        target = state.players.get(targetId);
+        targetAsteroid = state.asteroids.get(targetAsteroidId);
       }
     } else {
-      target = state.players.get(targetId);
-      targetAsteroid = state.asteroids.get(targetAsteroidId);
+      target = findClosestTarget(self, state, true);
+      targetId = target?.id ?? 0;
+      targetAsteroid = undefined;
+      targetAsteroidId = 0;
+      input.quickTargetClosestEnemy = false;
+      forceSetSecondary = true;
     }
   }
 
@@ -120,6 +161,37 @@ const loop = () => {
   if (target?.docked) {
     target = undefined;
     targetId = 0;
+  }
+
+  if (forceSetSecondary && self && selectedSecondary === 0 && !targetAsteroid && target && target.team !== self.team) {
+    selectFirstSecondary(self);
+    forceSetSecondary = false;
+  }
+
+  if (
+    forceSetSecondary &&
+    self &&
+    selectedSecondary !== 0 &&
+    targetAsteroid &&
+    self.armIndices.length > 0 &&
+    self.armIndices[0] !== EmptySlot.Mining
+  ) {
+    setSelectedSecondary(0);
+    setSelectedSecondaryChanged(true);
+    forceSetSecondary = false;
+  }
+
+  const def = self ? defs[self.definitionIndex] : undefined;
+  if (self && selectedSecondaryChanged) {
+    if (selectedSecondary < def.slots.length) {
+      lastValidSecondary = selectedSecondary;
+      const armamentDef = armDefs[self.armIndices[selectedSecondary]];
+      pushMessage(`${selectedSecondary} - ${armamentDef.name}`);
+      sendSecondary(ownId, selectedSecondary);
+    } else {
+      setSelectedSecondary(lastValidSecondary);
+    }
+    setSelectedSecondaryChanged(false);
   }
 
   if (self && !self.docked && showDocked) {
@@ -168,6 +240,24 @@ const loop = () => {
   requestAnimationFrame(loop);
 };
 
+const targetAtCoords = (coords: Position) => {
+  const possibleTargets = findAllPlayersOverlappingPoint(coords, state.players.values()).filter((p) => p.id !== ownId && !p.inoperable);
+  if (possibleTargets.length) {
+    const target = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+    targetId = target.id;
+    targetAsteroidId = 0;
+    forceSetSecondary = true;
+  } else {
+    const possibleAsteroids = findAllAsteroidsOverlappingPoint(coords, state.asteroids.values());
+    if (possibleAsteroids.length) {
+      const target = possibleAsteroids[Math.floor(Math.random() * possibleAsteroids.length)];
+      targetId = 0;
+      targetAsteroidId = target.id;
+      forceSetSecondary = true;
+    }
+  }
+};
+
 const run = () => {
   displayLoginDialog();
 
@@ -181,7 +271,7 @@ const run = () => {
     clearDialogStack();
     clearDialog();
     hideDialog();
-    initInputHandlers();
+    initInputHandlers(targetAtCoords);
   });
 
   bindAction("loginFail", (data: { error: string }) => {
@@ -247,6 +337,7 @@ const run = () => {
       // pushDialog(deadDialog, setupDeadDialog, "dead");
     }
     if (self) {
+      setLastSelf(self);
       updateDom("cargo", self.cargo);
       updateDom("credits", self.credits);
       updateDom("arms", self.armIndices);
@@ -303,8 +394,8 @@ const run = () => {
       state.collectables.set(collectable.id, collectable);
     }
   });
-  
-  bindAction("removeCollectable", (data: { id: number, collected: boolean }) => {
+
+  bindAction("removeCollectable", (data: { id: number; collected: boolean }) => {
     const collectable = state.collectables.get(data.id);
     state.collectables.delete(data.id);
     if (!data.collected) {

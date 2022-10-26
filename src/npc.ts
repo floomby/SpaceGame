@@ -1,4 +1,4 @@
-import { defMap, defs, emptyLoadout, UnitDefinition } from "./defs";
+import { defMap, defs, emptyLoadout, Faction, UnitDefinition } from "./defs";
 import {
   applyInputs,
   arrivePosition,
@@ -40,7 +40,7 @@ class NPC {
 
   public lootTable: LootTable = [];
 
-  constructor(what: string | number) {
+  constructor(what: string | number, team: number | Faction) {
     const id = uid();
 
     let definitionIndex: number;
@@ -73,7 +73,7 @@ class NPC {
       cargo: [{ what: "Teddy Bears", amount: 30 }],
       credits: 500,
       npc: this,
-      team: 1,
+      team,
     };
 
     this.lootTable = [{ index: 0, probability: 0.5 }];
@@ -109,7 +109,7 @@ class NPC {
 }
 
 const addNpc = (state: GlobalState) => {
-  const npc = new NPC("Drone");
+  const npc = new NPC("Drone", Faction.Confederation);
   state.players.set(npc.player.id, npc.player);
 };
 

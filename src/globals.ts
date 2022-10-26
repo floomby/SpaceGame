@@ -1,6 +1,6 @@
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
-import { GlobalState } from "./game";
+import { GlobalState, Player } from "./game";
 import { useKeybindings } from "./keybindings";
 
 let faction: Faction = Faction.Alliance;
@@ -51,6 +51,12 @@ const initBlankState = () => {
   };
 };
 
+let lastSelf: Player | undefined;
+
+const setLastSelf = (newLastSelf: Player | undefined) => {
+  lastSelf = newLastSelf;
+};
+
 export {
   faction,
   setFaction,
@@ -68,4 +74,6 @@ export {
   setSelectedSecondary,
   state,
   initBlankState,
+  lastSelf,
+  setLastSelf,
 };

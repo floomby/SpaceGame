@@ -1,9 +1,10 @@
 import { peekTag, pop, push } from "./dialog";
 import { mapDialog, setupMapDialog } from "./dialogs/map";
-import { Input } from "./game";
+import { Input, Position } from "./game";
 import { keybind, ownId, selectedSecondary, setSelectedSecondary } from "./globals";
-import { sendChat, sendInput, sendWarp } from "./net";
+import { sendChat, sendInput } from "./net";
 import { shown as isDialogShown } from "./dialog";
+import { canvas, canvasCoordsToGameCoords } from "./drawing";
 
 let chatInput: HTMLInputElement;
 
@@ -19,8 +20,10 @@ let input: Input = {
   previousTarget: false,
   nextTargetAsteroid: false,
   previousTargetAsteroid: false,
+  quickTargetClosestEnemy: false,
 };
 
+let targetAngle = 0;
 let selectedSecondaryChanged = false;
 
 const setSelectedSecondaryChanged = (state: boolean) => {
@@ -29,7 +32,7 @@ const setSelectedSecondaryChanged = (state: boolean) => {
 
 let targetEnemy = false;
 
-const initInputHandlers = () => {
+const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
   chatInput = document.getElementById("chatInput") as HTMLInputElement;
   // if the chat is unfocused and empty we need to hide it
   chatInput.addEventListener("blur", () => {
@@ -70,10 +73,6 @@ const initInputHandlers = () => {
       case keybind.right:
         changed = !input.right;
         input.right = true;
-        break;
-      case keybind.primary:
-        changed = !input.primary;
-        input.primary = true;
         break;
       case keybind.secondary:
         changed = !input.secondary;
@@ -139,10 +138,9 @@ const initInputHandlers = () => {
           pop();
         }
         break;
-      // Temporary keybind for testing
-      // case keybind.warp:
-      //   sendWarp(ownId, 2);
-      //   break;
+      case keybind.quickTargetClosestEnemy:
+        input.quickTargetClosestEnemy = true;
+        break;
     }
     if (changed) {
       sendInput(input, ownId);
@@ -174,10 +172,6 @@ const initInputHandlers = () => {
         changed = input.right;
         input.right = false;
         break;
-      case keybind.primary:
-        changed = input.primary;
-        input.primary = false;
-        break;
       case keybind.secondary:
         changed = input.secondary;
         input.secondary = false;
@@ -203,6 +197,55 @@ const initInputHandlers = () => {
     }
   });
 
+  document.addEventListener("mousemove", (e) => {
+    if (isDialogShown) {
+      if (input.primary) {
+        input.primary = false;
+        sendInput(input, ownId);
+      }
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const dx = x - canvas.width / 2;
+    const dy = y - canvas.height / 2;
+    targetAngle = Math.atan2(dy, dx);
+  });
+
+  document.onmousedown = (e) => {
+    if (e.button === 0) {
+      if (!isDialogShown) {
+        const oldPrimary = input.primary;
+        input.primary = true;
+        if (oldPrimary !== input.primary) {
+          sendInput(input, ownId);
+        }
+      }
+    }
+    if (e.button === 2) {
+      if (isDialogShown) {
+        return;
+      }
+      // get canvas position
+      const rect = canvas.getBoundingClientRect();
+      const coords = canvasCoordsToGameCoords(e.clientX - rect.left, e.clientY - rect.top);
+      if (coords) {
+        targetAtCoords(coords);
+      }
+    }
+  };
+  document.onmouseup = (e) => {
+    if (e.button === 0) {
+      input.primary = false;
+      sendInput(input, ownId);
+    }
+  };
+
+  canvas.oncontextmenu = (e) => {
+    e.preventDefault();
+  };
+
   chatInput.blur();
 };
 
@@ -211,4 +254,4 @@ const hideChat = () => {
   chatInput.style.display = "none";
 };
 
-export { initInputHandlers, hideChat, input, selectedSecondaryChanged, setSelectedSecondaryChanged, targetEnemy };
+export { initInputHandlers, hideChat, input, selectedSecondaryChanged, setSelectedSecondaryChanged, targetEnemy, targetAngle };

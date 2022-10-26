@@ -756,8 +756,19 @@ wss.on("connection", (ws) => {
         const state = sectors.get(client.currentSector)!;
         const player = state.players.get(client.id);
         if (player) {
-          purchaseShip(player, data.payload.index, ["Advanced Fighter", "Fighter"]);
-          // state.players.set(client.id, player);
+          Station.findOne({ id: player.docked }, (err, station) => {
+            if (err) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading station" } }));
+              console.log("Error loading station: " + err);
+              return;
+            }
+            if (!station) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Station not found" } }));
+              console.log("Error loading station: " + err);
+              return;
+            }
+            purchaseShip(player, data.payload.index, station.shipsAvailable);
+          });
         }
       }
     } else if (data.type === "warp") {

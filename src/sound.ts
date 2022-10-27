@@ -5,7 +5,7 @@ let volume: GainNode;
 
 const soundBuffers: AudioBuffer[] = [];
 
-const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav", "twinkle0.wav"];
+const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav", "twinkle0.wav", "dullPew0.wav"];
 
 const soundMap: Map<string, number> = new Map<string, number>();
 

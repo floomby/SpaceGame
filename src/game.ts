@@ -13,6 +13,7 @@ import {
   emptyLoadout,
   collectableDefs,
   createCollectableFromDef,
+  Faction,
 } from "./defs";
 import { NPC, processLootTable } from "./npc";
 import { sfc32 } from "./prng";
@@ -496,7 +497,7 @@ const kill = (
     player.health = 0;
     player.energy = 0;
     player.inoperable = true;
-    player.repairs = [0, 0];
+    player.repairs = new Array(Faction.Count as number).fill(0);
   } else {
     // Dead ships just get removed
     state.players.delete(player.id);
@@ -574,6 +575,10 @@ const update = (
         player.projectileId++;
         player.toFirePrimary = false;
         player.energy -= primaryEnergy;
+        applyEffect({
+          effectIndex: 8,
+          from: { kind: EffectAnchorKind.Absolute, value: player.position },
+        });
       }
       // Run the secondary frameMutators
       player.armIndices.forEach((armament, index) => {
@@ -665,6 +670,7 @@ const update = (
               player.projectileId++;
               player.energy -= primaryEnergy;
               player.sinceLastShot[i] = 0;
+              applyEffect({ effectIndex: 8, from: { kind: EffectAnchorKind.Absolute, value: hardpointLocations[i] } });
             }
           }
         }

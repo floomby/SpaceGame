@@ -230,6 +230,7 @@ const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: stri
   <tr><th>Energy Regen</th><td>${maxDecimals(def.energyRegen * ticksPerSecond, 2)} Energy/sec</td></tr>
   <tr><th>Health Regen</th><td>${maxDecimals(def.healthRegen * ticksPerSecond, 2)} Health/sec</td></tr>
   <tr><th>Cargo Capacity</th><td>${maxDecimals(def.cargoCapacity, 2)}</td></tr>
+  <tr><th>Scanner Range</th><td>${def.scanRange}</td></tr>
 </table>`;
   }
 };

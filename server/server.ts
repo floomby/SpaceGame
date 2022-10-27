@@ -318,8 +318,18 @@ app.get("/addNPC", (req, res) => {
     res.send("Invalid sector");
     return;
   }
+  const what = req.query.what;
+  if (!what || typeof what !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const team = req.query.team;
+  if (!team || typeof team !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
   try {
-    addNpc(sectors.get(sectorIndex)!);
+    addNpc(sectors.get(sectorIndex)!, what, parseInt(team));
   } catch (e) {
     res.send("Error: " + e);
     return;
@@ -438,7 +448,7 @@ const idToWebsocket = new Map<number, WebSocket>();
 
 for (let i = 0; i < sectorList.length; i++) {
   const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(30, { x: -3000, y: -3000, width: 6000, height: 6000 }, sectorList[i]);
+  const testAsteroids = randomAsteroids(5, { x: -3000, y: -3000, width: 6000, height: 6000 }, sectorList[i]);
   for (const asteroid of testAsteroids) {
     sector.asteroids.set(asteroid.id, asteroid);
   }

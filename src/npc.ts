@@ -83,8 +83,9 @@ class NPC {
 
   public process(state: GlobalState, frame: number) {
     let target: Player | undefined = undefined;
+    const def = defs[this.player.definitionIndex];
     if (frame % 60 === 0) {
-      const newTarget = findClosestTarget(this.player, state, true);
+      const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
       this.targetId = newTarget?.id ?? 0;
       target = newTarget;
     }
@@ -108,8 +109,8 @@ class NPC {
   }
 }
 
-const addNpc = (state: GlobalState) => {
-  const npc = new NPC("Drone", Faction.Confederation);
+const addNpc = (state: GlobalState, what: string | number, team: Faction) => {
+  const npc = new NPC(what, team);
   state.players.set(npc.player.id, npc.player);
 };
 

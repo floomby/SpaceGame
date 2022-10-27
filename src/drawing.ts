@@ -1,4 +1,4 @@
-import { armDefs, ArmUsage, asteroidDefs, collectableDefs, defs, missileDefs, UnitKind } from "./defs";
+import { armDefs, ArmUsage, asteroidDefs, collectableDefs, defs, Faction, missileDefs, UnitKind } from "./defs";
 import { drawEffects, initEffects, effectSpriteDefs } from "./effects";
 import {
   Asteroid,
@@ -12,14 +12,16 @@ import {
   findLinesTangentToCircleThroughPoint,
   GlobalState,
   infinityNorm,
+  l2Norm,
   Line,
   Missile,
   Player,
   Position,
   positiveMod,
   Rectangle,
+  TargetKind,
 } from "./game";
-import { allianceColorDark, confederationColorDark, lastSelf } from "./globals";
+import { allianceColorDark, allianceColorOpaque, confederationColorDark, confederationColorOpaque, lastSelf, teamColorsOpaque } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
 
@@ -415,9 +417,10 @@ const drawPlayer = (player: Player, self: Player) => {
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
 
   if (player.inoperable) {
+    ctx.rotate(-player.heading);
     ctx.filter = "grayscale(0%)";
-    drawBar({ x: -sprite.width / 2, y: -10 }, sprite.width, 10, allianceColorDark, "#333333CC", player.repairs[0] / def.repairsRequired);
-    drawBar({ x: -sprite.width / 2, y: 0 }, sprite.width, 10, confederationColorDark, "#333333CC", player.repairs[1] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: -14 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333CC", player.repairs[0] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: 2 }, sprite.width * 0.8, 12, confederationColorOpaque, "#333333CC", player.repairs[1] / def.repairsRequired);
   }
   ctx.restore();
 };
@@ -556,14 +559,17 @@ const drawTargetAsteroid = (where: Rectangle, self: Player, targetAsteroid: Aste
   ctx.restore();
 };
 
-const drawTargetArrow = (self: Player, target: Circle, fillStyle: string) => {
+const drawArrow = (self: Player, targetPosition: Position, fillStyle: string, highlight: boolean, distance: number) => {
   const margin = 25;
-  const heading = findHeadingBetween(self.position, target.position);
+  const heading = findHeadingBetween(self.position, targetPosition);
   const intersection = projectRayFromCenterOfRect({ x: 0, y: 0, width: canvas.width, height: canvas.height }, heading);
   const position = { x: intersection.x - Math.cos(heading) * margin, y: intersection.y - Math.sin(heading) * margin };
   ctx.save();
   ctx.translate(position.x, position.y);
   ctx.rotate(heading);
+  if (highlight) {
+    ctx.filter = "drop-shadow(0 0 5px #FFFFFF)";
+  }
   ctx.fillStyle = fillStyle;
   ctx.beginPath();
   ctx.moveTo(14, 0);
@@ -571,6 +577,12 @@ const drawTargetArrow = (self: Player, target: Circle, fillStyle: string) => {
   ctx.lineTo(-14, 8);
   ctx.closePath();
   ctx.fill();
+  ctx.rotate(-heading);
+  // draw the distance text
+  ctx.fillStyle = "white";
+  ctx.font = "12px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(`${Math.round(distance)}`, 0, 0);
   ctx.restore();
 };
 
@@ -698,6 +710,8 @@ const drawFadingCollectables = (self: Player) => {
   }
 };
 
+type ArrowData = { kind: TargetKind; position: Position; team?: Faction; target: boolean; distance: number, depleted?: boolean };
+
 let didWarn = false;
 
 const drawEverything = (
@@ -732,10 +746,22 @@ const drawEverything = (
     drawStars(lastSelf);
   }
 
+  const arrows: ArrowData[] = [];
+
   for (const [id, asteroid] of state.asteroids) {
     drawAsteroid(asteroid, lastSelf);
     if (targetAsteroid && targetAsteroid.id === id) {
       drawHighlight(lastSelf, asteroid);
+    }
+    if (self && selectedSecondary === 0) {
+      const def = defs[self.definitionIndex];
+      const distance = l2Norm(asteroid.position, self.position);
+      if (
+        distance < def.scanRange &&
+        (Math.abs(self.position.x - asteroid.position.x) > canvas.width / 2 || Math.abs(self.position.y - asteroid.position.y) > canvas.height / 2)
+      ) {
+        arrows.push({ kind: TargetKind.Asteroid, position: asteroid.position, target: targetAsteroid === asteroid, distance, depleted: asteroid.resources === 0 });
+      }
     }
   }
   for (const [id, player] of state.players) {
@@ -748,7 +774,21 @@ const drawEverything = (
       }
       drawPlayer(player, lastSelf);
     }
+    if (self) {
+      const def = defs[self.definitionIndex];
+      const distance = l2Norm(player.position, self.position);
+      if (
+        player !== self &&
+        distance < def.scanRange &&
+        (Math.abs(self.position.x - player.position.x) > canvas.width / 2 || Math.abs(self.position.y - player.position.y) > canvas.height / 2)
+      ) {
+        arrows.push({ kind: TargetKind.Player, position: player.position, team: player.team, target: target === player, distance });
+      }
+    }
   }
+
+
+
   drawFadingCollectables(lastSelf);
   drawCollectables(lastSelf, state.collectables.values(), sixtieths);
   if (self && !self.docked) {
@@ -776,18 +816,11 @@ const drawEverything = (
       drawRepairText(keybind.dock);
     }
     drawMessages();
-    if (target) {
-      drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
-      if (Math.abs(self.position.x - target.position.x) > canvas.width / 2 || Math.abs(self.position.y - target.position.y) > canvas.height / 2) {
-        drawTargetArrow(self, target, target.team ? "red" : "aqua");
-      }
-    } else if (targetAsteroid) {
-      drawTargetAsteroid({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, targetAsteroid);
-      if (
-        Math.abs(self.position.x - targetAsteroid.position.x) > canvas.width / 2 ||
-        Math.abs(self.position.y - targetAsteroid.position.y) > canvas.height / 2
-      ) {
-        drawTargetArrow(self, targetAsteroid, "white");
+    for (const arrow of arrows) {
+      if (arrow.team !== undefined) {
+        drawArrow(self, arrow.position, teamColorsOpaque[arrow.team], arrow.target, arrow.distance);
+      } else {
+        drawArrow(self, arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
       }
     }
   }
@@ -803,4 +836,16 @@ const canvasCoordsToGameCoords = (x: number, y: number) => {
   };
 };
 
-export { drawEverything, initDrawing, ctx, canvas, effectSprites, sprites, ChatMessage, initStars, pushMessage, fadeOutCollectable, canvasCoordsToGameCoords };
+export {
+  drawEverything,
+  initDrawing,
+  ctx,
+  canvas,
+  effectSprites,
+  sprites,
+  ChatMessage,
+  initStars,
+  pushMessage,
+  fadeOutCollectable,
+  canvasCoordsToGameCoords,
+};

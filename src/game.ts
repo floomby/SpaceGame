@@ -97,6 +97,7 @@ type Player = Entity & {
   team: number;
   canDock?: number;
   docked?: number;
+  canRepair?: number;
   armIndices: number[];
   // Limited to flat objects (change player copy code to augment this behavior if needed)
   slotData: any[];
@@ -107,6 +108,7 @@ type Player = Entity & {
   warpTo?: number;
   npc?: NPC;
   side?: number;
+  repairs?: number[];
 };
 
 type Asteroid = Circle & {
@@ -153,6 +155,23 @@ const addCargo = (player: Player, what: string, amount: number) => {
   }
 };
 
+const cargoContains = (player: Player, what: string) => {
+  return player.cargo?.find((c) => c.what === what)?.amount || 0;
+};
+
+const removeAtMostCargo = (player: Player, what: string, amount: number) => {
+  const existing = player.cargo?.find((c) => c.what === what);
+  if (existing) {
+    const removed = Math.min(amount, existing.amount);
+    existing.amount -= removed;
+    if (existing.amount === 0) {
+      player.cargo = player.cargo.filter((c) => c !== existing);
+    }
+    return removed;
+  }
+  return 0;
+};
+
 type ChatMessage = {
   id: number;
   message: string;
@@ -182,6 +201,25 @@ const canDock = (player: Player | undefined, station: Player | undefined, strict
     return distance < stationDef.radius;
   } else {
     return distance < stationDef.radius * 2;
+  }
+};
+
+// Can roll into the above, but this is more clear
+const canRepair = (player: Player | undefined, station: Player | undefined, strict = true) => {
+  if (!player || !station) {
+    return false;
+  }
+  const stationDef = defs[station.definitionIndex];
+  if (stationDef.kind !== UnitKind.Station || !station.inoperable) {
+    return false;
+  }
+  const distance = l2Norm(player.position, station.position);
+  if (strict) {
+    return distance < stationDef.radius && cargoContains(player, "Spare Parts");
+    // return distance < stationDef.radius;
+  } else {
+    // return distance < stationDef.radius * 2;
+    return distance < stationDef.radius * 2 && cargoContains(player, "Spare Parts");
   }
 };
 
@@ -224,10 +262,11 @@ type GlobalState = {
   collectables: Map<number, Collectable>;
 };
 
-const setCanDock = (player: Player, state: GlobalState) => {
+const setCanDockOrRepair = (player: Player, state: GlobalState) => {
   if (player) {
     if (player.docked) {
       player.canDock = undefined;
+      player.canRepair = undefined;
       return;
     }
     player.canDock = undefined;
@@ -236,7 +275,10 @@ const setCanDock = (player: Player, state: GlobalState) => {
       if (def.kind === UnitKind.Station && player.team === otherPlayer.team) {
         if (canDock(player, otherPlayer)) {
           player.canDock = otherPlayer.id;
-          return;
+        }
+        if (canRepair(player, otherPlayer)) {
+          // console.log("can repair", player.id, otherPlayer.id);
+          player.canRepair = otherPlayer.id;
         }
       }
     });
@@ -443,11 +485,15 @@ const kill = (
   onDeath: (player: Player) => void,
   drop: (collectable: Collectable) => void
 ) => {
+  if (player.inoperable) {
+    return;
+  }
   // Dead stations that are dockable become "inoperable" until repaired (repairing is not implemented yet)
   if (def.kind === UnitKind.Station && def.dockable) {
     player.health = 0;
     player.energy = 0;
     player.inoperable = true;
+    player.repairs = [0, 0];
   } else {
     // Dead ships just get removed
     state.players.delete(player.id);
@@ -617,6 +663,16 @@ const update = (
               player.energy -= primaryEnergy;
               player.sinceLastShot[i] = 0;
             }
+          }
+        }
+      } else {
+        for (let i = 0; i < player.repairs.length; i++) {
+          if (player.repairs[i] >= def.repairsRequired) {
+            console.log("Station repaired", id);
+            player.inoperable = false;
+            player.team = i;
+            player.health = def.health;
+            break;
           }
         }
       }
@@ -1174,7 +1230,8 @@ export {
   infinityNorm,
   positiveMod,
   canDock,
-  setCanDock,
+  canRepair,
+  setCanDockOrRepair,
   copyPlayer,
   findNextTarget,
   findPreviousTarget,
@@ -1187,6 +1244,7 @@ export {
   l2NormSquared,
   availableCargoCapacity,
   addCargo,
+  removeAtMostCargo,
   equip,
   maxDecimals,
   purchaseShip,

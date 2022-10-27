@@ -77,19 +77,6 @@ const sendAngle = (id: number, angle: number) => {
   );
 };
 
-const sendPlayerInfo = (player: Player) => {
-  serverSocket.send(
-    JSON.stringify({
-      type: "player",
-      payload: {
-        ...player,
-        // name: player.name.substring(0, maxNameLength),
-        name: "test",
-      },
-    })
-  );
-};
-
 const sendDock = (id: number, stationId: number) => {
   serverSocket.send(
     JSON.stringify({
@@ -180,6 +167,20 @@ const sendWarp = (id: number, warpTo: number) => {
   );
 };
 
+let lastSentRepair = Date.now();
+
+const sendRepair = (id: number, station: number) => {
+  if (Date.now() - lastSentRepair > 1000) {
+    serverSocket.send(
+      JSON.stringify({
+        type: "repair",
+        payload: { id, station },
+      })
+    );
+    lastSentRepair = Date.now();
+  } 
+};
+
 export {
   connect,
   bindAction,
@@ -188,7 +189,6 @@ export {
   register,
   sendInput,
   sendAngle,
-  sendPlayerInfo,
   sendDock,
   sendUndock,
   sendRespawn,
@@ -199,4 +199,5 @@ export {
   sendChat,
   sendPurchase,
   sendWarp,
+  sendRepair,
 };

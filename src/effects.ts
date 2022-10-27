@@ -90,6 +90,7 @@ const initEffects = () => {
   const fireSound = getSound("fire0.wav");
   const miningLaserSound = getSound("laser1.wav");
   const twinkleSound = getSound("twinkle0.wav");
+  const pewSound = getSound("dullPew0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -110,12 +111,13 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.7);
+        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
         // panner.positionZ.value = 10;
       }
 
       ctx.save();
       ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
+      ctx.filter = "blur(1px)";
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(
@@ -448,6 +450,25 @@ const initEffects = () => {
       return { needSound: true };
     },
   });
+  // Primary pew sound - 8
+  effectDefs.push({
+    frames: 10,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        play3dSound(pewSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      }
+    },
+    initializer: () => {
+      return { needSound: true };
+    },
+  });
+
 
   // Consult the spreadsheet for understanding where things are on the spritesheet
   effectSpriteDefs.push({

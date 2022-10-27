@@ -17,6 +17,7 @@ import {
 enum Faction {
   Alliance = 0,
   Confederation,
+  Count,
 }
 
 const getFactionString = (faction: Faction) => {

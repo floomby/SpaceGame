@@ -19,7 +19,7 @@ import {
   positiveMod,
   Rectangle,
 } from "./game";
-import { lastSelf } from "./globals";
+import { allianceColorDark, confederationColorDark, lastSelf } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
 
@@ -395,7 +395,6 @@ const drawPlayer = (player: Player, self: Player) => {
 
   ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
 
-
   if (player.inoperable) {
     ctx.filter = "grayscale(80%)";
   } else {
@@ -414,6 +413,12 @@ const drawPlayer = (player: Player, self: Player) => {
   //   ctx.transform(1 + perspectiveRescaling[perspectiveIndex].x, 0, 0, Math.sign(player.side), 0, 0);
   // }
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+
+  if (player.inoperable) {
+    ctx.filter = "grayscale(0%)";
+    drawBar({ x: -sprite.width / 2, y: -10 }, sprite.width, 10, allianceColorDark, "#333333CC", player.repairs[0] / def.repairsRequired);
+    drawBar({ x: -sprite.width / 2, y: 0 }, sprite.width, 10, confederationColorDark, "#333333CC", player.repairs[1] / def.repairsRequired);
+  }
   ctx.restore();
 };
 
@@ -456,6 +461,13 @@ const drawDockText = (dockKey: string) => {
   ctx.font = "30px Arial";
   ctx.textAlign = "center";
   ctx.fillText(`Press ${dockKey} to dock`, canvas.width / 2, canvas.height / 2 + 200);
+};
+
+const drawRepairText = (repairKey: string) => {
+  ctx.fillStyle = "white";
+  ctx.font = "30px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(`Press ${repairKey} to repair`, canvas.width / 2, canvas.height / 2 + 200);
 };
 
 // let secondaryFlashTimeRemaining = 0;
@@ -759,6 +771,9 @@ const drawEverything = (
     drawHUD(self, selectedSecondary);
     if (self.canDock) {
       drawDockText(keybind.dock);
+    }
+    if (self.canRepair) {
+      drawRepairText(keybind.dock);
     }
     drawMessages();
     if (target) {

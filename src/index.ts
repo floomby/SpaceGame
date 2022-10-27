@@ -1,8 +1,8 @@
-import { connect, bindAction, sendDock, sendTarget, sendSecondary, unbindAllActions, sendInput, sendAngle } from "./net";
+import { connect, bindAction, sendDock, sendTarget, sendSecondary, unbindAllActions, sendInput, sendAngle, sendRepair } from "./net";
 import {
   Player,
   Ballistic,
-  setCanDock,
+  setCanDockOrRepair,
   findNextTarget,
   findPreviousTarget,
   Asteroid,
@@ -87,14 +87,14 @@ const loop = () => {
   lastFrameTime = Date.now();
   const sixtieths = elapsed / 16.666666666666666666666666666667;
 
-  if (input.dock) {
-    docker();
-  }
-
   let target: Player | undefined = undefined;
   let targetAsteroid: Asteroid | undefined = undefined;
 
   const self = state.players.get(ownId);
+
+  if (self && input.dock) {
+    docker();
+  }
 
   if (self && !self.docked) {
     if (oldAngle !== targetAngle) {
@@ -199,11 +199,18 @@ const loop = () => {
     clearDialog();
     hideDialog();
   }
-  setCanDock(self, state);
-  if (self && self.canDock) {
-    setDocker(() => {
-      sendDock(ownId, self.canDock);
-    });
+  setCanDockOrRepair(self, state);
+  if (self) {
+    if (self.canDock) {
+      setDocker(() => {
+        sendDock(ownId, self.canDock);
+      });
+    }
+    if (self.canRepair) {
+      setDocker(() => {
+        sendRepair(ownId, self.canRepair);
+      });
+    }
   } else {
     setDocker(() => {});
   }

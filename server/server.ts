@@ -25,6 +25,8 @@ import {
   processAllNpcs,
   serverMessagePersistTime,
   Collectable,
+  canRepair,
+  removeAtMostCargo,
 } from "../src/game";
 import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
 import { assert } from "console";
@@ -340,6 +342,36 @@ if (useSsl) {
     console.log(`Running unsecure http server on port ${httpPort}`);
   });
 }
+
+app.get("/kill", (req, res) => {
+  const id = req.query.id;
+  const sector = req.query.sector;
+  if (!id || typeof id !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  if (!sector || typeof sector !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const sectorIndex = parseInt(sector);
+  if (!sectorList.includes(sectorIndex)) {
+    res.send("Invalid sector");
+    return;
+  }
+  const sectorObject = sectors.get(sectorIndex);
+  if (!sectorObject) {
+    res.send("Invalid sector");
+    return;
+  }
+  const ship = sectorObject.players.get(parseInt(id));
+  if (!ship) {
+    res.send("Invalid ship");
+    return;
+  }
+  ship.health = 0;
+  res.send("true");
+});
 
 // Websocket server stuff
 let server: ReturnType<typeof createServer> | ReturnType<typeof createSecureServer>;
@@ -680,6 +712,26 @@ wss.on("connection", (ws) => {
           saveCheckpoint(client.id, client.currentSector, checkpointData);
         }
       }
+    } else if (data.type === "repair") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
+        const player = state.players.get(client.id);
+        if (player) {
+          const station = state.players.get(data.payload.station)!;
+          if (canRepair(player, station, false)) {
+            // This condition will need to change once there are more than 2 teams
+            if (!station.repairs || station.repairs.length !== 2) {
+              console.log(`Warning: Station repairs array is not correctly initialized (${station.id})`);
+            } else {
+              const stationDef = defs[station.definitionIndex];
+              const repairsNeeded = stationDef.repairsRequired! - station.repairs[player.team];
+              const amountRepaired = removeAtMostCargo(player, "Spare Parts", repairsNeeded);
+              station.repairs[player.team] += amountRepaired;
+            }
+          }
+        }
+      }
     } else if (data.type === "respawn") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {
@@ -702,6 +754,7 @@ wss.on("connection", (ws) => {
           }
           const playerState = JSON.parse(checkpoint.data);
           state.players.set(client.id, playerState);
+          ws.send(JSON.stringify({ type: "warp", payload: { to: checkpoint.sector } }));
           client.currentSector = checkpoint.sector;
         });
       }

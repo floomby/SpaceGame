@@ -12,7 +12,6 @@ import {
   addCargo,
   uid,
   Missile,
-  Collectable,
 } from "../src/game";
 
 enum Faction {
@@ -68,6 +67,7 @@ type UnitDefinition = {
   brakeDistance?: number;
   sideThrustMaxSpeed?: number;
   sideThrustAcceleration?: number;
+  repairsRequired?: number;
 };
 
 enum ArmUsage {
@@ -220,6 +220,7 @@ const initDefs = () => {
     slots: [],
     deathEffect: 4,
     healthRegen: 0.06,
+    repairsRequired: 8,
   });
   defs.push({
     name: "Confederacy Starbase",
@@ -243,6 +244,7 @@ const initDefs = () => {
     slots: [],
     deathEffect: 4,
     healthRegen: 0.06,
+    repairsRequired: 8,
   });
   defs.push({
     name: "Advanced Fighter",

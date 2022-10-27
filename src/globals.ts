@@ -9,6 +9,12 @@ const allianceColor = "rgba(22, 45, 34, 0.341)";
 const confederationColor = "rgba(49, 25, 25, 0.341)";
 const allianceColorDark = "rgba(22, 45, 34, 0.8)";
 const confederationColorDark = "rgba(49, 25, 25, 0.8)";
+const allianceColorOpaque = "aqua";
+const confederationColorOpaque = "red";
+
+const teamColorsLight = [allianceColor, confederationColor];
+const teamColorsDark = [allianceColorDark, confederationColorDark];
+const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque];
 
 const setFaction = (newFaction: Faction) => {
   faction = newFaction;
@@ -85,6 +91,11 @@ export {
   confederationColor,
   allianceColorDark,
   confederationColorDark,
+  allianceColorOpaque,
+  confederationColorOpaque,
+  teamColorsLight,
+  teamColorsDark,
+  teamColorsOpaque,
   keybind,
   setKeybind,
   ownId,

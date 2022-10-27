@@ -109,10 +109,13 @@ const loop = () => {
   }
 
   if (self && !self.docked) {
+    const def = defs[self.definitionIndex];
     if (!input.quickTargetClosestEnemy) {
       if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
         target = state.players.get(targetId);
-        target = input.nextTarget ? findNextTarget(self, target, state, targetEnemy) : findPreviousTarget(self, target, state, targetEnemy);
+        target = input.nextTarget
+          ? findNextTarget(self, target, state, def.scanRange, targetEnemy)
+          : findPreviousTarget(self, target, state, def.scanRange, targetEnemy);
         targetId = target?.id ?? 0;
         input.nextTarget = false;
         input.previousTarget = false;
@@ -122,8 +125,8 @@ const loop = () => {
       } else if (input.nextTargetAsteroid || input.previousTargetAsteroid) {
         targetAsteroid = state.asteroids.get(targetAsteroidId);
         targetAsteroid = input.nextTargetAsteroid
-          ? findNextTargetAsteroid(self, targetAsteroid, state)
-          : findPreviousTargetAsteroid(self, targetAsteroid, state);
+          ? findNextTargetAsteroid(self, targetAsteroid, state, def.scanRange)
+          : findPreviousTargetAsteroid(self, targetAsteroid, state, def.scanRange);
         targetAsteroidId = targetAsteroid?.id ?? 0;
         input.nextTargetAsteroid = false;
         input.previousTargetAsteroid = false;
@@ -136,7 +139,7 @@ const loop = () => {
         targetAsteroid = state.asteroids.get(targetAsteroidId);
       }
     } else {
-      target = findClosestTarget(self, state, true);
+      target = findClosestTarget(self, state, def.scanRange, true);
       targetId = target?.id ?? 0;
       targetAsteroid = undefined;
       targetAsteroidId = 0;

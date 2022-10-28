@@ -246,6 +246,19 @@ app.get("/init", (req, res) => {
   // Create a bunch of stations
   const stationObjects = sectorList
     .map((sector) => {
+      if (sector === 3) {
+        return [
+          {
+            name: `Scallywag's Bunk`,
+            id: uid(),
+            sector,
+            definitionIndex: defMap.get("Rouge Starbase")?.index,
+            position: { x: 300, y: -1600 },
+            team: Faction.Rouge,
+            shipsAvailable: ["Strafer", "Venture"],
+          },
+        ];
+      }
       return [
         {
           name: `Starbase ${Math.floor(Math.random() * 200)}`,
@@ -731,7 +744,7 @@ wss.on("connection", (ws) => {
           const station = state.players.get(data.payload.station)!;
           if (canRepair(player, station, false)) {
             // This condition will need to change once there are more than 2 teams
-            if (!station.repairs || station.repairs.length !== 2) {
+            if (!station.repairs || station.repairs.length !== Faction.Count) {
               console.log(`Warning: Station repairs array is not correctly initialized (${station.id})`);
             } else {
               const stationDef = defs[station.definitionIndex];
@@ -1013,6 +1026,13 @@ setInterval(() => {
     }
   }
 }, 1000 / ticksPerSecond);
+
+setInterval(() => {
+  const state = sectors.get(3)!;
+  if (state.players.size < 8) {
+    addNpc(state, "Strafer", Faction.Rouge);
+  }
+}, 60 * 1000);
 
 server.listen(wsPort, () => {
   console.log(`${useSsl ? "Secure" : "Unsecure"} websocket server running on port ${wsPort}`);

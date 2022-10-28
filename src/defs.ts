@@ -1,3 +1,5 @@
+// FIXME The mining laser and their effects (in src/effect.ts) are implemented very poorly from both a code and functionality perspective
+
 import {
   Rectangle,
   Position,
@@ -17,6 +19,7 @@ import {
 enum Faction {
   Alliance = 0,
   Confederation,
+  Rouge,
   Count,
 }
 
@@ -152,6 +155,7 @@ const collectableDefs: CollectableDef[] = [];
 const collectableDefMap = new Map<string, { index: number; def: CollectableDef }>();
 
 const initDefs = () => {
+  // Fighter - 0
   defs.push({
     name: "Fighter",
     description: "A basic fighter",
@@ -177,6 +181,7 @@ const initDefs = () => {
     sideThrustAcceleration: 0.1,
     scanRange: 4000,
   });
+  // Drone - 1
   defs.push({
     name: "Drone",
     description: "A basic drone",
@@ -202,6 +207,7 @@ const initDefs = () => {
     sideThrustAcceleration: 0.1,
     scanRange: 4000,
   });
+  // Alliance Starbase - 2
   defs.push({
     name: "Alliance Starbase",
     description: "Alliance starbase",
@@ -226,6 +232,7 @@ const initDefs = () => {
     healthRegen: 0.06,
     repairsRequired: 8,
   });
+  // Confederacy Starbase - 3
   defs.push({
     name: "Confederacy Starbase",
     description: "Confederacy starbase",
@@ -250,6 +257,7 @@ const initDefs = () => {
     healthRegen: 0.06,
     repairsRequired: 8,
   });
+  // Advanced Fighter - 4
   defs.push({
     name: "Advanced Fighter",
     description: "A more heavily armed fighter",
@@ -275,6 +283,7 @@ const initDefs = () => {
     sideThrustAcceleration: 0.08,
     scanRange: 13000,
   });
+  // Seeker - 5
   defs.push({
     name: "Seeker",
     description: "A lightly armed, but solid ship",
@@ -300,6 +309,78 @@ const initDefs = () => {
     sideThrustAcceleration: 0.08,
     scanRange: 13000,
   });
+  // Strafer - 6
+  defs.push({
+    name: "Strafer",
+    description: "A fast, lightly armed ship, with a powerful side thruster, that is practically blind",
+    sprite: { x: 256, y: 320, width: 64, height: 64 },
+    health: 120,
+    speed: 14,
+    energy: 100,
+    energyRegen: 0.1,
+    primaryReloadTime: 10,
+    primaryDamage: 10,
+    radius: 22,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Normal],
+    cargoCapacity: 100,
+    deathEffect: 3,
+    turnRate: 0.1,
+    acceleration: 0.2,
+    healthRegen: 0.05,
+    price: 200,
+    warpTime: 90,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 11,
+    sideThrustAcceleration: 0.45,
+    scanRange: 3000,
+  });
+  // Rouge Starbase - 7
+  defs.push({
+    name: "Rouge Starbase",
+    description: "A weak ramshackle starbase with unique build options",
+    sprite: { x: 0, y: 544, width: 256, height: 256 },
+    health: 800,
+    speed: 0,
+    energy: 1100,
+    energyRegen: 0.5,
+    primaryReloadTime: 10,
+    primaryDamage: 15,
+    radius: 93,
+    kind: UnitKind.Station,
+    hardpoints: [{ x: -84, y: -80 }],
+    dockable: true,
+    slots: [],
+    deathEffect: 4,
+    healthRegen: 0.06,
+    repairsRequired: 8,
+  });
+  // Venture - 8
+  defs.push({
+    name: "Venture",
+    description: "A slow industrial ship",
+    sprite: { x: 256, y: 384, width: 128, height: 128 },
+    health: 500,
+    speed: 8,
+    energy: 400,
+    energyRegen: 0.3,
+    primaryReloadTime: 10,
+    primaryDamage: 30,
+    radius: 57,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal],
+    cargoCapacity: 800,
+    deathEffect: 2,
+    turnRate: 0.02,
+    acceleration: 0.05,
+    healthRegen: 0.05,
+    price: 300,
+    warpTime: 150,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 2,
+    sideThrustAcceleration: 0.05,
+    scanRange: 13000,
+  });
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];
@@ -309,6 +390,7 @@ const initDefs = () => {
     }
   }
 
+  // Empty normal slot - 0
   armDefs.push({
     name: "Empty normal slot",
     description: "Empty normal slot (dock with a station to buy armaments)",
@@ -317,6 +399,7 @@ const initDefs = () => {
     targeted: TargetedKind.Empty,
     cost: 0,
   });
+  // Empty utility slot - 1
   armDefs.push({
     name: "Empty utility slot",
     description: "Empty utility slot (dock with a station to buy armaments)",
@@ -325,6 +408,7 @@ const initDefs = () => {
     targeted: TargetedKind.Empty,
     cost: 0,
   });
+  // Empty mine slot - 2
   armDefs.push({
     name: "Empty mine slot",
     description: "Empty mine slot (dock with a station to buy armaments)",
@@ -333,6 +417,7 @@ const initDefs = () => {
     targeted: TargetedKind.Empty,
     cost: 0,
   });
+  // Empty large slot - 3
   armDefs.push({
     name: "Empty large slot",
     description: "Empty large slot (dock with a station to buy armaments)",
@@ -341,6 +426,7 @@ const initDefs = () => {
     targeted: TargetedKind.Empty,
     cost: 0,
   });
+  // Empty mining slot - 4
   armDefs.push({
     name: "Empty mining slot",
     description: "Empty mining slot (dock with a station to buy armaments)",
@@ -349,6 +435,7 @@ const initDefs = () => {
     targeted: TargetedKind.Empty,
     cost: 0,
   });
+  // Basic mining laser - 5
   armDefs.push({
     name: "Basic mining laser",
     description: "A low powered mining laser",
@@ -357,7 +444,7 @@ const initDefs = () => {
     targeted: TargetedKind.Targeted,
     energyCost: 0.5,
     stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage) => {
-      if (targetKind === TargetKind.Asteroid && player.energy > 0.5) {
+      if (targetKind === TargetKind.Asteroid && player.energy > 0.3) {
         target = target as Asteroid;
         if (target.resources > 0 && l2NormSquared(player.position, target.position) < 500 * 500) {
           if (availableCargoCapacity(player) <= 0) {
@@ -379,6 +466,7 @@ const initDefs = () => {
     },
     cost: 50,
   });
+  // Laser Beam - 6
   armDefs.push({
     name: "Laser Beam",
     description: "Strong but energy hungry laser beam",
@@ -429,6 +517,7 @@ const initDefs = () => {
     deathEffect: 4,
   });
   const javelinIndex = missileDefs.length - 1;
+  // Javelin Missile - 7
   armDefs.push({
     name: "Javelin Missile",
     description: "An quick firing, unguided missile",
@@ -478,6 +567,7 @@ const initDefs = () => {
     deathEffect: 2,
   });
   const heavyJavelinIndex = missileDefs.length - 1;
+  // Heavy Javelin Missile - 8
   armDefs.push({
     name: "Heavy Javelin Missile",
     description: "A high damage, slow, unguided missile",
@@ -528,6 +618,7 @@ const initDefs = () => {
     turnRate: 0.1,
   });
   const tomahawkIndex = missileDefs.length - 1;
+  // Tomahawk Missile - 9
   armDefs.push({
     name: "Tomahawk Missile",
     description: "A guided missile",
@@ -570,6 +661,37 @@ const initDefs = () => {
     cost: 100,
   });
 
+  // Advanced mining laser - 10
+  armDefs.push({
+    name: "Advanced mining laser",
+    description: "A high powered mining laser",
+    kind: SlotKind.Mining,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Targeted,
+    energyCost: 0.5,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage) => {
+      if (targetKind === TargetKind.Asteroid && player.energy > 0.8) {
+        target = target as Asteroid;
+        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 800 * 800) {
+          if (availableCargoCapacity(player) <= 0) {
+            flashServerMessage(player.id, "Cargo bay full");
+            return;
+          }
+          player.energy -= 0.8;
+          const amount = Math.min(target.resources, 3.5);
+          target.resources -= amount;
+          addCargo(player, "Minerals", amount);
+          applyEffect({
+            effectIndex: 9,
+            from: { kind: EffectAnchorKind.Player, value: player.id },
+            to: { kind: EffectAnchorKind.Asteroid, value: target.id },
+          });
+        }
+      }
+    },
+    cost: 150,
+  });
+
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];
     armDefMap.set(def.name, { index: i, def });
@@ -587,10 +709,40 @@ const initDefs = () => {
     name: "Spare Parts",
     description: "Collect spare parts to repair stations",
     canBeCollected: (player) => {
-      return availableCargoCapacity(player) > 0;
+      return !player.npc && availableCargoCapacity(player) > 0;
     },
     collectMutator: (player) => {
       addCargo(player, "Spare Parts", 5);
+    },
+  });
+  collectableDefs.push({
+    sprite: { x: 320, y: 320, width: 64, height: 64 },
+    radius: 26,
+    name: "Bounty",
+    description: "Extra credits",
+    canBeCollected: (player) => {
+      return !player.npc;
+    },
+    collectMutator: (player) => {
+      player.credits += 100;
+    },
+  });
+  collectableDefs.push({
+    sprite: { x: 256, y: 512, width: 64, height: 64 },
+    radius: 26,
+    name: "Ammo",
+    description: "Extra ammo",
+    canBeCollected: (player) => {
+      return !player.npc;
+    },
+    collectMutator: (player) => {
+      for (let i = 0; i < player.armIndices.length; i++) {
+        const armDef = armDefs[player.armIndices[i]];
+        if (armDef.usage === ArmUsage.Ammo) {
+          const slotData = player.slotData[i];
+          slotData.ammo = armDef.maxAmmo;
+        }
+      }
     },
   });
 

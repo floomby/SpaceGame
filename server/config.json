@@ -1,18 +1,12 @@
 {
-  "ts-node": {
-    "compilerOptions": {
-      "lib": [
-        "es2017"
-      ],
-      "downlevelIteration": true,
-      "esModuleInterop": true
-    }
-  },
   "compilerOptions": {
     "lib": [
       "es2017"
     ],
     "downlevelIteration": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   }
 }

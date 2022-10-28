@@ -1213,6 +1213,21 @@ const findAllAsteroidsOverlappingPoint = (point: Position, asteroids: IterableIt
   return overlappingAsteroids;
 };
 
+const isNearOperableEnemyStation = (player: Player, players: IterableIterator<Player>, distance = primaryRadius) => {
+  for (const otherPlayer of players) {
+    const otherDef = defs[otherPlayer.definitionIndex];
+    if (otherDef.kind !== UnitKind.Station || otherPlayer.inoperable) {
+      continue;
+    }
+    if (otherPlayer.team !== player.team) {
+      if (l2Norm(player.position, otherPlayer.position) <= distance) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 const serverMessagePersistTime = 3000;
 const maxNameLength = 20;
 const ticksPerSecond = 60;
@@ -1274,6 +1289,7 @@ export {
   findClosestTarget,
   findAllPlayersOverlappingPoint,
   findAllAsteroidsOverlappingPoint,
+  isNearOperableEnemyStation,
   ticksPerSecond,
   maxNameLength,
   effectiveInfinity,

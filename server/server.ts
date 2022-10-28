@@ -27,10 +27,10 @@ import {
   Collectable,
   canRepair,
   removeAtMostCargo,
+  isNearOperableEnemyStation,
 } from "../src/game";
-import { UnitDefinition, defs, defMap, initDefs, Faction, EmptySlot, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
-import { assert } from "console";
-import { readFileSync } from "fs";
+import { defs, defMap, initDefs, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
+import { appendFile, readFileSync } from "fs";
 import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
@@ -246,39 +246,46 @@ app.get("/init", (req, res) => {
   // Create a bunch of stations
   const stationObjects = sectorList
     .map((sector) => {
-      if (sector === 3) {
-        return [
-          {
-            name: `Scallywag's Bunk`,
-            id: uid(),
-            sector,
-            definitionIndex: defMap.get("Rouge Starbase")?.index,
-            position: { x: 300, y: -1600 },
-            team: Faction.Rouge,
-            shipsAvailable: ["Strafer", "Venture"],
-          },
-        ];
+      switch (sector) {
+        case 3:
+          return [
+            {
+              name: `Scallywag's Bunk`,
+              id: uid(),
+              sector,
+              definitionIndex: defMap.get("Rouge Starbase")?.index,
+              position: { x: 300, y: -1600 },
+              team: Faction.Rouge,
+              shipsAvailable: ["Strafer", "Venture"],
+            },
+          ];
+        case 1:
+          return [
+            {
+              name: `Starbase ${Math.floor(Math.random() * 200)}`,
+              id: uid(),
+              sector,
+              definitionIndex: defMap.get("Alliance Starbase")?.index,
+              position: { x: -1600, y: -1600 },
+              team: Faction.Alliance,
+              shipsAvailable: ["Advanced Fighter", "Fighter"],
+            },
+          ];
+        case 2:
+          return [
+            {
+              name: `Incubation Center ${Math.floor(Math.random() * 200)}`,
+              id: uid(),
+              sector,
+              definitionIndex: defMap.get("Confederacy Starbase")?.index,
+              position: { x: 1600, y: 1600 },
+              team: Faction.Confederation,
+              shipsAvailable: ["Drone", "Seeker"],
+            },
+          ];
+        default:
+          return [];
       }
-      return [
-        {
-          name: `Starbase ${Math.floor(Math.random() * 200)}`,
-          id: uid(),
-          sector,
-          definitionIndex: defMap.get("Alliance Starbase")?.index,
-          position: { x: -1600, y: -1600 },
-          team: Faction.Alliance,
-          shipsAvailable: ["Advanced Fighter", "Fighter"],
-        },
-        {
-          name: `Incubation Center ${Math.floor(Math.random() * 200)}`,
-          id: uid(),
-          sector,
-          definitionIndex: defMap.get("Confederacy Starbase")?.index,
-          position: { x: 1600, y: 1600 },
-          team: Faction.Confederation,
-          shipsAvailable: ["Drone", "Seeker"],
-        },
-      ];
     })
     .flat();
   Station.insertMany(stationObjects, (err) => {
@@ -459,9 +466,11 @@ const idToWebsocket = new Map<number, WebSocket>();
 //   frame = 0;
 // };
 
+const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
+
 for (let i = 0; i < sectorList.length; i++) {
   const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(5, { x: -3000, y: -3000, width: 6000, height: 6000 }, sectorList[i]);
+  const testAsteroids = randomAsteroids(5, asteroidBounds, sectorList[i]);
   for (const asteroid of testAsteroids) {
     sector.asteroids.set(asteroid.id, asteroid);
   }
@@ -498,23 +507,12 @@ const initFromDatabase = async () => {
 const market = new Map<string, number>();
 market.set("Minerals", 1);
 market.set("Teddy Bears", 5);
+market.set("Spare Parts", 10);
 
 // Websocket stuff (TODO Move to its own file)
 const wss = new WebSocketServer({ server });
 
 const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) => {
-  const defaultSector = sectorList[0];
-  clients.set(ws, {
-    id: id,
-    name,
-    input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
-    angle: 0,
-    currentSector: defaultSector,
-    lastMessage: "",
-    lastMessageTime: Date.now(),
-    sectorDataSent: false,
-  });
-
   let defIndex: number;
   if (faction === Faction.Alliance) {
     // defIndex = defMap.get("Fighter")!.index;
@@ -526,6 +524,19 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     console.log(`Invalid faction ${faction}`);
     return;
   }
+
+  const sector = faction === Faction.Alliance ? 1 : 2;
+
+  clients.set(ws, {
+    id: id,
+    name,
+    input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
+    angle: 0,
+    currentSector: sector,
+    lastMessage: "",
+    lastMessageTime: Date.now(),
+    sectorDataSent: false,
+  });
 
   const player = {
     position: { x: 0, y: 0 },
@@ -550,20 +561,20 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
   equip(player, 1, "Tomahawk Missile", true);
   equip(player, 2, "Laser Beam", true);
 
-  sectors.get(defaultSector)!.players.set(id, player);
+  sectors.get(sector)!.players.set(id, player);
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
 
   // find one checkpoint for the id and update it, upserting if needed
-  Checkpoint.findOneAndUpdate({ id }, { id, sector: defaultSector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
+  Checkpoint.findOneAndUpdate({ id }, { id, sector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
     if (err) {
       ws.send(JSON.stringify({ type: "error", payload: { message: "Server error creating default player" } }));
       console.log("Error saving checkpoint: " + err);
       return;
     }
 
-    ws.send(JSON.stringify({ type: "init", payload: { id: id, sector: defaultSector } }));
+    ws.send(JSON.stringify({ type: "init", payload: { id: id, sector } }));
     console.log("Registered client with id: ", id);
   });
 };
@@ -624,9 +635,10 @@ wss.on("connection", (ws) => {
               return;
             }
             const playerState = JSON.parse(checkpoint.data);
-            if (playerState.side === undefined || isNaN(playerState.side)) {
-              playerState.side = 0;
-            }
+            // Fix to avoid loading problems with old checkpoints (shouldn't be needed anymore)
+            // if (playerState.side === undefined || isNaN(playerState.side)) {
+            //   playerState.side = 0;
+            // }
             state.players.set(user.id, playerState);
             clients.set(ws, {
               id: user.id,
@@ -641,6 +653,12 @@ wss.on("connection", (ws) => {
             targets.set(user.id, [TargetKind.None, 0]);
             secondaries.set(user.id, 0);
             ws.send(JSON.stringify({ type: "init", payload: { id: user.id, sector: checkpoint.sector } }));
+            // log to file
+            appendFile("log", `${new Date().toISOString()} ${name} logged in\n`, (err) => {
+              if (err) {
+                console.log(err);
+              }
+            });
           }
         });
       });
@@ -776,6 +794,10 @@ wss.on("connection", (ws) => {
             return;
           }
           const playerState = JSON.parse(checkpoint.data);
+          if (isNearOperableEnemyStation(playerState, state.players.values())) {
+            playerState.position.x = 0;
+            playerState.position.y = 0;
+          }
           state.players.set(client.id, playerState);
           ws.send(JSON.stringify({ type: "warp", payload: { to: checkpoint.sector } }));
           client.currentSector = checkpoint.sector;
@@ -1018,8 +1040,8 @@ setInterval(() => {
         client.sectorDataSent = false;
         ws.send(JSON.stringify({ type: "warp", payload: { to } }));
       }
-      player.position.x = 0;
-      player.position.y = 0;
+      player.position.x = Math.random() * 400 - 200;
+      player.position.y = Math.random() * 400 - 200;
       player.heading = (3 * Math.PI) / 2;
       player.speed = 0;
       state.players.set(player.id, player);
@@ -1033,6 +1055,36 @@ setInterval(() => {
     addNpc(state, "Strafer", Faction.Rouge);
   }
 }, 60 * 1000);
+
+const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
+  let removedCount = 0;
+  const removed: number[] = [];
+  for (const asteroid of state.asteroids.values()) {
+    if (asteroid.resources <= 0) {
+      state.asteroids.delete(asteroid.id);
+      removed.push(asteroid.id);
+      removedCount++;
+    }
+  }
+  if (removedCount > 0) {
+    console.log(`Respawning ${removedCount} asteroids in sector ${sector}`);
+    const newAsteroids = randomAsteroids(removedCount, asteroidBounds, Date.now());
+    for (const asteroid of newAsteroids) {
+      state.asteroids.set(asteroid.id, asteroid);
+    }
+    for (const [client, data] of clients) {
+      if (data.currentSector === sector) {
+        client.send(JSON.stringify({ type: "removeAsteroids", payload: { ids: removed } }));
+      }
+    }
+  }
+};
+
+setInterval(() => {
+  for (const [sector, state] of sectors) {
+    respawnEmptyAsteroids(state, sector);
+  }
+}, 10 * 60 * 1000);
 
 server.listen(wsPort, () => {
   console.log(`${useSsl ? "Secure" : "Unsecure"} websocket server running on port ${wsPort}`);

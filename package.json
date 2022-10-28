@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@types/offscreencanvas": "^2019.7.0"
+  }
+}

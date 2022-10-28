@@ -7,3 +7,5 @@ server/resources
 soundCandidates
 resources/.*
 server/*.js
+server/log
+node_modules

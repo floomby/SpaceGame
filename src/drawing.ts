@@ -157,9 +157,7 @@ const doPreCompositing = (stencils: ImageBitmap[], callback: () => void) => {
   for (let i = 0; i < defs.length; i++) {
     for (let j = 0; j < Faction.Count; j++) {
       const stencil = stencils[i];
-      const canvas = document.createElement("canvas");
-      canvas.width = stencil.width;
-      canvas.height = stencil.height;
+      const canvas = new OffscreenCanvas(stencil.width, stencil.height);
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(stencil, 0, 0);
       ctx.fillStyle = teamColorsOpaque[j];
@@ -303,6 +301,9 @@ const drawMiniMapPlayer = (center: Position, player: Player, self: Player, miniM
     ctx.beginPath();
     ctx.arc(0, 0, 5, 0, 2 * Math.PI);
   }
+  if (player.inoperable) {
+    ctx.filter = "grayscale(60%)";
+  }
   ctx.fill();
   ctx.restore();
 };
@@ -424,6 +425,8 @@ const drawPlayer = (player: Player, self: Player) => {
   const def = defs[player.definitionIndex];
   ctx.save();
   let sprite = composited[player.definitionIndex * Faction.Count + player.team];
+  // let sprite = sprites[player.definitionIndex];
+
   // const steps = perspectiveRescaling.length;
   // let perspectiveIndex: number;
 
@@ -563,7 +566,7 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
   ctx.fillStyle = "#30303055";
   const margin = 5;
   ctx.fillRect(where.x - margin, where.y - margin, where.width + margin, where.height + margin);
-  const sprite = composited[target.definitionIndex];
+  const sprite = composited[target.definitionIndex * Faction.Count + target.team];
   const maxDimension = Math.max(sprite.width, sprite.height);
   let scale = (where.width - margin * 2) / maxDimension / 2;
   if (scale > 1) {

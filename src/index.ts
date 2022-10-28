@@ -413,6 +413,12 @@ const run = () => {
     }
   });
 
+  bindAction("removeAsteroids", (data: { ids: number[] }) => {
+    for (const id of data.ids) {
+      state.asteroids.delete(id);
+    }
+  });
+
   loop();
 };
 

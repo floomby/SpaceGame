@@ -1,13 +1,13 @@
 // This file is messy and needs cleanup
 // I wrote it before I had some of the dialog functionality implemented that makes many of the things it is doing easier
 
-import { armDefs, defs, SlotKind, UnitDefinition, UnitKind } from "../defs";
+import { armDefs, defs, Faction, SlotKind, UnitDefinition, UnitKind } from "../defs";
 import { CargoEntry, maxDecimals, Player, ticksPerSecond } from "../game";
-import { ownId, state } from "../globals";
+import { lastSelf, ownId, state } from "../globals";
 import { sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
-import { sprites } from "../drawing";
+import { composited } from "../drawing";
 import { domFromRest, getRestRaw } from "../rest";
 
 let docker = () => {};
@@ -193,7 +193,7 @@ const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: stri
     return;
   }
   const def = defs[defIndex];
-  const sprite = sprites[defIndex];
+  const sprite = composited[Faction.Count * defIndex + lastSelf.team];
   if (!sprite) {
     console.log("no sprite for ship preview");
     return;
@@ -285,7 +285,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     return `Docking error - station ${self.docked} not found`;
   }
   return horizontalCenter([
-    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2>Docked with station ${name}</h2>`),
+    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2>Docked with ${name}</h2>`),
     `${shipViewer()}`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">

@@ -149,6 +149,43 @@ const loadPerspectiveSprites = (callback: () => void) => {
   });
 };
 
+let composited: ImageBitmap[] = [];
+
+// Without offscreen precompositing drawing would be very complex and slower
+const doPreCompositing = (stencils: ImageBitmap[], callback: () => void) => {
+  const compositePromises: Promise<ImageBitmap>[] = [];
+  for (let i = 0; i < defs.length; i++) {
+    for (let j = 0; j < Faction.Count; j++) {
+      const stencil = stencils[i];
+      const canvas = document.createElement("canvas");
+      canvas.width = stencil.width;
+      canvas.height = stencil.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(stencil, 0, 0);
+      ctx.fillStyle = teamColorsOpaque[j];
+      ctx.globalCompositeOperation = "source-in";
+      ctx.fillRect(0, 0, stencil.width, stencil.height);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.drawImage(sprites[i], 0, 0);
+      compositePromises.push(createImageBitmap(canvas));
+    }
+  }
+  Promise.all(compositePromises).then((completed) => {
+    composited = completed;
+    callback();
+  });
+};
+
+const loadStencilSprites = (stencilSheet: HTMLImageElement, callback: () => void) => {
+  const spritePromises: Promise<ImageBitmap>[] = [];
+  for (let i = 0; i < defs.length; i++) {
+    spritePromises.push(createImageBitmap(stencilSheet, defs[i].sprite.x, defs[i].sprite.y, defs[i].sprite.width, defs[i].sprite.height));
+  }
+  Promise.all(spritePromises).then((completed) => {
+    doPreCompositing(completed, callback);
+  });
+};
+
 const initDrawing = (callback: () => void) => {
   initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -161,23 +198,27 @@ const initDrawing = (callback: () => void) => {
   ctx = canvas.getContext("2d");
   const spriteSheet = new Image();
   spriteSheet.onload = () => {
-    const spritePromises: Promise<ImageBitmap>[] = [];
-    for (let i = 0; i < defs.length; i++) {
-      spritePromises.push(createImageBitmap(spriteSheet, defs[i].sprite.x, defs[i].sprite.y, defs[i].sprite.width, defs[i].sprite.height));
-    }
-    Promise.all(spritePromises).then((completed) => {
-      sprites = completed;
-      loadAsteroidSprites(spriteSheet, () => {
-        loadMissileSprites(spriteSheet, () => {
-          loadEffectSprites(spriteSheet, () => {
-            loadCollectableSprites(spriteSheet, () => {
-              // loadPerspectiveSprites(callback);
-              callback();
+    const stencilSheet = new Image();
+    stencilSheet.onload = () => {
+      const spritePromises: Promise<ImageBitmap>[] = [];
+      for (let i = 0; i < defs.length; i++) {
+        spritePromises.push(createImageBitmap(spriteSheet, defs[i].sprite.x, defs[i].sprite.y, defs[i].sprite.width, defs[i].sprite.height));
+      }
+      Promise.all(spritePromises).then((completed) => {
+        sprites = completed;
+        loadAsteroidSprites(spriteSheet, () => {
+          loadMissileSprites(spriteSheet, () => {
+            loadEffectSprites(spriteSheet, () => {
+              loadCollectableSprites(spriteSheet, () => {
+                // loadPerspectiveSprites(callback);
+                loadStencilSprites(stencilSheet, callback);
+              });
             });
           });
         });
       });
-    });
+    };
+    stencilSheet.src = "resources/stencil.png";
   };
   spriteSheet.src = "resources/sprites.png";
 };
@@ -382,7 +423,7 @@ const drawAsteroid = (asteroid: Asteroid, self: Player) => {
 const drawPlayer = (player: Player, self: Player) => {
   const def = defs[player.definitionIndex];
   ctx.save();
-  let sprite = sprites[player.definitionIndex];
+  let sprite = composited[player.definitionIndex * Faction.Count + player.team];
   // const steps = perspectiveRescaling.length;
   // let perspectiveIndex: number;
 
@@ -414,11 +455,20 @@ const drawPlayer = (player: Player, self: Player) => {
   // if (sprite !== sprites[player.definitionIndex]) {
   //   ctx.transform(1 + perspectiveRescaling[perspectiveIndex].x, 0, 0, Math.sign(player.side), 0, 0);
   // }
+  // ctx.drawImage(stencilSprites[player.definitionIndex], -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+  // ctx.globalCompositeOperation = "source-in";
+  // ctx.fillStyle = teamColorsOpaque[player.team];
+  // ctx.fillRect(-sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+  // ctx.globalCompositeOperation = "source-over";
+  // ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
 
-  // TODO Make this not care about how many teams there are
-  if (player.inoperable) {
-    ctx.rotate(-player.heading);
+  ctx.rotate(-player.heading);
+  if (!player.inoperable) {
+    // drawBar({ x: -sprite.width / 2, y: -sprite.height / 2 - 10 }, sprite.width, 5, "#00EE00CC", "#EE0000CC", Math.max(player.health, 0) / def.health);
+    // drawBar({ x: -sprite.width / 2, y: -sprite.height / 2 - 5 }, sprite.width, 5, "#0022FFCC", "#333333CC", player.energy / def.energy);
+  } else {
+    // TODO Make this not care about how many teams there are
     ctx.filter = "grayscale(0%)";
     ctx.globalAlpha = 0.9;
     drawBar({ x: -sprite.width * 0.4, y: -22 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
@@ -513,7 +563,7 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
   ctx.fillStyle = "#30303055";
   const margin = 5;
   ctx.fillRect(where.x - margin, where.y - margin, where.width + margin, where.height + margin);
-  const sprite = sprites[target.definitionIndex];
+  const sprite = composited[target.definitionIndex];
   const maxDimension = Math.max(sprite.width, sprite.height);
   let scale = (where.width - margin * 2) / maxDimension / 2;
   if (scale > 1) {
@@ -885,6 +935,7 @@ export {
   canvas,
   effectSprites,
   sprites,
+  composited,
   ChatMessage,
   initStars,
   pushMessage,

@@ -698,7 +698,10 @@ const drawCollectables = (self: Player, collectables: IterableIterator<Collectab
 };
 
 const drawFadingCollectable = (self: Player, fadingCollectable: FadingCollectable) => {
-  if (infinityNorm(fadingCollectable.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + fadingCollectable.radius) {
+  if (
+    !fadingCollectable?.position ||
+    infinityNorm(fadingCollectable.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + fadingCollectable.radius
+  ) {
     return;
   }
   ctx.save();
@@ -743,121 +746,125 @@ const drawEverything = (
   sixtieths: number,
   chats: Map<number, ChatMessage>
 ) => {
-  highlightPhase += 0.1 * sixtieths;
-  if (highlightPhase > 2 * Math.PI) {
-    highlightPhase -= 2 * Math.PI;
-  }
-
-  reduceMessageTimeRemaining(sixtieths);
-  reduceCollectableTimeRemaining(sixtieths);
-
-  clearCanvas();
-  if (!self && !lastSelf) {
-    if (!didWarn) {
-      // Seems to happen on server startup (I think the server is just sending a state update before the init message)
-      console.log("Warning: Missing self reference (FIXME)");
-      didWarn = true;
+  try {
+    highlightPhase += 0.1 * sixtieths;
+    if (highlightPhase > 2 * Math.PI) {
+      highlightPhase -= 2 * Math.PI;
     }
-    return;
-  }
-  if (lastSelf) {
-    drawStars(lastSelf);
-  }
 
-  const arrows: ArrowData[] = [];
+    reduceMessageTimeRemaining(sixtieths);
+    reduceCollectableTimeRemaining(sixtieths);
 
-  for (const [id, asteroid] of state.asteroids) {
-    drawAsteroid(asteroid, lastSelf);
-    if (targetAsteroid && targetAsteroid.id === id) {
-      drawHighlight(lastSelf, asteroid);
+    clearCanvas();
+    if (!self && !lastSelf) {
+      if (!didWarn) {
+        // Seems to happen on server startup (I think the server is just sending a state update before the init message)
+        console.log("Warning: Missing self reference (FIXME)");
+        didWarn = true;
+      }
+      return;
     }
-    if (self && selectedSecondary === 0) {
-      const def = defs[self.definitionIndex];
-      const distance = l2Norm(asteroid.position, self.position);
-      if (
-        distance < def.scanRange &&
-        (Math.abs(self.position.x - asteroid.position.x) > canvas.width / 2 || Math.abs(self.position.y - asteroid.position.y) > canvas.height / 2)
-      ) {
-        arrows.push({
-          kind: TargetKind.Asteroid,
-          position: asteroid.position,
-          target: targetAsteroid === asteroid,
-          distance,
-          depleted: asteroid.resources === 0,
-        });
+    if (lastSelf) {
+      drawStars(lastSelf);
+    }
+
+    const arrows: ArrowData[] = [];
+
+    for (const [id, asteroid] of state.asteroids) {
+      drawAsteroid(asteroid, lastSelf);
+      if (targetAsteroid && targetAsteroid.id === id) {
+        drawHighlight(lastSelf, asteroid);
+      }
+      if (self && selectedSecondary === 0) {
+        const def = defs[self.definitionIndex];
+        const distance = l2Norm(asteroid.position, self.position);
+        if (
+          distance < def.scanRange &&
+          (Math.abs(self.position.x - asteroid.position.x) > canvas.width / 2 || Math.abs(self.position.y - asteroid.position.y) > canvas.height / 2)
+        ) {
+          arrows.push({
+            kind: TargetKind.Asteroid,
+            position: asteroid.position,
+            target: targetAsteroid === asteroid,
+            distance,
+            depleted: asteroid.resources === 0,
+          });
+        }
       }
     }
-  }
-  for (const [id, player] of state.players) {
-    if (player.docked) {
-      continue;
-    }
-    if (id !== me) {
-      if (target && id === target.id) {
-        drawHighlight(lastSelf, player);
+    for (const [id, player] of state.players) {
+      if (player.docked) {
+        continue;
       }
-      drawPlayer(player, lastSelf);
+      if (id !== me) {
+        if (target && id === target.id) {
+          drawHighlight(lastSelf, player);
+        }
+        drawPlayer(player, lastSelf);
+      }
+      if (self) {
+        const def = defs[self.definitionIndex];
+        const distance = l2Norm(player.position, self.position);
+        if (
+          player !== self &&
+          distance < def.scanRange &&
+          (Math.abs(self.position.x - player.position.x) > canvas.width / 2 || Math.abs(self.position.y - player.position.y) > canvas.height / 2)
+        ) {
+          arrows.push({
+            kind: TargetKind.Player,
+            position: player.position,
+            team: player.team,
+            target: target === player,
+            distance,
+            inoperable: player.inoperable,
+          });
+        }
+      }
     }
+
+    drawFadingCollectables(lastSelf);
+    drawCollectables(lastSelf, state.collectables.values(), sixtieths);
+    if (self && !self.docked) {
+      drawPlayer(self, self);
+    }
+    for (const [id, missile] of state.missiles) {
+      drawMissile(missile, lastSelf);
+    }
+    for (const [id, projectiles] of state.projectiles) {
+      for (const projectile of projectiles) {
+        drawProjectile(projectile, lastSelf);
+      }
+    }
+    drawEffects(lastSelf, state, sixtieths);
     if (self) {
-      const def = defs[self.definitionIndex];
-      const distance = l2Norm(player.position, self.position);
-      if (
-        player !== self &&
-        distance < def.scanRange &&
-        (Math.abs(self.position.x - player.position.x) > canvas.width / 2 || Math.abs(self.position.y - player.position.y) > canvas.height / 2)
-      ) {
-        arrows.push({
-          kind: TargetKind.Player,
-          position: player.position,
-          team: player.team,
-          target: target === player,
-          distance,
-          inoperable: player.inoperable,
-        });
+      drawChats(self, state.players, chats.values());
+    }
+    if (self && !self.docked) {
+      drawMiniMap({ x: canvas.width - 210, y: canvas.height - 230 }, 200, 200, self, state, 0.03);
+      drawHUD(self, selectedSecondary);
+      if (self.canDock) {
+        drawDockText(keybind.dock);
+      }
+      if (self.canRepair) {
+        drawRepairText(keybind.dock);
+      }
+      drawMessages();
+      if (target) {
+        drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
+      }
+      if (targetAsteroid) {
+        drawTargetAsteroid({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, targetAsteroid);
+      }
+      for (const arrow of arrows) {
+        if (arrow.team !== undefined) {
+          drawArrow(self, arrow.position, arrow.inoperable ? "grey" : teamColorsOpaque[arrow.team], arrow.target, arrow.distance);
+        } else {
+          drawArrow(self, arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
+        }
       }
     }
-  }
-
-  drawFadingCollectables(lastSelf);
-  drawCollectables(lastSelf, state.collectables.values(), sixtieths);
-  if (self && !self.docked) {
-    drawPlayer(self, self);
-  }
-  for (const [id, missile] of state.missiles) {
-    drawMissile(missile, lastSelf);
-  }
-  for (const [id, projectiles] of state.projectiles) {
-    for (const projectile of projectiles) {
-      drawProjectile(projectile, lastSelf);
-    }
-  }
-  drawEffects(lastSelf, state, sixtieths);
-  if (self) {
-    drawChats(self, state.players, chats.values());
-  }
-  if (self && !self.docked) {
-    drawMiniMap({ x: canvas.width - 210, y: canvas.height - 230 }, 200, 200, self, state, 0.03);
-    drawHUD(self, selectedSecondary);
-    if (self.canDock) {
-      drawDockText(keybind.dock);
-    }
-    if (self.canRepair) {
-      drawRepairText(keybind.dock);
-    }
-    drawMessages();
-    if (target) {
-      drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
-    }
-    if (targetAsteroid) {
-      drawTargetAsteroid({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, targetAsteroid);
-    }
-    for (const arrow of arrows) {
-      if (arrow.team !== undefined) {
-        drawArrow(self, arrow.position, arrow.inoperable ? "grey" : teamColorsOpaque[arrow.team], arrow.target, arrow.distance);
-      } else {
-        drawArrow(self, arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
-      }
-    }
+  } catch (e) {
+    console.error(e);
   }
 };
 

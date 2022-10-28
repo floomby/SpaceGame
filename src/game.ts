@@ -273,8 +273,8 @@ const setCanDockOrRepair = (player: Player, state: GlobalState) => {
     player.canDock = undefined;
     state.players.forEach((otherPlayer) => {
       const def = defs[otherPlayer.definitionIndex];
-      if (def.kind === UnitKind.Station && player.team === otherPlayer.team) {
-        if (canDock(player, otherPlayer)) {
+      if (def.kind === UnitKind.Station) {
+        if (player.team === otherPlayer.team && canDock(player, otherPlayer)) {
           player.canDock = otherPlayer.id;
         }
         if (canRepair(player, otherPlayer)) {

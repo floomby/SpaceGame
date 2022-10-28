@@ -250,7 +250,7 @@ const drawMiniMapPlayer = (center: Position, player: Player, self: Player, miniM
     (player.position.x - self.position.x) * miniMapScaleFactor + center.x,
     (player.position.y - self.position.y) * miniMapScaleFactor + center.y
   );
-  ctx.fillStyle = player.team ? "red" : "aqua";
+  ctx.fillStyle = teamColorsOpaque[player.team];
   if (defs[player.definitionIndex].kind === UnitKind.Ship) {
     ctx.rotate(player.heading);
     ctx.beginPath();
@@ -416,11 +416,21 @@ const drawPlayer = (player: Player, self: Player) => {
   // }
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
 
+  // TODO Make this not care about how many teams there are
   if (player.inoperable) {
     ctx.rotate(-player.heading);
     ctx.filter = "grayscale(0%)";
-    drawBar({ x: -sprite.width * 0.4, y: -14 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333CC", player.repairs[0] / def.repairsRequired);
-    drawBar({ x: -sprite.width * 0.4, y: 2 }, sprite.width * 0.8, 12, confederationColorOpaque, "#333333CC", player.repairs[1] / def.repairsRequired);
+    ctx.globalAlpha = 0.9;
+    drawBar({ x: -sprite.width * 0.4, y: -22 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
+    drawBar(
+      { x: -sprite.width * 0.4, y: -6 },
+      sprite.width * 0.8,
+      12,
+      confederationColorOpaque,
+      "#333333DD",
+      player.repairs[1] / def.repairsRequired
+    );
+    drawBar({ x: -sprite.width * 0.4, y: 8 }, sprite.width * 0.8, 12, confederationColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
   }
   ctx.restore();
 };
@@ -710,7 +720,15 @@ const drawFadingCollectables = (self: Player) => {
   }
 };
 
-type ArrowData = { kind: TargetKind; position: Position; team?: Faction; target: boolean; distance: number, depleted?: boolean };
+type ArrowData = {
+  kind: TargetKind;
+  position: Position;
+  team?: Faction;
+  target: boolean;
+  distance: number;
+  depleted?: boolean;
+  inoperable?: boolean;
+};
 
 let didWarn = false;
 
@@ -760,7 +778,13 @@ const drawEverything = (
         distance < def.scanRange &&
         (Math.abs(self.position.x - asteroid.position.x) > canvas.width / 2 || Math.abs(self.position.y - asteroid.position.y) > canvas.height / 2)
       ) {
-        arrows.push({ kind: TargetKind.Asteroid, position: asteroid.position, target: targetAsteroid === asteroid, distance, depleted: asteroid.resources === 0 });
+        arrows.push({
+          kind: TargetKind.Asteroid,
+          position: asteroid.position,
+          target: targetAsteroid === asteroid,
+          distance,
+          depleted: asteroid.resources === 0,
+        });
       }
     }
   }
@@ -782,12 +806,17 @@ const drawEverything = (
         distance < def.scanRange &&
         (Math.abs(self.position.x - player.position.x) > canvas.width / 2 || Math.abs(self.position.y - player.position.y) > canvas.height / 2)
       ) {
-        arrows.push({ kind: TargetKind.Player, position: player.position, team: player.team, target: target === player, distance });
+        arrows.push({
+          kind: TargetKind.Player,
+          position: player.position,
+          team: player.team,
+          target: target === player,
+          distance,
+          inoperable: player.inoperable,
+        });
       }
     }
   }
-
-
 
   drawFadingCollectables(lastSelf);
   drawCollectables(lastSelf, state.collectables.values(), sixtieths);
@@ -816,9 +845,15 @@ const drawEverything = (
       drawRepairText(keybind.dock);
     }
     drawMessages();
+    if (target) {
+      drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
+    }
+    if (targetAsteroid) {
+      drawTargetAsteroid({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, targetAsteroid);
+    }
     for (const arrow of arrows) {
       if (arrow.team !== undefined) {
-        drawArrow(self, arrow.position, teamColorsOpaque[arrow.team], arrow.target, arrow.distance);
+        drawArrow(self, arrow.position, arrow.inoperable ? "grey" : teamColorsOpaque[arrow.team], arrow.target, arrow.distance);
       } else {
         drawArrow(self, arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
       }

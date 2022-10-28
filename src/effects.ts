@@ -468,6 +468,49 @@ const initEffects = () => {
       return { needSound: true };
     },
   });
+  // Advanced mining laser effect - 9
+  effectDefs.push({
+    frames: 10,
+    draw: (effect, self, state) => {
+      const [from] = resolveAnchor(effect.from, state) as (Position | undefined)[];
+      const [to, toCircle] = resolveAnchor(effect.to, state);
+      if (!from || !to || !toCircle) {
+        return;
+      }
+
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        const midX = ((from as Position).x + (to as Position).x) / 2;
+        const midY = ((from as Position).y + (to as Position).y) / 2;
+        effect.extra.needSound = false;
+        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
+        // panner.positionZ.value = 10;
+      }
+
+      ctx.save();
+      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
+      ctx.filter = "blur(1px)";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(
+        (to as Position).x - from.x + effect.extra.offset.x * (toCircle as Circle).radius,
+        (to as Position).y - from.y + effect.extra.offset.y * (toCircle as Circle).radius
+      );
+      ctx.strokeStyle = "blue";
+      ctx.stroke();
+      ctx.restore();
+    },
+    initializer: () => {
+      return {
+        offset: { x: Math.random() - 0.5, y: Math.random() - 0.5 },
+        needSound: true,
+      };
+    },
+  });
 
 
   // Consult the spreadsheet for understanding where things are on the spritesheet

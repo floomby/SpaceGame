@@ -6,15 +6,21 @@ import { KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybi
 let faction: Faction = Faction.Alliance;
 
 const allianceColor = "rgba(22, 45, 34, 0.341)";
-const confederationColor = "rgba(49, 25, 25, 0.341)";
 const allianceColorDark = "rgba(22, 45, 34, 0.8)";
-const confederationColorDark = "rgba(49, 25, 25, 0.8)";
 const allianceColorOpaque = "aqua";
+
+const confederationColor = "rgba(49, 25, 25, 0.341)";
+const confederationColorDark = "rgba(49, 25, 25, 0.8)";
 const confederationColorOpaque = "red";
 
-const teamColorsLight = [allianceColor, confederationColor];
-const teamColorsDark = [allianceColorDark, confederationColorDark];
-const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque];
+const rougeColor = "rgba(255, 153, 0, 0.341)";
+const rougeColorDark = "rgba(255, 153, 0, 0.8)";
+const rougeColorOpaque = "darkorange";
+
+
+const teamColorsLight = [allianceColor, confederationColor, rougeColor];
+const teamColorsDark = [allianceColorDark, confederationColorDark, rougeColorDark];
+const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque, rougeColorOpaque];
 
 const setFaction = (newFaction: Faction) => {
   faction = newFaction;
@@ -96,6 +102,9 @@ export {
   teamColorsLight,
   teamColorsDark,
   teamColorsOpaque,
+  rougeColor,
+  rougeColorDark,
+  rougeColorOpaque,
   keybind,
   setKeybind,
   ownId,

@@ -3,9 +3,9 @@
 
 import { armDefs, defs, Faction, SlotKind, UnitDefinition, UnitKind } from "../defs";
 import { CargoEntry, maxDecimals, Player, ticksPerSecond } from "../game";
-import { lastSelf, ownId, state } from "../globals";
+import { lastSelf, ownId, state, teamColorsLight } from "../globals";
 import { sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
-import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
+import { bindPostUpdater, bindUpdater, clearStack, horizontalCenter, pop, push, setDialogBackground, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
 import { composited } from "../drawing";
 import { domFromRest, getRestRaw } from "../rest";

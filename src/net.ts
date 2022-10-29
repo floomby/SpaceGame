@@ -181,6 +181,15 @@ const sendRepair = (id: number, station: number) => {
   } 
 };
 
+const sendDumpCargo = (id: number, what: string, amount: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "dumpCargo",
+      payload: { id, what, amount },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -200,4 +209,5 @@ export {
   sendPurchase,
   sendWarp,
   sendRepair,
+  sendDumpCargo,
 };

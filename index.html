@@ -95,6 +95,21 @@
         opacity: 0.8;
       }
 
+      .cargo {
+        z-index: 4;
+        top: 40vh;
+        left: 15px;
+        position: absolute;
+        height: 35px;
+        width: 35px;
+        opacity: 0.4;
+        cursor: pointer;
+      }
+
+      .cargo:hover {
+        opacity: 0.8;
+      }
+
       .chatInputStyle {
         top: 80vh;
         z-index: 2;
@@ -117,6 +132,12 @@
       src="resources/gear.svg"
       id="settingsIcon"
       class="settings"
+      style="display: none;"
+    />
+    <img
+      src="resources/box.svg"
+      id="cargoIcon"
+      class="cargo"
       style="display: none;"
     />
     <input type="text" class="horizontal-center chatInputStyle" id="chatInput"></input>

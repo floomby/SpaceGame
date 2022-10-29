@@ -844,6 +844,15 @@ wss.on("connection", (ws) => {
           // state.players.set(client.id, player);
         }
       }
+    } else if (data.type === "dumpCargo") {
+      const client = clients.get(ws);
+      if (client && data.payload.id === client.id) {
+        const state = sectors.get(client.currentSector)!;
+        const player = state.players.get(client.id);
+        if (player && player.cargo) {
+          removeAtMostCargo(player, data.payload.what, data.payload.amount);
+        }
+      }
     } else if (data.type === "equip") {
       const client = clients.get(ws);
       if (client && data.payload.id === client.id) {

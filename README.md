@@ -23,9 +23,4 @@ A simple multiplayer game where you have a ship and do things.
 ### Steps to get to the minimal game loop
 
 - Siege npcs and default station allegiance
-- Cargo dialog
 
-### Things I really should have
-
-- Engines (no warp by default, but can purchase)
-- Sensors (max range) - also I should redo the target arrows in the hud somewhat

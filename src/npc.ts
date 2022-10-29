@@ -13,7 +13,6 @@ import {
   Player,
   seekPosition,
   stopPlayer,
-  uid,
 } from "./game";
 
 type LootTable = { index: number; probability: number }[];
@@ -54,9 +53,7 @@ class Swarmer implements NPC {
 
   public lootTable: LootTable = [];
 
-  constructor(what: string | number, team: number | Faction) {
-    const id = uid();
-
+  constructor(what: string | number, team: number | Faction, id: number) {
     let definitionIndex: number;
     let def: UnitDefinition;
     if (typeof what === "string") {
@@ -141,9 +138,7 @@ class Strafer implements NPC {
 
   public lootTable: LootTable = [];
 
-  constructor(what: string | number, team: number | Faction) {
-    const id = uid();
-
+  constructor(what: string | number, team: number | Faction, id: number) {
     let definitionIndex: number;
     let def: UnitDefinition;
     if (typeof what === "string") {
@@ -244,17 +239,17 @@ class Strafer implements NPC {
   }
 }
 
-const addNpc = (state: GlobalState, what: string | number, team: Faction) => {
+const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number) => {
   let npc: NPC;
   switch (what) {
     case "Strafer":
     case 6:
     // case 0:
     // case "Fighter":
-      npc = new Strafer(what, team);
+      npc = new Strafer(what, team, id);
       break;
     default:
-      npc = new Swarmer(what, team);
+      npc = new Swarmer(what, team, id);
       break;
   }
   // console.log(npc);

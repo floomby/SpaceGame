@@ -1,6 +1,6 @@
 import { Faction } from "../defs";
 import { horizontalCenter, peekTag, setDialogBackground, shown } from "../dialog";
-import { allianceColor, allianceColorDark, confederationColor, confederationColorDark, faction } from "../globals";
+import { faction, teamColorsDark, teamColorsLight } from "../globals";
 import { getVolume, setVolume } from "../sound";
 import { pop as popDialog, push as pushDialog } from "../dialog";
 import { keylayoutSelector, keylayoutSelectorSetup } from "./keyboardLayout";
@@ -18,7 +18,7 @@ const settingsDialog = () =>
 
 const setupSettingsDialog = () => {
   document.getElementById("closeSettings")?.addEventListener("click", () => {
-    setDialogBackground(faction === Faction.Alliance ? allianceColor : confederationColor);
+    setDialogBackground(teamColorsLight[faction]);
     popDialog();
   });
   document.getElementById("viewControls")?.addEventListener("click", () => {
@@ -45,9 +45,9 @@ const initSettings = () => {
     settingsIcon.addEventListener("click", () => {
       if (peekTag() !== "settings") {
         pushDialog(settingsDialog(), setupSettingsDialog, "settings");
-        setDialogBackground(faction === Faction.Alliance ? allianceColorDark : confederationColorDark);
+        setDialogBackground(teamColorsDark[faction]);
       } else if (shown) {
-        setDialogBackground(faction === Faction.Alliance ? allianceColor : confederationColor);
+        setDialogBackground(teamColorsLight[faction]);
         popDialog();
       }
     });

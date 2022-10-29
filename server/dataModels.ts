@@ -3,9 +3,9 @@ import mongoose, { SchemaType } from "mongoose";
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
-  name: { type: String, required: true },
+  name: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  id: { type: Number, required: true },
+  id: { type: Number, required: true, unique: true },
   faction: { type: Number, required: true },
 });
 

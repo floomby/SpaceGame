@@ -13,7 +13,6 @@ import {
   maxNameLength,
   canDock,
   copyPlayer,
-  uid,
   randomAsteroids,
   TargetKind,
   EffectTrigger,
@@ -38,8 +37,16 @@ import { resolve } from "path";
 import { User, Station, Checkpoint } from "./dataModels";
 import mongoose from "mongoose";
 
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { addNpc, NPC } from "../src/npc";
+
+const uid = () => {
+  let ret = 0;
+  while (ret === 0) {
+    ret = parseInt(randomUUID().split("-")[4], 16);
+  }
+  return ret;
+};
 
 // Initialize the definitions (Needs to be done to use them)
 initDefs();
@@ -349,7 +356,7 @@ app.get("/addNPC", (req, res) => {
     return;
   }
   try {
-    addNpc(sectors.get(sectorIndex)!, what, parseInt(team));
+    addNpc(sectors.get(sectorIndex)!, what, parseInt(team), uid());
   } catch (e) {
     res.send("Error: " + e);
     return;
@@ -403,6 +410,24 @@ app.get("/kill", (req, res) => {
   res.send("true");
 });
 
+type ClientData = {
+  id: number;
+  input: Input;
+  angle: number;
+  name: string;
+  currentSector: number;
+  lastMessage: string;
+  lastMessageTime: number;
+  sectorDataSent: boolean;
+};
+
+const clients: Map<WebSocket, ClientData> = new Map();
+const idToWebsocket = new Map<number, WebSocket>();
+
+app.get("/usersOnline", (req, res) => {
+  res.send(JSON.stringify(Array.from(clients.values()).map((client) => client.name)));
+});
+
 // Websocket server stuff
 let server: ReturnType<typeof createServer> | ReturnType<typeof createSecureServer>;
 if (useSsl) {
@@ -434,43 +459,11 @@ let frame = 0;
 const targets: Map<number, [TargetKind, number]> = new Map();
 const secondaries: Map<number, number> = new Map();
 
-type ClientData = {
-  id: number;
-  input: Input;
-  angle: number;
-  name: string;
-  currentSector: number;
-  lastMessage: string;
-  lastMessageTime: number;
-  sectorDataSent: boolean;
-};
-
-// const checkpoints = new Map<number, Player>();
-// const respawnKeys = new Map<number, number>();
-
-const clients: Map<WebSocket, ClientData> = new Map();
-const idToWebsocket = new Map<number, WebSocket>();
-
-// Clears everything for resetting everything
-// const resetState = () => {
-//   state.players.clear();
-//   state.projectiles.clear();
-//   state.asteroids.clear();
-//   state.missiles.clear();
-//   targets.clear();
-//   secondaries.clear();
-//   clients.clear();
-//   checkpoints.clear();
-//   respawnKeys.clear();
-
-//   frame = 0;
-// };
-
 const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
 for (let i = 0; i < sectorList.length; i++) {
   const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(5, asteroidBounds, sectorList[i]);
+  const testAsteroids = randomAsteroids(5, asteroidBounds, sectorList[i], uid);
   for (const asteroid of testAsteroids) {
     sector.asteroids.set(asteroid.id, asteroid);
   }
@@ -495,6 +488,7 @@ const initFromDatabase = async () => {
       slotData: [],
       team: station.team,
       side: 0,
+      isPC: true,
     };
     const sector = sectors.get(station.sector);
     if (sector) {
@@ -512,7 +506,7 @@ market.set("Spare Parts", 10);
 // Websocket stuff (TODO Move to its own file)
 const wss = new WebSocketServer({ server });
 
-const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) => {
+const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) => {
   let defIndex: number;
   if (faction === Faction.Alliance) {
     // defIndex = defMap.get("Fighter")!.index;
@@ -555,6 +549,7 @@ const tmpSetupPlayer = (id: number, ws: WebSocket, name: string, faction: Factio
     credits: 500,
     team: faction,
     side: 0,
+    isPC: true,
   };
 
   equip(player, 0, "Basic mining laser", true);
@@ -625,20 +620,20 @@ wss.on("connection", (ws) => {
             return;
           }
           if (!checkpoint) {
-            tmpSetupPlayer(user.id, ws, name, data.payload.faction);
+            setupPlayer(user.id, ws, name, data.payload.faction);
           } else {
             const state = sectors.get(checkpoint.sector);
             if (!state) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
               console.log("Warning: Checkpoint sector not found (programming error)");
-              tmpSetupPlayer(user.id, ws, name, data.payload.faction);
+              setupPlayer(user.id, ws, name, data.payload.faction);
               return;
             }
             const playerState = JSON.parse(checkpoint.data);
-            // Fix to avoid loading problems with old checkpoints (shouldn't be needed anymore)
-            // if (playerState.side === undefined || isNaN(playerState.side)) {
-            //   playerState.side = 0;
-            // }
+            if (isNearOperableEnemyStation(playerState, state.players.values())) {
+              playerState.position.x = 0;
+              playerState.position.y = 0;
+            }
             state.players.set(user.id, playerState);
             clients.set(ws, {
               id: user.id,
@@ -688,7 +683,7 @@ wss.on("connection", (ws) => {
             console.log(err);
             return;
           }
-          tmpSetupPlayer(user.id, ws, name, faction);
+          setupPlayer(user.id, ws, name, faction);
           idToWebsocket.set(user.id, ws);
         });
       });
@@ -794,6 +789,8 @@ wss.on("connection", (ws) => {
             return;
           }
           const playerState = JSON.parse(checkpoint.data);
+          // So I don't have to edit the checkpoints in the database right now
+          playerState.isPC = true;
           if (isNearOperableEnemyStation(playerState, state.players.values())) {
             playerState.position.x = 0;
             playerState.position.y = 0;
@@ -1061,7 +1058,7 @@ setInterval(() => {
 setInterval(() => {
   const state = sectors.get(3)!;
   if (state.players.size < 8) {
-    addNpc(state, "Strafer", Faction.Rouge);
+    addNpc(state, "Strafer", Faction.Rouge, uid());
   }
 }, 60 * 1000);
 
@@ -1077,7 +1074,7 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
   }
   if (removedCount > 0) {
     console.log(`Respawning ${removedCount} asteroids in sector ${sector}`);
-    const newAsteroids = randomAsteroids(removedCount, asteroidBounds, Date.now());
+    const newAsteroids = randomAsteroids(removedCount, asteroidBounds, Date.now(), uid);
     for (const asteroid of newAsteroids) {
       state.asteroids.set(asteroid.id, asteroid);
     }

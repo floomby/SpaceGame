@@ -569,7 +569,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
       return;
     }
 
-    ws.send(JSON.stringify({ type: "init", payload: { id: id, sector } }));
+    ws.send(JSON.stringify({ type: "init", payload: { id: id, sector, faction } }));
     console.log("Registered client with id: ", id);
   });
 };
@@ -647,7 +647,7 @@ wss.on("connection", (ws) => {
             });
             targets.set(user.id, [TargetKind.None, 0]);
             secondaries.set(user.id, 0);
-            ws.send(JSON.stringify({ type: "init", payload: { id: user.id, sector: checkpoint.sector } }));
+            ws.send(JSON.stringify({ type: "init", payload: { id: user.id, sector: checkpoint.sector, faction: playerState.team } }));
             // log to file
             appendFile("log", `${new Date().toISOString()} ${name} logged in\n`, (err) => {
               if (err) {

@@ -44,6 +44,7 @@ import {
   ownId,
   selectedSecondary,
   setCurrentSector,
+  setFaction,
   setLastSelf,
   setOwnId,
   setSelectedSecondary,
@@ -280,7 +281,7 @@ const run = () => {
 
   initBlankState();
 
-  bindAction("init", (data: { id: number; sector: number }) => {
+  bindAction("init", (data: { id: number; sector: number; faction: Faction }) => {
     setOwnId(data.id);
     setCurrentSector(data.sector);
     initStars(data.sector);
@@ -290,6 +291,7 @@ const run = () => {
     clearDialog();
     hideDialog();
     initInputHandlers(targetAtCoords);
+    setFaction(data.faction);
   });
 
   bindAction("loginFail", (data: { error: string }) => {

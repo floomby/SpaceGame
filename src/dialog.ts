@@ -14,6 +14,10 @@ const setDialogBackground = (color: string) => {
 let staged: HTMLDivElement;
 let stackPlace: HTMLDivElement;
 
+const onShowCallbacks: (() => void)[] = [];
+const onHideCallbacks: (() => void)[] = [];
+const onPushCallbacks: (() => void)[] = [];
+
 const show = (html: string) => {
   div.style.display = "flex";
   div.innerHTML = `<div class="center" id="staged">${html}</div>
@@ -26,11 +30,19 @@ const show = (html: string) => {
   stackPlace.style.left = "0";
   stackPlace.style.width = "100%";
   stackPlace.style.height = "100%";
+  for (const callback of onShowCallbacks) {
+    callback();
+  }
   shown = true;
 };
 
 const hide = () => {
   div.style.display = "none";
+  if (shown === true) {
+    for (const callback of onHideCallbacks) {
+      callback();
+    }
+  }
   shown = false;
 };
 
@@ -46,7 +58,6 @@ const showStack = () => {
   if (stack.length > 0) {
     if (!shown) {
       show("");
-      shown = true;
       shownFromStack = true;
     }
     staged.style.display = "none";
@@ -59,7 +70,6 @@ const showStack = () => {
       clear();
       hide();
       shownFromStack = false;
-      shown = false;
     } else {
       stackPlace.innerHTML = "";
       stackPlace.style.display = "none";
@@ -71,6 +81,9 @@ const showStack = () => {
 const push = (html: string, callback: () => void, tag?: string) => {
   stack.push({ html, callback, tag: tag || "" });
   showStack();
+  for (const callback of onPushCallbacks) {
+    callback();
+  }
 };
 
 const pop = (count = 1) => {
@@ -88,9 +101,11 @@ const peekTag = () => {
   return "";
 };
 
-const clearStack = () => {
+const clearStack = (reshow = true) => {
   stack.length = 0;
-  showStack();
+  if (reshow) {
+    showStack();
+  }
 };
 
 const horizontalCenter = (html: string[]) => {
@@ -170,6 +185,18 @@ const unbindKey = (key: string) => {
   lastStates.delete(key);
 };
 
+const addOnShow = (callback: () => void) => {
+  onShowCallbacks.push(callback);
+};
+
+const addOnPush = (callback: () => void) => {
+  onPushCallbacks.push(callback);
+};
+
+const addOnHide = (callback: () => void) => {
+  onHideCallbacks.push(callback);
+};
+
 export {
   init,
   show,
@@ -186,5 +213,8 @@ export {
   clearStack,
   setDialogBackground,
   runPostUpdaterOnly,
+  addOnShow,
+  addOnPush,
+  addOnHide,
   shown,
 };

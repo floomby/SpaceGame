@@ -30,6 +30,8 @@ import {
   updateDom,
   runPostUpdaterOnly,
   peekTag,
+  setDialogBackground,
+  clearStack,
 } from "./dialog";
 import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, EmptySlot } from "./defs";
 import { drawEverything, fadeOutCollectable, initDrawing, initStars, pushMessage } from "./drawing";
@@ -46,12 +48,14 @@ import {
   setOwnId,
   setSelectedSecondary,
   state,
+  teamColorsLight,
 } from "./globals";
 import { initSettings } from "./dialogs/settings";
 import { deadDialog, setupDeadDialog } from "./dialogs/dead";
 import { hideChat, initInputHandlers, input, selectedSecondaryChanged, setSelectedSecondaryChanged, targetAngle, targetEnemy } from "./input";
 import { bindDockingUpdaters, dockDialog, docker, setDocker, setShowDocked, setupDockingUI, showDocked } from "./dialogs/dock";
 import { displayLoginDialog } from "./dialogs/login";
+import { initCargo } from "./dialogs/cargo";
 
 let chats: ChatMessage[] = [];
 
@@ -219,6 +223,9 @@ const loop = () => {
   }
   if (self && self.docked) {
     if (!showDocked) {
+      // TODO This is ugly and terrible (I need to refactor the docking dialogs to use the dialog stack)
+      clearStack();
+      setDialogBackground(teamColorsLight[self.team]);
       setShowDocked(true);
       const station = state.players.get(self.docked);
       showDialog(dockDialog(station, self));
@@ -278,6 +285,7 @@ const run = () => {
     setCurrentSector(data.sector);
     initStars(data.sector);
     initSettings();
+    initCargo();
     clearDialogStack();
     clearDialog();
     hideDialog();
@@ -349,6 +357,7 @@ const run = () => {
     if (self) {
       setLastSelf(self);
       updateDom("cargo", self.cargo);
+      updateDom("dumpCargo", self.cargo);
       updateDom("credits", self.credits);
       updateDom("arms", self.armIndices);
       runPostUpdaterOnly("ship", self.definitionIndex);

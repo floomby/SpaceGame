@@ -69,7 +69,7 @@ type Effect = {
 };
 
 const drawExplosion = (position: Position, def: EffectDefinition, framesLeft: number, spriteIndex: number) => {
-  const scale = 1 - framesLeft / def.frames;
+  const scale = 1 - framesLeft / def.frames / 2;
   const sprite = effectSprites[spriteIndex];
   ctx.globalAlpha = 1 - scale;
   ctx.drawImage(

@@ -39,6 +39,7 @@ import mongoose from "mongoose";
 
 import { createHash, randomUUID } from "crypto";
 import { addNpc, NPC } from "../src/npc";
+import { inspect } from "util";
 
 const uid = () => {
   let ret = 0;
@@ -588,141 +589,159 @@ wss.on("connection", (ws) => {
   console.log("Client connected");
 
   ws.on("message", (msg) => {
-    const data = JSON.parse(msg.toString());
-    if (data.type === "login") {
-      const name = data.payload.name;
-      const password = data.payload.password;
+    try {
+      const data = JSON.parse(msg.toString());
+      if (data.type === "login") {
+        const name = data.payload.name;
+        const password = data.payload.password;
 
-      const hashedPassword = hash(password);
+        const hashedPassword = hash(password);
 
-      // Check if the user is in the database
-      User.findOne({ name, password: hashedPassword }, (err, user) => {
-        if (err) {
-          ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Database error" } }));
-          console.log(err);
-          return;
-        }
-        if (!user) {
-          ws.send(JSON.stringify({ type: "loginFail", payload: { error: "User not found" } }));
-          return;
-        }
-
-        if (idToWebsocket.has(user.id)) {
-          ws.send(JSON.stringify({ type: "loginFail", payload: { error: "User already logged in" } }));
-          return;
-        }
-
-        idToWebsocket.set(user.id, ws);
-        Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
+        // Check if the user is in the database
+        User.findOne({ name, password: hashedPassword }, (err, user) => {
           if (err) {
             ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Database error" } }));
             console.log(err);
             return;
           }
-          if (!checkpoint) {
-            setupPlayer(user.id, ws, name, data.payload.faction);
-          } else {
-            const state = sectors.get(checkpoint.sector);
-            if (!state) {
-              ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
-              console.log("Warning: Checkpoint sector not found (programming error)");
-              setupPlayer(user.id, ws, name, data.payload.faction);
+          if (!user) {
+            ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Username/password combination not found" } }));
+            return;
+          }
+
+          if (idToWebsocket.has(user.id)) {
+            ws.send(JSON.stringify({ type: "loginFail", payload: { error: "User already logged in" } }));
+            return;
+          }
+
+          idToWebsocket.set(user.id, ws);
+          Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
+            if (err) {
+              ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Database error" } }));
+              console.log(err);
               return;
             }
-            const playerState = JSON.parse(checkpoint.data);
-            if (isNearOperableEnemyStation(playerState, state.players.values())) {
-              playerState.position.x = 0;
-              playerState.position.y = 0;
-            }
-            state.players.set(user.id, playerState);
-            clients.set(ws, {
-              id: user.id,
-              name,
-              input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
-              angle: 0,
-              currentSector: checkpoint.sector,
-              lastMessage: "",
-              lastMessageTime: Date.now(),
-              sectorDataSent: false,
-            });
-            targets.set(user.id, [TargetKind.None, 0]);
-            secondaries.set(user.id, 0);
-            ws.send(JSON.stringify({ type: "init", payload: { id: user.id, sector: checkpoint.sector, faction: playerState.team } }));
-            // log to file
-            appendFile("log", `${new Date().toISOString()} ${name} logged in\n`, (err) => {
-              if (err) {
-                console.log(err);
+            if (!checkpoint) {
+              setupPlayer(user.id, ws, name, data.payload.faction);
+            } else {
+              const state = sectors.get(checkpoint.sector);
+              if (!state) {
+                ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
+                console.log("Warning: Checkpoint sector not found (programming error)");
+                setupPlayer(user.id, ws, name, data.payload.faction);
+                return;
               }
-            });
-          }
+              const playerState = JSON.parse(checkpoint.data);
+              if (isNearOperableEnemyStation(playerState, state.players.values())) {
+                playerState.position.x = 0;
+                playerState.position.y = 0;
+              }
+              state.players.set(user.id, playerState);
+              clients.set(ws, {
+                id: user.id,
+                name,
+                input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
+                angle: 0,
+                currentSector: checkpoint.sector,
+                lastMessage: "",
+                lastMessageTime: Date.now(),
+                sectorDataSent: false,
+              });
+              targets.set(user.id, [TargetKind.None, 0]);
+              secondaries.set(user.id, 0);
+              ws.send(JSON.stringify({ type: "init", payload: { id: user.id, sector: checkpoint.sector, faction: playerState.team } }));
+              // log to file
+              appendFile("log", `${new Date().toISOString()} ${name} logged in\n`, (err) => {
+                if (err) {
+                  console.log(err);
+                }
+              });
+            }
+          });
         });
-      });
-    } else if (data.type === "register") {
-      const name = data.payload.name;
-      const password = data.payload.password;
-      const faction = data.payload.faction;
+      } else if (data.type === "register") {
+        const name = data.payload.name;
+        const password = data.payload.password;
+        const faction = data.payload.faction;
 
-      // Check if the user is in the database
-      User.findOne({ name }, (err, user) => {
-        if (err) {
-          ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Database error" } }));
-          console.log(err);
-          return;
-        }
-        if (user) {
-          ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username already taken" } }));
-          return;
-        }
-        if (name.length > maxNameLength) {
-          ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username too long" } }));
-          return;
-        }
-        User.create({ name, password: hash(password), faction, id: uid() }, (err, user) => {
+        // Check if the user is in the database
+        User.findOne({ name }, (err, user) => {
           if (err) {
             ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Database error" } }));
             console.log(err);
             return;
           }
-          setupPlayer(user.id, ws, name, faction);
-          idToWebsocket.set(user.id, ws);
-        });
-      });
-    } else if (data.type === "input") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        client.input = data.payload.input;
-      } else {
-        console.log("Warning: Input data from unknown client");
-      }
-    } else if (data.type === "angle") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        client.angle = data.payload.angle;
-      } else {
-        console.log("Warning: Angle data from unknown client");
-      }
-    } else if (data.type === "dock") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player) {
-          const station = state.players.get(data.payload.stationId);
-          if (canDock(player, station, false)) {
-            const def = defs[player.definitionIndex];
-            player.docked = data.payload.stationId;
-            player.heading = 0;
-            player.speed = 0;
-            player.side = 0;
-            player.energy = def.energy;
-            player.health = def.health;
-            player.position = { x: station!.position.x, y: station!.position.y };
-            for (let i = 0; i < player.armIndices.length; i++) {
-              const armDef = armDefs[player.armIndices[i]];
-              if (armDef && armDef.usage === ArmUsage.Ammo) {
-                player.slotData[i].ammo = armDef.maxAmmo;
-              }
+          if (user) {
+            ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username already taken" } }));
+            return;
+          }
+          if (name.length > maxNameLength) {
+            ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username too long" } }));
+            return;
+          }
+          User.create({ name, password: hash(password), faction, id: uid() }, (err, user) => {
+            if (err) {
+              ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Database error" } }));
+              console.log(err);
+              return;
             }
+            setupPlayer(user.id, ws, name, faction);
+            idToWebsocket.set(user.id, ws);
+          });
+        });
+      } else if (data.type === "input") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          client.input = data.payload.input;
+        } else {
+          console.log("Warning: Input data from unknown client");
+        }
+      } else if (data.type === "angle") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          client.angle = data.payload.angle;
+        } else {
+          console.log("Warning: Angle data from unknown client");
+        }
+      } else if (data.type === "dock") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            const station = state.players.get(data.payload.stationId);
+            if (canDock(player, station, false)) {
+              const def = defs[player.definitionIndex];
+              player.docked = data.payload.stationId;
+              player.heading = 0;
+              player.speed = 0;
+              player.side = 0;
+              player.energy = def.energy;
+              player.health = def.health;
+              player.position = { x: station!.position.x, y: station!.position.y };
+              for (let i = 0; i < player.armIndices.length; i++) {
+                const armDef = armDefs[player.armIndices[i]];
+                if (armDef && armDef.usage === ArmUsage.Ammo) {
+                  player.slotData[i].ammo = armDef.maxAmmo;
+                }
+              }
+
+              state.players.set(client.id, player);
+              const playerCopy = copyPlayer(player);
+              const checkpointData = JSON.stringify(playerCopy);
+
+              saveCheckpoint(client.id, client.currentSector, checkpointData);
+            }
+          }
+        }
+      } else if (data.type === "undock") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            player.docked = undefined;
+            state.players.set(client.id, player);
 
             state.players.set(client.id, player);
             const playerCopy = copyPlayer(player);
@@ -731,180 +750,156 @@ wss.on("connection", (ws) => {
             saveCheckpoint(client.id, client.currentSector, checkpointData);
           }
         }
-      }
-    } else if (data.type === "undock") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player) {
-          player.docked = undefined;
-          state.players.set(client.id, player);
-
-          state.players.set(client.id, player);
-          const playerCopy = copyPlayer(player);
-          const checkpointData = JSON.stringify(playerCopy);
-
-          saveCheckpoint(client.id, client.currentSector, checkpointData);
-        }
-      }
-    } else if (data.type === "repair") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player) {
-          const station = state.players.get(data.payload.station)!;
-          if (canRepair(player, station, false)) {
-            // This condition will need to change once there are more than 2 teams
-            if (!station.repairs || station.repairs.length !== Faction.Count) {
-              console.log(`Warning: Station repairs array is not correctly initialized (${station.id})`);
-            } else {
-              const stationDef = defs[station.definitionIndex];
-              const repairsNeeded = stationDef.repairsRequired! - station.repairs[player.team];
-              const amountRepaired = removeAtMostCargo(player, "Spare Parts", repairsNeeded);
-              station.repairs[player.team] += amountRepaired;
-            }
-          }
-        }
-      }
-    } else if (data.type === "respawn") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        Checkpoint.findOne({ id: data.payload.id }, (err, checkpoint) => {
-          if (err) {
-            ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading checkpoint" } }));
-            console.log("Error loading checkpoint: " + err);
-            return;
-          }
-          if (!checkpoint) {
-            ws.send(JSON.stringify({ type: "error", payload: { message: "Checkpoint not found" } }));
-            console.log("Error loading checkpoint: " + err);
-            return;
-          }
-          const state = sectors.get(checkpoint.sector);
-          if (!state) {
-            ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
-            console.log("Warning: Checkpoint sector not found (programming error)");
-            return;
-          }
-          const playerState = JSON.parse(checkpoint.data);
-          // So I don't have to edit the checkpoints in the database right now
-          playerState.isPC = true;
-          if (isNearOperableEnemyStation(playerState, state.players.values())) {
-            playerState.position.x = 0;
-            playerState.position.y = 0;
-          }
-          state.players.set(client.id, playerState);
-          ws.send(JSON.stringify({ type: "warp", payload: { to: checkpoint.sector } }));
-          client.currentSector = checkpoint.sector;
-        });
-      }
-    } else if (data.type === "target") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        targets.set(client.id, data.payload.target);
-      }
-    } else if (data.type === "secondary") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        secondaries.set(client.id, data.payload.secondary);
-      }
-    } else if (data.type === "sellCargo") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player && player.cargo) {
-          const selling: CargoEntry[] = [];
-          player.cargo = player.cargo.filter(({ what, amount }) => {
-            if (what !== data.payload.what) {
-              return true;
-            } else {
-              selling.push({ what, amount });
-              return false;
-            }
-          });
-          if (selling.length > 1) {
-            console.log("Warning: duplicate cargo (this is indicative of a bug)");
-          }
-          for (const { what, amount } of selling) {
-            const price = market.get(what);
-            if (price) {
-              if (player.credits === undefined) {
-                player.credits = 0;
-              }
-              player.credits += amount * price;
-            }
-          }
-
-          // state.players.set(client.id, player);
-        }
-      }
-    } else if (data.type === "dumpCargo") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player && player.cargo) {
-          removeAtMostCargo(player, data.payload.what, data.payload.amount);
-        }
-      }
-    } else if (data.type === "equip") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player) {
-          equip(player, data.payload.slotIndex, data.payload.what);
-          // state.players.set(client.id, player);
-        }
-      }
-    } else if (data.type === "chat") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        for (const [otherClient, otherClientData] of clients) {
-          if (otherClientData.currentSector === client.currentSector) {
-            otherClient.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
-          }
-        }
-      }
-    } else if (data.type === "purchase") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        const state = sectors.get(client.currentSector)!;
-        const player = state.players.get(client.id);
-        if (player) {
-          Station.findOne({ id: player.docked }, (err, station) => {
-            if (err) {
-              ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading station" } }));
-              console.log("Error loading station: " + err);
-              return;
-            }
-            if (!station) {
-              ws.send(JSON.stringify({ type: "error", payload: { message: "Station not found" } }));
-              console.log("Error loading station: " + err);
-              return;
-            }
-            purchaseShip(player, data.payload.index, station.shipsAvailable);
-          });
-        }
-      }
-    } else if (data.type === "warp") {
-      const client = clients.get(ws);
-      if (client && data.payload.id === client.id) {
-        if (client.currentSector !== data.payload.warpTo) {
+      } else if (data.type === "repair") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            player.warpTo = data.payload.warpTo;
-            player.warping = 1;
+            const station = state.players.get(data.payload.station)!;
+            if (canRepair(player, station, false)) {
+              // This condition will need to change once there are more than 2 teams
+              if (!station.repairs || station.repairs.length !== Faction.Count) {
+                console.log(`Warning: Station repairs array is not correctly initialized (${station.id})`);
+              } else {
+                const stationDef = defs[station.definitionIndex];
+                const repairsNeeded = stationDef.repairsRequired! - station.repairs[player.team];
+                const amountRepaired = removeAtMostCargo(player, "Spare Parts", repairsNeeded);
+                station.repairs[player.team] += amountRepaired;
+              }
+            }
+          }
+        }
+      } else if (data.type === "respawn") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          Checkpoint.findOne({ id: data.payload.id }, (err, checkpoint) => {
+            if (err) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading checkpoint" } }));
+              console.log("Error loading checkpoint: " + err);
+              return;
+            }
+            if (!checkpoint) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Checkpoint not found" } }));
+              console.log("Error loading checkpoint: " + err);
+              return;
+            }
+            const state = sectors.get(checkpoint.sector);
+            if (!state) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
+              console.log("Warning: Checkpoint sector not found (programming error)");
+              return;
+            }
+            const playerState = JSON.parse(checkpoint.data);
+            // So I don't have to edit the checkpoints in the database right now
+            playerState.isPC = true;
+            if (isNearOperableEnemyStation(playerState, state.players.values())) {
+              playerState.position.x = 0;
+              playerState.position.y = 0;
+            }
+            state.players.set(client.id, playerState);
+            ws.send(JSON.stringify({ type: "warp", payload: { to: checkpoint.sector } }));
+            client.currentSector = checkpoint.sector;
+          });
+        }
+      } else if (data.type === "target") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          targets.set(client.id, data.payload.target);
+        }
+      } else if (data.type === "secondary") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          secondaries.set(client.id, data.payload.secondary);
+        }
+      } else if (data.type === "sellCargo") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player && player.cargo) {
+            if (player.credits === undefined) {
+              player.credits = 0;
+            }
+            const price = market.get(data.payload.what);
+            if (price) {
+              player.credits += removeAtMostCargo(player, data.payload.what, data.payload.amount) * price;
+            }
+          }
+        }
+      } else if (data.type === "dumpCargo") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player && player.cargo) {
+            removeAtMostCargo(player, data.payload.what, data.payload.amount);
+          }
+        }
+      } else if (data.type === "equip") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            equip(player, data.payload.slotIndex, data.payload.what);
             // state.players.set(client.id, player);
           }
         }
+      } else if (data.type === "chat") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          data.payload.message = data.payload.message.trim().substring(0, 200);
+          for (const [otherClient, otherClientData] of clients) {
+            if (otherClientData.currentSector === client.currentSector) {
+              otherClient.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
+            }
+          }
+        }
+      } else if (data.type === "purchase") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            Station.findOne({ id: player.docked }, (err, station) => {
+              if (err) {
+                ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading station" } }));
+                console.log("Error loading station: " + err);
+                return;
+              }
+              if (!station) {
+                ws.send(JSON.stringify({ type: "error", payload: { message: "Station not found" } }));
+                console.log("Error loading station: " + err);
+                return;
+              }
+              purchaseShip(player, data.payload.index, station.shipsAvailable);
+            });
+          }
+        }
+      } else if (data.type === "warp") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          if (client.currentSector !== data.payload.warpTo && sectorList.includes(data.payload.warpTo)) {
+            const state = sectors.get(client.currentSector)!;
+            const player = state.players.get(client.id);
+            if (player) {
+              player.warpTo = data.payload.warpTo;
+              player.warping = 1;
+              // state.players.set(client.id, player);
+            }
+          }
+        }
+      } else {
+        console.log("Unknown message from client: ", data);
       }
-    } else {
-      console.log("Unknown message from client: ", data);
+    } catch (e) {
+      console.log("Error in message handler: " + e);
+      appendFile("errorlog", `Error: ${e}\nmessage: ${msg}\n${inspect(clients, { depth: null })}\n${Array.from(sectors.values())}\n`, (err) => {
+        if (err) {
+          console.log("Error writing to log: " + err);
+        }
+      });
     }
   });
 

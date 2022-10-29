@@ -19,7 +19,7 @@ const dumpCargoHtml = (cargo?: CargoEntry[]) => {
     html += `<tr>
   <td>${entry.what}</td>
   <td>${entry.amount}</td>
-  <td><input type="text" id="dumpCargoAmount${index}" value="${entry.amount}" size="6" /></td>
+  <td><input type="text" id="dumpCargoAmount${index}" value="${entry.amount}" size="7" /></td>
   <td style="text-align: right;"><button id="dumpCargo${index}">Dump</button></td></tr>`;
     index++;
   }
@@ -41,6 +41,14 @@ const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
     const button = document.getElementById(`dumpCargo${i}`) as HTMLButtonElement;
     if (button) {
       const amount = document.getElementById(`dumpCargoAmount${i}`) as HTMLInputElement;
+      const dumper = () => {
+        if (amount) {
+          const value = parseInt(amount.value, 10);
+          if (!isNaN(value)) {
+            sendDumpCargo(ownId, cargo[i].what, value);
+          }
+        }
+      };
       amount.addEventListener("keyup", (e) => {
         const value = parseInt(amount.value, 10);
         if (amount.value === "" || isNaN(value) || value > cargo[i].amount || value <= 0) {
@@ -50,16 +58,12 @@ const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
           amount.style.backgroundColor = "#aaffaa";
           button.disabled = false;
         }
+        if (e.key === "Enter") {
+          dumper();
+        }
       });
       amount.style.backgroundColor = "#aaffaa";
-      button.onclick = () => {
-        if (amount) {
-          const value = parseInt(amount.value, 10);
-          if (!isNaN(value)) {
-            sendDumpCargo(ownId, cargo[i].what, value);
-          }
-        }
-      };
+      button.onclick = dumper;
     }
   }
 };

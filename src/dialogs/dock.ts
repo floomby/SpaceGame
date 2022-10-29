@@ -3,9 +3,9 @@
 
 import { armDefs, defs, Faction, SlotKind, UnitDefinition, UnitKind } from "../defs";
 import { CargoEntry, maxDecimals, Player, ticksPerSecond } from "../game";
-import { lastSelf, ownId, state, teamColorsLight } from "../globals";
+import { lastSelf, ownId, state } from "../globals";
 import { sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
-import { bindPostUpdater, bindUpdater, clearStack, horizontalCenter, pop, push, setDialogBackground, show as showDialog, shown as isDialogShown } from "../dialog";
+import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
 import { composited } from "../drawing";
 import { domFromRest, getRestRaw } from "../rest";
@@ -33,13 +33,20 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
   if (!cargo) {
     return "";
   }
-  let html = '<table style="width: 100%; text-align: left;">';
-  // html += "<tr><th>Item</th><th>Quantity</th><th>Sell</th></tr>";
+  let html = `<table style="width: 100%; text-align: left;">
+<colgroup>
+  <col span="1" style="width: 49%;">
+  <col span="1" style="width: 17%;">
+  <col span="1" style="width: 17%;">
+  <col span="1" style="width: 17%;">
+</colgroup>`;
+
   let index = 0;
   for (const entry of cargo) {
     html += `<tr>
   <td>${entry.what}</td>
   <td>${entry.amount}</td>
+  <td><input type="text" id="sellCargoAmount${index}" value="${entry.amount}" size="6" /></td>
   <td style="text-align: right;"><button id="sellCargo${index}">Sell</button></td></tr>`;
     index++;
   }
@@ -50,11 +57,32 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
 const cargoPostUpdate = (cargo?: CargoEntry[]) => {
   if (cargo) {
     for (let i = 0; i < cargo.length; i++) {
-      const button = document.getElementById(`sellCargo${i}`);
+      const button = document.getElementById(`sellCargo${i}`) as HTMLButtonElement;
       if (button) {
-        button.addEventListener("click", () => {
-          sendSellCargo(ownId, cargo[i].what);
+        const amount = document.getElementById(`sellCargoAmount${i}`) as HTMLInputElement;
+        const seller = () => {
+          if (amount) {
+            const value = parseInt(amount.value, 10);
+            if (!isNaN(value)) {
+              sendSellCargo(ownId, cargo[i].what, value);
+            }
+          }
+        };
+        amount.addEventListener("keyup", (e) => {
+          const value = parseInt(amount.value, 10);
+          if (amount.value === "" || isNaN(value) || value > cargo[i].amount || value <= 0) {
+            amount.style.backgroundColor = "#ffaaaa";
+            button.disabled = true;
+          } else {
+            amount.style.backgroundColor = "#aaffaa";
+            button.disabled = false;
+          }
+          if (e.key === "Enter") {
+            seller();
+          }
         });
+        amount.style.backgroundColor = "#aaffaa";
+        button.onclick = seller;
       } else {
         console.log("button not found", `sellCargo${i}`);
       }

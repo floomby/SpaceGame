@@ -55,6 +55,10 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
       return;
     }
 
+    if (document.activeElement instanceof HTMLInputElement) {
+      return;
+    }
+
     let changed = false;
     const oldSecondary = selectedSecondary;
     switch (e.key) {

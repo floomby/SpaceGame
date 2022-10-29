@@ -122,11 +122,11 @@ const sendSecondary = (id: number, secondary: number) => {
   );
 };
 
-const sendSellCargo = (id: number, what: string) => {
+const sendSellCargo = (id: number, what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "sellCargo",
-      payload: { id, what },
+      payload: { id, what, amount },
     })
   );
 };

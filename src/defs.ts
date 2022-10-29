@@ -36,6 +36,8 @@ const getFactionString = (faction: Faction) => {
       return "Alliance";
     case Faction.Confederation:
       return "Confederation";
+    case Faction.Rouge:
+      return "Rouge";
   }
 };
 

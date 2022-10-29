@@ -24,6 +24,7 @@ import {
 import { allianceColorDark, allianceColorOpaque, confederationColorDark, confederationColorOpaque, lastSelf, teamColorsOpaque } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
+import { getNameOfPlayer } from "./rest";
 
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
@@ -594,6 +595,16 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
   ctx.rotate(target.heading);
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   ctx.restore();
+  const name = getNameOfPlayer(target);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "white";
+  if (name) {
+    ctx.font = "18px Arial";
+    ctx.fillText(name, where.x + where.width / 2, where.y + where.height - 20);
+  }
+  const def = defs[target.definitionIndex];
+  ctx.font = "12px Arial";
+  ctx.fillText(def.name, where.x + where.width / 2, where.y + 10);
 };
 
 const drawTargetAsteroid = (where: Rectangle, self: Player, targetAsteroid: Asteroid) => {
@@ -647,6 +658,19 @@ const drawArrow = (self: Player, targetPosition: Position, fillStyle: string, hi
   ctx.textAlign = "center";
   ctx.fillText(`${Math.round(distance)}`, 0, 0);
   ctx.restore();
+};
+
+const drawName = (self: Player, player: Player) => {
+  const name = getNameOfPlayer(player);
+  if (name) {
+    ctx.save();
+    ctx.translate(player.position.x - self.position.x + canvas.width / 2, player.position.y - self.position.y + canvas.height / 2);
+    ctx.fillStyle = "white";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(name, 0, -player.radius - 32);
+    ctx.restore();
+  }
 };
 
 const drawChat = (self: Player, player: Player, chat: ChatMessage) => {
@@ -828,7 +852,7 @@ const drawEverything = (
       if (targetAsteroid && targetAsteroid.id === id) {
         drawHighlight(lastSelf, asteroid);
       }
-      if (self && selectedSecondary === 0) {
+      if (self && (selectedSecondary === 0 || targetAsteroid)) {
         const def = defs[self.definitionIndex];
         const distance = l2Norm(asteroid.position, self.position);
         if (
@@ -850,17 +874,21 @@ const drawEverything = (
         continue;
       }
       if (id !== me) {
-        if (target && id === target.id) {
-          drawHighlight(lastSelf, player);
+        if (infinityNorm(player.position, self.position) < Math.max(canvas.width, canvas.height) / 2 + player.radius) {
+          if (target && id === target.id) {
+            drawHighlight(lastSelf, player);
+          }
+          drawPlayer(player, lastSelf);
+          drawName(lastSelf, player);
         }
-        drawPlayer(player, lastSelf);
       }
       if (self) {
         const def = defs[self.definitionIndex];
         const distance = l2Norm(player.position, self.position);
+        const playerDef = defs[player.definitionIndex];
         if (
           player !== self &&
-          distance < def.scanRange &&
+          (distance < def.scanRange || playerDef.kind === UnitKind.Station) &&
           (Math.abs(self.position.x - player.position.x) > canvas.width / 2 || Math.abs(self.position.y - player.position.y) > canvas.height / 2)
         ) {
           arrows.push({

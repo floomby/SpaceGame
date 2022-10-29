@@ -12,9 +12,16 @@ import {
   EffectAnchorKind,
   availableCargoCapacity,
   addCargo,
-  uid,
   Missile,
 } from "../src/game";
+
+const uid = () => {
+  let ret = 0;
+  while (ret === 0) {
+    ret = Math.floor(Math.random() * 1000000);
+  }
+  return ret;
+};
 
 enum Faction {
   Alliance = 0,
@@ -800,4 +807,5 @@ export {
   getFactionString,
   emptyLoadout,
   createCollectableFromDef,
+  uid as clientUid,
 };

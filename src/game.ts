@@ -107,6 +107,7 @@ type Player = Entity & {
   inoperable?: boolean;
   warping?: number;
   warpTo?: number;
+  isPC?: boolean;
   npc?: NPC;
   side?: number;
   repairs?: number[];
@@ -890,15 +891,7 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
   player.toFireSecondary = input.secondary;
 };
 
-const uid = () => {
-  let ret = 0;
-  while (ret === 0) {
-    ret = Math.floor(Math.random() * 1000000);
-  }
-  return ret;
-};
-
-const randomAsteroids = (count: number, bounds: Rectangle, seed: number) => {
+const randomAsteroids = (count: number, bounds: Rectangle, seed: number, uid: () => number) => {
   if (asteroidDefs.length === 0) {
     throw new Error("Asteroid defs not initialized");
   }
@@ -1264,7 +1257,6 @@ export {
   findNextTarget,
   findPreviousTarget,
   findHeadingBetween,
-  uid,
   randomAsteroids,
   findNextTargetAsteroid,
   findPreviousTargetAsteroid,

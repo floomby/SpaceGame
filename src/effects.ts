@@ -162,7 +162,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
+        play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.8);
       }
 
       const cos = Math.cos(heading);
@@ -487,8 +487,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
-        // panner.positionZ.value = 10;
+        play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);        
       }
 
       ctx.save();

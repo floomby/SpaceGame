@@ -21,12 +21,16 @@ const loadSound = (url: string) => {
 };
 
 let soundInitialized = false;
+let soundsStartedInPeriod = 0;
 
 const initSound = () => {
   if (soundInitialized) {
     return;
   }
   soundInitialized = true;
+  setInterval(() => {
+    soundsStartedInPeriod = 0;
+  }, 100);
 
   ctx = new AudioContext();
   volume = ctx.createGain();
@@ -66,6 +70,11 @@ const play3dSound = (index: number, x: number, y: number, gain = 1.0) => {
     console.log(ctx ? `Invalid sound index ${index}` : "Sound not initialized");
     return undefined;
   }
+  if (soundsStartedInPeriod > 5) {
+    return undefined;
+  }
+  soundsStartedInPeriod++;
+
   const source = ctx.createBufferSource();
   source.buffer = soundBuffers[index];
   const panner = ctx.createPanner();

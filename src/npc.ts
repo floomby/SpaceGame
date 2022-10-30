@@ -154,7 +154,7 @@ class Swarmer implements NPC {
           }
         }
         this.input.secondary = (!this.guidedSecondary && targetDist < 1500 && facing) || (this.guidedSecondary && targetDist < 1500);
-      } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 1000) {
+      } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 3000) {
         this.input.primary = false;
         this.input.secondary = false;
         this.doRadomManeuver = false;
@@ -165,7 +165,7 @@ class Swarmer implements NPC {
         this.input.secondary = false;
         stopPlayer(this.player, this.input);
       }
-    } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 1000) {
+    } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 3000) {
       this.input.primary = false;
       this.input.secondary = false;
       this.doRadomManeuver = false;

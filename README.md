@@ -14,8 +14,10 @@ A simple multiplayer game where you have a ship and do things.
 - Network optimizations
 - Economy is very boring right now
 - Try and make the strafe animations work in a way that looks tolerable
+- Investigate drawing performance
 
 ### MMO Stuff
 
 - Play as guest (low priority)
 - Option to change password (low priority)
+

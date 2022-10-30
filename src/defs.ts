@@ -523,7 +523,7 @@ const initDefs = () => {
     damage: 13,
     acceleration: 0.2,
     lifetime: 600,
-    deathEffect: 4,
+    deathEffect: 2,
   });
   const javelinIndex = missileDefs.length - 1;
   // Javelin Missile - 7
@@ -754,11 +754,29 @@ const initDefs = () => {
       }
     },
   });
+  collectableDefs.push({
+    sprite: { x: 320, y: 512, width: 64, height: 64 },
+    radius: 26,
+    name: "Energy",
+    description: "Extra energy",
+    canBeCollected: (player) => {
+      const def = defs[player.definitionIndex];
+      return !player.npc && player.energy < def.energy;
+    },
+    collectMutator: (player) => {
+      const def = defs[player.definitionIndex];
+      player.energy = def.energy;
+    },
+  });
 
   for (let i = 0; i < collectableDefs.length; i++) {
     const def = collectableDefs[i];
     collectableDefMap.set(def.name, { index: i, def });
   }
+};
+
+const emptySlotData = (def: UnitDefinition) => {
+  return (new Array(def.slots.length)).fill({});
 };
 
 enum EmptySlot {
@@ -810,4 +828,5 @@ export {
   emptyLoadout,
   createCollectableFromDef,
   uid as clientUid,
+  emptySlotData,
 };

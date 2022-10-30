@@ -592,14 +592,14 @@ const update = (
       if (player.toFireSecondary) {
         let slotId: number;
         if (player.npc) {
-          player.npc.selectedSecondary;
+          slotId = player.npc.selectedSecondary;
         } else {
           slotId = serverSecondaries.get(id);
         }
         const armDef = armDefs[player.armIndices[slotId]];
         // Targeted weapons
         if (armDef.targeted === TargetedKind.Targeted) {
-          const [targetKind, targetId] = serverTargets.get(id) || [TargetKind.None, 0];
+          const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
           if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
             if (armDef.stateMutator) {
               let target: Player | Asteroid | undefined;

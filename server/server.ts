@@ -28,7 +28,7 @@ import {
   removeAtMostCargo,
   isNearOperableEnemyStation,
 } from "../src/game";
-import { defs, defMap, initDefs, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
+import { defs, defMap, initDefs, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
 import { useSsl } from "../src/config";
 import express from "express";
@@ -962,6 +962,63 @@ const sendSectorData = (ws: WebSocket, state: GlobalState) => {
   ws.send(JSON.stringify({ type: "addCollectables", payload: Array.from(state.collectables.values()) }));
 };
 
+// To be changed once sectors are better understood
+const isEnemySector = (team: Faction, sector: number) => {
+  return team + 1 !== sector;
+};
+
+const spawnAllyForces = (team: Faction, sector: number, count: number) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    return;
+  }
+  switch (team) {
+    case Faction.Alliance:
+      for (let i = 0; i < count; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
+      }
+      break;
+    case Faction.Confederation:
+      for (let i = 0; i < count; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Rouge, uid());
+      }
+      break;
+    case Faction.Rouge:
+      for (let i = 0; i < count; i++) {
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rouge, uid());
+      }
+      break;
+  }
+};
+
+const enemyCount = (team: Faction, sector: number) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    return 0;
+  }
+  let count = 0;
+  for (const [id, player] of state.players) {
+    if (player.npc && player.team !== team) {
+      count++;
+    }
+  }
+  return count;
+};
+
+const allyCount = (team: Faction, sector: number) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    return 0;
+  }
+  let count = 0;
+  for (const [id, player] of state.players) {
+    if (player.npc && player.team === team) {
+      count++;
+    }
+  }
+  return count;
+};
+
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -1040,6 +1097,11 @@ setInterval(() => {
         client.currentSector = to;
         client.sectorDataSent = false;
         ws.send(JSON.stringify({ type: "warp", payload: { to } }));
+        const enemies = enemyCount(player.team, to);
+        if (enemies > 3 && isEnemySector(player.team, to)) {
+          spawnAllyForces(player.team, to, enemies);
+          flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
+        }
       }
       player.position.x = Math.random() * 400 - 200;
       player.position.y = Math.random() * 400 - 200;
@@ -1050,12 +1112,70 @@ setInterval(() => {
   }
 }, 1000 / ticksPerSecond);
 
-setInterval(() => {
-  const state = sectors.get(3)!;
-  if (state.players.size < 8) {
-    addNpc(state, "Strafer", Faction.Rouge, uid());
+const spawnSectorGuardians = (sector: number) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    return;
   }
-}, 60 * 1000);
+  let count: number;
+  let allies: number
+  switch (sector) {
+    case 1:
+      count = enemyCount(Faction.Alliance, sector);
+      allies = allyCount(Faction.Alliance, sector);
+      if (allies < 10) {
+        count = Math.max(4, count);
+      }
+      for (let i = 0; i < count; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
+      }
+      break;
+    case 2:
+      count = enemyCount(Faction.Confederation, sector);
+      allies = allyCount(Faction.Confederation, sector);
+      if (allies < 10) {
+        count = Math.max(4, count);
+      }
+      for (let i = 0; i < count; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
+      }
+      break;
+    case 3:
+      count = enemyCount(Faction.Rouge, sector);
+      allies = allyCount(Faction.Rouge, sector);
+      if (allies < 10) {
+        count = Math.max(4, count);
+      }
+      for (let i = 0; i < count; i++) {
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rouge, uid());
+      }
+      break;
+  }
+};
+
+setInterval(() => {
+  spawnSectorGuardians(1);
+  spawnSectorGuardians(2);
+  spawnSectorGuardians(3);
+}, 3 * 60 * 1000);
+
+const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    return;
+  }
+  for (const player of state.players.values()) {
+    if (player.inoperable) {
+      player.repairs![team] += 2;
+    }
+  }
+};
+
+setInterval(() => {
+  repairStationsInSectorForTeam(1, Faction.Alliance);
+  repairStationsInSectorForTeam(2, Faction.Confederation);
+  repairStationsInSectorForTeam(3, Faction.Rouge);
+}, 5 * 60 * 1000);
 
 const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
   let removedCount = 0;

@@ -5,7 +5,7 @@ let volume: GainNode;
 
 const soundBuffers: AudioBuffer[] = [];
 
-const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav", "twinkle0.wav", "dullPew0.wav"];
+const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav", "twinkle0.wav", "dullPew0.wav", "disabled0.wav"];
 
 const soundMap: Map<string, number> = new Map<string, number>();
 
@@ -65,12 +65,12 @@ const playSound = (index: number) => {
   source.start(0);
 };
 
-const play3dSound = (index: number, x: number, y: number, gain = 1.0) => {
+const play3dSound = (index: number, x: number, y: number, gain = 1.0, important = false) => {
   if (!ctx || index < 0 || index >= soundBuffers.length) {
     console.log(ctx ? `Invalid sound index ${index}` : "Sound not initialized");
     return undefined;
   }
-  if (soundsStartedInPeriod > 5) {
+  if (soundsStartedInPeriod > 5 && !important) {
     return undefined;
   }
   soundsStartedInPeriod++;

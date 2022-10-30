@@ -94,7 +94,7 @@ type Player = Entity & {
   toFireSecondary?: boolean;
   projectileId: number;
   energy: number;
-  definitionIndex: number;
+  defIndex: number;
   team: number;
   canDock?: number;
   docked?: number;
@@ -111,6 +111,9 @@ type Player = Entity & {
   npc?: NPC;
   side?: number;
   repairs?: number[];
+  disabled?: number;
+  omega?: number;
+  v?: Position;
 };
 
 type Asteroid = Circle & {
@@ -135,7 +138,7 @@ enum TargetKind {
 }
 
 const availableCargoCapacity = (player: Player) => {
-  const def = defs[player.definitionIndex];
+  const def = defs[player.defIndex];
   let capacity = 0;
   if (def.cargoCapacity) {
     capacity = def.cargoCapacity;
@@ -194,7 +197,7 @@ const canDock = (player: Player | undefined, station: Player | undefined, strict
   if (!player || !station) {
     return false;
   }
-  const stationDef = defs[station.definitionIndex];
+  const stationDef = defs[station.defIndex];
   if (stationDef.kind !== UnitKind.Station || !stationDef.dockable || station.inoperable) {
     return false;
   }
@@ -211,7 +214,7 @@ const canRepair = (player: Player | undefined, station: Player | undefined, stri
   if (!player || !station) {
     return false;
   }
-  const stationDef = defs[station.definitionIndex];
+  const stationDef = defs[station.defIndex];
   if (stationDef.kind !== UnitKind.Station || !station.inoperable) {
     return false;
   }
@@ -252,7 +255,7 @@ type EffectAnchor = {
 
 type EffectTrigger = {
   effectIndex: number;
-  from: EffectAnchor;
+  from?: EffectAnchor;
   to?: EffectAnchor;
 };
 
@@ -273,7 +276,7 @@ const setCanDockOrRepair = (player: Player, state: GlobalState) => {
     }
     player.canDock = undefined;
     state.players.forEach((otherPlayer) => {
-      const def = defs[otherPlayer.definitionIndex];
+      const def = defs[otherPlayer.defIndex];
       if (def.kind === UnitKind.Station) {
         if (player.team === otherPlayer.team && canDock(player, otherPlayer)) {
           player.canDock = otherPlayer.id;
@@ -362,7 +365,7 @@ const findClosestTarget = (player: Player, state: GlobalState, scanRange: number
   let minDistance = Infinity;
   let def: UnitDefinition;
   if (onlyEnemy) {
-    def = defs[player.definitionIndex];
+    def = defs[player.defIndex];
   }
   const scanRangeSquared = scanRange * scanRange;
   for (const [id, otherPlayer] of state.players) {
@@ -535,7 +538,7 @@ const update = (
     if (player.docked) {
       continue;
     }
-    const def = defs[player.definitionIndex];
+    const def = defs[player.defIndex];
     if (player.health <= 0) {
       kill(def, player, state, applyEffect, onDeath, drop);
     }
@@ -552,11 +555,23 @@ const update = (
     }
 
     if (def.kind === UnitKind.Ship) {
-      player.position.x += player.speed * Math.cos(player.heading);
-      player.position.y += player.speed * Math.sin(player.heading);
-      if (player.side) {
-        player.position.x += player.side * -Math.sin(player.heading);
-        player.position.y += player.side * Math.cos(player.heading);
+      if (player.disabled) {
+        player.warping = 0;
+        player.disabled -= 1;
+        player.position.x += player.v.x;
+        player.position.y += player.v.y;
+        player.heading = player.heading + player.omega % (2 * Math.PI);
+      } else {
+        player.v.x = player.position.x;
+        player.v.y = player.position.y;
+        player.position.x += player.speed * Math.cos(player.heading);
+        player.position.y += player.speed * Math.sin(player.heading);
+        if (player.side) {
+          player.position.x += player.side * -Math.sin(player.heading);
+          player.position.y += player.side * Math.cos(player.heading);
+        }
+        player.v.x = player.position.x - player.v.x;
+        player.v.y = player.position.y - player.v.y;
       }
       if (player.toFirePrimary && player.energy > primaryEnergy) {
         const projectile = {
@@ -589,7 +604,7 @@ const update = (
         }
       });
       // Fire secondaries
-      if (player.toFireSecondary) {
+      if (player.toFireSecondary && !player.disabled) {
         let slotId: number;
         if (player.npc) {
           slotId = player.npc.selectedSecondary;
@@ -626,7 +641,7 @@ const update = (
       // Have stations spin slowly
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
       // Have the stations fire their primary weapons
-      if (!player.inoperable) {
+      if (!player.inoperable && !player.disabled) {
         let closestEnemy: Player | undefined;
         let closestEnemyDistanceSquared = Infinity;
         for (const [otherId, otherPlayer] of state.players) {
@@ -636,7 +651,7 @@ const update = (
           if (player.id === otherId) {
             continue;
           }
-          const otherDef = defs[otherPlayer.definitionIndex];
+          const otherDef = defs[otherPlayer.defIndex];
           if (otherPlayer.team === player.team) {
             continue;
           }
@@ -675,7 +690,7 @@ const update = (
             }
           }
         }
-      } else {
+      } else if (player.inoperable) {
         for (let i = 0; i < player.repairs.length; i++) {
           if (player.repairs[i] >= def.repairsRequired) {
             console.log("Station repaired", id);
@@ -730,7 +745,7 @@ const update = (
         if (otherPlayer.docked || otherPlayer.inoperable) {
           continue;
         }
-        const def = defs[otherPlayer.definitionIndex];
+        const def = defs[otherPlayer.defIndex];
         if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
@@ -779,7 +794,7 @@ const update = (
       if (otherPlayer.docked || otherPlayer.inoperable) {
         continue;
       }
-      const def = defs[otherPlayer.definitionIndex];
+      const def = defs[otherPlayer.defIndex];
       if (missile.team !== otherPlayer.team && circlesIntersect(missile, otherPlayer)) {
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
@@ -788,6 +803,9 @@ const update = (
         state.missiles.delete(id);
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
         didRemove = true;
+        if (missileDef.hitMutator) {
+          missileDef.hitMutator(otherPlayer, state, applyEffect);
+        }
         break;
       }
     }
@@ -804,12 +822,12 @@ const update = (
   }
 };
 
-const processAllNpcs = (state: GlobalState, frame: number) => {
+const processAllNpcs = (state: GlobalState) => {
   for (const [id, player] of state.players) {
     if (!player.npc) {
       continue;
     }
-    player.npc.process(state, frame);
+    player.npc.process(state);
   }
 };
 
@@ -830,7 +848,12 @@ type Input = {
 };
 
 const applyInputs = (input: Input, player: Player, angle?: number) => {
-  const def = defs[player.definitionIndex];
+  if (player.disabled) {
+    player.toFirePrimary = false;
+    return;
+  }
+  const def = defs[player.defIndex];
+  player.omega = player.heading;
   if (input.up) {
     player.speed += def.acceleration;
   }
@@ -889,6 +912,7 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
     player.toFirePrimary = false;
   }
   player.toFireSecondary = input.secondary;
+  player.omega = player.heading - player.omega % (2 * Math.PI);
 };
 
 const randomAsteroids = (count: number, bounds: Rectangle, seed: number, uid: () => number) => {
@@ -991,7 +1015,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
 };
 
 const equip = (player: Player, slotIndex: number, what: string | number, noCost?: boolean) => {
-  const def = defs[player.definitionIndex];
+  const def = defs[player.defIndex];
   if (slotIndex >= def.slots.length) {
     console.log("Warning: slot number too high");
     return;
@@ -1055,7 +1079,7 @@ const purchaseShip = (player: Player, index: number, stationShipOptions: string[
   }
   if (player.credits !== undefined && def.price <= player.credits) {
     player.credits -= def.price;
-    player.definitionIndex = index;
+    player.defIndex = index;
     player.slotData = new Array(def.slots.length).map(() => ({}));
     player.armIndices = emptyLoadout(index);
     player.health = def.health;
@@ -1065,7 +1089,7 @@ const purchaseShip = (player: Player, index: number, stationShipOptions: string[
 
 const repairStation = (player: Player) => {
   if (player.inoperable) {
-    const def = defs[player.definitionIndex];
+    const def = defs[player.defIndex];
     player.health = def.health;
     // IDK if they should have full energy on being repaired
     // player.energy = def.energy;
@@ -1094,7 +1118,7 @@ const seekPosition = (player: Player, position: Position, input: Input) => {
 };
 
 const arrivePosition = (player: Player, position: Position, input: Input, epsilon = 10) => {
-  const def = defs[player.definitionIndex];
+  const def = defs[player.defIndex];
   const heading = findHeadingBetween(player.position, position);
   let headingMod = positiveMod(heading - player.heading, 2 * Math.PI);
   if (headingMod > Math.PI) {
@@ -1208,7 +1232,7 @@ const findAllAsteroidsOverlappingPoint = (point: Position, asteroids: IterableIt
 
 const isNearOperableEnemyStation = (player: Player, players: IterableIterator<Player>, distance = primaryRadius) => {
   for (const otherPlayer of players) {
-    const otherDef = defs[otherPlayer.definitionIndex];
+    const otherDef = defs[otherPlayer.defIndex];
     if (otherDef.kind !== UnitKind.Station || otherPlayer.inoperable) {
       continue;
     }

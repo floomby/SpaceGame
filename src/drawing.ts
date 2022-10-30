@@ -21,7 +21,15 @@ import {
   Rectangle,
   TargetKind,
 } from "./game";
-import { allianceColorDark, allianceColorOpaque, confederationColorDark, confederationColorOpaque, lastSelf, rougeColorOpaque, teamColorsOpaque } from "./globals";
+import {
+  allianceColorDark,
+  allianceColorOpaque,
+  confederationColorDark,
+  confederationColorOpaque,
+  lastSelf,
+  rougeColorOpaque,
+  teamColorsOpaque,
+} from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
 import { getNameOfPlayer } from "./rest";
@@ -250,16 +258,9 @@ const drawBar = (position: Position, width: number, height: number, primary: str
 };
 
 const drawHUD = (player: Player, selectedSecondary: number) => {
-  const def = defs[player.definitionIndex];
+  const def = defs[player.defIndex];
   const totalCargo = def.cargoCapacity - availableCargoCapacity(player);
-  drawBar(
-    { x: 10, y: canvas.height - 20 },
-    canvas.width / 2 - 20,
-    10,
-    "#774422CC",
-    "#333333CC",
-    totalCargo / defs[player.definitionIndex].cargoCapacity
-  );
+  drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#774422CC", "#333333CC", totalCargo / defs[player.defIndex].cargoCapacity);
   for (let i = 0; i < player.armIndices.length; i++) {
     let armDef = armDefs[player.armIndices[i]];
     ctx.fillStyle = i === selectedSecondary ? "yellow" : "white";
@@ -291,7 +292,7 @@ const drawMiniMapPlayer = (center: Position, player: Player, self: Player, miniM
     (player.position.y - self.position.y) * miniMapScaleFactor + center.y
   );
   ctx.fillStyle = teamColorsOpaque[player.team];
-  if (defs[player.definitionIndex].kind === UnitKind.Ship) {
+  if (defs[player.defIndex].kind === UnitKind.Ship) {
     ctx.rotate(player.heading);
     ctx.beginPath();
     ctx.moveTo(7, 0);
@@ -423,9 +424,9 @@ const drawAsteroid = (asteroid: Asteroid, self: Player) => {
 };
 
 const drawPlayer = (player: Player, self: Player) => {
-  const def = defs[player.definitionIndex];
+  const def = defs[player.defIndex];
   ctx.save();
-  let sprite = composited[player.definitionIndex * Faction.Count + player.team];
+  let sprite = composited[player.defIndex * Faction.Count + player.team];
   // let sprite = sprites[player.definitionIndex];
 
   // const steps = perspectiveRescaling.length;
@@ -465,7 +466,15 @@ const drawPlayer = (player: Player, self: Player) => {
   // ctx.fillRect(-sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   // ctx.globalCompositeOperation = "source-over";
   // ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+  if (player.disabled) {
+    ctx.filter = `saturate(${Math.sin(player.id / 1000 + highlightPhase * 3.3) * 50 + 50}%)`;
+  }
+
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
+
+  if (player.disabled) {
+    ctx.filter = "saturate(0%)";
+  }
 
   ctx.rotate(-player.heading);
   if (!player.inoperable) {
@@ -567,7 +576,7 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
   ctx.fillStyle = "#30303055";
   const margin = 5;
   ctx.fillRect(where.x - margin, where.y - margin, where.width + margin, where.height + margin);
-  const sprite = composited[target.definitionIndex * Faction.Count + target.team];
+  const sprite = composited[target.defIndex * Faction.Count + target.team];
   const maxDimension = Math.max(sprite.width, sprite.height);
   let scale = (where.width - margin * 2) / maxDimension / 2;
   if (scale > 1) {
@@ -582,7 +591,7 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
     5 / scale,
     "#00EE00CC",
     "#EE0000CC",
-    target.health / defs[target.definitionIndex].health
+    target.health / defs[target.defIndex].health
   );
   drawBar(
     { x: -sprite.width / 2, y: -sprite.height / 2 - 5 },
@@ -590,7 +599,7 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
     5 / scale,
     "#0022FFCC",
     "#333333CC",
-    target.energy / defs[target.definitionIndex].energy
+    target.energy / defs[target.defIndex].energy
   );
   ctx.rotate(target.heading);
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
@@ -602,7 +611,7 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
     ctx.font = "18px Arial";
     ctx.fillText(name, where.x + where.width / 2, where.y + where.height - 20);
   }
-  const def = defs[target.definitionIndex];
+  const def = defs[target.defIndex];
   ctx.font = "12px Arial";
   ctx.fillText(def.name, where.x + where.width / 2, where.y + 10);
 };
@@ -848,12 +857,14 @@ const drawEverything = (
     const arrows: ArrowData[] = [];
 
     for (const [id, asteroid] of state.asteroids) {
-      drawAsteroid(asteroid, lastSelf);
-      if (targetAsteroid && targetAsteroid.id === id) {
-        drawHighlight(lastSelf, asteroid);
+      if (infinityNorm(asteroid.position, lastSelf.position) < Math.max(canvas.width, canvas.height) / 2 + asteroid.radius) {
+        drawAsteroid(asteroid, lastSelf);
+        if (targetAsteroid && targetAsteroid.id === id) {
+          drawHighlight(lastSelf, asteroid);
+        }
       }
       if (self && (selectedSecondary === 0 || targetAsteroid)) {
-        const def = defs[self.definitionIndex];
+        const def = defs[self.defIndex];
         const distance = l2Norm(asteroid.position, self.position);
         if (
           distance < def.scanRange &&
@@ -869,12 +880,13 @@ const drawEverything = (
         }
       }
     }
+
     for (const [id, player] of state.players) {
       if (player.docked) {
         continue;
       }
       if (id !== me) {
-        if (infinityNorm(player.position, self.position) < Math.max(canvas.width, canvas.height) / 2 + player.radius) {
+        if (infinityNorm(player.position, lastSelf.position) < Math.max(canvas.width, canvas.height) / 2 + player.radius) {
           if (target && id === target.id) {
             drawHighlight(lastSelf, player);
           }
@@ -883,9 +895,9 @@ const drawEverything = (
         }
       }
       if (self) {
-        const def = defs[self.definitionIndex];
+        const def = defs[self.defIndex];
         const distance = l2Norm(player.position, self.position);
-        const playerDef = defs[player.definitionIndex];
+        const playerDef = defs[player.defIndex];
         if (
           player !== self &&
           (distance < def.scanRange || playerDef.kind === UnitKind.Station) &&

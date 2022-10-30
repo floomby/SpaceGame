@@ -23,4 +23,3 @@ A simple multiplayer game where you have a ship and do things.
 ### Next things
 
 - Siege npcs and default station allegiance
-- Sell cargo amount

@@ -8,4 +8,5 @@ soundCandidates
 resources/.*
 server/*.js
 server/log
+server/errorlog
 node_modules

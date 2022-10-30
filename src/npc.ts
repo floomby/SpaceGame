@@ -1,4 +1,4 @@
-import { collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, UnitDefinition } from "./defs";
+import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, UnitDefinition } from "./defs";
 import {
   applyInputs,
   arrivePosition,
@@ -72,10 +72,10 @@ class Swarmer implements NPC {
       def = defs[definitionIndex];
     }
     this.player = {
-      position: { x: Math.random() * 2000 - 1000, y: Math.random() * 2000 - 1000 },
+      position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
       radius: defs[definitionIndex].radius,
       speed: 0,
-      heading: 0,
+      heading: Math.random() * 2 * Math.PI,
       health: defs[definitionIndex].health,
       id: id,
       sinceLastShot: [effectiveInfinity],
@@ -107,6 +107,8 @@ class Swarmer implements NPC {
     this.lootTable = [loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)];
   }
 
+  private justSpawned = true;
+
   public targetId = 0;
 
   private doRadomManeuver = false;
@@ -115,7 +117,8 @@ class Swarmer implements NPC {
   public process(state: GlobalState, frame: number) {
     let target: Player | undefined = undefined;
     const def = defs[this.player.definitionIndex];
-    if (frame % 60 === 0) {
+    if (frame % 60 === 0 || this.justSpawned) {
+      this.justSpawned = false;
       const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
       this.targetId = newTarget?.id ?? 0;
       target = newTarget;
@@ -196,6 +199,7 @@ class Strafer implements NPC {
   public lootTable: LootTable = [];
 
   private guidedSecondary: boolean;
+  private usesAmmo: boolean;
 
   constructor(what: string | number, team: number | Faction, id: number) {
     let definitionIndex: number;
@@ -213,10 +217,10 @@ class Strafer implements NPC {
       def = defs[definitionIndex];
     }
     this.player = {
-      position: { x: Math.random() * 2000 - 1000, y: Math.random() * 2000 - 1000 },
+      position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
       radius: defs[definitionIndex].radius,
       speed: 0,
-      heading: 0,
+      heading: Math.random() * 2 * Math.PI,
       health: defs[definitionIndex].health,
       id: id,
       sinceLastShot: [effectiveInfinity],
@@ -232,6 +236,7 @@ class Strafer implements NPC {
       side: 0,
     };
 
+    this.usesAmmo = true;
     if (Math.random() < 0.5) {
       equip(this.player, 1, "Javelin Missile");
       this.guidedSecondary = false;
@@ -241,6 +246,7 @@ class Strafer implements NPC {
     } else if (Math.random() < 0.5) {
       equip(this.player, 1, "Laser Beam");
       this.guidedSecondary = true;
+      this.usesAmmo = false;
     } else {
       equip(this.player, 1, "Heavy Javelin Missile");
       this.guidedSecondary = false;
@@ -253,10 +259,13 @@ class Strafer implements NPC {
 
   private strafeDirection = true;
 
+  private justSpawned = true;
+
   public process(state: GlobalState, frame: number) {
     let target: Player | undefined = undefined;
     const def = defs[this.player.definitionIndex];
-    if (frame % 60 === 0) {
+    if (frame % 60 === 0 || this.justSpawned) {
+      this.justSpawned = false;
       const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
       this.targetId = newTarget?.id ?? 0;
       target = newTarget;
@@ -297,7 +306,7 @@ class Strafer implements NPC {
         }
         const targetDist = l2Norm(this.player.position, target.position);
         const facing = currentlyFacing(this.player, target);
-        if (targetDist < 500 && facing) {
+        if ((targetDist < 500 || ((this.player.energy > 50 || this.usesAmmo) && targetDist < 1000)) && facing) {
           this.input.primary = true;
         } else {
           this.input.primary = false;

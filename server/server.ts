@@ -1124,7 +1124,7 @@ const spawnSectorGuardians = (sector: number) => {
       count = enemyCount(Faction.Alliance, sector);
       allies = allyCount(Faction.Alliance, sector);
       if (allies < 10) {
-        count = Math.max(4, count);
+        count = Math.min(4, count);
       }
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
@@ -1134,7 +1134,7 @@ const spawnSectorGuardians = (sector: number) => {
       count = enemyCount(Faction.Confederation, sector);
       allies = allyCount(Faction.Confederation, sector);
       if (allies < 10) {
-        count = Math.max(4, count);
+        count = Math.min(4, count);
       }
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
@@ -1144,7 +1144,7 @@ const spawnSectorGuardians = (sector: number) => {
       count = enemyCount(Faction.Rouge, sector);
       allies = allyCount(Faction.Rouge, sector);
       if (allies < 10) {
-        count = Math.max(4, count);
+        count = Math.min(4, count);
       }
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rouge, uid());

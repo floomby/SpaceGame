@@ -633,8 +633,8 @@ wss.on("connection", (ws) => {
               }
               const playerState = JSON.parse(checkpoint.data);
               if (isNearOperableEnemyStation(playerState, state.players.values())) {
-                playerState.position.x = 0;
-                playerState.position.y = 0;
+                playerState.position.x = -5000;
+                playerState.position.y = 5000;
               }
               state.players.set(user.id, playerState);
               clients.set(ws, {
@@ -794,8 +794,8 @@ wss.on("connection", (ws) => {
             // So I don't have to edit the checkpoints in the database right now
             playerState.isPC = true;
             if (isNearOperableEnemyStation(playerState, state.players.values())) {
-              playerState.position.x = 0;
-              playerState.position.y = 0;
+              playerState.position.x = -5000;
+              playerState.position.y = 5000;
             }
             state.players.set(client.id, playerState);
             ws.send(JSON.stringify({ type: "warp", payload: { to: checkpoint.sector } }));

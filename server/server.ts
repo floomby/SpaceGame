@@ -980,7 +980,7 @@ const spawnAllyForces = (team: Faction, sector: number, count: number) => {
       break;
     case Faction.Confederation:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Rouge, uid());
+        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
       }
       break;
     case Faction.Rouge:

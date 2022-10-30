@@ -91,6 +91,7 @@ const initEffects = () => {
   const miningLaserSound = getSound("laser1.wav");
   const twinkleSound = getSound("twinkle0.wav");
   const pewSound = getSound("dullPew0.wav");
+  const disabledSound = getSound("disabled0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -385,8 +386,11 @@ const initEffects = () => {
     draw: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
       const spriteIdx = 3;
-      const width = effectSprites[spriteIdx].width;
-      const height = effectSprites[spriteIdx].height;
+      // const width = effectSprites[spriteIdx].width;
+      // const height = effectSprites[spriteIdx].height;
+      // V8 profiler says the above lines of code are slow and this is a hot path
+      const width = 64;
+      const height = 64;
       if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
         return;
       }
@@ -487,7 +491,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);        
+        play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
       }
 
       ctx.save();
@@ -510,7 +514,63 @@ const initEffects = () => {
       };
     },
   });
+  // EMP Missile death effect - 10
+  effectDefs.push({
+    frames: 15,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
 
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        effect.extra.panner = play3dSound(
+          popSound,
+          ((from as Position).x - self.position.x) / soundScale,
+          ((from as Position).y - self.position.y) / soundScale
+        );
+      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
+        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
+        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+      }
+
+      const spriteIdx = 5;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * Math.PI * 2, needSound: true };
+    },
+  });
+  // Disabled effect - 11
+  effectDefs.push({
+    frames: 30,
+    draw: (effect, self, state) => {
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        playSound(disabledSound);
+      }
+    },
+    initializer: () => {
+      return { needSound: true };
+    },
+  });
 
   // Consult the spreadsheet for understanding where things are on the spritesheet
   effectSpriteDefs.push({
@@ -527,6 +587,9 @@ const initEffects = () => {
   });
   effectSpriteDefs.push({
     sprite: { x: 128, y: 0, width: 64, height: 32 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 256, y: 576, width: 64, height: 64 },
   });
 };
 
@@ -565,7 +628,12 @@ const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
       effect.frame = 0;
       continue;
     }
-    if (effect.from.kind === EffectAnchorKind.Absolute && effect.from.heading !== undefined && effect.from.speed !== undefined) {
+    if (
+      effect.from !== undefined &&
+      effect.from.kind === EffectAnchorKind.Absolute &&
+      effect.from.heading !== undefined &&
+      effect.from.speed !== undefined
+    ) {
       (effect.from.value as Position).x += Math.cos(effect.from.heading) * effect.from.speed * sixtieths;
       (effect.from.value as Position).y += Math.sin(effect.from.heading) * effect.from.speed * sixtieths;
     }

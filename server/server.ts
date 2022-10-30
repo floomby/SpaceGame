@@ -484,12 +484,13 @@ const initFromDatabase = async () => {
       sinceLastShot: [effectiveInfinity, effectiveInfinity, effectiveInfinity, effectiveInfinity],
       projectileId: 0,
       energy: def.energy,
-      definitionIndex: station.definitionIndex,
+      defIndex: station.definitionIndex,
       armIndices: [],
       slotData: [],
       team: station.team,
       side: 0,
       isPC: true,
+      v: { x: 0, y: 0 },
     };
     const sector = sectors.get(station.sector);
     if (sector) {
@@ -543,7 +544,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     sinceLastShot: [effectiveInfinity],
     projectileId: 0,
     energy: defs[defIndex].energy,
-    definitionIndex: defIndex,
+    defIndex: defIndex,
     armIndices: emptyLoadout(defIndex),
     slotData: [{}, {}, {}],
     cargo: [{ what: "Teddy Bears", amount: 30 }],
@@ -551,6 +552,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     team: faction,
     side: 0,
     isPC: true,
+    v: { x: 0, y: 0 },
   };
 
   equip(player, 0, "Basic mining laser", true);
@@ -636,6 +638,12 @@ wss.on("connection", (ws) => {
                 playerState.position.x = -5000;
                 playerState.position.y = 5000;
               }
+              // Update the player on load to match what is expected
+              if (playerState.defIndex === undefined) {
+                playerState.defIndex = playerState.definitionIndex;
+                playerState.definitionIndex = undefined;
+              }
+              playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
               clients.set(ws, {
                 id: user.id,
@@ -711,7 +719,7 @@ wss.on("connection", (ws) => {
           if (player) {
             const station = state.players.get(data.payload.stationId);
             if (canDock(player, station, false)) {
-              const def = defs[player.definitionIndex];
+              const def = defs[player.defIndex];
               player.docked = data.payload.stationId;
               player.heading = 0;
               player.speed = 0;
@@ -762,7 +770,7 @@ wss.on("connection", (ws) => {
               if (!station.repairs || station.repairs.length !== Faction.Count) {
                 console.log(`Warning: Station repairs array is not correctly initialized (${station.id})`);
               } else {
-                const stationDef = defs[station.definitionIndex];
+                const stationDef = defs[station.defIndex];
                 const repairsNeeded = stationDef.repairsRequired! - station.repairs[player.team];
                 const amountRepaired = removeAtMostCargo(player, "Spare Parts", repairsNeeded);
                 station.repairs[player.team] += amountRepaired;
@@ -797,6 +805,12 @@ wss.on("connection", (ws) => {
               playerState.position.x = -5000;
               playerState.position.y = 5000;
             }
+            // Update the player on load to match what is expected
+            if (playerState.defIndex === undefined) {
+              playerState.defIndex = playerState.definitionIndex;
+              playerState.definitionIndex = undefined;
+            }
+            playerState.v = { x: 0, y: 0 };
             state.players.set(client.id, playerState);
             ws.send(JSON.stringify({ type: "warp", payload: { to: checkpoint.sector } }));
             client.currentSector = checkpoint.sector;
@@ -921,7 +935,7 @@ const informDead = (player: Player) => {
   if (player.npc) {
     return;
   }
-  const def = defs[player.definitionIndex];
+  const def = defs[player.defIndex];
   if (def.kind === UnitKind.Ship) {
     const ws = idToWebsocket.get(player.id);
     if (ws) {
@@ -1047,7 +1061,7 @@ setInterval(() => {
       (collectable) => collectables.push(collectable),
       (id, collected) => removeCollectable(sector, id, collected)
     );
-    processAllNpcs(state, frame);
+    processAllNpcs(state);
     // This maybe should just be in the update function?
     for (const collectable of collectables) {
       state.collectables.set(collectable.id, collectable);
@@ -1118,12 +1132,12 @@ const spawnSectorGuardians = (sector: number) => {
     return;
   }
   let count: number;
-  let allies: number
+  let allies: number;
   for (const [id, player] of state.players) {
     if (player.npc) {
       continue;
     }
-    const def = defs[player.definitionIndex];
+    const def = defs[player.defIndex];
     if (def.kind === UnitKind.Station) {
       continue;
     }

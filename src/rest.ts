@@ -47,7 +47,7 @@ const namesLookedUp = new Set<number>();
 
 // Memoized name lookup from server
 const getNameOfPlayer = (player: Player) => {
-  const def = defs[player.definitionIndex];
+  const def = defs[player.defIndex];
   if (!player.isPC || def.kind === UnitKind.Station) {
     return undefined
   }

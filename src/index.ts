@@ -85,6 +85,7 @@ const selectFirstSecondary = (self: Player) => {
 };
 
 let forceSetSecondary = false;
+let wasDisabled = false;
 
 // TODO There is a bunch of business logic in here that should be refactored into better places
 const loop = () => {
@@ -101,6 +102,13 @@ const loop = () => {
     docker();
   }
 
+  if (self && self.disabled && !wasDisabled) {
+    wasDisabled = true;
+    applyEffects([{ effectIndex: 11 }]);
+  } else if (self && !self.disabled && wasDisabled) {
+    wasDisabled = false;
+  }
+
   if (self && !self.docked) {
     if (oldAngle !== targetAngle) {
       oldAngle = targetAngle;
@@ -114,7 +122,7 @@ const loop = () => {
   }
 
   if (self && !self.docked) {
-    const def = defs[self.definitionIndex];
+    const def = defs[self.defIndex];
     if (!input.quickTargetClosestEnemy) {
       if ((input.nextTarget || input.previousTarget) && !input.nextTargetAsteroid && !input.previousTargetAsteroid) {
         target = state.players.get(targetId);
@@ -189,7 +197,7 @@ const loop = () => {
     forceSetSecondary = false;
   }
 
-  const def = self ? defs[self.definitionIndex] : undefined;
+  const def = self ? defs[self.defIndex] : undefined;
   if (self && selectedSecondaryChanged) {
     if (selectedSecondary < def.slots.length) {
       lastValidSecondary = selectedSecondary;
@@ -362,7 +370,7 @@ const run = () => {
       updateDom("dumpCargo", self.cargo);
       updateDom("credits", self.credits);
       updateDom("arms", self.armIndices);
-      runPostUpdaterOnly("ship", self.definitionIndex);
+      runPostUpdaterOnly("ship", self.defIndex);
       if (self.docked) {
         targetId = 0;
         targetAsteroidId = 0;

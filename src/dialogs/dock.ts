@@ -113,7 +113,7 @@ const armsPostUpdate = (armIndices: number[]) => {
         const index = parseInt(button.id.substring(3));
         const self = state.players.get(ownId);
         if (self) {
-          const def = defs[self.definitionIndex];
+          const def = defs[self.defIndex];
           if (def.slots.length > index) {
             const kind = def.slots[index];
             showDialog(equipMenu(kind, slotIndex));
@@ -178,7 +178,7 @@ const shipPreviewer = (definitionIndex: number) => {
 
 const shipShop = () => {
   const self = state.players.get(ownId);
-  return horizontalCenter([shipPreviewer(self.definitionIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`]);
+  return horizontalCenter([shipPreviewer(self.defIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`]);
 };
 
 const populateShipList = (availableShips: { def: UnitDefinition; index: number }[], self: Player) => {
@@ -343,7 +343,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   });
   cargoPostUpdate(self.cargo);
   armsPostUpdate(self.armIndices);
-  shipPostUpdate(self.definitionIndex);
+  shipPostUpdate(self.defIndex);
   document.getElementById("changeShip")?.addEventListener("click", () => {
     push(shipShop(), () => setupShipShop(station));
   });

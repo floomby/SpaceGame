@@ -135,6 +135,7 @@ type MissileDef = {
   // TODO this should be easier to use (having all these indices is error prone)
   deathEffect: number;
   turnRate?: number;
+  hitMutator?: (player: Player, state: GlobalState, applyEffect: (effectTrigger: EffectTrigger) => void) => void;
 };
 
 type CollectableDef = {
@@ -701,6 +702,63 @@ const initDefs = () => {
     cost: 150,
   });
 
+  missileDefs.push({
+    sprite: { x: 96, y: 16, width: 32, height: 16 },
+    radius: 10,
+    speed: 20,
+    damage: 0,
+    acceleration: 0.1,
+    lifetime: 800,
+    deathEffect: 10,
+    turnRate: 0.3,
+    hitMutator: (player, state, applyEffect) => {
+      player.disabled = 600;
+    },
+  });
+  const empMissileIndex = missileDefs.length - 1;
+  // EMP Missile - 9
+  armDefs.push({
+    name: "EMP Missile",
+    description: "A guided emp missile which disables enemy systems and has a long reload time",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Targeted,
+    maxAmmo: 4,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 1 && slotData.sinceFired > 300 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
+        if ((target as Player).inoperable) {
+          return;
+        }
+        player.energy -= 1;
+        slotData.sinceFired = 0;
+        slotData.ammo--;
+        const id = uid();
+        const missile: Missile = {
+          id,
+          position: { x: player.position.x, y: player.position.y },
+          speed: player.speed + 1,
+          heading: player.heading,
+          radius: missileDefs[empMissileIndex].radius,
+          team: player.team,
+          damage: missileDefs[empMissileIndex].damage,
+          target: target.id,
+          definitionIndex: empMissileIndex,
+          lifetime: missileDefs[empMissileIndex].lifetime,
+        };
+        state.missiles.set(id, missile);
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 4 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 1200,
+  });
+
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];
     armDefMap.set(def.name, { index: i, def });
@@ -760,11 +818,11 @@ const initDefs = () => {
     name: "Energy",
     description: "Extra energy",
     canBeCollected: (player) => {
-      const def = defs[player.definitionIndex];
+      const def = defs[player.defIndex];
       return !player.npc && player.energy < def.energy;
     },
     collectMutator: (player) => {
-      const def = defs[player.definitionIndex];
+      const def = defs[player.defIndex];
       player.energy = def.energy;
     },
   });

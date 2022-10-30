@@ -36,7 +36,7 @@ interface NPC {
   selectedSecondary: number;
   lootTable: LootTable;
   targetId: number;
-  process: (state: GlobalState, frame: number) => void;
+  process: (state: GlobalState) => void;
 }
 
 class Swarmer implements NPC {
@@ -57,68 +57,77 @@ class Swarmer implements NPC {
   private guidedSecondary: boolean;
 
   constructor(what: string | number, team: number | Faction, id: number) {
-    let definitionIndex: number;
+    let defIndex: number;
     let def: UnitDefinition;
     if (typeof what === "string") {
       const value = defMap.get(what);
       if (value) {
-        definitionIndex = value.index;
+        defIndex = value.index;
         def = value.def;
       } else {
         throw new Error(`Unknown NPC type: ${what}`);
       }
     } else {
-      definitionIndex = what;
-      def = defs[definitionIndex];
+      defIndex = what;
+      def = defs[defIndex];
     }
     this.player = {
       position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
-      radius: defs[definitionIndex].radius,
+      radius: defs[defIndex].radius,
       speed: 0,
       heading: Math.random() * 2 * Math.PI,
-      health: defs[definitionIndex].health,
+      health: defs[defIndex].health,
       id: id,
       sinceLastShot: [effectiveInfinity],
       projectileId: 0,
-      energy: defs[definitionIndex].energy,
-      definitionIndex: definitionIndex,
-      armIndices: emptyLoadout(definitionIndex),
+      energy: defs[defIndex].energy,
+      defIndex: defIndex,
+      armIndices: emptyLoadout(defIndex),
       slotData: emptySlotData(def),
       cargo: [],
       credits: 500,
       npc: this,
       team,
+      v: { x: 0, y: 0 },
     };
 
-    if (Math.random() < 0.5) {
-      equip(this.player, 1, "Javelin Missile");
-      this.guidedSecondary = false;
-    } else if (Math.random() < 0.5) {
-      equip(this.player, 1, "Tomahawk Missile");
-      this.guidedSecondary = true;
-    } else if (Math.random() < 0.5) {
-      equip(this.player, 1, "Laser Beam");
-      this.guidedSecondary = true;
-    } else {
-      equip(this.player, 1, "Heavy Javelin Missile");
-      this.guidedSecondary = false;
+    switch (Math.floor(Math.random() * 5)) {
+      case 0:
+        equip(this.player, 1, "Javelin Missile", true);
+        this.guidedSecondary = false;
+        break;
+      case 1:
+        equip(this.player, 1, "Tomahawk Missile", true);
+        this.guidedSecondary = true;
+        break;
+      case 2:
+        equip(this.player, 1, "Laser Beam", true);
+        this.guidedSecondary = true;
+        break;
+      case 3:
+        equip(this.player, 1, "Heavy Javelin Missile", true);
+        this.guidedSecondary = false;
+        break;
+      case 4:
+        equip(this.player, 1, "EMP Missile", true);
+        this.guidedSecondary = true;
+        break;
     }
 
     this.lootTable = [loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)];
   }
 
-  private justSpawned = true;
-
   public targetId = 0;
 
-  private doRadomManeuver = false;
+  private doRadomManeuver = 0;
   private randomManeuverPosition = { x: 0, y: 0 };
 
-  public process(state: GlobalState, frame: number) {
+  private frame = 0;
+
+  public process(state: GlobalState) {
     let target: Player | undefined = undefined;
-    const def = defs[this.player.definitionIndex];
-    if (frame % 60 === 0 || this.justSpawned) {
-      this.justSpawned = false;
+    const def = defs[this.player.defIndex];
+    if (this.frame % 60 === 0) {
       const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
       this.targetId = newTarget?.id ?? 0;
       target = newTarget;
@@ -129,11 +138,12 @@ class Swarmer implements NPC {
         target = state.players.get(this.targetId);
       }
       if (target) {
-        if (this.doRadomManeuver) {
+        if (this.doRadomManeuver > 0) {
           seekPosition(this.player, this.randomManeuverPosition, this.input);
           if (l2Norm(this.player.position, this.randomManeuverPosition) < 50) {
-            this.doRadomManeuver = false;
+            this.doRadomManeuver = 0;
           }
+          this.doRadomManeuver--;
         } else {
           seekPosition(this.player, target.position, this.input);
         }
@@ -145,8 +155,8 @@ class Swarmer implements NPC {
           this.input.primary = false;
         }
         if (targetDist < 700) {
-          if (frame % 400 === 0 && Math.random() < 0.5) {
-            this.doRadomManeuver = true;
+          if (this.frame % 400 === 0 && Math.random() < 0.5) {
+            this.doRadomManeuver = 180;
             this.randomManeuverPosition = {
               x: this.player.position.x + Math.random() * 600 - 300,
               y: this.player.position.y + Math.random() * 600 - 300,
@@ -157,10 +167,10 @@ class Swarmer implements NPC {
       } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 3000) {
         this.input.primary = false;
         this.input.secondary = false;
-        this.doRadomManeuver = false;
+        this.doRadomManeuver = 0;
         seekPosition(this.player, { x: 0, y: 0 }, this.input);
       } else {
-        this.doRadomManeuver = false;
+        this.doRadomManeuver = 0;
         this.input.primary = false;
         this.input.secondary = false;
         stopPlayer(this.player, this.input);
@@ -168,15 +178,17 @@ class Swarmer implements NPC {
     } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 3000) {
       this.input.primary = false;
       this.input.secondary = false;
-      this.doRadomManeuver = false;
+      this.doRadomManeuver = 0;
       seekPosition(this.player, { x: 0, y: 0 }, this.input);
     } else {
-      this.doRadomManeuver = false;
+      this.doRadomManeuver = 0;
       this.input.primary = false;
       this.input.secondary = false;
       stopPlayer(this.player, this.input);
     }
     applyInputs(this.input, this.player);
+
+    this.frame++;
   }
 }
 
@@ -202,54 +214,64 @@ class Strafer implements NPC {
   private usesAmmo: boolean;
 
   constructor(what: string | number, team: number | Faction, id: number) {
-    let definitionIndex: number;
+    let defIndex: number;
     let def: UnitDefinition;
     if (typeof what === "string") {
       const value = defMap.get(what);
       if (value) {
-        definitionIndex = value.index;
+        defIndex = value.index;
         def = value.def;
       } else {
         throw new Error(`Unknown NPC type: ${what}`);
       }
     } else {
-      definitionIndex = what;
-      def = defs[definitionIndex];
+      defIndex = what;
+      def = defs[defIndex];
     }
     this.player = {
       position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
-      radius: defs[definitionIndex].radius,
+      radius: defs[defIndex].radius,
       speed: 0,
       heading: Math.random() * 2 * Math.PI,
-      health: defs[definitionIndex].health,
+      health: defs[defIndex].health,
       id: id,
       sinceLastShot: [effectiveInfinity],
       projectileId: 0,
-      energy: defs[definitionIndex].energy,
-      definitionIndex: definitionIndex,
-      armIndices: emptyLoadout(definitionIndex),
+      energy: defs[defIndex].energy,
+      defIndex: defIndex,
+      armIndices: emptyLoadout(defIndex),
       slotData: emptySlotData(def),
       cargo: [],
       credits: 500,
       npc: this,
       team,
       side: 0,
+      v: { x: 0, y: 0 },
     };
 
     this.usesAmmo = true;
-    if (Math.random() < 0.5) {
-      equip(this.player, 1, "Javelin Missile");
-      this.guidedSecondary = false;
-    } else if (Math.random() < 0.5) {
-      equip(this.player, 1, "Tomahawk Missile");
-      this.guidedSecondary = true;
-    } else if (Math.random() < 0.5) {
-      equip(this.player, 1, "Laser Beam");
-      this.guidedSecondary = true;
-      this.usesAmmo = false;
-    } else {
-      equip(this.player, 1, "Heavy Javelin Missile");
-      this.guidedSecondary = false;
+    switch (Math.floor(Math.random() * 5)) {
+      case 0:
+        equip(this.player, 1, "Javelin Missile", true);
+        this.guidedSecondary = false;
+        break;
+      case 1:
+        equip(this.player, 1, "Tomahawk Missile", true);
+        this.guidedSecondary = true;
+        break;
+      case 2:
+        equip(this.player, 1, "Laser Beam", true);
+        this.guidedSecondary = true;
+        this.usesAmmo = false;
+        break;
+      case 3:
+        equip(this.player, 1, "Heavy Javelin Missile", true);
+        this.guidedSecondary = false;
+        break;
+      case 4:
+        equip(this.player, 1, "EMP Missile", true);
+        this.guidedSecondary = true;
+        break;
     }
 
     this.lootTable = [loot("Bounty", 0.3), loot("Energy", 0.4), loot("Ammo", 0.5), loot("Spare Parts", 0.7)];
@@ -259,13 +281,12 @@ class Strafer implements NPC {
 
   private strafeDirection = true;
 
-  private justSpawned = true;
+  private frame = 0;
 
-  public process(state: GlobalState, frame: number) {
+  public process(state: GlobalState) {
     let target: Player | undefined = undefined;
-    const def = defs[this.player.definitionIndex];
-    if (frame % 60 === 0 || this.justSpawned) {
-      this.justSpawned = false;
+    const def = defs[this.player.defIndex];
+    if (this.frame % 60 === 0) {
       const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
       this.targetId = newTarget?.id ?? 0;
       target = newTarget;
@@ -299,7 +320,7 @@ class Strafer implements NPC {
           this.input.right = !this.strafeDirection;
           this.input.left = this.strafeDirection;
         }
-        if (frame % 90 == 0 && dist < 400) {
+        if (this.frame % 90 == 0 && dist < 400) {
           if (Math.random() < 0.5) {
             this.strafeDirection = !this.strafeDirection;
           }
@@ -339,6 +360,7 @@ class Strafer implements NPC {
       stopPlayer(this.player, this.input);
     }
     applyInputs(this.input, this.player, this.angle);
+    this.frame++;
   }
 }
 

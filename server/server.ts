@@ -998,7 +998,7 @@ const enemyCount = (team: Faction, sector: number) => {
   }
   let count = 0;
   for (const [id, player] of state.players) {
-    if (player.npc && player.team !== team) {
+    if (player.team !== team) {
       count++;
     }
   }
@@ -1012,7 +1012,7 @@ const allyCount = (team: Faction, sector: number) => {
   }
   let count = 0;
   for (const [id, player] of state.players) {
-    if (player.npc && player.team === team) {
+    if (player.team === team) {
       count++;
     }
   }
@@ -1119,12 +1119,23 @@ const spawnSectorGuardians = (sector: number) => {
   }
   let count: number;
   let allies: number
+  for (const [id, player] of state.players) {
+    if (player.npc) {
+      continue;
+    }
+    const def = defs[player.definitionIndex];
+    if (def.kind === UnitKind.Station) {
+      continue;
+    }
+    flashServerMessage(player.id, "Sector guardians are arriving!");
+  }
+
   switch (sector) {
     case 1:
       count = enemyCount(Faction.Alliance, sector);
       allies = allyCount(Faction.Alliance, sector);
       if (allies < 10) {
-        count = Math.min(4, count);
+        count = Math.max(4, count);
       }
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
@@ -1134,7 +1145,7 @@ const spawnSectorGuardians = (sector: number) => {
       count = enemyCount(Faction.Confederation, sector);
       allies = allyCount(Faction.Confederation, sector);
       if (allies < 10) {
-        count = Math.min(4, count);
+        count = Math.max(4, count);
       }
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
@@ -1144,7 +1155,7 @@ const spawnSectorGuardians = (sector: number) => {
       count = enemyCount(Faction.Rouge, sector);
       allies = allyCount(Faction.Rouge, sector);
       if (allies < 10) {
-        count = Math.min(4, count);
+        count = Math.max(4, count);
       }
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rouge, uid());
@@ -1166,7 +1177,7 @@ const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
   }
   for (const player of state.players.values()) {
     if (player.inoperable) {
-      player.repairs![team] += 2;
+      player.repairs![team] += 1;
     }
   }
 };
@@ -1175,7 +1186,7 @@ setInterval(() => {
   repairStationsInSectorForTeam(1, Faction.Alliance);
   repairStationsInSectorForTeam(2, Faction.Confederation);
   repairStationsInSectorForTeam(3, Faction.Rouge);
-}, 5 * 60 * 1000);
+}, 2 * 60 * 1000);
 
 const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
   let removedCount = 0;

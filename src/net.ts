@@ -22,6 +22,8 @@ const register = (name: string, password: string, faction: Faction) => {
   );
 };
 
+const bindings: Map<string, (data: any) => void> = new Map();
+
 // Client connection code
 const connect = (callback: (socket: WebSocket) => void) => {
   const socket = new WebSocket(wsUrl);
@@ -36,15 +38,17 @@ const connect = (callback: (socket: WebSocket) => void) => {
   socket.onerror = (err) => {
     console.log("Error: ", err);
   };
+  socket.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+    const callback = bindings.get(data.type);
+    if (callback) {
+      callback(data.payload);
+    }
+  };
 };
 
 const bindAction = (action: string, callback: (data: any) => void) => {
-  serverSocket.addEventListener("message", (msg) => {
-    const data = JSON.parse(msg.data);
-    if (data.type === action) {
-      callback(data.payload);
-    }
-  });
+  bindings.set(action, callback);
 };
 
 const unbindAllActions = () => {

@@ -632,7 +632,7 @@ wss.on("connection", (ws) => {
                 return;
               }
               const playerState = JSON.parse(checkpoint.data);
-              if (isNearOperableEnemyStation(playerState, state.players.values())) {
+              if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState, checkpoint.sector) > 2) {
                 playerState.position.x = -5000;
                 playerState.position.y = 5000;
               }
@@ -793,7 +793,7 @@ wss.on("connection", (ws) => {
             const playerState = JSON.parse(checkpoint.data);
             // So I don't have to edit the checkpoints in the database right now
             playerState.isPC = true;
-            if (isNearOperableEnemyStation(playerState, state.players.values())) {
+            if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState, checkpoint.sector) > 2) {
               playerState.position.x = -5000;
               playerState.position.y = 5000;
             }

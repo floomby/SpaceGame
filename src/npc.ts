@@ -121,7 +121,7 @@ class Swarmer implements NPC {
   private doRadomManeuver = 0;
   private randomManeuverPosition = { x: 0, y: 0 };
 
-  private frame = 0;
+  private frame = Math.floor(Math.random() * 60);
 
   public process(state: GlobalState) {
     let target: Player | undefined = undefined;
@@ -280,7 +280,7 @@ class Strafer implements NPC {
 
   private strafeDirection = true;
 
-  private frame = 0;
+  private frame = Math.floor(Math.random() * 60);
 
   public process(state: GlobalState) {
     let target: Player | undefined = undefined;

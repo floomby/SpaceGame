@@ -194,6 +194,7 @@ const loadStencilSprites = (stencilSheet: HTMLImageElement, callback: () => void
 };
 
 const initDrawing = (callback: () => void) => {
+  // Defs need to be initialized before effects
   initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
   canvas.width = window.innerWidth;

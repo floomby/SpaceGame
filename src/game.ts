@@ -330,28 +330,32 @@ const seek = (entity: Entity, target: Entity, maxTurn: number) => {
   }
 };
 
-const findInterceptAimingHeading = (from: Position, target: Entity, projectileSpeed: number, maxRange: number) => {
-  let strafedTarget = target;
-  if ((target as Player).side) {
-    const vx = target.speed * Math.cos(target.heading) - (target as Player).side * Math.sin(target.heading);
-    const vy = target.speed * Math.sin(target.heading) + (target as Player).side * Math.cos(target.heading);
-    const v = Math.sqrt(vx * vx + vy * vy);
-    const h = Math.atan2(vy, vx);
-    strafedTarget = { position: target.position, heading: h, speed: v } as Entity;
-  }
+const findInterceptAimingHeading = (from: Position, target: Player, projectileSpeed: number, maxRange: number) => {
+  // let strafedTarget = target;
+  // if ((target as Player).side) {
+  //   const vx = target.speed * Math.cos(target.heading) - (target as Player).side * Math.sin(target.heading);
+  //   const vy = target.speed * Math.sin(target.heading) + (target as Player).side * Math.cos(target.heading);
+  //   const v = Math.sqrt(vx * vx + vy * vy);
+  //   const h = Math.atan2(vy, vx);
+  //   strafedTarget = { position: target.position, heading: h, speed: v } as Entity;
+  // }
 
-  const heading = findHeadingBetween(from, strafedTarget.position);
-  const A = Math.PI - heading + strafedTarget.heading;
+  const targetHeading = Math.atan2(target.v.y, target.v.x);
+  const targetSpeed2 = target.v.x * target.v.x + target.v.y * target.v.y;
+  const targetSpeed = Math.sqrt(targetSpeed2);
 
-  const a = strafedTarget.speed * strafedTarget.speed - projectileSpeed * projectileSpeed;
-  const b = -2 * Math.cos(A) * strafedTarget.speed * l2Norm(strafedTarget.position, from);
-  const c = l2NormSquared(strafedTarget.position, from);
+  const heading = findHeadingBetween(from, target.position);
+  const A = Math.PI - heading + targetHeading;
+
+  const a = targetSpeed2 - projectileSpeed * projectileSpeed;
+  const b = -2 * Math.cos(A) * targetSpeed * l2Norm(target.position, from);
+  const c = l2NormSquared(target.position, from);
   const discriminate = b * b - 4 * a * c;
 
   const t = (-b - Math.sqrt(discriminate)) / (2 * a);
   const intercept = {
-    x: strafedTarget.position.x + strafedTarget.speed * Math.cos(strafedTarget.heading) * t,
-    y: strafedTarget.position.y + strafedTarget.speed * Math.sin(strafedTarget.heading) * t,
+    x: target.position.x + target.v.x * t,
+    y: target.position.y + target.v.y * t,
   };
   if (l2NormSquared(from, intercept) > maxRange * maxRange) {
     return undefined;

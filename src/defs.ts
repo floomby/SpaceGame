@@ -164,6 +164,8 @@ const missileDefs: MissileDef[] = [];
 const collectableDefs: CollectableDef[] = [];
 const collectableDefMap = new Map<string, { index: number; def: CollectableDef }>();
 
+let maxMissileLifetime = 0;
+
 const initDefs = () => {
   // Fighter - 0
   defs.push({
@@ -764,6 +766,12 @@ const initDefs = () => {
     armDefMap.set(def.name, { index: i, def });
   }
 
+  for (let i = 0; i < missileDefs.length; i++) {
+    if (missileDefs[i].lifetime > maxMissileLifetime) {
+      maxMissileLifetime = missileDefs[i].lifetime;
+    }
+  }
+
   asteroidDefs.push({
     resources: 500,
     sprite: { x: 256, y: 0, width: 64, height: 64 },
@@ -881,6 +889,7 @@ export {
   missileDefs,
   collectableDefs,
   collectableDefMap,
+  maxMissileLifetime,
   initDefs,
   getFactionString,
   emptyLoadout,

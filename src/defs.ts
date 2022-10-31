@@ -26,7 +26,7 @@ const uid = () => {
 enum Faction {
   Alliance = 0,
   Confederation,
-  Rouge,
+  Rogue,
   Count,
 }
 
@@ -36,8 +36,8 @@ const getFactionString = (faction: Faction) => {
       return "Alliance";
     case Faction.Confederation:
       return "Confederation";
-    case Faction.Rouge:
-      return "Rouge";
+    case Faction.Rogue:
+      return "Rogue";
   }
 };
 
@@ -163,6 +163,8 @@ const missileDefs: MissileDef[] = [];
 
 const collectableDefs: CollectableDef[] = [];
 const collectableDefMap = new Map<string, { index: number; def: CollectableDef }>();
+
+let maxMissileLifetime = 0;
 
 const initDefs = () => {
   // Fighter - 0
@@ -345,9 +347,9 @@ const initDefs = () => {
     sideThrustAcceleration: 0.45,
     scanRange: 3000,
   });
-  // Rouge Starbase - 7
+  // Rogue Starbase - 7
   defs.push({
-    name: "Rouge Starbase",
+    name: "Rogue Starbase",
     description: "A weak ramshackle starbase with unique build options",
     sprite: { x: 0, y: 544, width: 256, height: 256 },
     health: 800,
@@ -764,6 +766,12 @@ const initDefs = () => {
     armDefMap.set(def.name, { index: i, def });
   }
 
+  for (let i = 0; i < missileDefs.length; i++) {
+    if (missileDefs[i].lifetime > maxMissileLifetime) {
+      maxMissileLifetime = missileDefs[i].lifetime;
+    }
+  }
+
   asteroidDefs.push({
     resources: 500,
     sprite: { x: 256, y: 0, width: 64, height: 64 },
@@ -881,6 +889,7 @@ export {
   missileDefs,
   collectableDefs,
   collectableDefMap,
+  maxMissileLifetime,
   initDefs,
   getFactionString,
   emptyLoadout,

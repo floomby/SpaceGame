@@ -15,10 +15,9 @@ A simple multiplayer game where you have a ship and do things.
 - Economy is very boring right now
 - Try and make the strafe animations work in a way that looks tolerable
 - Investigate drawing performance
+- Limit sound playback so that it doesn't play too many sounds at once
 
 ### MMO Stuff
 
 - Play as guest (low priority)
 - Option to change password (low priority)
-
-### Limit sound playback so that it doesn't play too many sounds at once

@@ -353,7 +353,7 @@ const initEffects = () => {
         effect.frame = 0;
         return;
       }
-      if (effect.frame > 1400 && effect.extra.needSound) {
+      if (effect.frame > maxMissileLifetime - 100 && effect.extra.needSound) {
         effect.extra.needSound = false;
         play3dSound(fireSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
       }

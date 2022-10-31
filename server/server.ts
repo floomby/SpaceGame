@@ -76,7 +76,7 @@ const wsPort = 8080;
 const httpPort = 8081;
 
 // This data will ultimately be stored in the database
-const sectorList = [1, 2, 3];
+const sectorList = [1, 2, 3, 4];
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -978,7 +978,7 @@ const sendSectorData = (ws: WebSocket, state: GlobalState) => {
 
 // To be changed once sectors are better understood
 const isEnemySector = (team: Faction, sector: number) => {
-  return team + 1 !== sector;
+  return team + 1 !== sector && sector < 4;
 };
 
 const spawnAllyForces = (team: Faction, sector: number, count: number) => {

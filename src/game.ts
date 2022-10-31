@@ -701,6 +701,9 @@ const update = (
           }
         }
       }
+      if (player.disabled > 0) {
+        player.disabled = Math.max(0, player.disabled - 3);
+      }
     }
     // Update primary times since last shot (secondaries are handled in the frameMutators in the armDefs)
     for (let i = 0; i < player.sinceLastShot.length; i++) {

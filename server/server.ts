@@ -1112,8 +1112,10 @@ setInterval(() => {
         client.sectorDataSent = false;
         ws.send(JSON.stringify({ type: "warp", payload: { to } }));
         const enemies = enemyCount(player.team, to);
-        if (enemies > 3 && isEnemySector(player.team, to)) {
-          spawnAllyForces(player.team, to, enemies);
+        const allies = allyCount(player.team, to);
+        const count = enemies - allies;
+        if (count > 3 && isEnemySector(player.team, to)) {
+          spawnAllyForces(player.team, to, count);
           flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
         }
       }

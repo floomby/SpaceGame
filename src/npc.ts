@@ -3,7 +3,6 @@ import {
   applyInputs,
   arrivePosition,
   currentlyFacing,
-  currentlyFacingApprox,
   effectiveInfinity,
   equip,
   findClosestTarget,

@@ -427,7 +427,12 @@ const kill = (
     state.players.delete(player.id);
     applyEffect({
       effectIndex: def.deathEffect,
-      from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+      from: {
+        kind: EffectAnchorKind.Absolute,
+        value: player.position,
+        heading: Math.atan2(player.v.y, player.v.x),
+        speed: Math.sqrt(player.v.x * player.v.x + player.v.y * player.v.y),
+      },
     });
     onDeath(player);
     if (player.npc) {

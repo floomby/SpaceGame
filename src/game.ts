@@ -15,78 +15,57 @@ import {
   createCollectableFromDef,
   Faction,
 } from "./defs";
+import {
+  Circle,
+  Position,
+  l2Norm,
+  Line,
+  positiveMod,
+  l2NormSquared,
+  circlesIntersect,
+  pointInCircle,
+  Rectangle,
+  findLinesTangentToCircleThroughPoint,
+  infinityNorm,
+  maxDecimals,
+  findHeadingBetween,
+  findInterceptAimingHeading,
+  findLineHeading,
+  findSmallAngleBetween,
+  isAngleBetween,
+} from "./geometry";
 import { NPC, processLootTable } from "./npc";
 import { sfc32 } from "./prng";
 
 // TODO Move the geometry stuff to a separate file
-type Position = { x: number; y: number };
-type Circle = { position: Position; radius: number };
-type Rectangle = { x: number; y: number; width: number; height: number };
-type Line = { from: Position; to: Position };
-
-const maxDecimals = (num: number, decimals: number) => {
-  const factor = Math.pow(10, decimals);
-  return Math.round((num + Number.EPSILON) * factor) / factor;
-};
-
-const infinityNorm = (a: Position, b: Position) => {
-  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
-};
-
-const l2NormSquared = (a: Position, b: Position) => {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return dx * dx + dy * dy;
-};
-
-const l2Norm = (a: Position, b: Position) => {
-  return Math.sqrt(l2NormSquared(a, b));
-};
-
-const pointInCircle = (point: Position, circle: Circle) => {
-  return l2NormSquared(point, circle.position) < circle.radius * circle.radius;
-};
-
-const circlesIntersect = (a: Circle, b: Circle) => {
-  return l2NormSquared(a.position, b.position) < (a.radius + b.radius) * (a.radius + b.radius);
-};
-
-const positiveMod = (a: number, b: number) => {
-  return ((a % b) + b) % b;
-};
-
-const findLinesTangentToCircleThroughPoint = (point: Position, circle: Circle) => {
-  if (pointInCircle(point, circle)) {
-    return undefined;
-  }
-
-  const dx = point.x - circle.position.x;
-  const dy = point.y - circle.position.y;
-  const d = Math.sqrt(dx * dx + dy * dy);
-  const theta = Math.atan2(dy, dx);
-  const phi = Math.acos(circle.radius / d);
-  const ret: Line[] = [];
-  ret.push({
-    from: point,
-    to: {
-      x: circle.position.x + circle.radius * Math.cos(theta + phi),
-      y: circle.position.y + circle.radius * Math.sin(theta + phi),
-    },
-  });
-  ret.push({
-    from: point,
-    to: {
-      x: circle.position.x + circle.radius * Math.cos(theta - phi),
-      y: circle.position.y + circle.radius * Math.sin(theta - phi),
-    },
-  });
-  return ret;
-};
 
 type Entity = Circle & { id: number; speed: number; heading: number };
 
 type CargoEntry = { what: string; amount: number };
 
+// There is a bunch of information that the clients do not need but end up receiving anyways
+// The server should probably not send the extra information
+// This would reduces throughput through the single hottest path in the client code
+// The client only really needs needs to know
+//   radius
+//   position
+//   id
+//   heading
+//   health
+//   energy
+//   defIndex
+//   team
+//   canDock
+//   docked
+//   canRepair
+//   armIndices
+//   slotData
+//   cargo
+//   credits
+//   inoperable
+//   warping
+//   repairs
+//   disabled
 type Player = Entity & {
   health: number;
   sinceLastShot: number[];
@@ -120,7 +99,7 @@ type Asteroid = Circle & {
   id: number;
   resources: number;
   heading: number;
-  definitionIndex: number;
+  defIndex: number;
 };
 
 type Missile = Entity & {
@@ -128,7 +107,7 @@ type Missile = Entity & {
   target?: number;
   team: number;
   lifetime: number;
-  definitionIndex: number;
+  defIndex: number;
 };
 
 enum TargetKind {
@@ -184,13 +163,7 @@ type ChatMessage = {
 };
 
 const copyPlayer = (player: Player) => {
-  const ret = { ...player };
-  ret.sinceLastShot = [...player.sinceLastShot];
-  ret.armIndices = [...player.armIndices];
-  ret.slotData = player.slotData.map((data) => ({ ...data }));
-  player.position = { ...player.position };
-  player.cargo = player.cargo?.map((cargo) => ({ ...cargo }));
-  return ret;
+  return JSON.parse(JSON.stringify(player));
 };
 
 const canDock = (player: Player | undefined, station: Player | undefined, strict = true) => {
@@ -265,6 +238,7 @@ type GlobalState = {
   asteroids: Map<number, Asteroid>;
   missiles: Map<number, Missile>;
   collectables: Map<number, Collectable>;
+  asteroidsDirty?: boolean;
 };
 
 const setCanDockOrRepair = (player: Player, state: GlobalState) => {
@@ -290,30 +264,6 @@ const setCanDockOrRepair = (player: Player, state: GlobalState) => {
   }
 };
 
-const findHeadingBetween = (a: Position, b: Position) => {
-  return Math.atan2(b.y - a.y, b.x - a.x);
-};
-
-const findLineHeading = (line: Line) => {
-  return findHeadingBetween(line.from, line.to);
-};
-
-const isAngleBetween = (angle: number, start: number, end: number) => {
-  // Normalize the angles
-  angle = positiveMod(angle, 2 * Math.PI);
-  start = positiveMod(start, 2 * Math.PI);
-  end = positiveMod(end, 2 * Math.PI);
-  if (start < end) {
-    return angle >= start && angle <= end;
-  } else {
-    return angle >= start || angle <= end;
-  }
-};
-
-const findSmallAngleBetween = (a: number, b: number) => {
-  return positiveMod(b - a + Math.PI, 2 * Math.PI) - Math.PI;
-};
-
 const seek = (entity: Entity, target: Entity, maxTurn: number) => {
   const heading = findHeadingBetween(entity.position, target.position);
   let diff = heading - entity.heading;
@@ -328,40 +278,6 @@ const seek = (entity: Entity, target: Entity, maxTurn: number) => {
   } else {
     entity.heading -= maxTurn;
   }
-};
-
-const findInterceptAimingHeading = (from: Position, target: Player, projectileSpeed: number, maxRange: number) => {
-  // let strafedTarget = target;
-  // if ((target as Player).side) {
-  //   const vx = target.speed * Math.cos(target.heading) - (target as Player).side * Math.sin(target.heading);
-  //   const vy = target.speed * Math.sin(target.heading) + (target as Player).side * Math.cos(target.heading);
-  //   const v = Math.sqrt(vx * vx + vy * vy);
-  //   const h = Math.atan2(vy, vx);
-  //   strafedTarget = { position: target.position, heading: h, speed: v } as Entity;
-  // }
-
-  const targetHeading = Math.atan2(target.v.y, target.v.x);
-  const targetSpeed2 = target.v.x * target.v.x + target.v.y * target.v.y;
-  const targetSpeed = Math.sqrt(targetSpeed2);
-
-  const heading = findHeadingBetween(from, target.position);
-  const A = Math.PI - heading + targetHeading;
-
-  const a = targetSpeed2 - projectileSpeed * projectileSpeed;
-  const b = -2 * Math.cos(A) * targetSpeed * l2Norm(target.position, from);
-  const c = l2NormSquared(target.position, from);
-  const discriminate = b * b - 4 * a * c;
-
-  const t = (-b - Math.sqrt(discriminate)) / (2 * a);
-  const intercept = {
-    x: target.position.x + target.v.x * t,
-    y: target.position.y + target.v.y * t,
-  };
-  if (l2NormSquared(from, intercept) > maxRange * maxRange) {
-    return undefined;
-  }
-  const interceptHeading = findHeadingBetween(from, intercept);
-  return interceptHeading;
 };
 
 const findClosestTarget = (player: Player, state: GlobalState, scanRange: number, onlyEnemy = false) => {
@@ -523,6 +439,9 @@ const kill = (
   }
 };
 
+// Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
+type Mutated = { asteroids: Set<Asteroid> };
+
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
 const update = (
@@ -537,6 +456,8 @@ const update = (
   drop: (collectable: Collectable) => void,
   removeCollectable: (id: number, collected: boolean) => void
 ) => {
+  const ret: Mutated = { asteroids: new Set() };
+
   // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
     if (player.docked) {
@@ -564,7 +485,7 @@ const update = (
         player.disabled -= 1;
         player.position.x += player.v.x;
         player.position.y += player.v.y;
-        player.heading = player.heading + player.omega % (2 * Math.PI);
+        player.heading = player.heading + (player.omega % (2 * Math.PI));
       } else {
         player.v.x = player.position.x;
         player.v.y = player.position.y;
@@ -628,7 +549,7 @@ const update = (
                 target = state.asteroids.get(targetId);
               }
               if (target) {
-                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage);
+                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage, ret);
               }
             }
           }
@@ -636,7 +557,7 @@ const update = (
         } else if (armDef.targeted === TargetedKind.Untargeted) {
           if (slotId !== undefined && slotId < player.armIndices.length) {
             if (armDef.stateMutator) {
-              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage);
+              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
             }
           }
         }
@@ -772,7 +693,7 @@ const update = (
   }
   // Another quadratic loop for the missiles
   for (const [id, missile] of state.missiles) {
-    const missileDef = missileDefs[missile.definitionIndex];
+    const missileDef = missileDefs[missile.defIndex];
     missile.position.x += missile.speed * Math.cos(missile.heading);
     missile.position.y += missile.speed * Math.sin(missile.heading);
     if (missile.speed > missileDef.speed) {
@@ -827,6 +748,7 @@ const update = (
       applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
     }
   }
+  return ret;
 };
 
 const processAllNpcs = (state: GlobalState) => {
@@ -919,7 +841,7 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
     player.toFirePrimary = false;
   }
   player.toFireSecondary = input.secondary;
-  player.omega = player.heading - player.omega % (2 * Math.PI);
+  player.omega = player.heading - (player.omega % (2 * Math.PI));
 };
 
 const randomAsteroids = (count: number, bounds: Rectangle, seed: number, uid: () => number) => {
@@ -938,7 +860,7 @@ const randomAsteroids = (count: number, bounds: Rectangle, seed: number, uid: ()
       },
       heading: prng() * 2 * Math.PI,
       resources: def.resources,
-      definitionIndex: index,
+      defIndex: index,
       id: uid(),
       radius: def.radius,
     };
@@ -1276,6 +1198,7 @@ export {
   CargoEntry,
   ChatMessage,
   Collectable,
+  Mutated,
   update,
   applyInputs,
   processAllNpcs,

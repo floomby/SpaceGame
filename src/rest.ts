@@ -1,8 +1,28 @@
 import { defs, UnitKind, clientUid } from "./defs";
 import { Player } from "./game";
 
-const domFromRest = (query: string, template: (value: string) => string, postCompletion?: () => void) => {
+const restCache = new Map<string, any>();
+
+// This function has a potential race (however it is incredibly unlikely, it would require the rest api to beat the render to the dom)
+const domFromRest = (query: string, template: (value: string) => string, postCompletion?: () => void, cache = false) => {
+  if ((window as any).restPostCallbacks === undefined) {
+    (window as any).restPostCallbacks = new Map<number, () => void>();
+  }
+
   const id = clientUid();
+  if (cache) {
+    const value = restCache.get(query);
+    if (value) {
+      if (postCompletion) {
+        (window as any).restPostCallbacks.set(id, () => {
+          postCompletion();
+          (window as any).restPostCallbacks.delete(id);
+        });
+      }
+      return `<div id="${id}">${template(value)}<img src onerror="window.restPostCallbacks.get(${id})()"></div>`;
+    }
+  }
+
   const html = `<div id="${id}"></div>`;
   fetch(query)
     .catch((error) => {
@@ -18,11 +38,16 @@ const domFromRest = (query: string, template: (value: string) => string, postCom
         console.log("Rest error: " + data.error);
       } else {
         const element = document.getElementById(id.toString());
+        if (cache) {
+          restCache.set(query, data.value);
+        }
         if (element) {
           element.innerHTML = template(data.value);
           if (postCompletion) {
             postCompletion();
           }
+        } else {
+          console.log("Warning: Unable to update dom (possible race condition: see src/rest.ts)");
         }
       }
     });
@@ -49,7 +74,7 @@ const namesLookedUp = new Set<number>();
 const getNameOfPlayer = (player: Player) => {
   const def = defs[player.defIndex];
   if (!player.isPC || def.kind === UnitKind.Station) {
-    return undefined
+    return undefined;
   }
   if (nameMap.has(player.id)) {
     return nameMap.get(player.id);

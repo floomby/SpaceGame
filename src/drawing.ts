@@ -414,8 +414,8 @@ const drawStars = (self: Player) => {
 const drawAsteroid = (asteroid: Asteroid, self: Player) => {
   ctx.save();
   ctx.translate(asteroid.position.x - self.position.x + canvas.width / 2, asteroid.position.y - self.position.y + canvas.height / 2);
-  let sprite = asteroidSprites[asteroid.definitionIndex];
-  let def = asteroidDefs[asteroid.definitionIndex];
+  let sprite = asteroidSprites[asteroid.defIndex];
+  let def = asteroidDefs[asteroid.defIndex];
   if (asteroid.resources < def.resources) {
     drawBar({ x: -sprite.width / 2, y: -sprite.height / 2 - 10 }, sprite.width, 5, "#662222CC", "#333333CC", asteroid.resources / def.resources);
   }
@@ -503,7 +503,7 @@ const drawMissile = (missile: Missile, self: Player) => {
   ctx.save();
   ctx.translate(missile.position.x - self.position.x + canvas.width / 2, missile.position.y - self.position.y + canvas.height / 2);
   ctx.rotate(missile.heading);
-  const sprite = missileSprites[missile.definitionIndex];
+  const sprite = missileSprites[missile.defIndex];
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   ctx.restore();
 };
@@ -621,7 +621,7 @@ const drawTargetAsteroid = (where: Rectangle, self: Player, targetAsteroid: Aste
   ctx.fillStyle = "#30303055";
   const margin = 5;
   ctx.fillRect(where.x - margin, where.y - margin, where.width + margin, where.height + margin);
-  const sprite = asteroidSprites[targetAsteroid.definitionIndex];
+  const sprite = asteroidSprites[targetAsteroid.defIndex];
   const maxDimension = Math.max(sprite.width, sprite.height);
   let scale = (where.width - margin * 2) / maxDimension / 2;
   if (scale > 1) {
@@ -636,7 +636,7 @@ const drawTargetAsteroid = (where: Rectangle, self: Player, targetAsteroid: Aste
     5 / scale,
     "#662222CC",
     "#333333CC",
-    targetAsteroid.resources / asteroidDefs[targetAsteroid.definitionIndex].resources
+    targetAsteroid.resources / asteroidDefs[targetAsteroid.defIndex].resources
   );
   ctx.rotate(targetAsteroid.heading);
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);

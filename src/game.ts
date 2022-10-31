@@ -947,7 +947,7 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   const def = defs[player.defIndex];
   if (slotIndex >= def.slots.length) {
     console.log("Warning: slot number too high");
-    return;
+    return false;
   }
   let armDef: ArmamentDef | undefined = undefined;
   let defIndex: number;
@@ -955,14 +955,14 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
     const entry = armDefMap.get(what);
     if (!entry) {
       console.log("Warning: no such armament");
-      return;
+      return false;
     }
     armDef = entry.def;
     defIndex = entry.index;
   } else {
     if (what >= armDefs.length) {
       console.log("Warning: armament index too high");
-      return;
+      return false;
     }
     armDef = armDefs[what];
     defIndex = what;
@@ -970,11 +970,11 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   const slotKind = def.slots[slotIndex];
   if (slotKind !== armDef.kind) {
     console.log("Warning: wrong kind of armament", slotKind, armDef.kind);
-    return;
+    return false;
   }
   if (slotIndex >= player.armIndices.length) {
     console.log("Warning: player armaments not initialized correctly");
-    return;
+    return false;
   }
 
   if ((player.credits !== undefined && armDef.cost <= player.credits) || noCost) {
@@ -985,26 +985,28 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
     if (armDef.equipMutator) {
       armDef.equipMutator(player, slotIndex);
     }
+    return true;
   }
+  return false;
 };
 
-const purchaseShip = (player: Player, index: number, stationShipOptions: string[]) => {
+const purchaseShip = (player: Player, index: number, shipOptions: string[]) => {
   if (index >= defs.length || index < 0) {
     console.log("Warning: ship index out of range");
-    return;
+    return false;
   }
   const def = defs[index];
   if (def.price === undefined) {
     console.log("Warning: ship not purchasable");
-    return;
+    return false;
   }
   // if (playerDef.team !== def.team) {
   //   console.log("Warning: ship not on same team");
   //   return;
   // }
-  if (!stationShipOptions.includes(def.name)) {
+  if (!shipOptions.includes(def.name)) {
     console.log("Warning: ship not available at this station");
-    return;
+    return false;
   }
   if (player.credits !== undefined && def.price <= player.credits) {
     player.credits -= def.price;
@@ -1013,7 +1015,9 @@ const purchaseShip = (player: Player, index: number, stationShipOptions: string[
     player.armIndices = emptyLoadout(index);
     player.health = def.health;
     player.energy = def.energy;
+    return true;
   }
+  return false;
 };
 
 const repairStation = (player: Player) => {

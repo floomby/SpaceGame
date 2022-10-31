@@ -49,7 +49,7 @@ const uid = () => {
   return ret;
 };
 
-// Initialize the definitions (Needs to be done to use them)
+// Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
 
 mongoose

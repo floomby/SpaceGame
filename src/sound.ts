@@ -70,7 +70,7 @@ const play3dSound = (index: number, x: number, y: number, gain = 1.0, important 
     console.log(ctx ? `Invalid sound index ${index}` : "Sound not initialized");
     return undefined;
   }
-  if (soundsStartedInPeriod > 5 && !important) {
+  if (soundsStartedInPeriod > 7 && !important) {
     return undefined;
   }
   soundsStartedInPeriod++;
@@ -101,6 +101,7 @@ const getSound = (name: string) => {
   return ret;
 };
 
-const soundScale = 500;
+const soundScale = 300;
+
 
 export { initSound, playSound, play3dSound, soundScale, setVolume, getVolume, soundMap, getSound };

@@ -26,7 +26,7 @@ const uid = () => {
 enum Faction {
   Alliance = 0,
   Confederation,
-  Rouge,
+  Rogue,
   Count,
 }
 
@@ -36,8 +36,8 @@ const getFactionString = (faction: Faction) => {
       return "Alliance";
     case Faction.Confederation:
       return "Confederation";
-    case Faction.Rouge:
-      return "Rouge";
+    case Faction.Rogue:
+      return "Rogue";
   }
 };
 
@@ -347,9 +347,9 @@ const initDefs = () => {
     sideThrustAcceleration: 0.45,
     scanRange: 3000,
   });
-  // Rouge Starbase - 7
+  // Rogue Starbase - 7
   defs.push({
-    name: "Rouge Starbase",
+    name: "Rogue Starbase",
     description: "A weak ramshackle starbase with unique build options",
     sprite: { x: 0, y: 544, width: 256, height: 256 },
     health: 800,

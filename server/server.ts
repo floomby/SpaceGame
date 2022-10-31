@@ -261,9 +261,9 @@ app.get("/init", (req, res) => {
               name: `Scallywag's Bunk`,
               id: uid(),
               sector,
-              definitionIndex: defMap.get("Rouge Starbase")?.index,
+              definitionIndex: defMap.get("Rogue Starbase")?.index,
               position: { x: 300, y: -1600 },
-              team: Faction.Rouge,
+              team: Faction.Rogue,
               shipsAvailable: ["Strafer", "Venture"],
             },
           ];
@@ -997,9 +997,9 @@ const spawnAllyForces = (team: Faction, sector: number, count: number) => {
         addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
       }
       break;
-    case Faction.Rouge:
+    case Faction.Rogue:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rouge, uid());
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
       }
       break;
   }
@@ -1168,13 +1168,13 @@ const spawnSectorGuardians = (sector: number) => {
       }
       break;
     case 3:
-      count = enemyCount(Faction.Rouge, sector);
-      allies = allyCount(Faction.Rouge, sector);
+      count = enemyCount(Faction.Rogue, sector);
+      allies = allyCount(Faction.Rogue, sector);
       if (allies < 10) {
         count = Math.max(10, count);
       }
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rouge, uid());
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
       }
       break;
   }
@@ -1201,7 +1201,7 @@ const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
 setInterval(() => {
   repairStationsInSectorForTeam(1, Faction.Alliance);
   repairStationsInSectorForTeam(2, Faction.Confederation);
-  repairStationsInSectorForTeam(3, Faction.Rouge);
+  repairStationsInSectorForTeam(3, Faction.Rogue);
 }, 2 * 60 * 1000);
 
 const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {

@@ -28,7 +28,6 @@ const dumpCargoHtml = (cargo?: CargoEntry[]) => {
 };
 
 const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
-  console.log("dumpCargoPostUpdate", cargo);
   if (!cargo) {
     return;
   }
@@ -111,7 +110,6 @@ const bindDumpCargoUpdaters = () => {
 
 const showDumpCargo = () => {
   if (!shown) {
-    console.log("pushing");
     push(dumpCargoDialog, setupDumpCargoDialog, "dumpCargo");
   } else if (peekTag() === "dumpCargo") {
     pop();

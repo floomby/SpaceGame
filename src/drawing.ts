@@ -27,7 +27,7 @@ import {
   confederationColorDark,
   confederationColorOpaque,
   lastSelf,
-  rougeColorOpaque,
+  rogueColorOpaque,
   teamColorsOpaque,
 } from "./globals";
 import { KeyBindings } from "./keybindings";
@@ -494,7 +494,7 @@ const drawPlayer = (player: Player, self: Player) => {
       "#333333DD",
       player.repairs[1] / def.repairsRequired
     );
-    drawBar({ x: -sprite.width * 0.4, y: 8 }, sprite.width * 0.8, 12, rougeColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: 8 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
   }
   ctx.restore();
 };

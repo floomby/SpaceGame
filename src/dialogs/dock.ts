@@ -9,6 +9,7 @@ import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as show
 import { disableTooExpensive } from "./helpers";
 import { composited } from "../drawing";
 import { domFromRest, getRestRaw } from "../rest";
+import { manufacturingBay, setupManufacturingBay } from "./manufacturing";
 
 let docker = () => {};
 
@@ -62,14 +63,14 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
         const amount = document.getElementById(`sellCargoAmount${i}`) as HTMLInputElement;
         const seller = () => {
           if (amount) {
-            const value = parseInt(amount.value, 10);
+            const value = parseFloat(amount.value);
             if (!isNaN(value)) {
               sendSellCargo(ownId, cargo[i].what, value);
             }
           }
         };
         amount.addEventListener("keyup", (e) => {
-          const value = parseInt(amount.value, 10);
+          const value = parseFloat(amount.value);
           if (amount.value === "" || isNaN(value) || value > cargo[i].amount || value <= 0) {
             amount.style.backgroundColor = "#ffaaaa";
             button.disabled = true;
@@ -320,6 +321,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
   <div style="width: 45%; float: left;">
     <h3>Cargo</h3>
     <div id="cargo">${cargoHtml(self.cargo)}</div>
+    <button id="openManufacturing" style="margin-top: 10px;">Manufacturing Bay</button>
   </div>
   <div style="width: 45%; float: right;">
     <h3>Armaments</h3>
@@ -346,6 +348,9 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   shipPostUpdate(self.defIndex);
   document.getElementById("changeShip")?.addEventListener("click", () => {
     push(shipShop(), () => setupShipShop(station));
+  });
+  document.getElementById("openManufacturing")?.addEventListener("click", () => {
+    push(manufacturingBay(), () => setupManufacturingBay(station));
   });
 };
 

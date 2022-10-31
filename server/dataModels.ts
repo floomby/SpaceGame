@@ -1,6 +1,12 @@
 import mongoose, { SchemaType } from "mongoose";
+import { armDefMap, defMap } from "../src/defs";
 
 const Schema = mongoose.Schema;
+
+const cargoSchema = new Schema({
+  what: { type: String, required: true },
+  amount: { type: Number, required: true },
+});
 
 const userSchema = new Schema({
   name: { type: String, required: true, unique: true },
@@ -22,6 +28,21 @@ const userSchema = new Schema({
     validate: {
       validator: Number.isInteger,
       message: "{VALUE} is not an integer value",
+    },
+  },
+  cargoInventory: [cargoSchema],
+  armInventory: {
+    type: [String],
+    validate: {
+      validator: (v: string[]) => v.every((item) => armDefMap.has(item)),
+      message: (props) => `${props.value} is not a valid arm`,
+    },
+  },
+  shipInventory: {
+    type: [String],
+    validate: {
+      validator: (v: string[]) => v.every((item) => defMap.has(item)),
+      message: (props) => `${props.value} is not a valid ship`,
     },
   },
 });

@@ -32,7 +32,8 @@ const mapDialog = () => {
         html += `</ul>`;
         return html;
       },
-      mapPostRest
+      mapPostRest,
+      true
     ),
     `<br/><button id="closeMap">Close</button>`,
   ]);

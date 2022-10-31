@@ -289,7 +289,7 @@ const run = () => {
 
   initBlankState();
 
-  bindAction("init", (data: { id: number; sector: number; faction: Faction }) => {
+  bindAction("init", (data: { id: number; sector: number; faction: Faction, asteroids: Asteroid[], collectables: Collectable[] }) => {
     setOwnId(data.id);
     setCurrentSector(data.sector);
     initStars(data.sector);
@@ -300,6 +300,13 @@ const run = () => {
     hideDialog();
     initInputHandlers(targetAtCoords);
     setFaction(data.faction);
+    for (const asteroid of data.asteroids) {
+      state.asteroids.set(asteroid.id, asteroid);
+    }
+    for (const collectable of data.collectables) {
+      collectable.phase = Math.random() * Math.PI * 2;
+      state.collectables.set(collectable.id, collectable);
+    }
   });
 
   bindAction("loginFail", (data: { error: string }) => {
@@ -386,23 +393,25 @@ const run = () => {
     pushDialog(deadDialog, setupDeadDialog, "dead");
   });
 
-  bindAction("warp", (data: { to: number }) => {
+  bindAction("warp", (data: { to: number, asteroids: Asteroid[], collectables: Collectable[] }) => {
     console.log("Warping to sector " + data.to);
     // hideDialog();
     if (data.to !== currentSector) {
       state.asteroids.clear();
+      for (const asteroid of data.asteroids) {
+        state.asteroids.set(asteroid.id, asteroid);
+      }
       state.collectables.clear();
+      for (const collectable of data.collectables) {
+        collectable.phase = Math.random() * Math.PI * 2;
+        state.collectables.set(collectable.id, collectable);
+      }
       initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);
     }
     targetId = 0;
     targetAsteroidId = 0;
-  });
-
-  bindAction("win", (data: { faction: Faction }) => {
-    showDialog(horizontalCenter([`<h2>${getFactionString(data.faction)} wins!</h2>`, '<button onclick="location.reload();">Play Again</button>']));
-    unbindAllActions();
   });
 
   bindAction("chat", (data: { id: number; message: string }) => {

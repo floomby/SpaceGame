@@ -13,6 +13,7 @@ import {
   availableCargoCapacity,
   addCargo,
   Missile,
+  Mutated,
 } from "../src/game";
 
 const uid = () => {
@@ -112,7 +113,8 @@ type ArmamentDef = {
     target: Player | Asteroid,
     applyEffect: (trigger: EffectTrigger) => void,
     slotIndex: number,
-    flashServerMessage?: (id: number, message: string) => void
+    flashServerMessage: (id: number, message: string) => void,
+    whatMutated: Mutated
   ) => void;
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
   equipMutator?: (player: Player, slotIndex: number) => void;
@@ -123,6 +125,7 @@ type AsteroidDef = {
   resources: number;
   sprite: Rectangle;
   radius: number;
+  mineral: string;
 };
 
 type MissileDef = {
@@ -455,18 +458,24 @@ const initDefs = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 0.5,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage) => {
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.3) {
         target = target as Asteroid;
-        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 500 * 500) {
+        if (l2NormSquared(player.position, target.position) < 500 * 500) {
           if (availableCargoCapacity(player) <= 0) {
             flashServerMessage(player.id, "Cargo bay full");
             return;
           }
+          if (target.resources <= 0 ) {
+            flashServerMessage(player.id, "Asteroid depleted");
+            return;
+          }
+          whatMutated.asteroids.add(target);
           player.energy -= 0.3;
           const amount = Math.min(target.resources, 0.5);
           target.resources -= amount;
-          addCargo(player, "Minerals", amount);
+          const asteroidDef = asteroidDefs[target.defIndex];
+          addCargo(player, asteroidDef.mineral, amount);
           applyEffect({
             effectIndex: 0,
             // Fine to just use the reference here
@@ -553,7 +562,7 @@ const initDefs = () => {
           team: player.team,
           damage: missileDefs[javelinIndex].damage,
           target: 0,
-          definitionIndex: javelinIndex,
+          defIndex: javelinIndex,
           lifetime: missileDefs[javelinIndex].lifetime,
         };
         state.missiles.set(id, missile);
@@ -603,7 +612,7 @@ const initDefs = () => {
           team: player.team,
           damage: missileDefs[heavyJavelinIndex].damage,
           target: 0,
-          definitionIndex: heavyJavelinIndex,
+          defIndex: heavyJavelinIndex,
           lifetime: missileDefs[heavyJavelinIndex].lifetime,
         };
         state.missiles.set(id, missile);
@@ -657,7 +666,7 @@ const initDefs = () => {
           team: player.team,
           damage: missileDefs[tomahawkIndex].damage,
           target: target.id,
-          definitionIndex: tomahawkIndex,
+          defIndex: tomahawkIndex,
           lifetime: missileDefs[tomahawkIndex].lifetime,
         };
         state.missiles.set(id, missile);
@@ -672,7 +681,6 @@ const initDefs = () => {
     },
     cost: 100,
   });
-
   // Advanced mining laser - 10
   armDefs.push({
     name: "Advanced mining laser",
@@ -681,14 +689,19 @@ const initDefs = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 0.5,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage) => {
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.8) {
         target = target as Asteroid;
-        if (target.resources > 0 && l2NormSquared(player.position, target.position) < 800 * 800) {
+        if (l2NormSquared(player.position, target.position) < 800 * 800) {
           if (availableCargoCapacity(player) <= 0) {
             flashServerMessage(player.id, "Cargo bay full");
             return;
           }
+          if (target.resources <= 0 ) {
+            flashServerMessage(player.id, "Asteroid depleted");
+            return;
+          }
+          whatMutated.asteroids.add(target);
           player.energy -= 0.8;
           const amount = Math.min(target.resources, 3.5);
           target.resources -= amount;
@@ -745,7 +758,7 @@ const initDefs = () => {
           team: player.team,
           damage: missileDefs[empMissileIndex].damage,
           target: target.id,
-          definitionIndex: empMissileIndex,
+          defIndex: empMissileIndex,
           lifetime: missileDefs[empMissileIndex].lifetime,
         };
         state.missiles.set(id, missile);
@@ -776,6 +789,7 @@ const initDefs = () => {
     resources: 500,
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 24,
+    mineral: "Prifetium",
   });
 
   collectableDefs.push({

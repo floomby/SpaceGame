@@ -49,7 +49,7 @@ const uid = () => {
   return ret;
 };
 
-// Initialize the definitions (Needs to be done to use them)
+// Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
 
 mongoose
@@ -447,6 +447,7 @@ sectorList.forEach((sector) => {
     asteroids: new Map(),
     missiles: new Map(),
     collectables: new Map(),
+    asteroidsDirty: false,
   });
 });
 
@@ -502,6 +503,7 @@ const initFromDatabase = async () => {
 // Market stuff
 const market = new Map<string, number>();
 market.set("Minerals", 1);
+market.set("Prifetium", 1);
 market.set("Teddy Bears", 5);
 market.set("Spare Parts", 10);
 
@@ -559,7 +561,9 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   equip(player, 1, "Tomahawk Missile", true);
   equip(player, 2, "Laser Beam", true);
 
-  sectors.get(sector)!.players.set(id, player);
+  const state = sectors.get(sector)!;
+
+  state.players.set(id, player);
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
@@ -572,7 +576,13 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
       return;
     }
 
-    ws.send(JSON.stringify({ type: "init", payload: { id: id, sector, faction } }));
+    ws.send(
+      JSON.stringify({
+        type: "init",
+        payload: { id: id, sector, faction, asteroids: Array.from(state.asteroids.values()), collectables: Array.from(state.collectables.values()) },
+      })
+    );
+
     console.log("Registered client with id: ", id);
   });
 };
@@ -657,7 +667,18 @@ wss.on("connection", (ws) => {
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
-              ws.send(JSON.stringify({ type: "init", payload: { id: user.id, sector: checkpoint.sector, faction: playerState.team } }));
+              ws.send(
+                JSON.stringify({
+                  type: "init",
+                  payload: {
+                    id: user.id,
+                    sector: checkpoint.sector,
+                    faction: playerState.team,
+                    asteroids: Array.from(state.asteroids.values()),
+                    collectables: Array.from(state.collectables.values()),
+                  },
+                })
+              );
               // log to file
               appendFile("log", `${new Date().toISOString()} ${name} logged in\n`, (err) => {
                 if (err) {
@@ -812,7 +833,16 @@ wss.on("connection", (ws) => {
             }
             playerState.v = { x: 0, y: 0 };
             state.players.set(client.id, playerState);
-            ws.send(JSON.stringify({ type: "warp", payload: { to: checkpoint.sector } }));
+            ws.send(
+              JSON.stringify({
+                type: "warp",
+                payload: {
+                  to: checkpoint.sector,
+                  asteroids: Array.from(state.asteroids.values()),
+                  collectables: Array.from(state.collectables.values()),
+                },
+              })
+            );
             client.currentSector = checkpoint.sector;
           });
         }
@@ -1049,7 +1079,7 @@ setInterval(() => {
     }
     const triggers: EffectTrigger[] = [];
     const collectables: Collectable[] = [];
-    update(
+    const mutated = update(
       state,
       frame,
       targets,
@@ -1077,7 +1107,7 @@ setInterval(() => {
     }
 
     const projectileData: Ballistic[] = Array.from(state.projectiles.values()).flat();
-    const asteroidData: Asteroid[] = Array.from(state.asteroids.values());
+    let asteroidData: Asteroid[] = state.asteroidsDirty ? Array.from(state.asteroids.values()) : Array.from(mutated.asteroids);
     const missileData: Missile[] = Array.from(state.missiles.values());
 
     const serialized = JSON.stringify({
@@ -1110,7 +1140,12 @@ setInterval(() => {
         const client = clients.get(ws)!;
         client.currentSector = to;
         client.sectorDataSent = false;
-        ws.send(JSON.stringify({ type: "warp", payload: { to } }));
+        ws.send(
+          JSON.stringify({
+            type: "warp",
+            payload: { to, asteroids: Array.from(state.asteroids.values()), collectables: Array.from(state.collectables.values()) },
+          })
+        );
         const enemies = enemyCount(player.team, to);
         const allies = allyCount(player.team, to);
         const count = enemies - allies;
@@ -1211,7 +1246,7 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
     if (asteroid.resources <= 0) {
       state.asteroids.delete(asteroid.id);
       removed.push(asteroid.id);
-      removedCount++;
+      removedCount++;      
     }
   }
   if (removedCount > 0) {
@@ -1225,6 +1260,7 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
         client.send(JSON.stringify({ type: "removeAsteroids", payload: { ids: removed } }));
       }
     }
+    state.asteroidsDirty = true;
   }
 };
 
@@ -1232,7 +1268,7 @@ setInterval(() => {
   for (const [sector, state] of sectors) {
     respawnEmptyAsteroids(state, sector);
   }
-}, 10 * 60 * 1000);
+}, 1 * 60 * 1000);
 
 server.listen(wsPort, () => {
   console.log(`${useSsl ? "Secure" : "Unsecure"} websocket server running on port ${wsPort}`);

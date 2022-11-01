@@ -53,7 +53,7 @@ const uid = () => {
 initDefs();
 
 mongoose
-  .connect("mongodb://localhost:27017/SpaceGame", {})
+  .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
   .catch((err) => {
     console.log("Error connecting to database: " + err);
   })
@@ -239,7 +239,6 @@ app.get("/shipsAvailable", (req, res) => {
   });
 });
 
-// Admin stuff, the password is: "something"
 app.get("/init", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {
@@ -247,7 +246,7 @@ app.get("/init", (req, res) => {
     return;
   }
   const hashedPassword = hash(password);
-  if (hashedPassword !== "90d4e14de110c29c4feaaaa4f4b49d38d96a9cafe9f750414e0c577779fafc3f") {
+  if (hashedPassword !== "1d8465217b25152cb3de788928007459e451cb11a6e0e18ab5ed30e2648d809c") {
     res.send("Invalid password");
     return;
   }
@@ -312,7 +311,7 @@ app.get("/resetEverything", (req, res) => {
     return;
   }
   const hashedPassword = hash(password);
-  if (hashedPassword !== "90d4e14de110c29c4feaaaa4f4b49d38d96a9cafe9f750414e0c577779fafc3f") {
+  if (hashedPassword !== "1d8465217b25152cb3de788928007459e451cb11a6e0e18ab5ed30e2648d809c") {
     res.send("Invalid password");
     return;
   }
@@ -336,6 +335,16 @@ app.get("/resetEverything", (req, res) => {
 // Test stuff
 
 app.get("/addNPC", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== "1d8465217b25152cb3de788928007459e451cb11a6e0e18ab5ed30e2648d809c") {
+    res.send("Invalid password");
+    return;
+  }
   const sector = req.query.sector;
   if (!sector || typeof sector !== "string") {
     res.send("Invalid get parameters");
@@ -382,6 +391,16 @@ if (useSsl) {
 }
 
 app.get("/kill", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== "1d8465217b25152cb3de788928007459e451cb11a6e0e18ab5ed30e2648d809c") {
+    res.send("Invalid password");
+    return;
+  }
   const id = req.query.id;
   const sector = req.query.sector;
   if (!id || typeof id !== "string") {
@@ -503,7 +522,8 @@ const initFromDatabase = async () => {
 // Market stuff
 const market = new Map<string, number>();
 market.set("Minerals", 1);
-market.set("Prifetium", 1);
+market.set("Prifetium Ore", 1);
+market.set("Prifetium", 2);
 market.set("Teddy Bears", 5);
 market.set("Spare Parts", 10);
 
@@ -974,6 +994,8 @@ const informDead = (player: Player) => {
   }
 };
 
+// TODO: Roll this into the main state update function in the form of the mutation returned by the update function
+// Should slightly improve performance when things are busy in the sector
 const removeCollectable = (sector: number, id: number, collected: boolean) => {
   for (const [client, clientData] of clients) {
     if (clientData.currentSector === sector) {
@@ -1088,14 +1110,9 @@ setInterval(() => {
       warpList,
       informDead,
       flashServerMessage,
-      (collectable) => collectables.push(collectable),
       (id, collected) => removeCollectable(sector, id, collected)
     );
     processAllNpcs(state);
-    // This maybe should just be in the update function?
-    for (const collectable of collectables) {
-      state.collectables.set(collectable.id, collectable);
-    }
 
     // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for CPU)
     const playerData: Player[] = [];
@@ -1112,16 +1129,19 @@ setInterval(() => {
 
     const serialized = JSON.stringify({
       type: "state",
-      payload: { players: playerData, frame, projectiles: projectileData, asteroids: asteroidData, effects: triggers, missiles: missileData },
+      payload: {
+        players: playerData,
+        frame,
+        projectiles: projectileData,
+        asteroids: asteroidData,
+        effects: triggers,
+        missiles: missileData,
+        collectables: mutated.collectables,
+      },
     });
-
-    const collectablesSerialized = collectables.length > 0 ? JSON.stringify({ type: "addCollectables", payload: collectables }) : undefined;
 
     for (const [client, data] of clients) {
       if (data.currentSector === sector) {
-        if (collectablesSerialized) {
-          client.send(collectablesSerialized);
-        }
         client.send(serialized);
       }
     }
@@ -1246,7 +1266,7 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
     if (asteroid.resources <= 0) {
       state.asteroids.delete(asteroid.id);
       removed.push(asteroid.id);
-      removedCount++;      
+      removedCount++;
     }
   }
   if (removedCount > 0) {

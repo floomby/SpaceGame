@@ -1,4 +1,4 @@
-import { connect, bindAction, sendDock, sendTarget, sendSecondary, unbindAllActions, sendInput, sendAngle, sendRepair } from "./net";
+import { connect, bindAction, sendDock, sendTarget, sendSecondary, sendAngle, sendRepair } from "./net";
 import {
   Player,
   Ballistic,
@@ -14,7 +14,6 @@ import {
   Collectable,
   findSmallAngleBetween,
   findClosestTarget,
-  Position,
   findAllPlayersOverlappingPoint,
   findAllAsteroidsOverlappingPoint,
 } from "./game";
@@ -26,21 +25,19 @@ import {
   push as pushDialog,
   pop as popDialog,
   clearStack as clearDialogStack,
-  horizontalCenter,
   updateDom,
   runPostUpdaterOnly,
   peekTag,
   setDialogBackground,
   clearStack,
 } from "./dialog";
-import { defs, initDefs, Faction, getFactionString, armDefs, SlotKind, EmptySlot } from "./defs";
+import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
 import { drawEverything, fadeOutCollectable, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
   currentSector,
   initBlankState,
   keybind,
-  lastSelf,
   ownId,
   selectedSecondary,
   setCurrentSector,
@@ -57,6 +54,7 @@ import { hideChat, initInputHandlers, input, selectedSecondaryChanged, setSelect
 import { bindDockingUpdaters, dockDialog, docker, setDocker, setShowDocked, setupDockingUI, showDocked } from "./dialogs/dock";
 import { displayLoginDialog } from "./dialogs/login";
 import { initCargo } from "./dialogs/cargo";
+import { Position } from "./geometry";
 
 let chats: ChatMessage[] = [];
 
@@ -384,6 +382,11 @@ const run = () => {
       }
     }
     applyEffects(data.effects);
+
+    for (const collectable of data.collectables) {
+      collectable.phase = 0;
+      state.collectables.set(collectable.id, collectable);
+    }
   });
 
   bindAction("dead", (data: {}) => {
@@ -426,12 +429,12 @@ const run = () => {
     pushMessage(data.message);
   });
 
-  bindAction("addCollectables", (data: Collectable[]) => {
-    for (const collectable of data) {
-      collectable.phase = 0;
-      state.collectables.set(collectable.id, collectable);
-    }
-  });
+  // bindAction("addCollectables", (data: Collectable[]) => {
+  //   for (const collectable of data) {
+  //     collectable.phase = 0;
+  //     state.collectables.set(collectable.id, collectable);
+  //   }
+  // });
 
   bindAction("removeCollectable", (data: { id: number; collected: boolean }) => {
     const collectable = state.collectables.get(data.id);

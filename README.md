@@ -21,3 +21,10 @@ A simple multiplayer game where you have a ship and do things.
 
 - Play as guest (low priority)
 - Option to change password (low priority)
+
+### Next steps
+
+- Manufacturing bay
+- Figure out kill messages in a way that is performant for the server (low priority)
+- Inventory
+- Armament purchase options for stations

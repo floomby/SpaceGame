@@ -1,20 +1,8 @@
-import {
-  Asteroid,
-  Circle,
-  EffectAnchor,
-  EffectAnchorKind,
-  EffectTrigger,
-  findHeadingBetween,
-  GlobalState,
-  infinityNorm,
-  Missile,
-  Player,
-  Position,
-  Rectangle,
-} from "./game";
+import { Asteroid, EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Missile, Player } from "./game";
 import { ctx, canvas, effectSprites } from "./drawing";
 import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound";
 import { maxMissileLifetime } from "./defs";
+import { Position, Circle, Rectangle } from "./geometry";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   if (anchor.kind === EffectAnchorKind.Absolute) {

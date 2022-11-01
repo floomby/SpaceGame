@@ -2,7 +2,7 @@
 // I wrote it before I had some of the dialog functionality implemented that makes many of the things it is doing easier
 
 import { armDefs, defs, Faction, SlotKind, UnitDefinition, UnitKind } from "../defs";
-import { CargoEntry, maxDecimals, Player, ticksPerSecond } from "../game";
+import { CargoEntry, Player, ticksPerSecond } from "../game";
 import { lastSelf, ownId, state } from "../globals";
 import { sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
@@ -10,6 +10,7 @@ import { disableTooExpensive } from "./helpers";
 import { composited } from "../drawing";
 import { domFromRest, getRestRaw } from "../rest";
 import { manufacturingBay, setupManufacturingBay } from "./manufacturing";
+import { maxDecimals } from "../geometry";
 
 let docker = () => {};
 

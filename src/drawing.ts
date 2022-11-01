@@ -5,31 +5,15 @@ import {
   availableCargoCapacity,
   Ballistic,
   ChatMessage,
-  Circle,
   Collectable,
-  currentlyFacing,
   findHeadingBetween,
-  findLinesTangentToCircleThroughPoint,
   GlobalState,
-  infinityNorm,
-  l2Norm,
-  Line,
   Missile,
   Player,
-  Position,
-  positiveMod,
-  Rectangle,
   TargetKind,
 } from "./game";
-import {
-  allianceColorDark,
-  allianceColorOpaque,
-  confederationColorDark,
-  confederationColorOpaque,
-  lastSelf,
-  rogueColorOpaque,
-  teamColorsOpaque,
-} from "./globals";
+import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm } from "./geometry";
+import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, teamColorsOpaque } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
 import { getNameOfPlayer } from "./rest";

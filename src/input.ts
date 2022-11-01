@@ -1,10 +1,11 @@
 import { peekTag, pop, push } from "./dialog";
 import { mapDialog, setupMapDialog } from "./dialogs/map";
-import { Input, Position } from "./game";
+import { Input } from "./game";
 import { keybind, ownId, selectedSecondary, setSelectedSecondary } from "./globals";
 import { sendChat, sendInput } from "./net";
 import { shown as isDialogShown } from "./dialog";
 import { canvas, canvasCoordsToGameCoords } from "./drawing";
+import { Position } from "./geometry";
 
 let chatInput: HTMLInputElement;
 

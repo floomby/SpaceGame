@@ -703,7 +703,8 @@ const initDefs = () => {
           player.energy -= 0.8;
           const amount = Math.min(target.resources, 3.5);
           target.resources -= amount;
-          addCargo(player, "Minerals", amount);
+          const asteroidDef = asteroidDefs[target.defIndex];
+          addCargo(player, asteroidDef.mineral, amount);
           applyEffect({
             effectIndex: 9,
             from: { kind: EffectAnchorKind.Player, value: player.id },

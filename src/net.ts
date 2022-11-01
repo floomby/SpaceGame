@@ -135,6 +135,15 @@ const sendSellCargo = (id: number, what: string, amount: number) => {
   );
 };
 
+const sendDepositCargo = (id: number, what: string, amount: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "depositCargo",
+      payload: { id, what, amount },
+    })
+  );
+};
+
 const sendEquip = (id: number, slotIndex: number, what: number) => {
   serverSocket.send(
     JSON.stringify({
@@ -208,6 +217,7 @@ export {
   sendTarget,
   sendSecondary,
   sendSellCargo,
+  sendDepositCargo,
   sendEquip,
   sendChat,
   sendPurchase,

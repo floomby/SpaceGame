@@ -1,19 +1,16 @@
 import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, UnitDefinition } from "./defs";
 import {
   applyInputs,
-  arrivePosition,
-  currentlyFacing,
   effectiveInfinity,
   equip,
   findClosestTarget,
   findHeadingBetween,
   GlobalState,
   Input,
-  l2Norm,
   Player,
-  seekPosition,
-  stopPlayer,
 } from "./game";
+import { l2Norm } from "./geometry";
+import { seekPosition, currentlyFacing, stopPlayer } from "./pathing";
 
 type LootTable = { index: number; probability: number }[];
 

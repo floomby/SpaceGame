@@ -19,15 +19,12 @@ import {
   Circle,
   Position,
   l2Norm,
-  Line,
   positiveMod,
   l2NormSquared,
   circlesIntersect,
   pointInCircle,
   Rectangle,
   findLinesTangentToCircleThroughPoint,
-  infinityNorm,
-  maxDecimals,
   findHeadingBetween,
   findInterceptAimingHeading,
   findLineHeading,
@@ -35,6 +32,7 @@ import {
   isAngleBetween,
 } from "./geometry";
 import { NPC, processLootTable } from "./npc";
+import { seek } from "./pathing";
 import { sfc32 } from "./prng";
 
 // TODO Move the geometry stuff to a separate file
@@ -264,22 +262,6 @@ const setCanDockOrRepair = (player: Player, state: GlobalState) => {
   }
 };
 
-const seek = (entity: Entity, target: Entity, maxTurn: number) => {
-  const heading = findHeadingBetween(entity.position, target.position);
-  let diff = heading - entity.heading;
-  diff = positiveMod(diff, 2 * Math.PI);
-  if (diff > Math.PI) {
-    diff -= 2 * Math.PI;
-  }
-  if (Math.abs(diff) < maxTurn) {
-    entity.heading = heading;
-  } else if (diff > 0) {
-    entity.heading += maxTurn;
-  } else {
-    entity.heading -= maxTurn;
-  }
-};
-
 const findClosestTarget = (player: Player, state: GlobalState, scanRange: number, onlyEnemy = false) => {
   let ret: Player | undefined = undefined;
   let minDistance = Infinity;
@@ -411,7 +393,7 @@ const kill = (
   state: GlobalState,
   applyEffect: (effect: EffectTrigger) => void,
   onDeath: (player: Player) => void,
-  drop: (collectable: Collectable) => void
+  collectables: Collectable[]
 ) => {
   if (player.inoperable) {
     return;
@@ -438,14 +420,14 @@ const kill = (
     if (player.npc) {
       const toDrop = processLootTable(player.npc.lootTable);
       if (toDrop !== undefined) {
-        drop(createCollectableFromDef(toDrop, player.position));
+        collectables.push(createCollectableFromDef(toDrop, player.position));
       }
     }
   }
 };
 
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
-type Mutated = { asteroids: Set<Asteroid> };
+type Mutated = { asteroids: Set<Asteroid>, collectables: Collectable[] };
 
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
@@ -458,10 +440,9 @@ const update = (
   serverWarpList: { player: Player; to: number }[],
   onDeath: (player: Player) => void,
   flashServerMessage: (id: number, message: string) => void,
-  drop: (collectable: Collectable) => void,
   removeCollectable: (id: number, collected: boolean) => void
 ) => {
-  const ret: Mutated = { asteroids: new Set() };
+  const ret: Mutated = { asteroids: new Set(), collectables: [] };
 
   // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
@@ -470,7 +451,7 @@ const update = (
     }
     const def = defs[player.defIndex];
     if (player.health <= 0) {
-      kill(def, player, state, applyEffect, onDeath, drop);
+      kill(def, player, state, applyEffect, onDeath, ret.collectables);
     }
 
     if (def.kind !== UnitKind.Station) {
@@ -682,7 +663,7 @@ const update = (
         if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
           otherPlayer.health -= projectile.damage;
           if (otherPlayer.health <= 0) {
-            kill(def, otherPlayer, state, applyEffect, onDeath, drop);
+            kill(def, otherPlayer, state, applyEffect, onDeath, ret.collectables);
           }
           projectiles.splice(i, 1);
           i--;
@@ -731,7 +712,7 @@ const update = (
       if (missile.team !== otherPlayer.team && circlesIntersect(missile, otherPlayer)) {
         otherPlayer.health -= missile.damage;
         if (otherPlayer.health <= 0) {
-          kill(def, otherPlayer, state, applyEffect, onDeath, drop);
+          kill(def, otherPlayer, state, applyEffect, onDeath, ret.collectables);
         }
         state.missiles.delete(id);
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
@@ -752,6 +733,9 @@ const update = (
       state.missiles.delete(id);
       applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
     }
+  }
+  for (const collectable of ret.collectables) {
+    state.collectables.set(collectable.id, collectable);
   }
   return ret;
 };
@@ -1035,119 +1019,6 @@ const repairStation = (player: Player) => {
   }
 };
 
-const seekPosition = (player: Player, position: Position, input: Input) => {
-  const heading = findHeadingBetween(player.position, position);
-  let headingMod = positiveMod(heading - player.heading, 2 * Math.PI);
-  if (headingMod > Math.PI) {
-    headingMod -= 2 * Math.PI;
-  }
-  if (headingMod > 0) {
-    input.right = true;
-    input.left = false;
-  } else if (headingMod < 0) {
-    input.left = true;
-    input.right = false;
-  } else {
-    input.left = false;
-    input.right = false;
-  }
-  input.up = true;
-  input.down = false;
-};
-
-const arrivePosition = (player: Player, position: Position, input: Input, epsilon = 10) => {
-  const def = defs[player.defIndex];
-  const heading = findHeadingBetween(player.position, position);
-  let headingMod = positiveMod(heading - player.heading, 2 * Math.PI);
-  if (headingMod > Math.PI) {
-    headingMod -= 2 * Math.PI;
-  }
-
-  const distance = l2Norm(player.position, position);
-
-  let targetSpeed: number;
-  if (distance > def.brakeDistance!) {
-    targetSpeed = def.speed;
-  } else {
-    targetSpeed = (def.speed * distance) / def.brakeDistance!;
-  }
-
-  if (headingMod > 0 && player.speed > 0) {
-    input.right = true;
-    input.left = false;
-  } else if (headingMod < 0 && player.speed > 0) {
-    input.left = true;
-    input.right = false;
-  } else {
-    input.left = false;
-    input.right = false;
-  }
-
-  if (distance < epsilon && player.speed < (def.speed * distance) / (def.brakeDistance! + epsilon)) {
-    if (player.speed > 0) {
-      input.down = true;
-      input.up = false;
-    } else {
-      input.down = false;
-      input.up = false;
-    }
-    return;
-  }
-
-  if (player.speed === targetSpeed) {
-    input.up = false;
-    input.down = false;
-  } else if (player.speed < targetSpeed) {
-    input.up = true;
-    input.down = false;
-  } else {
-    input.up = false;
-    input.down = true;
-  }
-};
-
-const stopPlayer = (player: Player, input: Input, stopRotation = true) => {
-  input.up = false;
-  if (player.speed > 0) {
-    input.down = true;
-  } else {
-    input.down = false;
-  }
-  if (stopRotation) {
-    input.left = false;
-    input.right = false;
-  }
-};
-
-// This function is not exactly optimal
-const currentlyFacing = (entity: Entity, circle: Circle) => {
-  if (pointInCircle(entity.position, circle)) {
-    return true;
-  }
-  const lines = findLinesTangentToCircleThroughPoint(entity.position, circle)!;
-  const heading = entity.heading;
-  const angleA = findLineHeading(lines[0]);
-  const angleB = findLineHeading(lines[1]);
-  const diff = positiveMod(angleA - angleB, 2 * Math.PI);
-  if (diff > Math.PI) {
-    return isAngleBetween(heading, angleA, angleB);
-  } else {
-    return isAngleBetween(heading, angleB, angleA);
-  }
-};
-
-// This is a faster version that should work most of the time
-// THIS IS BROKEN
-const currentlyFacingApprox = (entity: Entity, circle: Circle) => {
-  if (pointInCircle(entity.position, circle)) {
-    return true;
-  }
-  const distance = l2Norm(entity.position, circle.position);
-  const heading = findHeadingBetween(entity.position, circle.position);
-  const arcLength = Math.abs(entity.heading - heading) * distance;
-  return arcLength < circle.radius;
-};
-
 const findAllPlayersOverlappingPoint = (point: Position, players: IterableIterator<Player>) => {
   const overlappingPlayers: Player[] = [];
   for (const player of players) {
@@ -1191,10 +1062,6 @@ const effectiveInfinity = 1000000000;
 
 export {
   GlobalState,
-  Position,
-  Circle,
-  Line,
-  Rectangle,
   Input,
   Player,
   Asteroid,
@@ -1208,11 +1075,10 @@ export {
   ChatMessage,
   Collectable,
   Mutated,
+  Entity,
   update,
   applyInputs,
   processAllNpcs,
-  infinityNorm,
-  positiveMod,
   canDock,
   canRepair,
   setCanDockOrRepair,
@@ -1223,24 +1089,16 @@ export {
   randomAsteroids,
   findNextTargetAsteroid,
   findPreviousTargetAsteroid,
-  l2Norm,
-  l2NormSquared,
   availableCargoCapacity,
   addCargo,
   removeAtMostCargo,
   equip,
-  maxDecimals,
   purchaseShip,
   repairStation,
-  seekPosition,
-  stopPlayer,
-  arrivePosition,
   findLinesTangentToCircleThroughPoint,
   findLineHeading,
   isAngleBetween,
   findSmallAngleBetween,
-  currentlyFacing,
-  currentlyFacingApprox,
   findClosestTarget,
   findAllPlayersOverlappingPoint,
   findAllAsteroidsOverlappingPoint,

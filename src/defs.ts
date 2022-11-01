@@ -1,13 +1,10 @@
 // FIXME The mining laser and their effects (in src/effect.ts) are implemented very poorly from both a code and functionality perspective
 
 import {
-  Rectangle,
-  Position,
   GlobalState,
   Player,
   Asteroid,
   TargetKind,
-  l2NormSquared,
   EffectTrigger,
   EffectAnchorKind,
   availableCargoCapacity,
@@ -15,6 +12,7 @@ import {
   Missile,
   Mutated,
 } from "../src/game";
+import { Rectangle, Position, l2NormSquared } from "./geometry";
 
 const uid = () => {
   let ret = 0;
@@ -466,7 +464,7 @@ const initDefs = () => {
             flashServerMessage(player.id, "Cargo bay full");
             return;
           }
-          if (target.resources <= 0 ) {
+          if (target.resources <= 0) {
             flashServerMessage(player.id, "Asteroid depleted");
             return;
           }
@@ -697,7 +695,7 @@ const initDefs = () => {
             flashServerMessage(player.id, "Cargo bay full");
             return;
           }
-          if (target.resources <= 0 ) {
+          if (target.resources <= 0) {
             flashServerMessage(player.id, "Asteroid depleted");
             return;
           }
@@ -789,7 +787,7 @@ const initDefs = () => {
     resources: 500,
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 24,
-    mineral: "Prifetium",
+    mineral: "Prifetium Ore",
   });
 
   collectableDefs.push({
@@ -856,7 +854,7 @@ const initDefs = () => {
 };
 
 const emptySlotData = (def: UnitDefinition) => {
-  return (new Array(def.slots.length)).fill({});
+  return new Array(def.slots.length).fill({});
 };
 
 enum EmptySlot {

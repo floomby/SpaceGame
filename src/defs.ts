@@ -464,7 +464,7 @@ const initDefs = () => {
             flashServerMessage(player.id, "Cargo bay full");
             return;
           }
-          if (target.resources <= 0 ) {
+          if (target.resources <= 0) {
             flashServerMessage(player.id, "Asteroid depleted");
             return;
           }
@@ -695,7 +695,7 @@ const initDefs = () => {
             flashServerMessage(player.id, "Cargo bay full");
             return;
           }
-          if (target.resources <= 0 ) {
+          if (target.resources <= 0) {
             flashServerMessage(player.id, "Asteroid depleted");
             return;
           }
@@ -854,7 +854,7 @@ const initDefs = () => {
 };
 
 const emptySlotData = (def: UnitDefinition) => {
-  return (new Array(def.slots.length)).fill({});
+  return new Array(def.slots.length).fill({});
 };
 
 enum EmptySlot {

@@ -3,9 +3,9 @@ import { armDefMap, defMap } from "../src/defs";
 
 const Schema = mongoose.Schema;
 
-const cargoSchema = new Schema({
-  what: { type: String, required: true },
-  amount: { type: Number, required: true },
+const inventorySchema = new Schema({
+  what: { type: String, required: true, unique: true },
+  amount: { type: Number, required: true, min: 0 },
 });
 
 const userSchema = new Schema({
@@ -30,7 +30,7 @@ const userSchema = new Schema({
       message: "{VALUE} is not an integer value",
     },
   },
-  cargoInventory: [cargoSchema],
+  inventory: [inventorySchema],
   armInventory: {
     type: [String],
     validate: {

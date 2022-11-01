@@ -40,6 +40,7 @@ import mongoose from "mongoose";
 import { createHash, randomUUID } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
+import { depositCargo } from "./inventory";
 
 const uid = () => {
   let ret = 0;
@@ -793,8 +794,7 @@ wss.on("connection", (ws) => {
             state.players.set(client.id, player);
 
             state.players.set(client.id, player);
-            const playerCopy = copyPlayer(player);
-            const checkpointData = JSON.stringify(playerCopy);
+            const checkpointData = JSON.stringify(player);
 
             saveCheckpoint(client.id, client.currentSector, checkpointData);
           }
@@ -891,6 +891,15 @@ wss.on("connection", (ws) => {
             }
           }
         }
+      } else if (data.type === "depositCargo") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player && player.cargo) {
+            depositCargo(player, data.payload.what, data.payload.amount, ws);
+          }
+        }
       } else if (data.type === "dumpCargo") {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
@@ -971,12 +980,18 @@ wss.on("connection", (ws) => {
     console.log("Client disconnected");
     const removedClient = clients.get(ws);
     if (removedClient) {
+      const player = sectors.get(removedClient.currentSector)?.players.get(removedClient.id);
       const state = sectors.get(removedClient.currentSector)!;
       state.players.delete(removedClient.id);
       targets.delete(removedClient.id);
       secondaries.delete(removedClient.id);
       clients.delete(ws);
       idToWebsocket.delete(removedClient.id);
+      if (player?.docked) {
+        saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player));
+      } else if(!player) {
+        console.log("Warning: player not found on disconnect");
+      }
     }
   });
 });

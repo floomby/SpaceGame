@@ -4,7 +4,7 @@
 import { armDefs, defs, Faction, SlotKind, UnitDefinition, UnitKind } from "../defs";
 import { CargoEntry, Player, ticksPerSecond } from "../game";
 import { lastSelf, ownId, state } from "../globals";
-import { sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
+import { sendDepositCargo, sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
 import { composited } from "../drawing";
@@ -40,7 +40,8 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
   <col span="1" style="width: 49%;">
   <col span="1" style="width: 17%;">
   <col span="1" style="width: 17%;">
-  <col span="1" style="width: 17%;">
+  <col span="1" style="width: 8%;">
+  <col span="1" style="width: 9%;">
 </colgroup>`;
 
   let index = 0;
@@ -49,12 +50,16 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
   <td>${entry.what}</td>
   <td>${entry.amount}</td>
   <td><input type="text" id="sellCargoAmount${index}" value="${entry.amount}" size="6" /></td>
-  <td style="text-align: right;"><button id="sellCargo${index}">Sell</button></td></tr>`;
+  <td style="text-align: right;"><button id="sellCargo${index}">Sell</button></td>
+  <td style="text-align: right;"><button id="depositCargo${index}">Deposit</button></td>
+</tr>`;
     index++;
   }
   html += "</table>";
   return html;
 };
+
+let lastActionSell = true;
 
 const cargoPostUpdate = (cargo?: CargoEntry[]) => {
   if (cargo) {
@@ -64,9 +69,19 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
         const amount = document.getElementById(`sellCargoAmount${i}`) as HTMLInputElement;
         const seller = () => {
           if (amount) {
+            lastActionSell = true;
             const value = parseFloat(amount.value);
             if (!isNaN(value)) {
               sendSellCargo(ownId, cargo[i].what, value);
+            }
+          }
+        };
+        const depositer = () => {
+          lastActionSell = false;
+          if (amount) {
+            const value = parseFloat(amount.value);
+            if (!isNaN(value)) {
+              sendDepositCargo(ownId, cargo[i].what, value);
             }
           }
         };
@@ -80,11 +95,19 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
             button.disabled = false;
           }
           if (e.key === "Enter") {
-            seller();
+            if (lastActionSell) {
+              seller();
+            } else {
+              depositer();
+            }
           }
         });
         amount.style.backgroundColor = "#aaffaa";
         button.onclick = seller;
+        const depositButton = document.getElementById(`depositCargo${i}`) as HTMLButtonElement;
+        if (depositButton) {
+          depositButton.onclick = depositer;
+        }
       } else {
         console.log("button not found", `sellCargo${i}`);
       }

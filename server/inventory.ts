@@ -94,9 +94,9 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
           const inventory = user.inventory.find((inventory) => inventory.what === what);
           if (inventory) {
             inventory.amount -= amount;
-            if (inventory.amount <= 0) {
+            if (inventory.amount < 0) {
               try {
-                ws.send(JSON.stringify({ type: "error", payload: "You don't have that much to sell" }));
+                ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that much to sell" }}));
               } catch (e) {
                 console.trace(e);
               }
@@ -114,7 +114,7 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
             }
           } else {
             try {
-              ws.send(JSON.stringify({ type: "error", payload: "You don't have that to sell" }));
+              ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that to sell" }}));
             } catch (e) {
               console.trace(e);
             }

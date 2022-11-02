@@ -13,6 +13,7 @@ import {
   Mutated,
 } from "../src/game";
 import { Rectangle, Position, l2NormSquared } from "./geometry";
+import { initRecipes } from "./recipes";
 
 const uid = () => {
   let ret = 0;
@@ -124,6 +125,7 @@ type AsteroidDef = {
   sprite: Rectangle;
   radius: number;
   mineral: string;
+  difficulty: number;
 };
 
 type MissileDef = {
@@ -159,6 +161,7 @@ const armDefs: ArmamentDef[] = [];
 const armDefMap = new Map<string, { index: number; def: ArmamentDef }>();
 
 const asteroidDefs: AsteroidDef[] = [];
+const asteroidDefMap = new Map<string, { index: number; def: AsteroidDef }>();
 
 const missileDefs: MissileDef[] = [];
 
@@ -168,6 +171,8 @@ const collectableDefMap = new Map<string, { index: number; def: CollectableDef }
 let maxMissileLifetime = 0;
 
 const initDefs = () => {
+  initRecipes();
+
   // Fighter - 0
   defs.push({
     name: "Fighter",
@@ -470,9 +475,9 @@ const initDefs = () => {
           }
           whatMutated.asteroids.add(target);
           player.energy -= 0.3;
-          const amount = Math.min(target.resources, 0.5);
-          target.resources -= amount;
           const asteroidDef = asteroidDefs[target.defIndex];
+          const amount = Math.min(target.resources, 0.5 / asteroidDef.difficulty);
+          target.resources -= amount;
           addCargo(player, asteroidDef.mineral, amount);
           applyEffect({
             effectIndex: 0,
@@ -701,9 +706,9 @@ const initDefs = () => {
           }
           whatMutated.asteroids.add(target);
           player.energy -= 0.8;
-          const amount = Math.min(target.resources, 3.5);
-          target.resources -= amount;
           const asteroidDef = asteroidDefs[target.defIndex];
+          const amount = Math.min(target.resources, 3.5 / asteroidDef.difficulty);
+          target.resources -= amount;
           addCargo(player, asteroidDef.mineral, amount);
           applyEffect({
             effectIndex: 9,
@@ -788,8 +793,21 @@ const initDefs = () => {
     resources: 500,
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 24,
-    mineral: "Prifetium Ore",
+    mineral: "Prifecite",
+    difficulty: 1,
   });
+  asteroidDefs.push({
+    resources: 100,
+    sprite: { x: 320, y: 576, width: 64, height: 64 },
+    radius: 22,
+    mineral: "Russanite",
+    difficulty: 10,
+  });
+
+  for (let i = 0; i < asteroidDefs.length; i++) {
+    const def = asteroidDefs[i];
+    asteroidDefMap.set(def.mineral, { index: i, def });
+  }
 
   collectableDefs.push({
     sprite: { x: 320, y: 64, width: 64, height: 64 },
@@ -897,6 +915,7 @@ export {
   defs,
   defMap,
   asteroidDefs,
+  asteroidDefMap,
   armDefs,
   armDefMap,
   missileDefs,

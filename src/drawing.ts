@@ -177,7 +177,12 @@ const loadStencilSprites = (stencilSheet: HTMLImageElement, callback: () => void
   });
 };
 
+let dockedMessage: HTMLDivElement;
+let dockedMessageText: HTMLHeadingElement;
+
 const initDrawing = (callback: () => void) => {
+  dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
+  dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
   // Defs need to be initialized before effects
   initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -690,12 +695,13 @@ const drawChats = (self: Player, players: Map<number, Player>, chats: IterableIt
 type Message = {
   what: string;
   framesRemaining: number;
+  whileDocked: boolean;
 };
 
 let messages: Message[] = [];
 
 const pushMessage = (what: string, framesRemaining: number = 240) => {
-  messages.push({ what, framesRemaining });
+  messages.push({ what, framesRemaining, whileDocked: !!lastSelf?.docked });
 };
 
 const reduceMessageTimeRemaining = (sixtieths: number) => {
@@ -715,6 +721,46 @@ const drawMessages = () => {
     ctx.fillStyle = `rgb(255, 255, 255, ${alpha})`;
     ctx.fillText(message.what, canvas.width / 2, y);
     y += 30 * alpha;
+  }
+};
+
+let lastDockedMessage: Message | undefined = undefined;
+
+let dockingTextNotificationTimeout: number | undefined = undefined;
+
+const displayDockedMessages = () => {
+  const filteredMessages = messages.filter((message) => message.whileDocked);
+
+  // No messages to display
+  if (filteredMessages.length === 0 && lastDockedMessage) {
+    console.log("No messages to display");
+    dockedMessage.classList.remove("fadeIn");
+    dockedMessage.classList.add("fadeOut");
+    lastDockedMessage = undefined;
+    return;
+  }
+  const messageToDisplay = filteredMessages[filteredMessages.length - 1];
+  // console.log("displayDockedMessages", messageToDisplay);
+
+  if (filteredMessages.length && (!lastDockedMessage || lastDockedMessage !== messageToDisplay)) {
+    dockedMessageText.innerText = messageToDisplay.what;
+    if (!lastDockedMessage) {
+      // New message to show
+      console.log("New message to show", messageToDisplay);
+      dockedMessage.classList.add("fadeIn");
+      dockedMessage.style.display = "block";
+    } else {
+      console.log("New message to show, we showing something already", messageToDisplay);
+      // New message to show, but we're already showing a message
+      dockedMessageText.classList.add("notifyChanged");
+      if (dockingTextNotificationTimeout) {
+        clearTimeout(dockingTextNotificationTimeout);
+      }
+      dockingTextNotificationTimeout = window.setTimeout(() => {
+        dockedMessageText.classList.remove("notifyChanged");
+      }, 500);
+    }
+    lastDockedMessage = messageToDisplay;
   }
 };
 
@@ -926,7 +972,6 @@ const drawEverything = (
       if (self.canRepair) {
         drawRepairText(keybind.dock);
       }
-      drawMessages();
       if (target) {
         drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
       }
@@ -940,6 +985,9 @@ const drawEverything = (
           drawArrow(self, arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
         }
       }
+      drawMessages();
+    } else if (self) {
+      displayDockedMessages();
     }
   } catch (e) {
     console.error(e);
@@ -964,6 +1012,7 @@ export {
   effectSprites,
   sprites,
   composited,
+  dockedMessage,
   ChatMessage,
   initStars,
   pushMessage,

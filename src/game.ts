@@ -14,6 +14,7 @@ import {
   collectableDefs,
   createCollectableFromDef,
   Faction,
+  asteroidDefMap,
 } from "./defs";
 import {
   Circle,
@@ -130,11 +131,13 @@ const addCargo = (player: Player, what: string, amount: number) => {
   }
   const maxAmount = availableCargoCapacity(player);
   const existing = player.cargo.find((c) => c.what === what);
+  const amountToAdd = Math.min(amount, maxAmount);
   if (existing) {
-    existing.amount += Math.min(amount, maxAmount);
+    existing.amount += amountToAdd;
   } else {
-    player.cargo.push({ what, amount: Math.min(amount, maxAmount) });
+    player.cargo.push({ what, amount: amountToAdd });
   }
+  return amountToAdd;
 };
 
 const cargoContains = (player: Player, what: string) => {
@@ -427,7 +430,7 @@ const kill = (
 };
 
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
-type Mutated = { asteroids: Set<Asteroid>, collectables: Collectable[] };
+type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[] };
 
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
@@ -833,25 +836,46 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
   player.omega = player.heading - (player.omega % (2 * Math.PI));
 };
 
-const randomAsteroids = (count: number, bounds: Rectangle, seed: number, uid: () => number) => {
+const randomAsteroids = (
+  count: number,
+  bounds: Rectangle,
+  seed: number,
+  uid: () => number,
+  typeDensities: { resource: string; density: number }[]
+) => {
   if (asteroidDefs.length === 0) {
     throw new Error("Asteroid defs not initialized");
   }
+  if (typeDensities.length === 0) {
+    console.log("Warning: missing asteroids densities, aborting");
+    return [];
+  }
   const prng = sfc32(seed, 4398, 25, 6987);
   const asteroids: Asteroid[] = [];
+  const totalDensity = typeDensities.reduce((acc, cur) => acc + cur.density, 0);
+  const mapping = typeDensities.map((value) => asteroidDefMap.get(value.resource)?.def);
+  if (mapping.some((def) => def === undefined)) {
+    console.log("Warning: invalid asteroid type, aborting");
+    return [];
+  }
   for (let i = 0; i < count; i++) {
-    const index = Math.floor(prng() * asteroidDefs.length);
-    const def = asteroidDefs[index];
+    let index = 0;
+    let sum = Math.floor(prng() * totalDensity);
+    while (sum >= typeDensities[index].density) {
+      sum -= typeDensities[index].density;
+      index++;
+    }
+    const asteroidDef = mapping[index];
     const asteroid: Asteroid = {
       position: {
         x: prng() * bounds.width + bounds.x,
         y: prng() * bounds.height + bounds.y,
       },
       heading: prng() * 2 * Math.PI,
-      resources: def.resources,
+      resources: asteroidDef.resources,
       defIndex: index,
       id: uid(),
-      radius: def.radius,
+      radius: asteroidDef.radius,
     };
     asteroids.push(asteroid);
   }

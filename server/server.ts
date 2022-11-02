@@ -40,7 +40,7 @@ import mongoose from "mongoose";
 import { createHash, randomUUID } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositCargo, sellInventory, sendInventory } from "./inventory";
+import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
 import { market } from "./market";
 
 const uid = () => {
@@ -79,6 +79,16 @@ const httpPort = 8081;
 
 // This data will ultimately be stored in the database
 const sectorList = [1, 2, 3, 4];
+const sectorAsteroidResources = [
+  [{ resource: "Prifecite", density: 1 }],
+  [{ resource: "Prifecite", density: 1 }],
+  [{ resource: "Prifecite", density: 1 }],
+  [
+    { resource: "Prifecite", density: 1 },
+    { resource: "Russanite", density: 2 },
+  ],
+];
+const sectorAsteroidCounts = [5, 5, 5, 40];
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -486,7 +496,7 @@ const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
 for (let i = 0; i < sectorList.length; i++) {
   const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(5, asteroidBounds, sectorList[i], uid);
+  const testAsteroids = randomAsteroids(sectorAsteroidCounts[i], asteroidBounds, sectorList[i], uid, sectorAsteroidResources[i]);
   for (const asteroid of testAsteroids) {
     sector.asteroids.set(asteroid.id, asteroid);
   }
@@ -886,14 +896,23 @@ wss.on("connection", (ws) => {
             }
           }
         }
-      } else if (data.type === "sellInventory") {
-          const client = clients.get(ws);
-          if (client && data.payload.id === client.id) {
-            const player = sectors.get(client.currentSector)!.players.get(client.id);
-            if (player) {
-              sellInventory(ws, player, data.payload.what, data.payload.amount);
-            }
+      } else if (data.type === "transferToShip") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            transferToShip(ws, player, data.payload.what, data.payload.amount, flashServerMessage);
           }
+        }
+      } else if (data.type === "sellInventory") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const player = sectors.get(client.currentSector)!.players.get(client.id);
+          if (player) {
+            sellInventory(ws, player, data.payload.what, data.payload.amount);
+          }
+        }
       } else if (data.type === "depositCargo") {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
@@ -930,6 +949,15 @@ wss.on("connection", (ws) => {
             if (otherClientData.currentSector === client.currentSector) {
               otherClient.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
             }
+          }
+        }
+      } else if (data.type === "manufacture") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            manufacture(ws, player, data.payload.what, data.payload.amount);
           }
         }
       } else if (data.type === "purchase") {
@@ -1118,7 +1146,6 @@ setInterval(() => {
       }
     }
     const triggers: EffectTrigger[] = [];
-    const collectables: Collectable[] = [];
     const mutated = update(
       state,
       frame,
@@ -1289,7 +1316,13 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
   }
   if (removedCount > 0) {
     console.log(`Respawning ${removedCount} asteroids in sector ${sector}`);
-    const newAsteroids = randomAsteroids(removedCount, asteroidBounds, Date.now(), uid);
+    const newAsteroids = randomAsteroids(
+      removedCount,
+      asteroidBounds,
+      Date.now(),
+      uid,
+      sectorAsteroidResources[sectorList.findIndex((s) => s === sector)]
+    );
     for (const asteroid of newAsteroids) {
       state.asteroids.set(asteroid.id, asteroid);
     }

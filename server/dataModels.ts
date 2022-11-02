@@ -30,6 +30,8 @@ const userSchema = new Schema({
       message: "{VALUE} is not an integer value",
     },
   },
+  // TODO I should put validation of the uniqueness of keys in the inventory.
+  // MongoDB does not appear to support this, but I have ideas for how to do it anyways.
   inventory: [inventorySchema],
   armInventory: {
     type: [String],

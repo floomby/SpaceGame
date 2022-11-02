@@ -347,8 +347,8 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     <h3>Cargo</h3>
     <div id="cargo">${cargoHtml(self.cargo)}</div>
     <div style="display: flex; justify-content: center; flex-direction: row;">
-      <button id="openManufacturing" style="margin-top: 10px; margin-right: 10px;">Manufacturing Bay</button>
-      <button id="openInventory" style="margin-top: 10px;">Inventory</button>
+    <button id="openInventory" style="margin-top: 10px; margin-right: 10px;">Inventory</button>
+      <button id="openManufacturing" style="margin-top: 10px;">Manufacturing Bay</button>
     </div>
   </div>
   <div style="width: 45%; float: right;">

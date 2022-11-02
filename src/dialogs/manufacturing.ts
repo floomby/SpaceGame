@@ -8,6 +8,7 @@ const manufacturingTableHtml = () => {
   let html = `<table style="width: 100%; text-align: left;">`;
   for (let i = 0; i < recipes.length; i++) {
     html += `<tr><td>${recipes[i].name}</td>
+<td>${inventory[recipes[i].name] || 0}</td>
 <td><input value="1" id="manufactureAmount${i}"/></td>
 <td><button id="manufacture${i}">Manufacture</button></td></tr>`;
   }

@@ -1127,7 +1127,6 @@ setInterval(() => {
       }
     }
     const triggers: EffectTrigger[] = [];
-    const collectables: Collectable[] = [];
     const mutated = update(
       state,
       frame,

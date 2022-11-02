@@ -2,6 +2,7 @@ import { addCargo, Player, removeAtMostCargo } from "../src/game";
 import { User } from "./dataModels";
 import { WebSocket } from "ws";
 import { market } from "./market";
+import { recipeMap } from "../src/recipes";
 import { inspect } from "util";
 
 // You cannot deposit cargo and then die before encountering
@@ -96,7 +97,7 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
             inventory.amount -= amount;
             if (inventory.amount < 0) {
               try {
-                ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that much to sell" }}));
+                ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that much to sell" } }));
               } catch (e) {
                 console.trace(e);
               }
@@ -114,7 +115,7 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
             }
           } else {
             try {
-              ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that to sell" }}));
+              ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that to sell" } }));
             } catch (e) {
               console.trace(e);
             }
@@ -135,6 +136,74 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
 };
 
 const manufacture = (ws: WebSocket, player: Player, what: string, amount: number) => {
+  const recipe = recipeMap.get(what);
+  if (recipe) {
+    User.findOne({ id: player.id }, (err, user) => {
+      if (err) {
+        console.log(err);
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Error finding user" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+      } else {
+        try {
+          if (user) {
+            for (const [ingredient, quantity] of Object.entries(recipe.recipe.ingredients)) {
+              const inventory = user.inventory.find((inventory) => inventory.what === ingredient);
+              if (inventory) {
+                inventory.amount -= quantity * amount;
+                if (inventory.amount < 0) {
+                  try {
+                    ws.send(JSON.stringify({ type: "error", payload: { message: `You don't have enough ${ingredient}` } }));
+                  } catch (e) {
+                    console.trace(e);
+                  }
+                  return;
+                }
+              } else {
+                try {
+                  ws.send(JSON.stringify({ type: "error", payload: { message: `You don't have ${ingredient}` } }));
+                } catch (e) {
+                  console.trace(e);
+                }
+                return;
+              }
+            }
+            user.inventory = user.inventory.filter((inventory) => inventory.amount > 0);
+            const newInventory = user.inventory.find((inventory) => inventory.what === what);
+            if (newInventory) {
+              newInventory.amount += amount;
+            } else {
+              user.inventory.push({
+                what,
+                amount,
+              });
+            }
+            user.save();
+            try {
+              ws.send(JSON.stringify({ type: "inventory", payload: user.inventory }));
+            } catch (e) {
+              console.trace(e);
+            }
+          }
+        } catch (e) {
+          console.log(e);
+          try {
+            ws.send(JSON.stringify({ type: "error", payload: { message: `Error manufacturing ${what}` } }));
+          } catch (e) {
+            console.trace(e);
+          }
+        }
+      }
+    });
+  } else {
+    try {
+      ws.send(JSON.stringify({ type: "error", payload: { message: `No recipe for ${what}` } }));
+    } catch (e) {
+      console.trace(e);
+    }
+  }
 };
 
 export { depositCargo, sendInventory, sellInventory, manufacture };

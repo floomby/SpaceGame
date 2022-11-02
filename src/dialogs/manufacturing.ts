@@ -4,13 +4,27 @@ import { inventory, ownId } from "../globals";
 import { sendManufacture } from "../net";
 import { maxManufacturable, recipes } from "../recipes";
 
+const manufacturingToolTipText = (index: number, amount: number) => {
+  const recipe = recipes[index];
+  console.log("recipe", recipe, Object.keys(recipe.ingredients));
+  return `<ul>` + Object.keys(recipe.ingredients).map((ingredient) => {
+    console.log("ingredient", ingredient);
+    const required = recipe.ingredients[ingredient] * amount;
+    const have = inventory[ingredient] || 0;
+    return `<li style="color: ${have >= required ? "green" : "red"};">${ingredient}: ${have} / ${required}</li>`;
+  }).join("") + `</ul>`;
+};
+
 const manufacturingTableHtml = () => {
   let html = `<table style="width: 100%; text-align: left;">`;
   for (let i = 0; i < recipes.length; i++) {
     html += `<tr><td>${recipes[i].name}</td>
 <td>${inventory[recipes[i].name] || 0}</td>
 <td><input value="1" id="manufactureAmount${i}"/></td>
-<td><button id="manufacture${i}">Manufacture</button></td></tr>`;
+<td><div class="tooltip">
+  <button id="manufacture${i}">Manufacture</button>
+  <span class="bigTooltipText" id="manufacturingTooltip${i}">${manufacturingToolTipText(i, 1)}</span>
+<div></td></tr>`;
   }
   html += "</table>";
   return html;
@@ -45,6 +59,13 @@ const populateManufacturingTable = () => {
           }
           if (e.key === "Enter") {
             button.click();
+          }
+          const tooltip = document.getElementById(`manufacturingTooltip${i}`);
+          if (tooltip) {
+            // tooltip.innerHTML = manufacturingToolTipText(i, value);
+            if (amount.value !== "" && !isNaN(value) && value >= 0) {
+              tooltip.innerHTML = manufacturingToolTipText(i, value);
+            }
           }
         });
       }

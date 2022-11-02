@@ -5,16 +5,29 @@ type Recipe = {
 
 let recipes: Recipe[] = [];
 
-let recipeMap = new Map<string, { index: number, recipe: Recipe }>();
+let recipeMap = new Map<string, { index: number; recipe: Recipe }>();
 
 const initRecipes = () => {
   recipes = [
     {
       name: "Refined Prifetium",
       ingredients: {
-        "Prifetium Ore": 3,
+        Prifecite: 3,
       },
     },
+    {
+      name: "Refined Russium",
+      ingredients: {
+        Russanite: 4,
+      },
+    },
+    {
+      name: "Spare Parts",
+      ingredients: {
+        "Refined Prifetium": 2,
+        "Refined Russium": 2,
+      },
+    }
   ];
 
   recipes.forEach((recipe, index) => {

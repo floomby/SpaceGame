@@ -926,7 +926,6 @@ const drawEverything = (
       if (self.canRepair) {
         drawRepairText(keybind.dock);
       }
-      drawMessages();
       if (target) {
         drawTarget({ x: canvas.width - 210, y: 15, width: 200, height: 200 }, self, target);
       }
@@ -940,6 +939,7 @@ const drawEverything = (
           drawArrow(self, arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
         }
       }
+      drawMessages();
     }
   } catch (e) {
     console.error(e);

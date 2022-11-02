@@ -40,7 +40,7 @@ import mongoose from "mongoose";
 import { createHash, randomUUID } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositCargo, manufacture, sellInventory, sendInventory } from "./inventory";
+import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
 import { market } from "./market";
 
 const uid = () => {
@@ -894,6 +894,15 @@ wss.on("connection", (ws) => {
             if (price) {
               player.credits += removeAtMostCargo(player, data.payload.what, data.payload.amount) * price;
             }
+          }
+        }
+      } else if (data.type === "transferToShip") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            transferToShip(ws, player, data.payload.what, data.payload.amount, flashServerMessage);
           }
         }
       } else if (data.type === "sellInventory") {

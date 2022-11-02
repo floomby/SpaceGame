@@ -221,6 +221,15 @@ const sendManufacture = (id: number, what: string, amount: number) => {
   );
 };
 
+const sendTransferToShip = (id: number, what: string, amount: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "transferToShip",
+      payload: { id, what, amount },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -244,4 +253,5 @@ export {
   sendDumpCargo,
   sendSellInventory,
   sendManufacture,
+  sendTransferToShip,
 };

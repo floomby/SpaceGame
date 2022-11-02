@@ -1,16 +1,10 @@
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop } from "../dialog";
+import { availableCargoCapacity } from "../game";
 import { inventory, lastSelf, ownId } from "../globals";
-import { sendSellInventory } from "../net";
+import { sendSellInventory, sendTransferToShip } from "../net";
 
 const inventoryTableHtml = () => {
-  let html = `<table style="width: 100%; text-align: left;">
-<colgroup>
-  <col span="1" style="width: 49%;">
-  <col span="1" style="width: 17%;">
-  <col span="1" style="width: 17%;">
-  <col span="1" style="width: 8%;">
-  <col span="1" style="width: 9%;">
-</colgroup>`;
+  let html = `<table style="width: 100%; text-align: left;">`
 
   for (const [what, amount] of Object.entries(inventory)) {
     html += `<tr>
@@ -18,11 +12,14 @@ const inventoryTableHtml = () => {
   <td>${amount}</td>
   <td><input type="text" id="sellInventoryAmount${what}" value="${amount}" size="6" /></td>
   <td style="text-align: right;"><button id="sellInventory${what}">Sell</button></td>
+  <td style="text-align: right;"><button id="transferToShip${what}">Transfer to Ship</button></td>
 </tr>`;
   }
   html += "</table>";
   return html;
 };
+
+let lastActionSell = true;
 
 const populateInventoryTable = () => {
   const inventoryTable = document.getElementById("inventoryTable");
@@ -31,13 +28,24 @@ const populateInventoryTable = () => {
   }
   for (const key of Object.keys(inventory)) {
     const button = document.getElementById(`sellInventory${key}`) as HTMLButtonElement;
-    if (button) {
+    const transferButton = document.getElementById(`transferToShip${key}`) as HTMLButtonElement;
+    if (button && transferButton) {
       const amount = document.getElementById(`sellInventoryAmount${key}`) as HTMLInputElement;
       const seller = () => {
+        lastActionSell = true;
         if (amount) {
           const value = parseFloat(amount.value);
           if (!isNaN(value)) {
             sendSellInventory(ownId, key, value);
+          }
+        }
+      };
+      const transferer = () => {
+        lastActionSell = false;
+        if (amount) {
+          const value = parseFloat(amount.value);
+          if (!isNaN(value)) {
+            sendTransferToShip(ownId, key, value);
           }
         }
       };
@@ -46,16 +54,29 @@ const populateInventoryTable = () => {
         if (amount.value === "" || isNaN(value) || value > inventory[key] || value <= 0) {
           amount.style.backgroundColor = "#ffaaaa";
           button.disabled = true;
+          transferButton.disabled = true;
         } else {
           amount.style.backgroundColor = "#aaffaa";
           button.disabled = false;
+          transferButton.disabled = false;
+        }
+        if (availableCargoCapacity(lastSelf) === 0) {
+          transferButton.disabled = true;
         }
         if (e.key === "Enter") {
-          seller();
+          if (lastActionSell) {
+            seller();
+          } else {
+            transferer();
+          }
         }
       });
       amount.style.backgroundColor = "#aaffaa";
       button.onclick = seller;
+      transferButton.onclick = transferer;
+      if (availableCargoCapacity(lastSelf) === 0) {
+        transferButton.disabled = true;
+      }
     }
   }
 };

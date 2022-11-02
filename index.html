@@ -119,6 +119,60 @@
         border: none;
         display: none;
       }
+
+      .unselectable {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      .dockedMessageDisplayStyle {
+        top: 1vh;
+        z-index: 8;
+        color: white;
+      }
+
+      .dockedMessageDisplayStyle.fadeOut {
+        animation: fadeOut 1.5s;
+        animation-fill-mode: forwards;
+      }
+
+      @keyframes fadeOut {
+        0% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .dockedMessageDisplayStyle.fadeIn {
+        animation: fadeIn 0.8s;
+        animation-fill-mode: forwards;
+      }
+
+      @keyframes fadeIn {
+        0% {
+          opacity: 0;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      .dockedMessageTextStyle {
+        transition: filter 0.5s ease-in-out, color 0.5s ease-in-out;
+        filter: box-shadow(0 0 0rem white);
+        color: white;
+      }
+      
+      .dockedMessageTextStyle.notifyChanged {
+        filter: drop-shadow(0 0 0.75rem red);
+        color: red;
+      }
     </style>
   </head>
   <body style="background-color: darkgray">
@@ -128,18 +182,11 @@
       id="dialog"
       style="color: white; position: absolute; left: 0px; top: 0px; z-index: 3; width: 100%; height: 100%; background-color: rgba(22, 45, 34, 0.341)"
     ></div>
-    <img
-      src="resources/gear.svg"
-      id="settingsIcon"
-      class="settings"
-      style="display: none;"
-    />
-    <img
-      src="resources/box.svg"
-      id="cargoIcon"
-      class="cargo"
-      style="display: none;"
-    />
-    <input type="text" class="horizontal-center chatInputStyle" id="chatInput"></input>
+    <img src="resources/gear.svg" id="settingsIcon" class="settings unselectable" style="display: none" />
+    <img src="resources/box.svg" id="cargoIcon" class="cargo unselectable" style="display: none" />
+    <input type="text" class="horizontal-center chatInputStyle" id="chatInput" />
+    <div id="dockedMessage" class="horizontal-center unselectable dockedMessageDisplayStyle" style="opacity: 0; display: none">
+      <h3 id="dockedMessageText" class="dockedMessageTextStyle"></h3>
+    </div>
   </body>
 </html>

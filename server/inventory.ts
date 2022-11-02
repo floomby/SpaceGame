@@ -1,4 +1,4 @@
-import { addCargo, Player, removeAtMostCargo } from "../src/game";
+import { addCargo, availableCargoCapacity, Player, removeAtMostCargo } from "../src/game";
 import { User } from "./dataModels";
 import { WebSocket } from "ws";
 import { market } from "./market";
@@ -206,4 +206,72 @@ const manufacture = (ws: WebSocket, player: Player, what: string, amount: number
   }
 };
 
-export { depositCargo, sendInventory, sellInventory, manufacture };
+const transferToShip = (ws: WebSocket, player: Player, what: string, amount: number, flashServerMessage: (id: number, message: string) => void) => {
+  if (amount <= 0) {
+    return;
+  }
+  const availableCapacity = availableCargoCapacity(player);
+  const amountToTransfer = Math.min(amount, availableCapacity);
+  if (amountToTransfer === 0) {
+    flashServerMessage(player.id, "No cargo capacity available");
+    return;
+  }
+  User.findOne({ id: player.id }, (err, user) => {
+    if (err) {
+      console.log(err);
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Error finding user" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+    } else {
+      try {
+        if (user) {
+          const inventory = user.inventory.find((inventory) => inventory.what === what);
+          if (inventory) {
+            inventory.amount -= amountToTransfer;
+            if (inventory.amount < 0) {
+              try {
+                ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that much to transfer" } }));
+              } catch (e) {
+                console.trace(e);
+              }
+            } else {
+              user.inventory = user.inventory.filter((inventory) => inventory.amount > 0);
+              user.save();
+              try {
+                ws.send(JSON.stringify({ type: "inventory", payload: user.inventory }));
+              } catch (e) {
+                console.trace(e);
+              }
+              if (player.cargo === undefined) {
+                player.cargo = [];
+              }
+              const amountTransferred = addCargo(player, what, amountToTransfer);
+              if (amountTransferred < amount) {
+                flashServerMessage(player.id, `Only ${amountTransferred} of ${amount} transferred (cargo full)`);
+              }
+            }
+          } else {
+            try {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "You don't have that to transfer" } }));
+            } catch (e) {
+              console.trace(e);
+            }
+          }
+        } else {
+          console.log("Warning: user not found in transferToShip");
+        }
+      } catch (e) {
+        console.log(e);
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Error sending inventory" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+      }
+    }
+  });
+};
+
+export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip };

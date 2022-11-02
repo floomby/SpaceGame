@@ -1,3 +1,6 @@
+import { dockedMessage } from "./drawing";
+import { lastSelf } from "./globals";
+
 let div: HTMLDivElement;
 
 let shown = false;
@@ -34,6 +37,10 @@ const show = (html: string) => {
     callback();
   }
   shown = true;
+  // BOO, This is a bad place to have this, but I didn't want to evaluate it in the draw loop
+  if (!lastSelf?.docked && dockedMessage.style.display === "block") {
+    dockedMessage.style.display = "none";
+  }
 };
 
 const hide = () => {
@@ -44,6 +51,9 @@ const hide = () => {
     }
   }
   shown = false;
+  if (lastSelf?.docked && dockedMessage.style.display === "none") {
+    dockedMessage.style.display = "block";
+  }
 };
 
 const clear = () => {

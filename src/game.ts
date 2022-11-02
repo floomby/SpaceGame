@@ -131,11 +131,13 @@ const addCargo = (player: Player, what: string, amount: number) => {
   }
   const maxAmount = availableCargoCapacity(player);
   const existing = player.cargo.find((c) => c.what === what);
+  const amountToAdd = Math.min(amount, maxAmount);
   if (existing) {
-    existing.amount += Math.min(amount, maxAmount);
+    existing.amount += amountToAdd;
   } else {
-    player.cargo.push({ what, amount: Math.min(amount, maxAmount) });
+    player.cargo.push({ what, amount: amountToAdd });
   }
+  return amountToAdd;
 };
 
 const cargoContains = (player: Player, what: string) => {

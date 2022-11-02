@@ -4,7 +4,7 @@ import { armDefMap, defMap } from "../src/defs";
 const Schema = mongoose.Schema;
 
 const inventorySchema = new Schema({
-  what: { type: String, required: true, unique: true },
+  what: { type: String, required: true },
   amount: { type: Number, required: true, min: 0 },
 });
 

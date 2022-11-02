@@ -19,7 +19,7 @@ const domFromRest = (query: string, template: (value: string) => string, postCom
           (window as any).restPostCallbacks.delete(id);
         });
       }
-      return `<div id="${id}">${template(value)}<img src onerror="window.restPostCallbacks.get(${id})()"></div>`;
+      return `<div id="${id}">${template(value)}<img src onerror="if(window.restPostCallbacks.has(${id}))window.restPostCallbacks.get(${id})()"></div>`;
     }
   }
 
@@ -54,13 +54,24 @@ const domFromRest = (query: string, template: (value: string) => string, postCom
   return html;
 };
 
-const getRestRaw = (query: string, callback: (value: any) => void) => {
+const getRestRaw = (query: string, callback: (value: any) => void, cache = false) => {
+  if (cache) {
+    if (restCache.has(query)) {
+      callback(restCache.get(query));
+      return;
+    }
+  }
+
   fetch(query)
     .catch((error) => {
       console.error(error);
     })
     .then((response) => {
       if (response && response.ok) {
+        const value = response.json();
+        if (cache) {
+          restCache.set(query, value);
+        }
         return response.json();
       }
     })

@@ -52,7 +52,7 @@ const clear = () => {
 
 let shownFromStack = false;
 
-const stack: { html: string; callback: () => void, tag: string }[] = [];
+const stack: { html: string; callback: () => void; tag: string }[] = [];
 
 const showStack = () => {
   if (stack.length > 0) {
@@ -113,7 +113,7 @@ const horizontalCenter = (html: string[]) => {
 };
 
 const updaters: Map<string, (value: any) => string> = new Map();
-const postUpdaters: Map<string, (value: any) => void> = new Map();
+const postUpdaters: Map<string, ((value: any) => void)[]> = new Map();
 const lastStates: Map<string, string> = new Map();
 
 // NOTE value must be serializable with JSON.stringify
@@ -122,9 +122,6 @@ const updateDom = (id: string, value: any) => {
     return;
   }
   const element = document.getElementById(id);
-  if (!element) {
-    return;
-  }
   const lastState = lastStates.get(id);
   let thisState: string | undefined = undefined;
   if (lastState) {
@@ -140,10 +137,14 @@ const updateDom = (id: string, value: any) => {
       thisState = JSON.stringify(value);
     }
     lastStates.set(id, thisState);
-    element.innerHTML = updater(value);
-    const postUpdater = postUpdaters.get(id);
-    if (postUpdater) {
-      postUpdater(value);
+    if (element) {
+      element.innerHTML = updater(value);
+    }
+    const posts = postUpdaters.get(id);
+    if (posts) {
+      for (const postUpdater of posts) {
+        postUpdater(value);
+      }
     }
   }
 };
@@ -167,7 +168,9 @@ const runPostUpdaterOnly = (id: string, value: any) => {
       thisState = JSON.stringify(value);
     }
     lastStates.set(id, thisState);
-    postUpdater(value);
+    for (const updater of postUpdater) {
+      updater(value);
+    }
   }
 };
 
@@ -176,7 +179,11 @@ const bindUpdater = (id: string, updater: (value: any) => string) => {
 };
 
 const bindPostUpdater = (id: string, updater: (value: any) => void) => {
-  postUpdaters.set(id, updater);
+  if (!postUpdaters.has(id)) {
+    postUpdaters.set(id, [updater]);
+  } else {
+    postUpdaters.get(id)!.push(updater);
+  }
 };
 
 const unbindKey = (key: string) => {

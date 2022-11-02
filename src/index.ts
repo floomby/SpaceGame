@@ -16,6 +16,7 @@ import {
   findClosestTarget,
   findAllPlayersOverlappingPoint,
   findAllAsteroidsOverlappingPoint,
+  CargoEntry,
 } from "./game";
 import {
   init as initDialog,
@@ -35,8 +36,10 @@ import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
 import { drawEverything, fadeOutCollectable, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
+  clearInventory,
   currentSector,
   initBlankState,
+  inventory,
   keybind,
   ownId,
   selectedSecondary,
@@ -55,6 +58,8 @@ import { bindDockingUpdaters, dockDialog, docker, setDocker, setShowDocked, setu
 import { displayLoginDialog } from "./dialogs/login";
 import { initCargo } from "./dialogs/cargo";
 import { Position } from "./geometry";
+import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
+import { bindInventoryUpdaters } from "./dialogs/inventory";
 
 let chats: ChatMessage[] = [];
 
@@ -283,11 +288,9 @@ const targetAtCoords = (coords: Position) => {
 };
 
 const run = () => {
-  displayLoginDialog();
-
   initBlankState();
 
-  bindAction("init", (data: { id: number; sector: number; faction: Faction, asteroids: Asteroid[], collectables: Collectable[] }) => {
+  bindAction("init", (data: { id: number; sector: number; faction: Faction; asteroids: Asteroid[]; collectables: Collectable[] }) => {
     setOwnId(data.id);
     setCurrentSector(data.sector);
     initStars(data.sector);
@@ -362,18 +365,13 @@ const run = () => {
       state.projectiles.set(parentId, projectileGroup);
     }
     const self = state.players.get(ownId);
-    if (!self) {
-      // The old assumption was that if we didn't have a self, we were dead.
-      // This is no longer true (also this is wrong because it spams the dialog stack with dead dialogs)
-      // targetId = 0;
-      // targetAsteroidId = 0;
-      // pushDialog(deadDialog, setupDeadDialog, "dead");
-    }
     if (self) {
       setLastSelf(self);
+      // These redundancies are stupid (minimal impact on performance though) and I should fix how this is done
       updateDom("cargo", self.cargo);
       updateDom("dumpCargo", self.cargo);
       updateDom("credits", self.credits);
+      updateDom("inventoryCredits", self.credits);
       updateDom("arms", self.armIndices);
       runPostUpdaterOnly("ship", self.defIndex);
       if (self.docked) {
@@ -390,15 +388,13 @@ const run = () => {
   });
 
   bindAction("dead", (data: {}) => {
-    // Not strictly necessary to clear the targets, but it avoids potential incorrect in yet to be written code
+    // Not strictly necessary to clear the targets, but it avoids potential incorrect behavior in yet to be written code
     targetId = 0;
     targetAsteroidId = 0;
     pushDialog(deadDialog, setupDeadDialog, "dead");
   });
 
-  bindAction("warp", (data: { to: number, asteroids: Asteroid[], collectables: Collectable[] }) => {
-    console.log("Warping to sector " + data.to);
-    // hideDialog();
+  bindAction("warp", (data: { to: number; asteroids: Asteroid[]; collectables: Collectable[] }) => {
     if (data.to !== currentSector) {
       state.asteroids.clear();
       for (const asteroid of data.asteroids) {
@@ -429,13 +425,6 @@ const run = () => {
     pushMessage(data.message);
   });
 
-  // bindAction("addCollectables", (data: Collectable[]) => {
-  //   for (const collectable of data) {
-  //     collectable.phase = 0;
-  //     state.collectables.set(collectable.id, collectable);
-  //   }
-  // });
-
   bindAction("removeCollectable", (data: { id: number; collected: boolean }) => {
     const collectable = state.collectables.get(data.id);
     state.collectables.delete(data.id);
@@ -449,6 +438,19 @@ const run = () => {
       state.asteroids.delete(id);
     }
   });
+
+  bindManufacturingUpdaters();
+  bindInventoryUpdaters();
+
+  bindAction("inventory", (entries: CargoEntry[]) => {
+    clearInventory();
+    for (const entry of entries) {
+      inventory[entry.what] = entry.amount;
+    }
+    runPostUpdaterOnly("inventory", inventory);
+  });
+
+  displayLoginDialog();
 
   loop();
 };

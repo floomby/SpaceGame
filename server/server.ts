@@ -40,7 +40,8 @@ import mongoose from "mongoose";
 import { createHash, randomUUID } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositCargo } from "./inventory";
+import { depositCargo, sellInventory, sendInventory } from "./inventory";
+import { market } from "./market";
 
 const uid = () => {
   let ret = 0;
@@ -520,14 +521,6 @@ const initFromDatabase = async () => {
   }
 };
 
-// Market stuff
-const market = new Map<string, number>();
-market.set("Minerals", 1);
-market.set("Prifetium Ore", 1);
-market.set("Prifetium", 2);
-market.set("Teddy Bears", 5);
-market.set("Spare Parts", 10);
-
 // Websocket stuff (TODO Move to its own file)
 const wss = new WebSocketServer({ server });
 
@@ -603,6 +596,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
         payload: { id: id, sector, faction, asteroids: Array.from(state.asteroids.values()), collectables: Array.from(state.collectables.values()) },
       })
     );
+    sendInventory(ws, id);
 
     console.log("Registered client with id: ", id);
   });
@@ -700,6 +694,7 @@ wss.on("connection", (ws) => {
                   },
                 })
               );
+              sendInventory(ws, user.id);
               // log to file
               appendFile("log", `${new Date().toISOString()} ${name} logged in\n`, (err) => {
                 if (err) {
@@ -891,6 +886,14 @@ wss.on("connection", (ws) => {
             }
           }
         }
+      } else if (data.type === "sellInventory") {
+          const client = clients.get(ws);
+          if (client && data.payload.id === client.id) {
+            const player = sectors.get(client.currentSector)!.players.get(client.id);
+            if (player) {
+              sellInventory(ws, player, data.payload.what, data.payload.amount);
+            }
+          }
       } else if (data.type === "depositCargo") {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
@@ -989,7 +992,7 @@ wss.on("connection", (ws) => {
       idToWebsocket.delete(removedClient.id);
       if (player?.docked) {
         saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player));
-      } else if(!player) {
+      } else if (!player) {
         console.log("Warning: player not found on disconnect");
       }
     }

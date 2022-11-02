@@ -90,6 +90,13 @@ const setLastSelf = (newLastSelf: Player | undefined) => {
   lastSelf = newLastSelf;
 };
 
+let inventory: { [key: string]: number } = {};
+
+// ... and we do things the bad, but simple way
+const clearInventory = () => {
+  inventory = {};
+};
+
 export {
   faction,
   setFaction,
@@ -118,4 +125,6 @@ export {
   lastSelf,
   setLastSelf,
   getVolumePref,
+  inventory,
+  clearInventory,
 };

@@ -203,6 +203,15 @@ const sendDumpCargo = (id: number, what: string, amount: number) => {
   );
 };
 
+const sendSellInventory = (id: number, what: string, amount: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "sellInventory",
+      payload: { id, what, amount },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -224,4 +233,5 @@ export {
   sendWarp,
   sendRepair,
   sendDumpCargo,
+  sendSellInventory,
 };

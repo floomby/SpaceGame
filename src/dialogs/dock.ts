@@ -11,6 +11,7 @@ import { composited } from "../drawing";
 import { domFromRest, getRestRaw } from "../rest";
 import { manufacturingBay, setupManufacturingBay } from "./manufacturing";
 import { maxDecimals } from "../geometry";
+import { inventoryDialog, setupInventory } from "./inventory";
 
 let docker = () => {};
 
@@ -327,7 +328,7 @@ const setupShipShop = (station: Player) => {
       }
     }
   };
-  getRestRaw(`/shipsAvailable?id=${station.id}`, callback);
+  getRestRaw(`/shipsAvailable?id=${station.id}`, callback, true);
   document.getElementById("back")?.addEventListener("click", () => {
     pop();
   });
@@ -338,14 +339,17 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     return `Docking error - station ${self.docked} not found`;
   }
   return horizontalCenter([
-    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2>Docked with ${name}</h2>`),
+    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2>Docked with ${name}</h2>`, undefined, true),
     `${shipViewer()}`,
     `<div id="credits">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">
   <div style="width: 45%; float: left;">
     <h3>Cargo</h3>
     <div id="cargo">${cargoHtml(self.cargo)}</div>
-    <button id="openManufacturing" style="margin-top: 10px;">Manufacturing Bay</button>
+    <div style="display: flex; justify-content: center; flex-direction: row;">
+      <button id="openManufacturing" style="margin-top: 10px; margin-right: 10px;">Manufacturing Bay</button>
+      <button id="openInventory" style="margin-top: 10px;">Inventory</button>
+    </div>
   </div>
   <div style="width: 45%; float: right;">
     <h3>Armaments</h3>
@@ -375,6 +379,9 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   });
   document.getElementById("openManufacturing")?.addEventListener("click", () => {
     push(manufacturingBay(), () => setupManufacturingBay(station));
+  });
+  document.getElementById("openInventory")?.addEventListener("click", () => {
+    push(inventoryDialog(), setupInventory);
   });
 };
 

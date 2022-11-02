@@ -1,21 +1,59 @@
 import { bindPostUpdater, horizontalCenter, pop } from "../dialog";
 import { Player } from "../game";
-import { inventory } from "../globals";
+import { inventory, ownId } from "../globals";
+import { sendManufacture } from "../net";
+import { maxManufacturable, recipes } from "../recipes";
 
 const manufacturingTableHtml = () => {
   let html = `<table style="width: 100%; text-align: left;">`;
-  for (const [what, amount] of Object.entries(inventory)) {
-    html += `<tr><td>${what}</td><td>${amount}</td></tr>`;
+  for (let i = 0; i < recipes.length; i++) {
+    html += `<tr><td>${recipes[i].name}</td>
+<td><input value="1" id="manufactureAmount${i}"/></td>
+<td><button id="manufacture${i}">Manufacture</button></td></tr>`;
   }
   html += "</table>";
-  // return html;
-  return "<h3>Coming Soon!</h3>";
+  return html;
 };
 
 const populateManufacturingTable = () => {
   const manufacturingTable = document.getElementById("manufacturingTable");
   if (manufacturingTable) {
     manufacturingTable.innerHTML = manufacturingTableHtml();
+  }
+  for (let i = 0; i < recipes.length; i++) {
+    const button = document.getElementById(`manufacture${i}`) as HTMLButtonElement;
+    if (button) {
+      const amount = document.getElementById(`manufactureAmount${i}`) as HTMLInputElement;
+      if (amount) {
+        const value = parseFloat(amount.value);
+          if (amount.value === "" || isNaN(value) || value <= 0 || value > maxManufacturable(i, inventory)) {
+            amount.style.backgroundColor = "#ffaaaa";
+            button.disabled = true;
+          } else {
+            amount.style.backgroundColor = "#aaffaa";
+            button.disabled = false;
+          }
+        amount.addEventListener("keyup", (e) => {
+          const value = parseFloat(amount.value);
+          if (amount.value === "" || isNaN(value) || value <= 0 || value > maxManufacturable(i, inventory)) {
+            amount.style.backgroundColor = "#ffaaaa";
+            button.disabled = true;
+          } else {
+            amount.style.backgroundColor = "#aaffaa";
+            button.disabled = false;
+          }
+          if (e.key === "Enter") {
+            button.click();
+          }
+        });
+      }
+      button.onclick = () => {
+        const value = parseFloat(amount.value);
+        if (!isNaN(value)) {
+          sendManufacture(ownId, recipes[i].name, value);
+        }
+      };
+    }
   }
 };
 

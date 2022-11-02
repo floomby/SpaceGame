@@ -13,6 +13,7 @@ import {
   Mutated,
 } from "../src/game";
 import { Rectangle, Position, l2NormSquared } from "./geometry";
+import { initRecipes } from "./recipes";
 
 const uid = () => {
   let ret = 0;
@@ -168,6 +169,8 @@ const collectableDefMap = new Map<string, { index: number; def: CollectableDef }
 let maxMissileLifetime = 0;
 
 const initDefs = () => {
+  initRecipes();
+
   // Fighter - 0
   defs.push({
     name: "Fighter",

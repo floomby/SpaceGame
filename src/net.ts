@@ -212,6 +212,15 @@ const sendSellInventory = (id: number, what: string, amount: number) => {
   );
 };
 
+const sendManufacture = (id: number, what: string, amount: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "manufacture",
+      payload: { id, what, amount },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -234,4 +243,5 @@ export {
   sendRepair,
   sendDumpCargo,
   sendSellInventory,
+  sendManufacture,
 };

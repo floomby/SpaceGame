@@ -40,7 +40,7 @@ import mongoose from "mongoose";
 import { createHash, randomUUID } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositCargo, sellInventory, sendInventory } from "./inventory";
+import { depositCargo, manufacture, sellInventory, sendInventory } from "./inventory";
 import { market } from "./market";
 
 const uid = () => {
@@ -930,6 +930,15 @@ wss.on("connection", (ws) => {
             if (otherClientData.currentSector === client.currentSector) {
               otherClient.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
             }
+          }
+        }
+      } else if (data.type === "manufacture") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            manufacture(ws, player, data.payload.what, data.payload.amount);
           }
         }
       } else if (data.type === "purchase") {

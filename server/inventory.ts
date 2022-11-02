@@ -134,4 +134,7 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
   });
 };
 
-export { depositCargo, sendInventory, sellInventory };
+const manufacture = (ws: WebSocket, player: Player, what: string, amount: number) => {
+};
+
+export { depositCargo, sendInventory, sellInventory, manufacture };

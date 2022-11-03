@@ -17,6 +17,7 @@ import {
   findAllPlayersOverlappingPoint,
   findAllAsteroidsOverlappingPoint,
   CargoEntry,
+  Mine,
 } from "./game";
 import {
   init as initDialog,
@@ -33,7 +34,7 @@ import {
   clearStack,
 } from "./dialog";
 import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
-import { drawEverything, fadeOutCollectable, initDrawing, initStars, pushMessage } from "./drawing";
+import { drawEverything, fadeOutCollectable, fadeOutMine, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
   clearInventory,
@@ -290,7 +291,7 @@ const targetAtCoords = (coords: Position) => {
 const run = () => {
   initBlankState();
 
-  bindAction("init", (data: { id: number; sector: number; faction: Faction; asteroids: Asteroid[]; collectables: Collectable[] }) => {
+  bindAction("init", (data: { id: number; sector: number; faction: Faction; asteroids: Asteroid[]; collectables: Collectable[], mines: Mine[] }) => {
     setOwnId(data.id);
     setCurrentSector(data.sector);
     initStars(data.sector);
@@ -307,6 +308,9 @@ const run = () => {
     for (const collectable of data.collectables) {
       collectable.phase = Math.random() * Math.PI * 2;
       state.collectables.set(collectable.id, collectable);
+    }
+    for (const mine of data.mines) {
+      state.mines.set(mine.id, mine);
     }
   });
 
@@ -354,6 +358,9 @@ const run = () => {
     for (const missile of data.missiles as Missile[]) {
       state.missiles.set(missile.id, missile);
     }
+    for (const mine of data.mines as Mine[]) {
+      state.mines.set(mine.id, mine);
+    }
 
     const projectiles = data.projectiles as Ballistic[];
     while (projectiles.length) {
@@ -394,7 +401,7 @@ const run = () => {
     pushDialog(deadDialog, setupDeadDialog, "dead");
   });
 
-  bindAction("warp", (data: { to: number; asteroids: Asteroid[]; collectables: Collectable[] }) => {
+  bindAction("warp", (data: { to: number; asteroids: Asteroid[]; collectables: Collectable[], mines: Mine[] }) => {
     if (data.to !== currentSector) {
       state.asteroids.clear();
       for (const asteroid of data.asteroids) {
@@ -404,6 +411,11 @@ const run = () => {
       for (const collectable of data.collectables) {
         collectable.phase = Math.random() * Math.PI * 2;
         state.collectables.set(collectable.id, collectable);
+      }
+      state.mines.clear();
+      for (const mine of data.mines) {
+        mine.phase = Math.random() * Math.PI * 2;
+        state.mines.set(mine.id, mine);
       }
       initStars(data.to);
       clearEffects();
@@ -430,6 +442,14 @@ const run = () => {
     state.collectables.delete(data.id);
     if (!data.collected) {
       fadeOutCollectable(collectable);
+    }
+  });
+
+  bindAction("removeMine", (data: { id: number; detonated: boolean }) => {
+    const mine = state.mines.get(data.id);
+    state.mines.delete(data.id);
+    if (!data.detonated) {
+      fadeOutMine(mine);
     }
   });
 

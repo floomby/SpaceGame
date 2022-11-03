@@ -1,12 +1,11 @@
 server/node_modules
 server/server.js
 dist
-src/*.js
 deployer.sh
 server/resources
 soundCandidates
 resources/.*
-server/*.js
+*.js
 server/log
 server/errorlog
 node_modules

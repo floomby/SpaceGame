@@ -5,7 +5,6 @@ import {
   GlobalState,
   Player,
   Asteroid,
-  Input,
   update,
   applyInputs,
   Ballistic,
@@ -16,20 +15,17 @@ import {
   randomAsteroids,
   TargetKind,
   EffectTrigger,
-  CargoEntry,
   equip,
   Missile,
   purchaseShip,
   effectiveInfinity,
   processAllNpcs,
   serverMessagePersistTime,
-  Collectable,
   canRepair,
   removeAtMostCargo,
   isNearOperableEnemyStation,
-  Mine,
 } from "../src/game";
-import { defs, defMap, initDefs, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
+import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
 import { useSsl } from "../src/config";
 import express from "express";
@@ -38,22 +34,12 @@ import { resolve } from "path";
 import { User, Station, Checkpoint } from "./dataModels";
 import mongoose from "mongoose";
 
-import { createHash, randomUUID } from "crypto";
+import { createHash } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
 import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
 import { market } from "./market";
-
-const uid = () => {
-  let ret = 0;
-  while (ret === 0) {
-    ret = parseInt(randomUUID().split("-")[4], 16);
-  }
-  return ret;
-};
-
-// Initialize the definitions (Do this before anything else to avoid problems)
-initDefs();
+import { asteroidBounds, clients, idToWebsocket, secondaries, sectorAsteroidResources, sectorList, sectors, targets, uid, warpList } from "./state";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -78,19 +64,6 @@ if (useSsl) {
 const wsPort = 8080;
 const httpPort = 8081;
 
-// This data will ultimately be stored in the database
-const sectorList = [1, 2, 3, 4];
-const sectorAsteroidResources = [
-  [{ resource: "Prifecite", density: 1 }],
-  [{ resource: "Prifecite", density: 1 }],
-  [{ resource: "Prifecite", density: 1 }],
-  [
-    { resource: "Prifecite", density: 1 },
-    { resource: "Russanite", density: 2 },
-  ],
-];
-const sectorAsteroidCounts = [5, 5, 5, 40];
-
 // Http server stuff
 const root = resolve(__dirname + "/..");
 
@@ -113,14 +86,12 @@ app.get("/", (req, res) => {
 });
 
 // Rest api stuff for things that are not "realtime"
-// check if username is available
 app.get("/available", (req, res) => {
   const name = req.query.name;
   if (!name || typeof name !== "string" || name.length > maxNameLength) {
     res.send("false");
     return;
   }
-  // check the database
   User.findOne({ name }, (err, user) => {
     if (err) {
       console.log(err);
@@ -142,11 +113,9 @@ app.get("/sectorList", (req, res) => {
 app.get("/nameOf", (req, res) => {
   const id = req.query.id;
   if (!id || typeof id !== "string") {
-    // send error json
     res.send(JSON.stringify({ error: "Invalid id" }));
     return;
   }
-  // find the user from the database
   User.findOne({ id }, (err, user) => {
     if (err) {
       console.log(err);
@@ -164,11 +133,9 @@ app.get("/nameOf", (req, res) => {
 app.get("/stationName", (req, res) => {
   const id = req.query.id;
   if (!id || typeof id !== "string") {
-    // send error json
     res.send(JSON.stringify({ error: "Invalid id" }));
     return;
   }
-  // find the user from the database
   Station.findOne({ id }, (err, station) => {
     if (err) {
       console.log(err);
@@ -202,7 +169,6 @@ app.get("/register", (req, res) => {
     res.send("false");
     return;
   }
-  // check the database
   User.findOne({ name }, (err, user) => {
     if (err) {
       console.log(err);
@@ -214,7 +180,6 @@ app.get("/register", (req, res) => {
       return;
     }
     const id = uid();
-    // create the user
     const newUser = new User({
       name,
       password: hash(password),
@@ -237,7 +202,6 @@ app.get("/shipsAvailable", (req, res) => {
     res.send("false");
     return;
   }
-  // check the database
   Station.findOne({ id }, (err, station) => {
     if (err) {
       console.log(err);
@@ -387,6 +351,32 @@ app.get("/addNPC", (req, res) => {
   res.send("true");
 });
 
+app.get("/fixDataBase", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== "1d8465217b25152cb3de788928007459e451cb11a6e0e18ab5ed30e2648d809c") {
+    res.send("Invalid password");
+    return;
+  }
+  // Round all the inventory number to the nearest integer
+  User.find({}, (err, users) => {
+    if (err) {
+      res.send("Database error: " + err);
+      return;
+    }
+    users.forEach((user) => {
+      const newInventory = Object.fromEntries(Object.entries(user.inventory).map(([key, value]) => [key, Math.round(value as number)]));
+      user.inventory = newInventory;
+      user.save();
+    });
+    res.send("true");
+  });
+});
+
 if (useSsl) {
   app.use(express.static("resources"));
 
@@ -443,20 +433,6 @@ app.get("/kill", (req, res) => {
   res.send("true");
 });
 
-type ClientData = {
-  id: number;
-  input: Input;
-  angle: number;
-  name: string;
-  currentSector: number;
-  lastMessage: string;
-  lastMessageTime: number;
-  sectorDataSent: boolean;
-};
-
-const clients: Map<WebSocket, ClientData> = new Map();
-const idToWebsocket = new Map<number, WebSocket>();
-
 app.get("/usersOnline", (req, res) => {
   res.send(JSON.stringify(Array.from(clients.values()).map((client) => client.name)));
 });
@@ -467,41 +443,6 @@ if (useSsl) {
   server = createSecureServer(credentials);
 } else {
   server = createServer();
-}
-
-const sectors: Map<number, GlobalState> = new Map();
-const warpList: { player: Player; to: number }[] = [];
-
-sectorList.forEach((sector) => {
-  sectors.set(sector, {
-    players: new Map(),
-    projectiles: new Map(),
-    asteroids: new Map(),
-    missiles: new Map(),
-    collectables: new Map(),
-    asteroidsDirty: false,
-    mines: new Map(),
-  });
-});
-
-let frame = 0;
-
-// Server state
-
-// Targeting is handled by the clients, but the server needs to know
-// Same pattern with secondaries
-// BTW I do not like this design
-const targets: Map<number, [TargetKind, number]> = new Map();
-const secondaries: Map<number, number> = new Map();
-
-const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
-
-for (let i = 0; i < sectorList.length; i++) {
-  const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(sectorAsteroidCounts[i], asteroidBounds, sectorList[i], uid, sectorAsteroidResources[i]);
-  for (const asteroid of testAsteroids) {
-    sector.asteroids.set(asteroid.id, asteroid);
-  }
 }
 
 const initFromDatabase = async () => {
@@ -677,16 +618,27 @@ wss.on("connection", (ws) => {
                 setupPlayer(user.id, ws, name, data.payload.faction);
                 return;
               }
-              const playerState = JSON.parse(checkpoint.data);
-              if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState, checkpoint.sector) > 2) {
+              const playerState = JSON.parse(checkpoint.data) as Player;
+              if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState.team, checkpoint.sector) > 2) {
                 playerState.position.x = -5000;
                 playerState.position.y = 5000;
               }
               // Update the player on load to match what is expected
               if (playerState.defIndex === undefined) {
-                playerState.defIndex = playerState.definitionIndex;
-                playerState.definitionIndex = undefined;
+                playerState.defIndex = (playerState as any).definitionIndex;
+                (playerState as any).definitionIndex = undefined;
               }
+              // fix the cargo
+              if (playerState.cargo === undefined || playerState.cargo.some((c) => !Number.isInteger(c.amount))) {
+                playerState.cargo = [{ what: "Teddy Bears", amount: 30 }];
+              }
+              // fix the credits
+              if (playerState.credits === undefined) {
+                playerState.credits = 500;
+              }
+              playerState.credits = Math.round(playerState.credits);
+
+
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
               clients.set(ws, {
@@ -854,17 +806,15 @@ wss.on("connection", (ws) => {
               console.log("Warning: Checkpoint sector not found (programming error)");
               return;
             }
-            const playerState = JSON.parse(checkpoint.data);
+            const playerState = JSON.parse(checkpoint.data) as Player;
             // So I don't have to edit the checkpoints in the database right now
             playerState.isPC = true;
-            if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState, checkpoint.sector) > 2) {
+            if (
+              isNearOperableEnemyStation(playerState, state.players.values()) ||
+              enemyCount(playerState.team, checkpoint.sector) - allyCount(playerState.team, checkpoint.sector) > 2
+            ) {
               playerState.position.x = -5000;
               playerState.position.y = 5000;
-            }
-            // Update the player on load to match what is expected
-            if (playerState.defIndex === undefined) {
-              playerState.defIndex = playerState.definitionIndex;
-              playerState.definitionIndex = undefined;
             }
             playerState.v = { x: 0, y: 0 };
             state.players.set(client.id, playerState);
@@ -903,7 +853,7 @@ wss.on("connection", (ws) => {
             }
             const price = market.get(data.payload.what);
             if (price) {
-              player.credits += removeAtMostCargo(player, data.payload.what, data.payload.amount) * price;
+              player.credits += removeAtMostCargo(player, data.payload.what, Math.round(data.payload.amount)) * price;
             }
           }
         }
@@ -913,7 +863,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            transferToShip(ws, player, data.payload.what, data.payload.amount, flashServerMessage);
+            transferToShip(ws, player, data.payload.what, Math.round(data.payload.amount), flashServerMessage);
           }
         }
       } else if (data.type === "sellInventory") {
@@ -921,7 +871,7 @@ wss.on("connection", (ws) => {
         if (client && data.payload.id === client.id) {
           const player = sectors.get(client.currentSector)!.players.get(client.id);
           if (player) {
-            sellInventory(ws, player, data.payload.what, data.payload.amount);
+            sellInventory(ws, player, data.payload.what, Math.round(data.payload.amount));
           }
         }
       } else if (data.type === "depositCargo") {
@@ -930,7 +880,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player && player.cargo) {
-            depositCargo(player, data.payload.what, data.payload.amount, ws);
+            depositCargo(player, data.payload.what, Math.round(data.payload.amount), ws);
           }
         }
       } else if (data.type === "dumpCargo") {
@@ -939,7 +889,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player && player.cargo) {
-            removeAtMostCargo(player, data.payload.what, data.payload.amount);
+            removeAtMostCargo(player, data.payload.what, Math.round(data.payload.amount));
           }
         }
       } else if (data.type === "equip") {
@@ -949,7 +899,6 @@ wss.on("connection", (ws) => {
           const player = state.players.get(client.id);
           if (player) {
             equip(player, data.payload.slotIndex, data.payload.what);
-            // state.players.set(client.id, player);
           }
         }
       } else if (data.type === "chat") {
@@ -968,7 +917,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            manufacture(ws, player, data.payload.what, data.payload.amount);
+            manufacture(ws, player, data.payload.what, Math.round(data.payload.amount));
           }
         }
       } else if (data.type === "purchase") {
@@ -1001,7 +950,6 @@ wss.on("connection", (ws) => {
             if (player) {
               player.warpTo = data.payload.warpTo;
               player.warping = 1;
-              // state.players.set(client.id, player);
             }
           }
         }
@@ -1089,11 +1037,6 @@ const flashServerMessage = (id: number, message: string) => {
   }
 };
 
-// I don't think I need this anymore since I started using mutators and rolling the initial sector state data into the init and warp messages
-const sendSectorData = (ws: WebSocket, state: GlobalState) => {
-  ws.send(JSON.stringify({ type: "addCollectables", payload: Array.from(state.collectables.values()) }));
-};
-
 // To be changed once sectors are better understood
 const isEnemySector = (team: Faction, sector: number) => {
   return team + 1 !== sector && sector < 4;
@@ -1151,6 +1094,8 @@ const allyCount = (team: Faction, sector: number) => {
   return count;
 };
 
+let frame = 0;
+
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -1160,10 +1105,6 @@ setInterval(() => {
       if (data.input && player) {
         applyInputs(data.input, player, data.angle);
       }
-      // if (!data.sectorDataSent) {
-      //   sendSectorData(client, state);
-      //   data.sectorDataSent = true;
-      // }
     }
     const triggers: EffectTrigger[] = [];
     const mutated = update(
@@ -1180,7 +1121,7 @@ setInterval(() => {
     );
     processAllNpcs(state);
 
-    // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for CPU)
+    // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for server CPU)
     const playerData: Player[] = [];
     const npcs: (NPC | undefined)[] = [];
     for (const player of state.players.values()) {

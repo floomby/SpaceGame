@@ -7,15 +7,11 @@ A simple multiplayer game where you have a ship and do things.
 ### Random list of things to do
 
 - Shields? (maybe)
-- Mines
-- Trade
-- NPCs
 - Handle network interruptions
 - Network optimizations
 - Economy is very boring right now
 - Try and make the strafe animations work in a way that looks tolerable
-- Investigate drawing performance
-- Limit sound playback so that it doesn't play too many sounds at once
+- Investigate drawing performance (Missile trails are still bad)
 
 ### MMO Stuff
 
@@ -24,7 +20,13 @@ A simple multiplayer game where you have a ship and do things.
 
 ### Next steps
 
-- Manufacturing bay
 - Figure out kill messages in a way that is performant for the server (low priority)
-- Inventory
 - Armament purchase options for stations
+- Manufacturing UI is pretty horrible to use
+- NPC behavior state graph factory for making behaviors and transitions between behaviors easier to handle
+- Make mine drawing not this ad-hoc thing it is right now
+- Decide on plan for whole map (maybe a grid of sectors, each having a boundary?)
+
+### Refactoring stuff
+
+- We don't need to send the id for every network transaction, the server already knows this information and verifies it anyways

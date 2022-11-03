@@ -34,7 +34,7 @@ const populateInventoryTable = () => {
       const seller = () => {
         lastActionSell = true;
         if (amount) {
-          const value = parseFloat(amount.value);
+          const value = parseInt(amount.value);
           if (!isNaN(value)) {
             sendSellInventory(ownId, key, value);
           }
@@ -43,14 +43,14 @@ const populateInventoryTable = () => {
       const transferer = () => {
         lastActionSell = false;
         if (amount) {
-          const value = parseFloat(amount.value);
+          const value = parseInt(amount.value);
           if (!isNaN(value)) {
             sendTransferToShip(ownId, key, value);
           }
         }
       };
       amount.addEventListener("keyup", (e) => {
-        const value = parseFloat(amount.value);
+        const value = parseInt(amount.value);
         if (amount.value === "" || isNaN(value) || value > inventory[key] || value <= 0) {
           amount.style.backgroundColor = "#ffaaaa";
           button.disabled = true;

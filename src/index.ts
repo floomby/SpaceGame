@@ -310,6 +310,7 @@ const run = () => {
       state.collectables.set(collectable.id, collectable);
     }
     for (const mine of data.mines) {
+      mine.phase = Math.random() * Math.PI * 2;
       state.mines.set(mine.id, mine);
     }
   });
@@ -359,6 +360,7 @@ const run = () => {
       state.missiles.set(missile.id, missile);
     }
     for (const mine of data.mines as Mine[]) {
+      mine.phase = Math.random() * Math.PI * 2;
       state.mines.set(mine.id, mine);
     }
 

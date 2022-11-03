@@ -464,6 +464,9 @@ const update = (
     if (!mine.deploying) {
       const mineDef = mineDefs[mine.defIndex];
       for (const player of state.players.values()) {
+        if (player.team === mine.team) {
+          continue;
+        }
         if (circlesIntersect(mine, player)) {
           mineDef.explosionMutator(mine, state);
           didExplode = true;

@@ -324,7 +324,7 @@ const initDefs = () => {
     primaryDamage: 20,
     radius: 30,
     kind: UnitKind.Ship,
-    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine],
     cargoCapacity: 200,
     deathEffect: 3,
     turnRate: 0.07,
@@ -396,8 +396,8 @@ const initDefs = () => {
     primaryDamage: 30,
     radius: 57,
     kind: UnitKind.Ship,
-    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal],
-    cargoCapacity: 800,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine, SlotKind.Mine],
+    cargoCapacity: 1600,
     deathEffect: 2,
     turnRate: 0.02,
     acceleration: 0.05,
@@ -792,7 +792,7 @@ const initDefs = () => {
     explosionEffectIndex: 2,
     explosionMutator(mine, state) {
       // reuse the mine as the circle object for the collision detection for the explosion
-      mine.radius = 400;
+      mine.radius = 50;
       const players = findAllPlayersOverlappingCircle(mine, state.players.values());
       for (let i = 0; i < players.length; i++) {
         players[i].health -= 50;
@@ -803,14 +803,14 @@ const initDefs = () => {
   // Proximity Mine - 11
   armDefs.push({
     name: "Proximity Mine",
-    description: "A proximity mine which explodes when an enemy ship gets close",
+    description: "A quick deploying proximity mine",
     kind: SlotKind.Mine,
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
     maxAmmo: 10,
     stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
       const slotData = player.slotData[slotId];
-      if (player.energy > 1 && slotData.sinceFired > 100 && slotData.ammo > 0) {
+      if (player.energy > 1 && slotData.sinceFired > 33 && slotData.ammo > 0) {
         player.energy -= 1;
         slotData.sinceFired = 0;
         slotData.ammo--;
@@ -820,11 +820,11 @@ const initDefs = () => {
           position: { x: player.position.x, y: player.position.y },
           speed: 0,
           heading: Math.random() * 2 * Math.PI,
-          radius: 20,
+          radius: 15,
           team: player.team,
           defIndex: proximityMineIndex,
           left: 600,
-          deploying: 120,
+          deploying: 30,
         };
         state.mines.set(id, mine);
         whatMutated.mines.push(mine);

@@ -800,6 +800,13 @@ const reduceCollectableTimeRemaining = (sixtieths: number) => {
   });
 };
 
+const reduceMineTimeRemaining = (sixtieths: number) => {
+  fadingMines = fadingMines.filter((fadingMine) => {
+    fadingMine.framesRemaining -= sixtieths;
+    return fadingMine.framesRemaining > 0;
+  });
+};
+
 const drawCollectable = (self: Player, collectable: Collectable) => {
   if (infinityNorm(collectable.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + collectable.radius) {
     return;
@@ -857,11 +864,35 @@ const drawMines = (self: Player, mines: IterableIterator<Mine>, sixtieths: numbe
     ctx.save();
     ctx.translate(mine.position.x - self.position.x + canvas.width / 2, mine.position.y - self.position.y + canvas.height / 2);
     ctx.rotate(mine.heading);
-    ctx.beginPath();
-    ctx.arc(0, 0, mine.radius, 0, 2 * Math.PI);
+    ctx.fillStyle = "gray";
+    // draw a plus shape
+    ctx.fillRect(-30 / 2, -30 / 8, 30, 30 / 4);
+    ctx.fillRect(-30 / 8, -30 / 2, 30 / 4, 30);
     ctx.closePath();
-    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.fillStyle = `rgb(255, 0, 0, ${0.5 + 0.5 * Math.sin(mine.phase)})`;
+    ctx.arc(0, 0, 4, 0, 2 * Math.PI);
+    ctx.closePath();
     ctx.fill();
+    ctx.restore();
+  }
+};
+
+const drawFadingMines = (self: Player) => {
+  for (const fadingMine of fadingMines) {
+    if (infinityNorm(fadingMine.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + fadingMine.radius) {
+      continue;
+    }
+    ctx.save();
+    ctx.translate(fadingMine.position.x - self.position.x + canvas.width / 2, fadingMine.position.y - self.position.y + canvas.height / 2);
+    ctx.rotate(fadingMine.heading);
+    ctx.scale(Math.min(fadingMine.framesRemaining / 90, 1), Math.min(fadingMine.framesRemaining / 90, 1));
+    ctx.globalAlpha = Math.min(fadingMine.framesRemaining / 90, 1);
+    ctx.fillStyle = "gray";
+    // draw a plus shape
+    ctx.fillRect(-30 / 2, -30 / 8, 30, 30 / 4);
+    ctx.fillRect(-30 / 8, -30 / 2, 30 / 4, 30);
+    ctx.closePath();
     ctx.restore();
   }
 };
@@ -896,6 +927,7 @@ const drawEverything = (
     }
 
     reduceMessageTimeRemaining(sixtieths);
+    reduceMineTimeRemaining(sixtieths);
     reduceCollectableTimeRemaining(sixtieths);
 
     clearCanvas();
@@ -938,6 +970,7 @@ const drawEverything = (
       }
     }
 
+    drawFadingMines(lastSelf);
     drawMines(lastSelf, state.mines.values(), sixtieths);
 
     for (const [id, player] of state.players) {
@@ -976,6 +1009,7 @@ const drawEverything = (
 
     drawFadingCollectables(lastSelf);
     drawCollectables(lastSelf, state.collectables.values(), sixtieths);
+
     if (self && !self.docked) {
       drawPlayer(self, self);
     }

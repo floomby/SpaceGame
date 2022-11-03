@@ -5,7 +5,6 @@ import {
   GlobalState,
   Player,
   Asteroid,
-  Input,
   update,
   applyInputs,
   Ballistic,
@@ -16,20 +15,17 @@ import {
   randomAsteroids,
   TargetKind,
   EffectTrigger,
-  CargoEntry,
   equip,
   Missile,
   purchaseShip,
   effectiveInfinity,
   processAllNpcs,
   serverMessagePersistTime,
-  Collectable,
   canRepair,
   removeAtMostCargo,
   isNearOperableEnemyStation,
-  Mine,
 } from "../src/game";
-import { defs, defMap, initDefs, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
+import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
 import { useSsl } from "../src/config";
 import express from "express";
@@ -38,22 +34,12 @@ import { resolve } from "path";
 import { User, Station, Checkpoint } from "./dataModels";
 import mongoose from "mongoose";
 
-import { createHash, randomUUID } from "crypto";
+import { createHash } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
 import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
 import { market } from "./market";
-
-const uid = () => {
-  let ret = 0;
-  while (ret === 0) {
-    ret = parseInt(randomUUID().split("-")[4], 16);
-  }
-  return ret;
-};
-
-// Initialize the definitions (Do this before anything else to avoid problems)
-initDefs();
+import { asteroidBounds, clients, idToWebsocket, secondaries, sectorAsteroidResources, sectorList, sectors, targets, uid, warpList } from "./state";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -77,19 +63,6 @@ if (useSsl) {
 
 const wsPort = 8080;
 const httpPort = 8081;
-
-// This data will ultimately be stored in the database
-const sectorList = [1, 2, 3, 4];
-const sectorAsteroidResources = [
-  [{ resource: "Prifecite", density: 1 }],
-  [{ resource: "Prifecite", density: 1 }],
-  [{ resource: "Prifecite", density: 1 }],
-  [
-    { resource: "Prifecite", density: 1 },
-    { resource: "Russanite", density: 2 },
-  ],
-];
-const sectorAsteroidCounts = [5, 5, 5, 40];
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -443,20 +416,6 @@ app.get("/kill", (req, res) => {
   res.send("true");
 });
 
-type ClientData = {
-  id: number;
-  input: Input;
-  angle: number;
-  name: string;
-  currentSector: number;
-  lastMessage: string;
-  lastMessageTime: number;
-  sectorDataSent: boolean;
-};
-
-const clients: Map<WebSocket, ClientData> = new Map();
-const idToWebsocket = new Map<number, WebSocket>();
-
 app.get("/usersOnline", (req, res) => {
   res.send(JSON.stringify(Array.from(clients.values()).map((client) => client.name)));
 });
@@ -467,41 +426,6 @@ if (useSsl) {
   server = createSecureServer(credentials);
 } else {
   server = createServer();
-}
-
-const sectors: Map<number, GlobalState> = new Map();
-const warpList: { player: Player; to: number }[] = [];
-
-sectorList.forEach((sector) => {
-  sectors.set(sector, {
-    players: new Map(),
-    projectiles: new Map(),
-    asteroids: new Map(),
-    missiles: new Map(),
-    collectables: new Map(),
-    asteroidsDirty: false,
-    mines: new Map(),
-  });
-});
-
-let frame = 0;
-
-// Server state
-
-// Targeting is handled by the clients, but the server needs to know
-// Same pattern with secondaries
-// BTW I do not like this design
-const targets: Map<number, [TargetKind, number]> = new Map();
-const secondaries: Map<number, number> = new Map();
-
-const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
-
-for (let i = 0; i < sectorList.length; i++) {
-  const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(sectorAsteroidCounts[i], asteroidBounds, sectorList[i], uid, sectorAsteroidResources[i]);
-  for (const asteroid of testAsteroids) {
-    sector.asteroids.set(asteroid.id, asteroid);
-  }
 }
 
 const initFromDatabase = async () => {
@@ -677,15 +601,15 @@ wss.on("connection", (ws) => {
                 setupPlayer(user.id, ws, name, data.payload.faction);
                 return;
               }
-              const playerState = JSON.parse(checkpoint.data);
-              if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState, checkpoint.sector) > 2) {
+              const playerState = JSON.parse(checkpoint.data) as Player;
+              if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState.team, checkpoint.sector) > 2) {
                 playerState.position.x = -5000;
                 playerState.position.y = 5000;
               }
               // Update the player on load to match what is expected
               if (playerState.defIndex === undefined) {
-                playerState.defIndex = playerState.definitionIndex;
-                playerState.definitionIndex = undefined;
+                playerState.defIndex = (playerState as any).definitionIndex;
+                (playerState as any).definitionIndex = undefined;
               }
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
@@ -854,17 +778,17 @@ wss.on("connection", (ws) => {
               console.log("Warning: Checkpoint sector not found (programming error)");
               return;
             }
-            const playerState = JSON.parse(checkpoint.data);
+            const playerState = JSON.parse(checkpoint.data) as Player;
             // So I don't have to edit the checkpoints in the database right now
             playerState.isPC = true;
-            if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState, checkpoint.sector) > 2) {
+            if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState.team, checkpoint.sector) > 2) {
               playerState.position.x = -5000;
               playerState.position.y = 5000;
             }
             // Update the player on load to match what is expected
             if (playerState.defIndex === undefined) {
-              playerState.defIndex = playerState.definitionIndex;
-              playerState.definitionIndex = undefined;
+              playerState.defIndex = (playerState as any).definitionIndex;
+              (playerState as any).definitionIndex = undefined;
             }
             playerState.v = { x: 0, y: 0 };
             state.players.set(client.id, playerState);
@@ -949,7 +873,6 @@ wss.on("connection", (ws) => {
           const player = state.players.get(client.id);
           if (player) {
             equip(player, data.payload.slotIndex, data.payload.what);
-            // state.players.set(client.id, player);
           }
         }
       } else if (data.type === "chat") {
@@ -1001,7 +924,6 @@ wss.on("connection", (ws) => {
             if (player) {
               player.warpTo = data.payload.warpTo;
               player.warping = 1;
-              // state.players.set(client.id, player);
             }
           }
         }
@@ -1089,11 +1011,6 @@ const flashServerMessage = (id: number, message: string) => {
   }
 };
 
-// I don't think I need this anymore since I started using mutators and rolling the initial sector state data into the init and warp messages
-const sendSectorData = (ws: WebSocket, state: GlobalState) => {
-  ws.send(JSON.stringify({ type: "addCollectables", payload: Array.from(state.collectables.values()) }));
-};
-
 // To be changed once sectors are better understood
 const isEnemySector = (team: Faction, sector: number) => {
   return team + 1 !== sector && sector < 4;
@@ -1151,6 +1068,8 @@ const allyCount = (team: Faction, sector: number) => {
   return count;
 };
 
+let frame = 0;
+
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -1160,10 +1079,6 @@ setInterval(() => {
       if (data.input && player) {
         applyInputs(data.input, player, data.angle);
       }
-      // if (!data.sectorDataSent) {
-      //   sendSectorData(client, state);
-      //   data.sectorDataSent = true;
-      // }
     }
     const triggers: EffectTrigger[] = [];
     const mutated = update(
@@ -1180,7 +1095,7 @@ setInterval(() => {
     );
     processAllNpcs(state);
 
-    // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for CPU)
+    // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for server CPU)
     const playerData: Player[] = [];
     const npcs: (NPC | undefined)[] = [];
     for (const player of state.players.values()) {

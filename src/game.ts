@@ -15,6 +15,7 @@ import {
   createCollectableFromDef,
   Faction,
   asteroidDefMap,
+  mineDefs,
 } from "./defs";
 import {
   Circle,
@@ -204,6 +205,14 @@ const canRepair = (player: Player | undefined, station: Player | undefined, stri
 
 type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number };
 
+type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; phase?: number };
+
+const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: number) => {
+  for (const mine of mines) {
+    mine.deploying = Math.max(0, mine.deploying - sixtieths);
+  }
+};
+
 // Primary laser stats (TODO put this in a better place)
 const primaryRange = 1500;
 const primarySpeed = 20;
@@ -240,6 +249,7 @@ type GlobalState = {
   missiles: Map<number, Missile>;
   collectables: Map<number, Collectable>;
   asteroidsDirty?: boolean;
+  mines: Map<number, Mine>;
 };
 
 const setCanDockOrRepair = (player: Player, state: GlobalState) => {
@@ -430,7 +440,7 @@ const kill = (
 };
 
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
-type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[] };
+type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: Mine[] };
 
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
@@ -443,9 +453,40 @@ const update = (
   serverWarpList: { player: Player; to: number }[],
   onDeath: (player: Player) => void,
   flashServerMessage: (id: number, message: string) => void,
-  removeCollectable: (id: number, collected: boolean) => void
+  removeCollectable: (id: number, collected: boolean) => void,
+  removeMine: (id: number, detonated: boolean) => void
 ) => {
-  const ret: Mutated = { asteroids: new Set(), collectables: [] };
+  const ret: Mutated = { asteroids: new Set(), collectables: [], mines: [] };
+
+  // Quadratic loop for the mines
+  for (const mine of state.mines.values()) {
+    let didExplode = false;
+    if (!mine.deploying) {
+      const mineDef = mineDefs[mine.defIndex];
+      for (const player of state.players.values()) {
+        if (player.team === mine.team) {
+          continue;
+        }
+        if (circlesIntersect(mine, player)) {
+          mineDef.explosionMutator(mine, state);
+          didExplode = true;
+          applyEffect({ effectIndex: mineDef.explosionEffectIndex, from: { kind: EffectAnchorKind.Absolute, value: mine.position } });
+          state.mines.delete(mine.id);
+          removeMine(mine.id, true);
+          break;
+        }
+      }
+    }
+    if (!didExplode) {
+      mine.left -= 1;
+      if (mine.left <= 0) {
+        state.mines.delete(mine.id);
+        removeMine(mine.id, false);
+      } else if (mine.deploying > 0) {
+        mine.deploying -= 1;
+      }
+    }
+  }
 
   // Main loop for the players (ships and stations)
   for (const [id, player] of state.players) {
@@ -1053,6 +1094,16 @@ const findAllPlayersOverlappingPoint = (point: Position, players: IterableIterat
   return overlappingPlayers;
 };
 
+const findAllPlayersOverlappingCircle = (circle: Circle, players: IterableIterator<Player>) => {
+  const overlappingPlayers: Player[] = [];
+  for (const player of players) {
+    if (circlesIntersect(circle, player)) {
+      overlappingPlayers.push(player);
+    }
+  }
+  return overlappingPlayers;
+};
+
 const findAllAsteroidsOverlappingPoint = (point: Position, asteroids: IterableIterator<Asteroid>) => {
   const overlappingAsteroids: Asteroid[] = [];
   for (const asteroid of asteroids) {
@@ -1088,6 +1139,7 @@ export {
   GlobalState,
   Input,
   Player,
+  Mine,
   Asteroid,
   Ballistic,
   Missile,
@@ -1126,9 +1178,11 @@ export {
   findClosestTarget,
   findAllPlayersOverlappingPoint,
   findAllAsteroidsOverlappingPoint,
+  findAllPlayersOverlappingCircle,
   isNearOperableEnemyStation,
   ticksPerSecond,
   maxNameLength,
   effectiveInfinity,
   serverMessagePersistTime,
+  clientMineDeploymentUpdater,
 };

@@ -72,7 +72,7 @@ const getRestRaw = (query: string, callback: (value: any) => void, cache = false
         if (cache) {
           restCache.set(query, value);
         }
-        return response.json();
+        return value;
       }
     })
     ?.then(callback);

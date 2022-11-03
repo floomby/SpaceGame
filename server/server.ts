@@ -27,6 +27,7 @@ import {
   canRepair,
   removeAtMostCargo,
   isNearOperableEnemyStation,
+  Mine,
 } from "../src/game";
 import { defs, defMap, initDefs, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
@@ -479,6 +480,7 @@ sectorList.forEach((sector) => {
     missiles: new Map(),
     collectables: new Map(),
     asteroidsDirty: false,
+    mines: new Map(),
   });
 });
 
@@ -603,7 +605,14 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     ws.send(
       JSON.stringify({
         type: "init",
-        payload: { id: id, sector, faction, asteroids: Array.from(state.asteroids.values()), collectables: Array.from(state.collectables.values()) },
+        payload: {
+          id: id,
+          sector,
+          faction,
+          asteroids: Array.from(state.asteroids.values()),
+          collectables: Array.from(state.collectables.values()),
+          mines: Array.from(state.mines.values()),
+        },
       })
     );
     sendInventory(ws, id);
@@ -701,6 +710,7 @@ wss.on("connection", (ws) => {
                     faction: playerState.team,
                     asteroids: Array.from(state.asteroids.values()),
                     collectables: Array.from(state.collectables.values()),
+                    mines: Array.from(state.mines.values()),
                   },
                 })
               );
@@ -865,6 +875,7 @@ wss.on("connection", (ws) => {
                   to: checkpoint.sector,
                   asteroids: Array.from(state.asteroids.values()),
                   collectables: Array.from(state.collectables.values()),
+                  mines: Array.from(state.mines.values()),
                 },
               })
             );
@@ -1050,6 +1061,15 @@ const removeCollectable = (sector: number, id: number, collected: boolean) => {
   }
 };
 
+// Same thing with this one
+const removeMine = (sector: number, id: number, detonated: boolean) => {
+  for (const [client, clientData] of clients) {
+    if (clientData.currentSector === sector) {
+      client.send(JSON.stringify({ type: "removeMine", payload: { id, detonated } }));
+    }
+  }
+};
+
 const flashServerMessage = (id: number, message: string) => {
   const ws = idToWebsocket.get(id);
   if (ws) {
@@ -1069,7 +1089,7 @@ const flashServerMessage = (id: number, message: string) => {
   }
 };
 
-// Asteroid could be part of the sector data
+// I don't think I need this anymore since I started using mutators and rolling the initial sector state data into the init and warp messages
 const sendSectorData = (ws: WebSocket, state: GlobalState) => {
   ws.send(JSON.stringify({ type: "addCollectables", payload: Array.from(state.collectables.values()) }));
 };
@@ -1140,10 +1160,10 @@ setInterval(() => {
       if (data.input && player) {
         applyInputs(data.input, player, data.angle);
       }
-      if (!data.sectorDataSent) {
-        sendSectorData(client, state);
-        data.sectorDataSent = true;
-      }
+      // if (!data.sectorDataSent) {
+      //   sendSectorData(client, state);
+      //   data.sectorDataSent = true;
+      // }
     }
     const triggers: EffectTrigger[] = [];
     const mutated = update(
@@ -1155,7 +1175,8 @@ setInterval(() => {
       warpList,
       informDead,
       flashServerMessage,
-      (id, collected) => removeCollectable(sector, id, collected)
+      (id, collected) => removeCollectable(sector, id, collected),
+      (id, detonated) => removeMine(sector, id, detonated)
     );
     processAllNpcs(state);
 
@@ -1182,6 +1203,7 @@ setInterval(() => {
         effects: triggers,
         missiles: missileData,
         collectables: mutated.collectables,
+        mines: mutated.mines,
       },
     });
 
@@ -1208,7 +1230,12 @@ setInterval(() => {
         ws.send(
           JSON.stringify({
             type: "warp",
-            payload: { to, asteroids: Array.from(state.asteroids.values()), collectables: Array.from(state.collectables.values()) },
+            payload: {
+              to,
+              asteroids: Array.from(state.asteroids.values()),
+              collectables: Array.from(state.collectables.values()),
+              mines: Array.from(state.mines.values()),
+            },
           })
         );
         const enemies = enemyCount(player.team, to);

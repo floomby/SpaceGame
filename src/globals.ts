@@ -81,6 +81,7 @@ const initBlankState = () => {
     asteroids: new Map(),
     missiles: new Map(),
     collectables: new Map(),
+    mines: new Map(),
   };
 };
 

@@ -8,6 +8,7 @@ import {
   Collectable,
   findHeadingBetween,
   GlobalState,
+  Mine,
   Missile,
   Player,
   TargetKind,
@@ -779,17 +780,30 @@ const drawLine = (self: Player, line: Line) => {
 };
 
 type FadingCollectable = Collectable & { framesRemaining: number };
+type FadingMine = Mine & { framesRemaining: number };
 
 let fadingCollectables: FadingCollectable[] = [];
+let fadingMines: FadingMine[] = [];
 
 const fadeOutCollectable = (collectable: Collectable) => {
   fadingCollectables.push({ ...collectable, framesRemaining: 180 });
+};
+
+const fadeOutMine = (mine: Mine) => {
+  fadingMines.push({ ...mine, framesRemaining: 180 });
 };
 
 const reduceCollectableTimeRemaining = (sixtieths: number) => {
   fadingCollectables = fadingCollectables.filter((fadingCollectable) => {
     fadingCollectable.framesRemaining -= sixtieths;
     return fadingCollectable.framesRemaining > 0;
+  });
+};
+
+const reduceMineTimeRemaining = (sixtieths: number) => {
+  fadingMines = fadingMines.filter((fadingMine) => {
+    fadingMine.framesRemaining -= sixtieths;
+    return fadingMine.framesRemaining > 0;
   });
 };
 
@@ -840,6 +854,49 @@ const drawFadingCollectables = (self: Player) => {
   }
 };
 
+const drawMines = (self: Player, mines: IterableIterator<Mine>, sixtieths: number) => {
+  for (const mine of mines) {
+    mine.phase += sixtieths * 0.03;
+    mine.heading += sixtieths * 0.04;
+    if (infinityNorm(mine.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + mine.radius) {
+      continue;
+    }
+    ctx.save();
+    ctx.translate(mine.position.x - self.position.x + canvas.width / 2, mine.position.y - self.position.y + canvas.height / 2);
+    ctx.rotate(mine.heading);
+    ctx.fillStyle = "gray";
+    // draw a plus shape
+    ctx.fillRect(-30 / 2, -30 / 8, 30, 30 / 4);
+    ctx.fillRect(-30 / 8, -30 / 2, 30 / 4, 30);
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.fillStyle = `rgb(255, 0, 0, ${0.5 + 0.5 * Math.sin(mine.phase)})`;
+    ctx.arc(0, 0, 4, 0, 2 * Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+};
+
+const drawFadingMines = (self: Player) => {
+  for (const fadingMine of fadingMines) {
+    if (infinityNorm(fadingMine.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + fadingMine.radius) {
+      continue;
+    }
+    ctx.save();
+    ctx.translate(fadingMine.position.x - self.position.x + canvas.width / 2, fadingMine.position.y - self.position.y + canvas.height / 2);
+    ctx.rotate(fadingMine.heading);
+    ctx.scale(Math.min(fadingMine.framesRemaining / 90, 1), Math.min(fadingMine.framesRemaining / 90, 1));
+    ctx.globalAlpha = Math.min(fadingMine.framesRemaining / 90, 1);
+    ctx.fillStyle = "gray";
+    // draw a plus shape
+    ctx.fillRect(-30 / 2, -30 / 8, 30, 30 / 4);
+    ctx.fillRect(-30 / 8, -30 / 2, 30 / 4, 30);
+    ctx.closePath();
+    ctx.restore();
+  }
+};
+
 type ArrowData = {
   kind: TargetKind;
   position: Position;
@@ -870,6 +927,7 @@ const drawEverything = (
     }
 
     reduceMessageTimeRemaining(sixtieths);
+    reduceMineTimeRemaining(sixtieths);
     reduceCollectableTimeRemaining(sixtieths);
 
     clearCanvas();
@@ -912,6 +970,9 @@ const drawEverything = (
       }
     }
 
+    drawFadingMines(lastSelf);
+    drawMines(lastSelf, state.mines.values(), sixtieths);
+
     for (const [id, player] of state.players) {
       if (player.docked) {
         continue;
@@ -948,6 +1009,7 @@ const drawEverything = (
 
     drawFadingCollectables(lastSelf);
     drawCollectables(lastSelf, state.collectables.values(), sixtieths);
+
     if (self && !self.docked) {
       drawPlayer(self, self);
     }
@@ -1017,5 +1079,6 @@ export {
   initStars,
   pushMessage,
   fadeOutCollectable,
+  fadeOutMine,
   canvasCoordsToGameCoords,
 };

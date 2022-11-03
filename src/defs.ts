@@ -11,6 +11,8 @@ import {
   addCargo,
   Missile,
   Mutated,
+  Mine,
+  findAllPlayersOverlappingCircle,
 } from "../src/game";
 import { Rectangle, Position, l2NormSquared } from "./geometry";
 import { initRecipes } from "./recipes";
@@ -120,6 +122,12 @@ type ArmamentDef = {
   frameMutator?: (player: Player, slotIndex: number) => void;
 };
 
+// Idk if this needs a more efficient implementation or not
+type MineDef = {
+  explosionEffectIndex: number;
+  explosionMutator: (mine: Mine, state: GlobalState) => void;
+};
+
 type AsteroidDef = {
   resources: number;
   sprite: Rectangle;
@@ -162,6 +170,8 @@ const armDefMap = new Map<string, { index: number; def: ArmamentDef }>();
 
 const asteroidDefs: AsteroidDef[] = [];
 const asteroidDefMap = new Map<string, { index: number; def: AsteroidDef }>();
+
+const mineDefs: MineDef[] = [];
 
 const missileDefs: MissileDef[] = [];
 
@@ -288,7 +298,7 @@ const initDefs = () => {
     primaryDamage: 20,
     radius: 30,
     kind: UnitKind.Ship,
-    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine],
     cargoCapacity: 200,
     deathEffect: 3,
     turnRate: 0.07,
@@ -314,7 +324,7 @@ const initDefs = () => {
     primaryDamage: 20,
     radius: 30,
     kind: UnitKind.Ship,
-    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal],
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine],
     cargoCapacity: 200,
     deathEffect: 3,
     turnRate: 0.07,
@@ -386,8 +396,8 @@ const initDefs = () => {
     primaryDamage: 30,
     radius: 57,
     kind: UnitKind.Ship,
-    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal],
-    cargoCapacity: 800,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine, SlotKind.Mine],
+    cargoCapacity: 1600,
     deathEffect: 2,
     turnRate: 0.02,
     acceleration: 0.05,
@@ -778,6 +788,58 @@ const initDefs = () => {
     cost: 1200,
   });
 
+  mineDefs.push({
+    explosionEffectIndex: 2,
+    explosionMutator(mine, state) {
+      // reuse the mine as the circle object for the collision detection for the explosion
+      mine.radius = 50;
+      const players = findAllPlayersOverlappingCircle(mine, state.players.values());
+      for (let i = 0; i < players.length; i++) {
+        players[i].health -= 50;
+      }
+    },
+  });
+  const proximityMineIndex = mineDefs.length - 1;
+  // Proximity Mine - 11
+  armDefs.push({
+    name: "Proximity Mine",
+    description: "A quick deploying proximity mine",
+    kind: SlotKind.Mine,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Untargeted,
+    maxAmmo: 10,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 1 && slotData.sinceFired > 33 && slotData.ammo > 0) {
+        player.energy -= 1;
+        slotData.sinceFired = 0;
+        slotData.ammo--;
+        const id = uid();
+        const mine: Mine = {
+          id,
+          position: { x: player.position.x, y: player.position.y },
+          speed: 0,
+          heading: Math.random() * 2 * Math.PI,
+          radius: 15,
+          team: player.team,
+          defIndex: proximityMineIndex,
+          left: 600,
+          deploying: 30,
+        };
+        state.mines.set(id, mine);
+        whatMutated.mines.push(mine);
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 10 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 200,
+  });
+
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];
     armDefMap.set(def.name, { index: i, def });
@@ -918,6 +980,7 @@ export {
   asteroidDefMap,
   armDefs,
   armDefMap,
+  mineDefs,
   missileDefs,
   collectableDefs,
   collectableDefMap,

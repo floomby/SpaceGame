@@ -1,7 +1,7 @@
 server/node_modules
 server/server.js
 dist
-src/*.js
+src/**.js
 deployer.sh
 server/resources
 soundCandidates

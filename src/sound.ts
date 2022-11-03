@@ -5,7 +5,18 @@ let volume: GainNode;
 
 const soundBuffers: AudioBuffer[] = [];
 
-const sounds = ["fire0.wav", "explosion0.wav", "laser0.wav", "laser1.wav", "launch0.wav", "pop0.wav", "twinkle0.wav", "dullPew0.wav", "disabled0.wav"];
+const sounds = [
+  "fire0.wav",
+  "explosion0.wav",
+  "laser0.wav",
+  "laser1.wav",
+  "launch0.wav",
+  "pop0.wav",
+  "twinkle0.wav",
+  "dullPew0.wav",
+  "disabled0.wav",
+  "mineDrop0.wav",
+];
 
 const soundMap: Map<string, number> = new Map<string, number>();
 
@@ -78,7 +89,7 @@ const play3dSound = (index: number, x: number, y: number, gain = 1.0, important 
   const source = ctx.createBufferSource();
   source.buffer = soundBuffers[index];
   const panner = ctx.createPanner();
-  
+
   panner.positionX.value = x;
   panner.positionY.value = y;
   panner.positionZ.value = 1;
@@ -102,6 +113,5 @@ const getSound = (name: string) => {
 };
 
 const soundScale = 800;
-
 
 export { initSound, playSound, play3dSound, soundScale, setVolume, getVolume, soundMap, getSound };

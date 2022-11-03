@@ -21,6 +21,7 @@ const manufacturingTableHtml = () => {
     html += `<tr><td>${recipes[i].name}</td>
 <td>${inventory[recipes[i].name] || 0}</td>
 <td><input value="1" id="manufactureAmount${i}"/></td>
+<td>/${maxManufacturable(i, inventory)}</td>
 <td><div class="tooltip">
   <button id="manufacture${i}">Manufacture</button>
   <span class="bigTooltipText" id="manufacturingTooltip${i}">${manufacturingToolTipText(i, 1)}</span>
@@ -40,7 +41,7 @@ const populateManufacturingTable = () => {
     if (button) {
       const amount = document.getElementById(`manufactureAmount${i}`) as HTMLInputElement;
       if (amount) {
-        const value = parseFloat(amount.value);
+        const value = parseInt(amount.value);
           if (amount.value === "" || isNaN(value) || value <= 0 || value > maxManufacturable(i, inventory)) {
             amount.style.backgroundColor = "#ffaaaa";
             button.disabled = true;
@@ -49,7 +50,7 @@ const populateManufacturingTable = () => {
             button.disabled = false;
           }
         amount.addEventListener("keyup", (e) => {
-          const value = parseFloat(amount.value);
+          const value = parseInt(amount.value);
           if (amount.value === "" || isNaN(value) || value <= 0 || value > maxManufacturable(i, inventory)) {
             amount.style.backgroundColor = "#ffaaaa";
             button.disabled = true;
@@ -70,7 +71,7 @@ const populateManufacturingTable = () => {
         });
       }
       button.onclick = () => {
-        const value = parseFloat(amount.value);
+        const value = parseInt(amount.value);
         if (!isNaN(value)) {
           sendManufacture(ownId, recipes[i].name, value);
         }

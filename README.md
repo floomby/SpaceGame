@@ -20,7 +20,6 @@ A simple multiplayer game where you have a ship and do things.
 
 ### Next steps
 
-- Fix the floating point annoyingness with the cargo and inventory (this is really obnoxious)
 - Figure out kill messages in a way that is performant for the server (low priority)
 - Armament purchase options for stations
 - Manufacturing UI is pretty horrible to use

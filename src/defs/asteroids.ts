@@ -24,7 +24,7 @@ const initAsteroids = () => {
     sprite: { x: 320, y: 576, width: 64, height: 64 },
     radius: 22,
     mineral: "Russanite",
-    difficulty: 10,
+    difficulty: 3,
   });
 
   for (let i = 0; i < asteroidDefs.length; i++) {

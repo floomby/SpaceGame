@@ -146,10 +146,15 @@ const initArmaments = () => {
             flashServerMessage(player.id, "Asteroid depleted");
             return;
           }
-          whatMutated.asteroids.add(target);
-          player.energy -= 0.3;
           const asteroidDef = asteroidDefs[target.defIndex];
-          const amount = Math.min(target.resources, 0.5 / asteroidDef.difficulty);
+          let amount = Math.min(target.resources, 1 / asteroidDef.difficulty);
+          if (amount < 1) {
+            flashServerMessage(player.id, `Mining laser is insufficiently powerful to mine ${asteroidDef.mineral}`);
+            return;
+          }
+          amount = Math.round(amount);
+          player.energy -= 0.3;
+          whatMutated.asteroids.add(target);
           target.resources -= amount;
           addCargo(player, asteroidDef.mineral, amount);
           applyEffect({
@@ -377,10 +382,15 @@ const initArmaments = () => {
             flashServerMessage(player.id, "Asteroid depleted");
             return;
           }
+          const asteroidDef = asteroidDefs[target.defIndex];
+          let amount = Math.min(target.resources, 3.5 / asteroidDef.difficulty);
+          if (amount < 1) {
+            flashServerMessage(player.id, `Mining laser is insufficiently powerful to mine ${asteroidDef.mineral}`);
+            return;
+          }
+          amount = Math.round(amount);
           whatMutated.asteroids.add(target);
           player.energy -= 0.8;
-          const asteroidDef = asteroidDefs[target.defIndex];
-          const amount = Math.min(target.resources, 3.5 / asteroidDef.difficulty);
           target.resources -= amount;
           addCargo(player, asteroidDef.mineral, amount);
           applyEffect({

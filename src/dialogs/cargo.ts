@@ -42,14 +42,14 @@ const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
       const amount = document.getElementById(`dumpCargoAmount${i}`) as HTMLInputElement;
       const dumper = () => {
         if (amount) {
-          const value = parseFloat(amount.value);
+          const value = parseInt(amount.value);
           if (!isNaN(value)) {
             sendDumpCargo(ownId, cargo[i].what, value);
           }
         }
       };
       amount.addEventListener("keyup", (e) => {
-        const value = parseFloat(amount.value);
+        const value = parseInt(amount.value);
         if (amount.value === "" || isNaN(value) || value > cargo[i].amount || value <= 0) {
           amount.style.backgroundColor = "#ffaaaa";
           button.disabled = true;

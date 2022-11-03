@@ -86,14 +86,12 @@ app.get("/", (req, res) => {
 });
 
 // Rest api stuff for things that are not "realtime"
-// check if username is available
 app.get("/available", (req, res) => {
   const name = req.query.name;
   if (!name || typeof name !== "string" || name.length > maxNameLength) {
     res.send("false");
     return;
   }
-  // check the database
   User.findOne({ name }, (err, user) => {
     if (err) {
       console.log(err);
@@ -115,11 +113,9 @@ app.get("/sectorList", (req, res) => {
 app.get("/nameOf", (req, res) => {
   const id = req.query.id;
   if (!id || typeof id !== "string") {
-    // send error json
     res.send(JSON.stringify({ error: "Invalid id" }));
     return;
   }
-  // find the user from the database
   User.findOne({ id }, (err, user) => {
     if (err) {
       console.log(err);
@@ -137,11 +133,9 @@ app.get("/nameOf", (req, res) => {
 app.get("/stationName", (req, res) => {
   const id = req.query.id;
   if (!id || typeof id !== "string") {
-    // send error json
     res.send(JSON.stringify({ error: "Invalid id" }));
     return;
   }
-  // find the user from the database
   Station.findOne({ id }, (err, station) => {
     if (err) {
       console.log(err);
@@ -175,7 +169,6 @@ app.get("/register", (req, res) => {
     res.send("false");
     return;
   }
-  // check the database
   User.findOne({ name }, (err, user) => {
     if (err) {
       console.log(err);
@@ -187,7 +180,6 @@ app.get("/register", (req, res) => {
       return;
     }
     const id = uid();
-    // create the user
     const newUser = new User({
       name,
       password: hash(password),
@@ -210,7 +202,6 @@ app.get("/shipsAvailable", (req, res) => {
     res.send("false");
     return;
   }
-  // check the database
   Station.findOne({ id }, (err, station) => {
     if (err) {
       console.log(err);
@@ -358,6 +349,32 @@ app.get("/addNPC", (req, res) => {
     return;
   }
   res.send("true");
+});
+
+app.get("/fixDataBase", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== "1d8465217b25152cb3de788928007459e451cb11a6e0e18ab5ed30e2648d809c") {
+    res.send("Invalid password");
+    return;
+  }
+  // Round all the inventory number to the nearest integer
+  User.find({}, (err, users) => {
+    if (err) {
+      res.send("Database error: " + err);
+      return;
+    }
+    users.forEach((user) => {
+      const newInventory = Object.fromEntries(Object.entries(user.inventory).map(([key, value]) => [key, Math.round(value as number)]));
+      user.inventory = newInventory;
+      user.save();
+    });
+    res.send("true");
+  });
 });
 
 if (useSsl) {
@@ -611,6 +628,17 @@ wss.on("connection", (ws) => {
                 playerState.defIndex = (playerState as any).definitionIndex;
                 (playerState as any).definitionIndex = undefined;
               }
+              // fix the cargo
+              if (playerState.cargo === undefined || playerState.cargo.some((c) => !Number.isInteger(c.amount))) {
+                playerState.cargo = [{ what: "Teddy Bears", amount: 30 }];
+              }
+              // fix the credits
+              if (playerState.credits === undefined) {
+                playerState.credits = 500;
+              }
+              playerState.credits = Math.round(playerState.credits);
+
+
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
               clients.set(ws, {
@@ -781,14 +809,12 @@ wss.on("connection", (ws) => {
             const playerState = JSON.parse(checkpoint.data) as Player;
             // So I don't have to edit the checkpoints in the database right now
             playerState.isPC = true;
-            if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState.team, checkpoint.sector) > 2) {
+            if (
+              isNearOperableEnemyStation(playerState, state.players.values()) ||
+              enemyCount(playerState.team, checkpoint.sector) - allyCount(playerState.team, checkpoint.sector) > 2
+            ) {
               playerState.position.x = -5000;
               playerState.position.y = 5000;
-            }
-            // Update the player on load to match what is expected
-            if (playerState.defIndex === undefined) {
-              playerState.defIndex = (playerState as any).definitionIndex;
-              (playerState as any).definitionIndex = undefined;
             }
             playerState.v = { x: 0, y: 0 };
             state.players.set(client.id, playerState);
@@ -827,7 +853,7 @@ wss.on("connection", (ws) => {
             }
             const price = market.get(data.payload.what);
             if (price) {
-              player.credits += removeAtMostCargo(player, data.payload.what, data.payload.amount) * price;
+              player.credits += removeAtMostCargo(player, data.payload.what, Math.round(data.payload.amount)) * price;
             }
           }
         }
@@ -837,7 +863,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            transferToShip(ws, player, data.payload.what, data.payload.amount, flashServerMessage);
+            transferToShip(ws, player, data.payload.what, Math.round(data.payload.amount), flashServerMessage);
           }
         }
       } else if (data.type === "sellInventory") {
@@ -845,7 +871,7 @@ wss.on("connection", (ws) => {
         if (client && data.payload.id === client.id) {
           const player = sectors.get(client.currentSector)!.players.get(client.id);
           if (player) {
-            sellInventory(ws, player, data.payload.what, data.payload.amount);
+            sellInventory(ws, player, data.payload.what, Math.round(data.payload.amount));
           }
         }
       } else if (data.type === "depositCargo") {
@@ -854,7 +880,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player && player.cargo) {
-            depositCargo(player, data.payload.what, data.payload.amount, ws);
+            depositCargo(player, data.payload.what, Math.round(data.payload.amount), ws);
           }
         }
       } else if (data.type === "dumpCargo") {
@@ -863,7 +889,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player && player.cargo) {
-            removeAtMostCargo(player, data.payload.what, data.payload.amount);
+            removeAtMostCargo(player, data.payload.what, Math.round(data.payload.amount));
           }
         }
       } else if (data.type === "equip") {
@@ -891,7 +917,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            manufacture(ws, player, data.payload.what, data.payload.amount);
+            manufacture(ws, player, data.payload.what, Math.round(data.payload.amount));
           }
         }
       } else if (data.type === "purchase") {

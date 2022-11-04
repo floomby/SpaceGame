@@ -18,6 +18,7 @@ import {
   findAllAsteroidsOverlappingPoint,
   CargoEntry,
   Mine,
+  SectorInfo,
 } from "./game";
 import {
   init as initDialog,
@@ -43,6 +44,7 @@ import {
   inventory,
   keybind,
   ownId,
+  sectorData,
   selectedSecondary,
   setCurrentSector,
   setFaction,
@@ -291,29 +293,43 @@ const targetAtCoords = (coords: Position) => {
 const run = () => {
   initBlankState();
 
-  bindAction("init", (data: { id: number; sector: number; faction: Faction; asteroids: Asteroid[]; collectables: Collectable[], mines: Mine[] }) => {
-    setOwnId(data.id);
-    setCurrentSector(data.sector);
-    initStars(data.sector);
-    initSettings();
-    initCargo();
-    clearDialogStack();
-    clearDialog();
-    hideDialog();
-    initInputHandlers(targetAtCoords);
-    setFaction(data.faction);
-    for (const asteroid of data.asteroids) {
-      state.asteroids.set(asteroid.id, asteroid);
+  bindAction(
+    "init",
+    (data: {
+      id: number;
+      sector: number;
+      faction: Faction;
+      asteroids: Asteroid[];
+      collectables: Collectable[];
+      mines: Mine[];
+      sectorInfos: SectorInfo[];
+    }) => {
+      setOwnId(data.id);
+      setCurrentSector(data.sector);
+      initStars(data.sector);
+      initSettings();
+      initCargo();
+      clearDialogStack();
+      clearDialog();
+      hideDialog();
+      initInputHandlers(targetAtCoords);
+      setFaction(data.faction);
+      for (const asteroid of data.asteroids) {
+        state.asteroids.set(asteroid.id, asteroid);
+      }
+      for (const collectable of data.collectables) {
+        collectable.phase = Math.random() * Math.PI * 2;
+        state.collectables.set(collectable.id, collectable);
+      }
+      for (const mine of data.mines) {
+        mine.phase = Math.random() * Math.PI * 2;
+        state.mines.set(mine.id, mine);
+      }
+      for (const sectorInfo of data.sectorInfos) {
+        sectorData.set(sectorInfo.sector, sectorInfo);
+      }
     }
-    for (const collectable of data.collectables) {
-      collectable.phase = Math.random() * Math.PI * 2;
-      state.collectables.set(collectable.id, collectable);
-    }
-    for (const mine of data.mines) {
-      mine.phase = Math.random() * Math.PI * 2;
-      state.mines.set(mine.id, mine);
-    }
-  });
+  );
 
   bindAction("loginFail", (data: { error: string }) => {
     if (peekTag() !== "loggingIn") {
@@ -403,7 +419,7 @@ const run = () => {
     pushDialog(deadDialog, setupDeadDialog, "dead");
   });
 
-  bindAction("warp", (data: { to: number; asteroids: Asteroid[]; collectables: Collectable[], mines: Mine[] }) => {
+  bindAction("warp", (data: { to: number; asteroids: Asteroid[]; collectables: Collectable[]; mines: Mine[]; sectorInfos: SectorInfo[] }) => {
     if (data.to !== currentSector) {
       state.asteroids.clear();
       for (const asteroid of data.asteroids) {
@@ -422,6 +438,10 @@ const run = () => {
       initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);
+    }
+
+    for (const sectorInfo of data.sectorInfos) {
+      sectorData.set(sectorInfo.sector, sectorInfo);
     }
     targetId = 0;
     targetAsteroidId = 0;

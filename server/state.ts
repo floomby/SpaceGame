@@ -65,6 +65,7 @@ type ClientData = {
   lastMessage: string;
   lastMessageTime: number;
   sectorDataSent: boolean;
+  sectorsVisited: Set<number>;
 };
 
 /*

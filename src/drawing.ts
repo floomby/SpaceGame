@@ -917,7 +917,7 @@ const drawSectorBounds = (self: Player) => {
   }
 
   if (distanceToBottom <= canvas.height / 2) {
-    // make a dashed green line
+    ctx.save();
     ctx.setLineDash([10, 10]);
     ctx.strokeStyle = "green";
     ctx.beginPath();
@@ -925,9 +925,10 @@ const drawSectorBounds = (self: Player) => {
     ctx.lineTo(canvas.width, canvas.height / 2 + distanceToBottom);
     ctx.stroke();
     ctx.closePath();
+    ctx.restore();
   }
   if (distanceToTop <= canvas.height / 2) {
-    // make a dashed green line
+    ctx.save();
     ctx.setLineDash([10, 10]);
     ctx.strokeStyle = "green";
     ctx.beginPath();
@@ -935,9 +936,10 @@ const drawSectorBounds = (self: Player) => {
     ctx.lineTo(canvas.width, canvas.height / 2 - distanceToTop);
     ctx.stroke();
     ctx.closePath();
+    ctx.restore();
   }
   if (distanceToLeft <= canvas.width / 2) {
-    // make a dashed green line
+    ctx.save();
     ctx.setLineDash([10, 10]);
     ctx.strokeStyle = "green";
     ctx.beginPath();
@@ -945,9 +947,10 @@ const drawSectorBounds = (self: Player) => {
     ctx.lineTo(canvas.width / 2 - distanceToLeft, canvas.height);
     ctx.stroke();
     ctx.closePath();
+    ctx.restore();
   }
   if (distanceToRight <= canvas.width / 2) {
-    // make a dashed green line
+    ctx.save();
     ctx.setLineDash([10, 10]);
     ctx.strokeStyle = "green";
     ctx.beginPath();
@@ -955,6 +958,7 @@ const drawSectorBounds = (self: Player) => {
     ctx.lineTo(canvas.width / 2 + distanceToRight, canvas.height);
     ctx.stroke();
     ctx.closePath();
+    ctx.restore();
   }
 
   return closestEdgeDirection;

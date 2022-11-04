@@ -823,6 +823,7 @@ const findSectorTransitions = (state: GlobalState, sector: number, transitions: 
       }
 
       transitions.push(transition);
+      player.warping = 0;
       state.players.delete(player.id);
     }
   }
@@ -1173,6 +1174,11 @@ const effectiveInfinity = 1000000000;
 const mapSize = 4;
 const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20000 };
 
+type SectorInfo = {
+  sector: number;
+  resources: string[];
+};
+
 export {
   GlobalState,
   Input,
@@ -1190,6 +1196,7 @@ export {
   Collectable,
   Mutated,
   SectorTransition,
+  SectorInfo,
   Entity,
   update,
   applyInputs,

@@ -27,6 +27,7 @@ import {
   SectorTransition,
   findSectorTransitions,
   sectorBounds,
+  SectorInfo,
 } from "../src/game";
 import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
@@ -125,9 +126,10 @@ app.get("/available", (req, res) => {
   });
 });
 
-app.get("/sectorList", (req, res) => {
-  res.send(JSON.stringify({ value: sectorList }));
-});
+// Unused now
+// app.get("/sectorList", (req, res) => {
+//   res.send(JSON.stringify({ value: sectorList }));
+// });
 
 app.get("/nameOf", (req, res) => {
   const id = req.query.id;
@@ -514,7 +516,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     return;
   }
 
-  const sector = faction === Faction.Alliance ? 1 : 2;
+  const sector = faction === Faction.Alliance ? 12 : 15;
 
   clients.set(ws, {
     id: id,
@@ -525,6 +527,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     lastMessage: "",
     lastMessageTime: Date.now(),
     sectorDataSent: false,
+    sectorsVisited: new Set([sector]),
   });
 
   const player = {
@@ -567,6 +570,12 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
       return;
     }
 
+    const sectorInfos: SectorInfo[] = [];
+    sectorInfos.push({
+      sector: sector,
+      resources: sectorAsteroidResources[sector].map(value => value.resource),
+    });
+
     ws.send(
       JSON.stringify({
         type: "init",
@@ -577,6 +586,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
           asteroids: Array.from(state.asteroids.values()),
           collectables: Array.from(state.collectables.values()),
           mines: Array.from(state.mines.values()),
+          sectorInfos,
         },
       })
     );
@@ -586,12 +596,18 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   });
 };
 
-const saveCheckpoint = (id: number, sector: number, data: string) => {
+const saveCheckpoint = (id: number, sector: number, data: string, sectorsVisited: Set<number>) => {
   Checkpoint.findOneAndUpdate({ id }, { id, sector, data }, { upsert: true }, (err) => {
     if (err) {
       console.log("Error saving checkpoint: " + err);
       return;
     }
+    User.findOneAndUpdate({ id }, { id, sectorsVisited: Array.from(sectorsVisited) }, { upsert: false }, (err) => {
+      if (err) {
+        console.log("Error saving user: " + err);
+        return;
+      }
+    });
   });
 };
 
@@ -626,6 +642,20 @@ wss.on("connection", (ws) => {
           }
 
           idToWebsocket.set(user.id, ws);
+
+          const sectorInfos: SectorInfo[] = [];
+          if (!user.sectorsVisited) {
+            user.sectorsVisited = [user.currentSector];
+            user.save();
+          }
+          const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
+          for (const sector of sectorsVisited) {
+            sectorInfos.push({
+              sector,
+              resources: sectorAsteroidResources[sector].map(value => value.resource),
+            });
+          }
+
           Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
             if (err) {
               ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Database error" } }));
@@ -673,6 +703,7 @@ wss.on("connection", (ws) => {
                 lastMessage: "",
                 lastMessageTime: Date.now(),
                 sectorDataSent: false,
+                sectorsVisited,
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
@@ -686,6 +717,7 @@ wss.on("connection", (ws) => {
                     asteroids: Array.from(state.asteroids.values()),
                     collectables: Array.from(state.collectables.values()),
                     mines: Array.from(state.mines.values()),
+                    sectorInfos,
                   },
                 })
               );
@@ -770,7 +802,7 @@ wss.on("connection", (ws) => {
               const playerCopy = copyPlayer(player);
               const checkpointData = JSON.stringify(playerCopy);
 
-              saveCheckpoint(client.id, client.currentSector, checkpointData);
+              saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
             }
           }
         }
@@ -786,7 +818,7 @@ wss.on("connection", (ws) => {
             state.players.set(client.id, player);
             const checkpointData = JSON.stringify(player);
 
-            saveCheckpoint(client.id, client.currentSector, checkpointData);
+            saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
           }
         }
       } else if (data.type === "repair") {
@@ -849,6 +881,7 @@ wss.on("connection", (ws) => {
                   asteroids: Array.from(state.asteroids.values()),
                   collectables: Array.from(state.collectables.values()),
                   mines: Array.from(state.mines.values()),
+                  sectorInfos: [],
                 },
               })
             );
@@ -968,6 +1001,10 @@ wss.on("connection", (ws) => {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
           if (client.currentSector !== data.payload.warpTo && sectorList.includes(data.payload.warpTo)) {
+            if (!client.sectorsVisited.has(data.payload.warpTo)) {
+              flashServerMessage(client.id, "You must visit a sector before you can warp to it");
+              return;
+            }
             const state = sectors.get(client.currentSector)!;
             const player = state.players.get(client.id);
             if (player) {
@@ -1000,8 +1037,16 @@ wss.on("connection", (ws) => {
       secondaries.delete(removedClient.id);
       clients.delete(ws);
       idToWebsocket.delete(removedClient.id);
-      if (player?.docked) {
-        saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player));
+      if (player) {
+        if (player.docked) {
+          saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
+        } else {
+          User.findOneAndUpdate({ id: removedClient.id }, { currentSector: removedClient.currentSector, sectorsVisited: Array.from(removedClient.sectorsVisited) }, (err) => {
+            if (err) {
+              console.log("Error saving user: " + err);
+            }
+          });
+        }
       } else if (!player) {
         console.log("Warning: player not found on disconnect");
       }
@@ -1204,6 +1249,7 @@ setInterval(() => {
       }
     }
 
+    
     const state = sectors.get(newSector);
     if (state) {
       const ws = idToWebsocket.get(transition.player.id);
@@ -1211,6 +1257,8 @@ setInterval(() => {
         const client = clients.get(ws)!;
         client.currentSector = newSector;
         client.sectorDataSent = false;
+        client.sectorsVisited.add(newSector);
+        const sectorInfo = { sector: newSector, resources: sectorAsteroidResources[newSector].map((value) => value.resource) };
         ws.send(
           JSON.stringify({
             type: "warp",
@@ -1219,6 +1267,7 @@ setInterval(() => {
               asteroids: Array.from(state.asteroids.values()),
               collectables: Array.from(state.collectables.values()),
               mines: Array.from(state.mines.values()),
+              sectorInfos: [sectorInfo],
             },
           })
         );
@@ -1248,6 +1297,7 @@ setInterval(() => {
               asteroids: Array.from(state.asteroids.values()),
               collectables: Array.from(state.collectables.values()),
               mines: Array.from(state.mines.values()),
+              sectorInfos: [],
             },
           })
         );

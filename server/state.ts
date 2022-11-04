@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 import { GlobalState, Input, Player, randomAsteroids, TargetKind } from "../src/game";
 import { WebSocket } from "ws";
-import { initDefs } from "../src/defs";
+import { Faction, initDefs } from "../src/defs";
+import { CardinalDirection } from "../src/geometry";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
@@ -14,18 +15,48 @@ const uid = () => {
   return ret;
 };
 
+const mapSize = 4;
+
 // This data will ultimately be stored in the database
-const sectorList = [1, 2, 3, 4];
-const sectorAsteroidResources = [
-  [{ resource: "Prifecite", density: 1 }],
-  [{ resource: "Prifecite", density: 1 }],
-  [{ resource: "Prifecite", density: 1 }],
-  [
-    { resource: "Prifecite", density: 1 },
-    { resource: "Russanite", density: 2 },
-  ],
-];
-const sectorAsteroidCounts = [5, 5, 5, 40];
+// TODO Make the sector list have names like 1-1, 1-2, 2-1, 2-2, etc.
+const sectorList = (new Array(mapSize * mapSize)).fill(0).map((_, i) => i);
+const sectorAsteroidResources = sectorList.map(_ => [{ resource: "Prifecite", density: 1 }]);
+const sectorAsteroidCounts = sectorList.map(_ => 5);
+
+sectorAsteroidResources[5] = [{ resource: "Prifecite", density: 1 }, { resource: "Russanite", density: 1 }];
+sectorAsteroidResources[6] = [{ resource: "Prifecite", density: 1 }, { resource: "Russanite", density: 1 }];
+sectorAsteroidCounts[6] = 20;
+
+const sectorFactions: (Faction | null)[] = sectorList.map(_ => null);
+sectorFactions[5] = Faction.Rogue;
+sectorFactions[6] = Faction.Rogue;
+
+sectorFactions[12] = Faction.Alliance;
+sectorFactions[13] = Faction.Alliance;
+sectorFactions[8] = Faction.Alliance;
+
+sectorFactions[14] = Faction.Confederation;
+sectorFactions[15] = Faction.Confederation;
+sectorFactions[11] = Faction.Confederation;
+
+const sectorGuardianCount = sectorList.map(_ => 0);
+sectorGuardianCount[5] = 5;
+sectorGuardianCount[6] = 5;
+
+sectorGuardianCount[12] = 8;
+sectorGuardianCount[13] = 5;
+sectorGuardianCount[8] = 5;
+
+sectorGuardianCount[14] = 5;
+sectorGuardianCount[15] = 8;
+sectorGuardianCount[11] = 5;
+
+const sectorHasStarbase = sectorList.map(_ => false);
+sectorHasStarbase[5] = true;
+
+sectorHasStarbase[12] = true;
+
+sectorHasStarbase[15] = true;
 
 type ClientData = {
   id: number;
@@ -36,6 +67,33 @@ type ClientData = {
   lastMessage: string;
   lastMessageTime: number;
   sectorDataSent: boolean;
+};
+
+/*
+    x ->  
+  y 0  1  2  3
+  | 4  5  6  7
+  v 8  9  10 11
+    12 13 14 15
+*/
+
+const sectorInDirection = (sector: number, direction: CardinalDirection) => {
+  const x = sector % mapSize;
+  const y = Math.floor(sector / mapSize);
+  if (direction === CardinalDirection.Up) {
+    if (y === 0) return null;
+    return sector - mapSize;
+  } else if (direction === CardinalDirection.Down) {
+    if (y === mapSize - 1) return null;
+    return sector + mapSize;
+  } else if (direction === CardinalDirection.Left) {
+    if (x === 0) return null;
+    return sector - 1;
+  } else if (direction === CardinalDirection.Right) {
+    if (x === mapSize - 1) return null;
+    return sector + 1;
+  }
+  return null;
 };
 
 const clients: Map<WebSocket, ClientData> = new Map();
@@ -78,6 +136,9 @@ export {
   sectorList,
   sectorAsteroidResources,
   sectorAsteroidCounts,
+  sectorFactions,
+  sectorGuardianCount,
+  sectorHasStarbase,
   clients,
   idToWebsocket,
   sectors,
@@ -86,4 +147,5 @@ export {
   secondaries,
   asteroidBounds,
   uid,
+  sectorInDirection,
 };

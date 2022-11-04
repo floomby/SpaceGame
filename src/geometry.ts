@@ -5,6 +5,13 @@ type Circle = { position: Position; radius: number };
 type Rectangle = { x: number; y: number; width: number; height: number };
 type Line = { from: Position; to: Position };
 
+enum CardinalDirection {
+  Up,
+  Right,
+  Down,
+  Left,
+}
+
 const maxDecimals = (num: number, decimals: number) => {
   const factor = Math.pow(10, decimals);
   return Math.round((num + Number.EPSILON) * factor) / factor;
@@ -113,11 +120,50 @@ const findInterceptAimingHeading = (from: Position, target: Player, projectileSp
   return interceptHeading;
 };
 
+const pointInRectangle = (point: Position, rectangle: Rectangle) => {
+  return (
+    point.x >= rectangle.x &&
+    point.x <= rectangle.x + rectangle.width &&
+    point.y >= rectangle.y &&
+    point.y <= rectangle.y + rectangle.height
+  );
+};
+
+const pointOutsideRectangle = (point: Position, rectangle: Rectangle) => {
+  if (point.x < rectangle.x) {
+    return CardinalDirection.Left;
+  }
+  if (point.x > rectangle.x + rectangle.width) {
+    return CardinalDirection.Right;
+  }
+  if (point.y < rectangle.y) {
+    return CardinalDirection.Up;
+  }
+  if (point.y > rectangle.y + rectangle.height) {
+    return CardinalDirection.Down;
+  }
+  return null;
+};
+
+const headingFromCardinalDirection = (direction: CardinalDirection) => {
+  switch (direction) {
+    case CardinalDirection.Up:
+      return 3 * Math.PI / 2;
+    case CardinalDirection.Right:
+      return 0;
+    case CardinalDirection.Down:
+      return Math.PI / 2;
+    case CardinalDirection.Left:
+      return Math.PI;
+  }
+};
+
 export {
   Position,
   Circle,
   Rectangle,
   Line,
+  CardinalDirection,
   positiveMod,
   maxDecimals,
   infinityNorm,
@@ -125,10 +171,13 @@ export {
   l2Norm,
   pointInCircle,
   circlesIntersect,
+  pointInRectangle,
   findLinesTangentToCircleThroughPoint,
   findHeadingBetween,
   findLineHeading,
   isAngleBetween,
   findSmallAngleBetween,
   findInterceptAimingHeading,
+  pointOutsideRectangle,
+  headingFromCardinalDirection,
 };

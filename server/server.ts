@@ -24,6 +24,9 @@ import {
   canRepair,
   removeAtMostCargo,
   isNearOperableEnemyStation,
+  SectorTransition,
+  findSectorTransitions,
+  sectorBounds,
 } from "../src/game";
 import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
@@ -39,7 +42,23 @@ import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
 import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
 import { market } from "./market";
-import { asteroidBounds, clients, idToWebsocket, secondaries, sectorAsteroidResources, sectorList, sectors, targets, uid, warpList } from "./state";
+import {
+  asteroidBounds,
+  clients,
+  idToWebsocket,
+  secondaries,
+  sectorAsteroidResources,
+  sectorFactions,
+  sectorGuardianCount,
+  sectorHasStarbase,
+  sectorInDirection,
+  sectorList,
+  sectors,
+  targets,
+  uid,
+  warpList,
+} from "./state";
+import { CardinalDirection, headingFromCardinalDirection } from "../src/geometry";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -230,8 +249,13 @@ app.get("/init", (req, res) => {
   // Create a bunch of stations
   const stationObjects = sectorList
     .map((sector) => {
-      switch (sector) {
-        case 3:
+      if (!sectorHasStarbase[sector]) {
+        return [];
+      }
+
+      const faction = sectorFactions[sector];
+      switch (faction) {
+        case Faction.Rogue:
           return [
             {
               name: `Scallywag's Bunk`,
@@ -243,7 +267,7 @@ app.get("/init", (req, res) => {
               shipsAvailable: ["Strafer", "Venture"],
             },
           ];
-        case 1:
+        case Faction.Alliance:
           return [
             {
               name: `Starbase ${Math.floor(Math.random() * 200)}`,
@@ -255,7 +279,7 @@ app.get("/init", (req, res) => {
               shipsAvailable: ["Advanced Fighter", "Fighter"],
             },
           ];
-        case 2:
+        case Faction.Confederation:
           return [
             {
               name: `Incubation Center ${Math.floor(Math.random() * 200)}`,
@@ -637,7 +661,6 @@ wss.on("connection", (ws) => {
                 playerState.credits = 500;
               }
               playerState.credits = Math.round(playerState.credits);
-
 
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
@@ -1038,33 +1061,33 @@ const flashServerMessage = (id: number, message: string) => {
 };
 
 // To be changed once sectors are better understood
-const isEnemySector = (team: Faction, sector: number) => {
-  return team + 1 !== sector && sector < 4;
-};
+// const isEnemySector = (team: Faction, sector: number) => {
+//   return team + 1 !== sector && sector < 4;
+// };
 
-const spawnAllyForces = (team: Faction, sector: number, count: number) => {
-  const state = sectors.get(sector);
-  if (!state) {
-    return;
-  }
-  switch (team) {
-    case Faction.Alliance:
-      for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
-      }
-      break;
-    case Faction.Confederation:
-      for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
-      }
-      break;
-    case Faction.Rogue:
-      for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
-      }
-      break;
-  }
-};
+// const spawnAllyForces = (team: Faction, sector: number, count: number) => {
+//   const state = sectors.get(sector);
+//   if (!state) {
+//     return;
+//   }
+//   switch (team) {
+//     case Faction.Alliance:
+//       for (let i = 0; i < count; i++) {
+//         addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
+//       }
+//       break;
+//     case Faction.Confederation:
+//       for (let i = 0; i < count; i++) {
+//         addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
+//       }
+//       break;
+//     case Faction.Rogue:
+//       for (let i = 0; i < count; i++) {
+//         addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
+//       }
+//       break;
+//   }
+// };
 
 const enemyCount = (team: Faction, sector: number) => {
   const state = sectors.get(sector);
@@ -1099,6 +1122,8 @@ let frame = 0;
 // Updating the game state
 setInterval(() => {
   frame++;
+  const sectorTransitions: SectorTransition[] = [];
+
   for (const [sector, state] of sectors) {
     for (const [client, data] of clients) {
       const player = state.players.get(data.id);
@@ -1120,6 +1145,7 @@ setInterval(() => {
       (id, detonated) => removeMine(sector, id, detonated)
     );
     processAllNpcs(state);
+    findSectorTransitions(state, sector, sectorTransitions);
 
     // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for server CPU)
     const playerData: Player[] = [];
@@ -1158,6 +1184,52 @@ setInterval(() => {
     }
   }
 
+  // Handle all sector transitions
+  for (const transition of sectorTransitions) {
+    const newSector = sectorInDirection(transition.from, transition.direction) ?? transition.from;
+
+    if (newSector === transition.from) {
+      if (transition.direction === CardinalDirection.Up) {
+        transition.player.position.y = sectorBounds.y + 200;
+        transition.direction = CardinalDirection.Down;
+      } else if (transition.direction === CardinalDirection.Down) {
+        transition.player.position.y = sectorBounds.y + sectorBounds.height - 200;
+        transition.direction = CardinalDirection.Up;
+      } else if (transition.direction === CardinalDirection.Left) {
+        transition.player.position.x = sectorBounds.x + 200;
+        transition.direction = CardinalDirection.Right;
+      } else if (transition.direction === CardinalDirection.Right) {
+        transition.player.position.x = sectorBounds.x + sectorBounds.width - 200;
+        transition.direction = CardinalDirection.Left;
+      }
+    }
+
+    const state = sectors.get(newSector);
+    if (state) {
+      const ws = idToWebsocket.get(transition.player.id);
+      if (ws) {
+        const client = clients.get(ws)!;
+        client.currentSector = newSector;
+        client.sectorDataSent = false;
+        ws.send(
+          JSON.stringify({
+            type: "warp",
+            payload: {
+              to: newSector,
+              asteroids: Array.from(state.asteroids.values()),
+              collectables: Array.from(state.collectables.values()),
+              mines: Array.from(state.mines.values()),
+            },
+          })
+        );
+        transition.player.position = transition.coords;
+        transition.player.heading = headingFromCardinalDirection(transition.direction);
+        transition.player.speed = 0;
+        state.players.set(transition.player.id, transition.player);
+      }
+    }
+  }
+
   // Handle all warps
   while (warpList.length > 0) {
     const { player, to } = warpList.shift()!;
@@ -1179,13 +1251,13 @@ setInterval(() => {
             },
           })
         );
-        const enemies = enemyCount(player.team, to);
-        const allies = allyCount(player.team, to);
-        const count = enemies - allies;
-        if (count > 3 && isEnemySector(player.team, to)) {
-          spawnAllyForces(player.team, to, count);
-          flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
-        }
+        // const enemies = enemyCount(player.team, to);
+        // const allies = allyCount(player.team, to);
+        // const count = enemies - allies;
+        // if (count > 3 && isEnemySector(player.team, to)) {
+        //   spawnAllyForces(player.team, to, count);
+        //   flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
+        // }
       }
       player.position.x = Math.random() * 400 - 200;
       player.position.y = Math.random() * 400 - 200;
@@ -1201,8 +1273,18 @@ const spawnSectorGuardians = (sector: number) => {
   if (!state) {
     return;
   }
-  let count: number;
-  let allies: number;
+
+  const faction = sectorFactions[sector];
+  if (faction === null) {
+    return;
+  }
+
+  const allies = allyCount(faction, sector);
+  const count = sectorGuardianCount[sector] - allies;
+  if (count <= 0) {
+    return;
+  }
+
   for (const [id, player] of state.players) {
     if (player.npc) {
       continue;
@@ -1214,33 +1296,18 @@ const spawnSectorGuardians = (sector: number) => {
     flashServerMessage(player.id, "Sector guardians are arriving!");
   }
 
-  switch (sector) {
-    case 1:
-      count = enemyCount(Faction.Alliance, sector);
-      allies = allyCount(Faction.Alliance, sector);
-      if (allies < 10) {
-        count = Math.max(10, count);
-      }
+  switch (faction) {
+    case Faction.Alliance:
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
       }
       break;
-    case 2:
-      count = enemyCount(Faction.Confederation, sector);
-      allies = allyCount(Faction.Confederation, sector);
-      if (allies < 10) {
-        count = Math.max(10, count);
-      }
+    case Faction.Confederation:
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
       }
       break;
-    case 3:
-      count = enemyCount(Faction.Rogue, sector);
-      allies = allyCount(Faction.Rogue, sector);
-      if (allies < 10) {
-        count = Math.max(10, count);
-      }
+    case Faction.Rogue:
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
       }
@@ -1249,9 +1316,9 @@ const spawnSectorGuardians = (sector: number) => {
 };
 
 setInterval(() => {
-  spawnSectorGuardians(1);
-  spawnSectorGuardians(2);
-  spawnSectorGuardians(3);
+  for (let i = 0; i < sectorList.length; i++) {
+    spawnSectorGuardians(i);
+  }
 }, 3 * 60 * 1000);
 
 const repairStationsInSectorForTeam = (sector: number, team: Faction) => {

@@ -277,6 +277,32 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.05,
     scanRange: 13000,
   });
+  // Spartan - 9
+  defs.push({
+    name: "Spartan",
+    description: "A durable heavily armed ship",
+    sprite: { x: 256, y: 640, width: 128, height: 128 },
+    health: 1200,
+    speed: 8,
+    energy: 500,
+    energyRegen: 0.4,
+    primaryReloadTime: 8,
+    primaryDamage: 40,
+    radius: 48,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine],
+    cargoCapacity: 400,
+    deathEffect: 2,
+    turnRate: 0.05,
+    acceleration: 0.1,
+    healthRegen: 0.1,
+    price: 5000,
+    warpTime: 150,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 4,
+    sideThrustAcceleration: 0.1,
+    scanRange: 13000,
+  });
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];

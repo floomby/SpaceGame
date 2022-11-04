@@ -1,6 +1,6 @@
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
-import { GlobalState, Player } from "./game";
+import { GlobalState, Player, SectorInfo } from "./game";
 import { KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
 
 let faction: Faction = Faction.Alliance;
@@ -98,6 +98,8 @@ const clearInventory = () => {
   inventory = {};
 };
 
+let sectorData = new Map<number, SectorInfo>();
+
 export {
   faction,
   setFaction,
@@ -128,4 +130,5 @@ export {
   getVolumePref,
   inventory,
   clearInventory,
+  sectorData,
 };

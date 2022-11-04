@@ -76,7 +76,7 @@ const playSound = (index: number) => {
   source.start(0);
 };
 
-const play3dSound = (index: number, x: number, y: number, gain = 1.0, important = false) => {
+const play3dSound = (index: number, x: number, y: number, gain = 0.8, important = false) => {
   if (!ctx || index < 0 || index >= soundBuffers.length) {
     console.log(ctx ? `Invalid sound index ${index}` : "Sound not initialized");
     return undefined;
@@ -89,6 +89,7 @@ const play3dSound = (index: number, x: number, y: number, gain = 1.0, important 
   const source = ctx.createBufferSource();
   source.buffer = soundBuffers[index];
   const panner = ctx.createPanner();
+  panner.distanceModel = "exponential";
 
   panner.positionX.value = x;
   panner.positionY.value = y;
@@ -112,6 +113,6 @@ const getSound = (name: string) => {
   return ret;
 };
 
-const soundScale = 800;
+const soundScale = 100;
 
 export { initSound, playSound, play3dSound, soundScale, setVolume, getVolume, soundMap, getSound };

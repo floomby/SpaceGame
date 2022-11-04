@@ -1,40 +1,60 @@
 import { horizontalCenter, pop } from "../dialog";
-import { currentSector, ownId } from "../globals";
+import { currentSector, ownId, sectorData } from "../globals";
 import { sendWarp } from "../net";
-import { domFromRest } from "../rest";
+import { mapSize } from "../game";
 
-const mapPostRest = () => {
-  const sectorList = document.getElementById("sectorList") as HTMLUListElement;
-  if (sectorList) {
-    for (let i = 0; i < sectorList.children.length; i++) {
-      const button = sectorList.children[i].children[0] as HTMLButtonElement;
-      button.addEventListener("click", () => {
-        const sectorToWarpTo = button.id.split("-")[1];
-        console.log(`Warping to ${sectorToWarpTo}`);
-        sendWarp(ownId, parseInt(sectorToWarpTo));
-        pop();
-      });
+const populateSectorInfo = (sector: number) => {
+  const sectorInfo = document.getElementById("sectorInfo") as HTMLDivElement;
+  if (sectorInfo) {
+    const sectorX = sector % mapSize;
+    const sectorY = Math.floor(sector / mapSize);
+    if (sectorData.has(sector)) {
+      const data = sectorData.get(sector);
+      if (data) {
+        sectorInfo.innerHTML = `<h3>Sector Information</h3>Name: Sector ${sectorX}-${sectorY}<br/>Resources: <ul>${data.resources
+          .map((resource) => `<li>${resource}</li>`)
+          .join("")}</ul><button id="warp-${sector}">Warp</button>`;
+      }
+    } else {
+      sectorInfo.innerHTML = `<h3>Sector Information</h3>Name: Sector ${sectorX}-${sectorY}<br/>Unknown<br/><button id="warp-${sector}">Warp</button>`;
     }
   }
+  const warpButton = document.getElementById(`warp-${sector}`) as HTMLButtonElement;
+  if (warpButton) {
+    warpButton.addEventListener("click", () => {
+      sendWarp(ownId, sector);
+      pop();
+    });
+  }
+};
+
+const mapHtml =
+  '<div class="grid">' +
+  new Array(mapSize * mapSize)
+    .fill(0)
+    .map((_, i) => {
+      const x = i % mapSize;
+      const y = Math.floor(i / mapSize);
+      return `<div class="square" id="sector-${i}">${x}-${y}</div>`;
+    })
+    .join("") +
+  "</div>";
+
+const sectorNumberToXY = (sector: number) => {
+  const x = sector % mapSize;
+  const y = Math.floor(sector / mapSize);
+  return `${x}-${y}`;
 };
 
 const mapDialog = () => {
   return horizontalCenter([
     `<h1>Map</h1>`,
-    `<h3>Current Sector: ${currentSector}</h3>`,
-    domFromRest(
-      "sectorList",
-      (list) => {
-        let html = `<ul id="sectorList">`;
-        for (const sector of list) {
-          html += `<li><button id="sector-${sector}" ${parseInt(sector) === currentSector ? "disabled" : ""}>Warp to ${sector}</button></li>`;
-        }
-        html += `</ul>`;
-        return html;
-      },
-      mapPostRest,
-      true
-    ),
+    `<h3>Current Sector: ${sectorNumberToXY(currentSector)}</h3>`,
+    `<div style="display: flex; flex-direction: row;">
+  <div style="height: 50vh;">${mapHtml}</div>
+  <div style="width: 4vw;"></div>
+  <div id="sectorInfo" style="width: 30vw; text-align: left;"></div>
+</div>`,
     `<br/><button id="closeMap">Close</button>`,
   ]);
 };
@@ -43,6 +63,12 @@ const setupMapDialog = () => {
   document.getElementById("closeMap")?.addEventListener("click", () => {
     pop();
   });
+  for (let i = 0; i < mapSize * mapSize; i++) {
+    document.getElementById(`sector-${i}`)?.addEventListener("click", () => {
+      console.log(`Clicked on sector ${i}`);
+      populateSectorInfo(i);
+    });
+  }
 };
 
 export { mapDialog, setupMapDialog };

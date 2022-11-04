@@ -24,6 +24,10 @@ import {
   canRepair,
   removeAtMostCargo,
   isNearOperableEnemyStation,
+  SectorTransition,
+  findSectorTransitions,
+  sectorBounds,
+  SectorInfo,
 } from "../src/game";
 import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
@@ -39,7 +43,23 @@ import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
 import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
 import { market } from "./market";
-import { asteroidBounds, clients, idToWebsocket, secondaries, sectorAsteroidResources, sectorList, sectors, targets, uid, warpList } from "./state";
+import {
+  asteroidBounds,
+  clients,
+  idToWebsocket,
+  secondaries,
+  sectorAsteroidResources,
+  sectorFactions,
+  sectorGuardianCount,
+  sectorHasStarbase,
+  sectorInDirection,
+  sectorList,
+  sectors,
+  targets,
+  uid,
+  warpList,
+} from "./state";
+import { CardinalDirection, headingFromCardinalDirection } from "../src/geometry";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -106,9 +126,10 @@ app.get("/available", (req, res) => {
   });
 });
 
-app.get("/sectorList", (req, res) => {
-  res.send(JSON.stringify({ value: sectorList }));
-});
+// Unused now
+// app.get("/sectorList", (req, res) => {
+//   res.send(JSON.stringify({ value: sectorList }));
+// });
 
 app.get("/nameOf", (req, res) => {
   const id = req.query.id;
@@ -230,8 +251,13 @@ app.get("/init", (req, res) => {
   // Create a bunch of stations
   const stationObjects = sectorList
     .map((sector) => {
-      switch (sector) {
-        case 3:
+      if (!sectorHasStarbase[sector]) {
+        return [];
+      }
+
+      const faction = sectorFactions[sector];
+      switch (faction) {
+        case Faction.Rogue:
           return [
             {
               name: `Scallywag's Bunk`,
@@ -243,7 +269,7 @@ app.get("/init", (req, res) => {
               shipsAvailable: ["Strafer", "Venture"],
             },
           ];
-        case 1:
+        case Faction.Alliance:
           return [
             {
               name: `Starbase ${Math.floor(Math.random() * 200)}`,
@@ -255,7 +281,7 @@ app.get("/init", (req, res) => {
               shipsAvailable: ["Advanced Fighter", "Fighter"],
             },
           ];
-        case 2:
+        case Faction.Confederation:
           return [
             {
               name: `Incubation Center ${Math.floor(Math.random() * 200)}`,
@@ -490,7 +516,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     return;
   }
 
-  const sector = faction === Faction.Alliance ? 1 : 2;
+  const sector = faction === Faction.Alliance ? 12 : 15;
 
   clients.set(ws, {
     id: id,
@@ -501,6 +527,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     lastMessage: "",
     lastMessageTime: Date.now(),
     sectorDataSent: false,
+    sectorsVisited: new Set([sector]),
   });
 
   const player = {
@@ -543,6 +570,12 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
       return;
     }
 
+    const sectorInfos: SectorInfo[] = [];
+    sectorInfos.push({
+      sector: sector,
+      resources: sectorAsteroidResources[sector].map(value => value.resource),
+    });
+
     ws.send(
       JSON.stringify({
         type: "init",
@@ -553,6 +586,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
           asteroids: Array.from(state.asteroids.values()),
           collectables: Array.from(state.collectables.values()),
           mines: Array.from(state.mines.values()),
+          sectorInfos,
         },
       })
     );
@@ -562,12 +596,18 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   });
 };
 
-const saveCheckpoint = (id: number, sector: number, data: string) => {
+const saveCheckpoint = (id: number, sector: number, data: string, sectorsVisited: Set<number>) => {
   Checkpoint.findOneAndUpdate({ id }, { id, sector, data }, { upsert: true }, (err) => {
     if (err) {
       console.log("Error saving checkpoint: " + err);
       return;
     }
+    User.findOneAndUpdate({ id }, { id, sectorsVisited: Array.from(sectorsVisited) }, { upsert: false }, (err) => {
+      if (err) {
+        console.log("Error saving user: " + err);
+        return;
+      }
+    });
   });
 };
 
@@ -602,6 +642,20 @@ wss.on("connection", (ws) => {
           }
 
           idToWebsocket.set(user.id, ws);
+
+          const sectorInfos: SectorInfo[] = [];
+          if (!user.sectorsVisited) {
+            user.sectorsVisited = [user.currentSector];
+            user.save();
+          }
+          const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
+          for (const sector of sectorsVisited) {
+            sectorInfos.push({
+              sector,
+              resources: sectorAsteroidResources[sector].map(value => value.resource),
+            });
+          }
+
           Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
             if (err) {
               ws.send(JSON.stringify({ type: "loginFail", payload: { error: "Database error" } }));
@@ -638,7 +692,6 @@ wss.on("connection", (ws) => {
               }
               playerState.credits = Math.round(playerState.credits);
 
-
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
               clients.set(ws, {
@@ -650,6 +703,7 @@ wss.on("connection", (ws) => {
                 lastMessage: "",
                 lastMessageTime: Date.now(),
                 sectorDataSent: false,
+                sectorsVisited,
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
@@ -663,6 +717,7 @@ wss.on("connection", (ws) => {
                     asteroids: Array.from(state.asteroids.values()),
                     collectables: Array.from(state.collectables.values()),
                     mines: Array.from(state.mines.values()),
+                    sectorInfos,
                   },
                 })
               );
@@ -747,7 +802,7 @@ wss.on("connection", (ws) => {
               const playerCopy = copyPlayer(player);
               const checkpointData = JSON.stringify(playerCopy);
 
-              saveCheckpoint(client.id, client.currentSector, checkpointData);
+              saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
             }
           }
         }
@@ -763,7 +818,7 @@ wss.on("connection", (ws) => {
             state.players.set(client.id, player);
             const checkpointData = JSON.stringify(player);
 
-            saveCheckpoint(client.id, client.currentSector, checkpointData);
+            saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
           }
         }
       } else if (data.type === "repair") {
@@ -826,6 +881,7 @@ wss.on("connection", (ws) => {
                   asteroids: Array.from(state.asteroids.values()),
                   collectables: Array.from(state.collectables.values()),
                   mines: Array.from(state.mines.values()),
+                  sectorInfos: [],
                 },
               })
             );
@@ -945,6 +1001,10 @@ wss.on("connection", (ws) => {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
           if (client.currentSector !== data.payload.warpTo && sectorList.includes(data.payload.warpTo)) {
+            if (!client.sectorsVisited.has(data.payload.warpTo)) {
+              flashServerMessage(client.id, "You must visit a sector before you can warp to it");
+              return;
+            }
             const state = sectors.get(client.currentSector)!;
             const player = state.players.get(client.id);
             if (player) {
@@ -977,8 +1037,16 @@ wss.on("connection", (ws) => {
       secondaries.delete(removedClient.id);
       clients.delete(ws);
       idToWebsocket.delete(removedClient.id);
-      if (player?.docked) {
-        saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player));
+      if (player) {
+        if (player.docked) {
+          saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
+        } else {
+          User.findOneAndUpdate({ id: removedClient.id }, { currentSector: removedClient.currentSector, sectorsVisited: Array.from(removedClient.sectorsVisited) }, (err) => {
+            if (err) {
+              console.log("Error saving user: " + err);
+            }
+          });
+        }
       } else if (!player) {
         console.log("Warning: player not found on disconnect");
       }
@@ -1038,33 +1106,33 @@ const flashServerMessage = (id: number, message: string) => {
 };
 
 // To be changed once sectors are better understood
-const isEnemySector = (team: Faction, sector: number) => {
-  return team + 1 !== sector && sector < 4;
-};
+// const isEnemySector = (team: Faction, sector: number) => {
+//   return team + 1 !== sector && sector < 4;
+// };
 
-const spawnAllyForces = (team: Faction, sector: number, count: number) => {
-  const state = sectors.get(sector);
-  if (!state) {
-    return;
-  }
-  switch (team) {
-    case Faction.Alliance:
-      for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
-      }
-      break;
-    case Faction.Confederation:
-      for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
-      }
-      break;
-    case Faction.Rogue:
-      for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
-      }
-      break;
-  }
-};
+// const spawnAllyForces = (team: Faction, sector: number, count: number) => {
+//   const state = sectors.get(sector);
+//   if (!state) {
+//     return;
+//   }
+//   switch (team) {
+//     case Faction.Alliance:
+//       for (let i = 0; i < count; i++) {
+//         addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
+//       }
+//       break;
+//     case Faction.Confederation:
+//       for (let i = 0; i < count; i++) {
+//         addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
+//       }
+//       break;
+//     case Faction.Rogue:
+//       for (let i = 0; i < count; i++) {
+//         addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
+//       }
+//       break;
+//   }
+// };
 
 const enemyCount = (team: Faction, sector: number) => {
   const state = sectors.get(sector);
@@ -1099,6 +1167,8 @@ let frame = 0;
 // Updating the game state
 setInterval(() => {
   frame++;
+  const sectorTransitions: SectorTransition[] = [];
+
   for (const [sector, state] of sectors) {
     for (const [client, data] of clients) {
       const player = state.players.get(data.id);
@@ -1120,6 +1190,7 @@ setInterval(() => {
       (id, detonated) => removeMine(sector, id, detonated)
     );
     processAllNpcs(state);
+    findSectorTransitions(state, sector, sectorTransitions);
 
     // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for server CPU)
     const playerData: Player[] = [];
@@ -1158,6 +1229,56 @@ setInterval(() => {
     }
   }
 
+  // Handle all sector transitions
+  for (const transition of sectorTransitions) {
+    const newSector = sectorInDirection(transition.from, transition.direction) ?? transition.from;
+
+    if (newSector === transition.from) {
+      if (transition.direction === CardinalDirection.Up) {
+        transition.player.position.y = sectorBounds.y + 200;
+        transition.direction = CardinalDirection.Down;
+      } else if (transition.direction === CardinalDirection.Down) {
+        transition.player.position.y = sectorBounds.y + sectorBounds.height - 200;
+        transition.direction = CardinalDirection.Up;
+      } else if (transition.direction === CardinalDirection.Left) {
+        transition.player.position.x = sectorBounds.x + 200;
+        transition.direction = CardinalDirection.Right;
+      } else if (transition.direction === CardinalDirection.Right) {
+        transition.player.position.x = sectorBounds.x + sectorBounds.width - 200;
+        transition.direction = CardinalDirection.Left;
+      }
+    }
+
+    
+    const state = sectors.get(newSector);
+    if (state) {
+      const ws = idToWebsocket.get(transition.player.id);
+      if (ws) {
+        const client = clients.get(ws)!;
+        client.currentSector = newSector;
+        client.sectorDataSent = false;
+        client.sectorsVisited.add(newSector);
+        const sectorInfo = { sector: newSector, resources: sectorAsteroidResources[newSector].map((value) => value.resource) };
+        ws.send(
+          JSON.stringify({
+            type: "warp",
+            payload: {
+              to: newSector,
+              asteroids: Array.from(state.asteroids.values()),
+              collectables: Array.from(state.collectables.values()),
+              mines: Array.from(state.mines.values()),
+              sectorInfos: [sectorInfo],
+            },
+          })
+        );
+        transition.player.position = transition.coords;
+        transition.player.heading = headingFromCardinalDirection(transition.direction);
+        transition.player.speed = 0;
+        state.players.set(transition.player.id, transition.player);
+      }
+    }
+  }
+
   // Handle all warps
   while (warpList.length > 0) {
     const { player, to } = warpList.shift()!;
@@ -1176,16 +1297,17 @@ setInterval(() => {
               asteroids: Array.from(state.asteroids.values()),
               collectables: Array.from(state.collectables.values()),
               mines: Array.from(state.mines.values()),
+              sectorInfos: [],
             },
           })
         );
-        const enemies = enemyCount(player.team, to);
-        const allies = allyCount(player.team, to);
-        const count = enemies - allies;
-        if (count > 3 && isEnemySector(player.team, to)) {
-          spawnAllyForces(player.team, to, count);
-          flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
-        }
+        // const enemies = enemyCount(player.team, to);
+        // const allies = allyCount(player.team, to);
+        // const count = enemies - allies;
+        // if (count > 3 && isEnemySector(player.team, to)) {
+        //   spawnAllyForces(player.team, to, count);
+        //   flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
+        // }
       }
       player.position.x = Math.random() * 400 - 200;
       player.position.y = Math.random() * 400 - 200;
@@ -1201,8 +1323,18 @@ const spawnSectorGuardians = (sector: number) => {
   if (!state) {
     return;
   }
-  let count: number;
-  let allies: number;
+
+  const faction = sectorFactions[sector];
+  if (faction === null) {
+    return;
+  }
+
+  const allies = allyCount(faction, sector);
+  const count = sectorGuardianCount[sector] - allies;
+  if (count <= 0) {
+    return;
+  }
+
   for (const [id, player] of state.players) {
     if (player.npc) {
       continue;
@@ -1214,33 +1346,18 @@ const spawnSectorGuardians = (sector: number) => {
     flashServerMessage(player.id, "Sector guardians are arriving!");
   }
 
-  switch (sector) {
-    case 1:
-      count = enemyCount(Faction.Alliance, sector);
-      allies = allyCount(Faction.Alliance, sector);
-      if (allies < 10) {
-        count = Math.max(10, count);
-      }
+  switch (faction) {
+    case Faction.Alliance:
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
       }
       break;
-    case 2:
-      count = enemyCount(Faction.Confederation, sector);
-      allies = allyCount(Faction.Confederation, sector);
-      if (allies < 10) {
-        count = Math.max(10, count);
-      }
+    case Faction.Confederation:
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
       }
       break;
-    case 3:
-      count = enemyCount(Faction.Rogue, sector);
-      allies = allyCount(Faction.Rogue, sector);
-      if (allies < 10) {
-        count = Math.max(10, count);
-      }
+    case Faction.Rogue:
       for (let i = 0; i < count; i++) {
         addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
       }
@@ -1249,9 +1366,9 @@ const spawnSectorGuardians = (sector: number) => {
 };
 
 setInterval(() => {
-  spawnSectorGuardians(1);
-  spawnSectorGuardians(2);
-  spawnSectorGuardians(3);
+  for (let i = 0; i < sectorList.length; i++) {
+    spawnSectorGuardians(i);
+  }
 }, 3 * 60 * 1000);
 
 const repairStationsInSectorForTeam = (sector: number, team: Faction) => {

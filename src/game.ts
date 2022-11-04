@@ -32,6 +32,8 @@ import {
   findLineHeading,
   findSmallAngleBetween,
   isAngleBetween,
+  CardinalDirection,
+  pointOutsideRectangle,
 } from "./geometry";
 import { NPC, processLootTable } from "./npc";
 import { seek } from "./pathing";
@@ -793,6 +795,40 @@ const processAllNpcs = (state: GlobalState) => {
   }
 };
 
+type SectorTransition = {
+  direction: CardinalDirection;
+  from: number;
+  coords: Position;
+  player: Player;
+};
+
+const findSectorTransitions = (state: GlobalState, sector: number, transitions: SectorTransition[]) => {
+  for (const player of state.players.values()) {
+    const direction = pointOutsideRectangle(player.position, sectorBounds);
+    if (direction !== null) {
+      const transition = {
+        direction,
+        from: sector,
+        coords: player.position,
+        player,
+      };
+      if (direction === CardinalDirection.Up) {
+        transition.coords.y = sectorBounds.y + sectorBounds.height - 200;
+      } else if (direction === CardinalDirection.Down) {
+        transition.coords.y = sectorBounds.y + 200;
+      } else if (direction === CardinalDirection.Left) {
+        transition.coords.x = sectorBounds.x + sectorBounds.width - 200;
+      } else if (direction === CardinalDirection.Right) {
+        transition.coords.x = sectorBounds.x + 200;
+      }
+
+      transitions.push(transition);
+      player.warping = 0;
+      state.players.delete(player.id);
+    }
+  }
+};
+
 type Input = {
   up: boolean;
   down: boolean;
@@ -1135,6 +1171,14 @@ const ticksPerSecond = 60;
 // Infinity is not serializable with JSON.stringify...
 const effectiveInfinity = 1000000000;
 
+const mapSize = 4;
+const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20000 };
+
+type SectorInfo = {
+  sector: number;
+  resources: string[];
+};
+
 export {
   GlobalState,
   Input,
@@ -1151,10 +1195,13 @@ export {
   ChatMessage,
   Collectable,
   Mutated,
+  SectorTransition,
+  SectorInfo,
   Entity,
   update,
   applyInputs,
   processAllNpcs,
+  findSectorTransitions,
   canDock,
   canRepair,
   setCanDockOrRepair,
@@ -1185,4 +1232,6 @@ export {
   effectiveInfinity,
   serverMessagePersistTime,
   clientMineDeploymentUpdater,
+  sectorBounds,
+  mapSize,
 };

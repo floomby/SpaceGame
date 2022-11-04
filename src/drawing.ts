@@ -12,8 +12,9 @@ import {
   Missile,
   Player,
   TargetKind,
+  sectorBounds,
 } from "./game";
-import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm } from "./geometry";
+import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection } from "./geometry";
 import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, teamColorsOpaque } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
@@ -734,24 +735,20 @@ const displayDockedMessages = () => {
 
   // No messages to display
   if (filteredMessages.length === 0 && lastDockedMessage) {
-    console.log("No messages to display");
     dockedMessage.classList.remove("fadeIn");
     dockedMessage.classList.add("fadeOut");
     lastDockedMessage = undefined;
     return;
   }
   const messageToDisplay = filteredMessages[filteredMessages.length - 1];
-  // console.log("displayDockedMessages", messageToDisplay);
 
   if (filteredMessages.length && (!lastDockedMessage || lastDockedMessage !== messageToDisplay)) {
     dockedMessageText.innerText = messageToDisplay.what;
     if (!lastDockedMessage) {
       // New message to show
-      console.log("New message to show", messageToDisplay);
       dockedMessage.classList.add("fadeIn");
       dockedMessage.style.display = "block";
     } else {
-      console.log("New message to show, we showing something already", messageToDisplay);
       // New message to show, but we're already showing a message
       dockedMessageText.classList.add("notifyChanged");
       if (dockingTextNotificationTimeout) {
@@ -897,6 +894,157 @@ const drawFadingMines = (self: Player) => {
   }
 };
 
+let closestEdgeDistance = 0;
+
+const drawSectorBounds = (self: Player) => {
+  let closestEdgeDirection: CardinalDirection | null = null;
+
+  const distanceToLeft = self.position.x - sectorBounds.x;
+  const distanceToRight = sectorBounds.x + sectorBounds.width - self.position.x;
+  const distanceToTop = self.position.y - sectorBounds.y;
+  const distanceToBottom = sectorBounds.y + sectorBounds.height - self.position.y;
+  
+  const distances = [distanceToLeft, distanceToRight, distanceToTop, distanceToBottom];
+  closestEdgeDistance = Math.min(...distances);
+  if (closestEdgeDistance === distanceToLeft) {
+    closestEdgeDirection = CardinalDirection.Left;
+  } else if (closestEdgeDistance === distanceToRight) {
+    closestEdgeDirection = CardinalDirection.Right;
+  } else if (closestEdgeDistance === distanceToTop) {
+    closestEdgeDirection = CardinalDirection.Up;
+  } else if (closestEdgeDistance === distanceToBottom) {
+    closestEdgeDirection = CardinalDirection.Down;
+  }
+
+  if (distanceToBottom <= canvas.height / 2) {
+    ctx.save();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = "green";
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2 + distanceToBottom);
+    ctx.lineTo(canvas.width, canvas.height / 2 + distanceToBottom);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.restore();
+  }
+  if (distanceToTop <= canvas.height / 2) {
+    ctx.save();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = "green";
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2 - distanceToTop);
+    ctx.lineTo(canvas.width, canvas.height / 2 - distanceToTop);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.restore();
+  }
+  if (distanceToLeft <= canvas.width / 2) {
+    ctx.save();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = "green";
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2 - distanceToLeft, 0);
+    ctx.lineTo(canvas.width / 2 - distanceToLeft, canvas.height);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.restore();
+  }
+  if (distanceToRight <= canvas.width / 2) {
+    ctx.save();
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = "green";
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2 + distanceToRight, 0);
+    ctx.lineTo(canvas.width / 2 + distanceToRight, canvas.height);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.restore();
+  }
+
+  return closestEdgeDirection;
+};
+
+const drawEdgeArrow = (closestEdgeDirection: CardinalDirection) => {
+  switch (closestEdgeDirection) {
+    case CardinalDirection.Up:
+      if (closestEdgeDistance < canvas.height / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(canvas.width / 2, 0);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(0, 10);
+      ctx.lineTo(8, 38);
+      ctx.lineTo(-8, 38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, 0, 60);
+      ctx.restore();
+      break;
+    case CardinalDirection.Down:
+      if (closestEdgeDistance < canvas.height / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(8, -38);
+      ctx.lineTo(-8, -38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, 0, -40);
+      ctx.restore();
+      break;
+    case CardinalDirection.Left:
+      if (closestEdgeDistance < canvas.width / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(0, canvas.height / 2);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(10, 0);
+      ctx.lineTo(38, 8);
+      ctx.lineTo(38, -8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, 50, 0);
+      ctx.restore();
+      break;
+    case CardinalDirection.Right:
+      if (closestEdgeDistance < canvas.width / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(canvas.width, canvas.height / 2);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(-10, 0);
+      ctx.lineTo(-38, 8);
+      ctx.lineTo(-38, -8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, -50, 0);
+      ctx.restore();
+      break;
+  }
+};
+
 type ArrowData = {
   kind: TargetKind;
   position: Position;
@@ -939,8 +1087,12 @@ const drawEverything = (
       }
       return;
     }
+
+    let closestEdgeDirection: CardinalDirection | null = null;
+
     if (lastSelf) {
       drawStars(lastSelf);
+      closestEdgeDirection = drawSectorBounds(lastSelf);
     }
 
     const arrows: ArrowData[] = [];
@@ -1046,6 +1198,9 @@ const drawEverything = (
         } else {
           drawArrow(self, arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
         }
+      }
+      if (closestEdgeDistance < 3000) {
+        drawEdgeArrow(closestEdgeDirection);
       }
       drawMessages();
     } else if (self) {

@@ -47,6 +47,9 @@ const userSchema = new Schema({
       message: (props) => `${props.value} is not a valid ship`,
     },
   },
+  sectorsVisited: {
+    type: [Number],
+  },
 });
 
 const User = mongoose.model("User", userSchema);

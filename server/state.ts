@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind } from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize } from "../src/game";
 import { WebSocket } from "ws";
 import { Faction, initDefs } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
@@ -14,8 +14,6 @@ const uid = () => {
   }
   return ret;
 };
-
-const mapSize = 4;
 
 // This data will ultimately be stored in the database
 // TODO Make the sector list have names like 1-1, 1-2, 2-1, 2-2, etc.

@@ -1170,6 +1170,7 @@ const ticksPerSecond = 60;
 // Infinity is not serializable with JSON.stringify...
 const effectiveInfinity = 1000000000;
 
+const mapSize = 4;
 const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20000 };
 
 export {
@@ -1225,4 +1226,5 @@ export {
   serverMessagePersistTime,
   clientMineDeploymentUpdater,
   sectorBounds,
+  mapSize,
 };

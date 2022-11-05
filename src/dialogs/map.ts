@@ -35,7 +35,7 @@ const mapHtml =
     .map((_, i) => {
       const x = i % mapSize;
       const y = Math.floor(i / mapSize);
-      return `<div class="square" id="sector-${i}">${x}-${y}</div>`;
+      return `<div class="square unselectable" id="sector-${i}">${x}-${y}</div>`;
     })
     .join("") +
   "</div>";

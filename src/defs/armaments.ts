@@ -16,6 +16,7 @@ import { l2NormSquared, Position, Rectangle } from "../geometry";
 import { SlotKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
+import { projectileDefs } from "./projectiles";
 
 enum ArmUsage {
   Empty,
@@ -166,7 +167,7 @@ const initArmaments = () => {
         }
       }
     },
-    cost: 50,
+    cost: 0,
   });
   // Laser Beam - 6
   armDefs.push({
@@ -543,7 +544,8 @@ const initArmaments = () => {
             team: player.team,
             id: player.projectileId,
             parent: player.id,
-            frameTillEXpire: projectileDef.framesTillExpire,
+            frameTillEXpire: projectileDef.framesToExpire,
+            idx: 1,
           };
           const projectiles = state.projectiles.get(player.id) || [];
           projectiles.push(projectile);
@@ -551,7 +553,7 @@ const initArmaments = () => {
           player.projectileId++;
           player.sinceLastShot[i] = 0;
         }
-        applyEffect({ effectIndex: 13, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
       }
     },
     equipMutator: (player, slotIndex) => {
@@ -561,7 +563,7 @@ const initArmaments = () => {
       const slotData = player.slotData[slotIndex];
       slotData.sinceFired++;
     },
-    cost: 1000,
+    cost: 100,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

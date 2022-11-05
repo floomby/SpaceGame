@@ -7,7 +7,7 @@ type ProjectileDef = {
   framesToExpire?: number;
   energy: number;
   radius: number;
-  fireEffect?: number;
+  fireEffect: number;
   endEffect?: number;
   endMutator?: (ballistic: Ballistic, state: GlobalState) => void;
   hitEffect?: number;
@@ -36,9 +36,9 @@ const initProjectileDefs = () => {
     range: 600,
     energy: 5,
     radius: 3,
-    fireEffect: 8,
-    endEffect: 8,
-    hitEffect: 8,
+    fireEffect: 13,
+    endEffect: 14,
+    hitEffect: 14,
     hitMutator(ballistic, state) {
       ballistic.radius = 50;
       const players = findAllPlayersOverlappingCircle(ballistic, state.players.values());

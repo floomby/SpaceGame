@@ -38,6 +38,7 @@ const controlsText = (bindings: KeyBindings) => {
       <tr><td style="padding-right: 3vw;">${keys.right}</td><td>Strafe right</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.chat}</td><td>Chat</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.map}</td><td>Map</td></tr>
+      <tr><td style="padding-right: 3vw;">${keys.cargo}</td><td>Cargo</td></tr>
     </table>
   </div>
   <div style="width: 45%; float: right;">

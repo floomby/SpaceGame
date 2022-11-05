@@ -135,4 +135,4 @@ const initCargo = () => {
   bindDumpCargoUpdaters();
 };
 
-export { initCargo };
+export { initCargo, dumpCargoDialog, setupDumpCargoDialog };

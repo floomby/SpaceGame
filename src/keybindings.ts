@@ -26,6 +26,7 @@ type KeyBindings = {
   selectSecondary9: string;
   chat: string;
   map: string;
+  cargo: string;
   // warp: string;
   quickTargetClosestEnemy: string;
 };
@@ -54,6 +55,7 @@ const qwertyBindings: KeyBindings = {
   selectSecondary9: "9",
   chat: "Enter",
   map: "m",
+  cargo: "q",
   // warp: "w",
   quickTargetClosestEnemy: "e",
 };
@@ -81,6 +83,7 @@ const dvorakBindings: KeyBindings = {
   selectSecondary9: "9",
   chat: "Enter",
   map: "m",
+  cargo: "'",
   // warp: ",",
   quickTargetClosestEnemy: ".",
 };

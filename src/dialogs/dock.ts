@@ -328,7 +328,7 @@ const setupShipShop = (station: Player) => {
       }
     }
   };
-  getRestRaw(`/shipsAvailable?id=${station.id}`, callback, false);
+  getRestRaw(`/shipsAvailable?id=${station.id}`, callback, true);
   document.getElementById("back")?.addEventListener("click", () => {
     pop();
   });

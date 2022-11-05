@@ -18,6 +18,7 @@ import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, C
 import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, teamColorsOpaque } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
+import { drawProjectile } from "./projectileDrawing";
 import { getNameOfPlayer } from "./rest";
 
 let canvas: HTMLCanvasElement;
@@ -496,31 +497,6 @@ const drawMissile = (missile: Missile, self: Player) => {
   ctx.rotate(missile.heading);
   const sprite = missileSprites[missile.defIndex];
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
-  ctx.restore();
-};
-
-const drawProjectile = (projectile: Ballistic, self: Player) => {
-  ctx.save();
-  ctx.translate(projectile.position.x - self.position.x + canvas.width / 2, projectile.position.y - self.position.y + canvas.height / 2);
-  ctx.beginPath();
-  ctx.arc(0, 0, projectile.radius, 0, 2 * Math.PI);
-  ctx.fillStyle = "white";
-  ctx.closePath();
-  ctx.fill();
-
-  // draw a tail
-  const tailLength = 20;
-  const tailEnd = { x: -Math.cos(projectile.heading) * tailLength, y: -Math.sin(projectile.heading) * tailLength };
-  const gradient = ctx.createLinearGradient(0, 0, tailEnd.x, tailEnd.y);
-  gradient.addColorStop(0, "#FFFFFFFF");
-  gradient.addColorStop(1, "#FFFFFF00");
-  ctx.strokeStyle = gradient;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(tailEnd.x, tailEnd.y);
-  ctx.closePath();
-  ctx.stroke();
-
   ctx.restore();
 };
 

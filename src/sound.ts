@@ -93,7 +93,7 @@ const play3dSound = (index: number, x: number, y: number, gain = 0.8, important 
 
   panner.positionX.value = x;
   panner.positionY.value = y;
-  panner.positionZ.value = 1;
+  panner.positionZ.value = 10;
 
   const gainNode = ctx.createGain();
   gainNode.gain.value = gain;

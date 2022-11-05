@@ -3,6 +3,7 @@
 import { ArmamentDef, armDefMap, armDefs, ArmUsage, initArmaments, maxMissileLifetime, mineDefs, missileDefs, TargetedKind } from "./defs/armaments";
 import { AsteroidDef, asteroidDefMap, asteroidDefs, initAsteroids } from "./defs/asteroids";
 import { collectableDefMap, collectableDefs, createCollectableFromDef, initCollectables } from "./defs/collectables";
+import { initProjectileDefs } from "./defs/projectiles";
 import {
   defMap,
   defs,
@@ -48,6 +49,7 @@ const initDefs = () => {
   initArmaments();
   initAsteroids();
   initCollectables();
+  initProjectileDefs();
 };
 
 export {

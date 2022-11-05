@@ -17,7 +17,6 @@ const rogueColor = "rgba(255, 153, 0, 0.341)";
 const rogueColorDark = "rgba(255, 153, 0, 0.8)";
 const rogueColorOpaque = "darkorange";
 
-
 const teamColorsLight = [allianceColor, confederationColor, rogueColor];
 const teamColorsDark = [allianceColorDark, confederationColorDark, rogueColorDark];
 const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque, rogueColorOpaque];

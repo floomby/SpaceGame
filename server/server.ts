@@ -1384,9 +1384,13 @@ const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
 };
 
 setInterval(() => {
-  repairStationsInSectorForTeam(1, Faction.Alliance);
-  repairStationsInSectorForTeam(2, Faction.Confederation);
-  repairStationsInSectorForTeam(3, Faction.Rogue);
+  for(const sector of sectorList) {
+    const faction = sectorFactions[sector];
+    if (faction === null) {
+      continue;
+    }
+    repairStationsInSectorForTeam(sector, faction);
+  }
 }, 2 * 60 * 1000);
 
 const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {

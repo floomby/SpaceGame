@@ -34,7 +34,8 @@ const initProjectileDefs = () => {
     drawIndex: 1,
     speed: 8,
     range: 600,
-    energy: 5,
+    // This energy cost is a redundant field if the weapon is not a primary weapon
+    energy: 7.5,
     radius: 3,
     fireEffect: 13,
     endEffect: 14,

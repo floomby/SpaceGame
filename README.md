@@ -20,6 +20,8 @@ A simple multiplayer game where you have a ship and do things.
 
 ### Next steps
 
+- Allow ships and weapons in inventory
+- Discovering recipes
 - NPC behavior state graph factory for making behaviors and transitions between behaviors easier to handle
 - Armament purchase options for stations
 - Manufacturing UI is pretty horrible to use

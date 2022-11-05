@@ -16,6 +16,8 @@ const sounds = [
   "dullPew0.wav",
   "disabled0.wav",
   "mineDrop0.wav",
+  "squishyPew1.wav",
+  "wigglyThud0.wav",
 ];
 
 const soundMap: Map<string, number> = new Map<string, number>();

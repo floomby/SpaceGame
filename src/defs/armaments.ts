@@ -12,7 +12,7 @@ import {
   Player,
   TargetKind,
 } from "../game";
-import { l2NormSquared, Rectangle } from "../geometry";
+import { l2NormSquared, Position, Rectangle } from "../geometry";
 import { SlotKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
@@ -512,6 +512,56 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 200,
+  });
+
+  // Plasma Cannon - 12
+  armDefs.push({
+    name: "Plasma Cannon",
+    description: "A rapid firing, forward facing cannon which fires twin plasma bolts",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Untargeted,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 6 && slotData.sinceFired > 10) {
+        player.energy -= 6;
+        slotData.sinceFired = 0;
+        const cos = Math.cos(player.heading);
+        const sin = Math.sin(player.heading);
+        const hardPoints: Position[] = [
+          { x: player.position.x - 10 * sin, y: player.position.y + 10 * cos },
+          { x: player.position.x + 10 * sin, y: player.position.y - 10 * cos },
+        ];
+        const projectileDef = projectileDefs[1];
+        for (let i = 0; i < hardPoints.length; i++) {
+          const projectile = {
+            position: hardPoints[i],
+            radius: projectileDef.radius,
+            speed: projectileDef.speed + player.speed,
+            heading: player.heading,
+            damage: 20,
+            team: player.team,
+            id: player.projectileId,
+            parent: player.id,
+            frameTillEXpire: projectileDef.framesTillExpire,
+          };
+          const projectiles = state.projectiles.get(player.id) || [];
+          projectiles.push(projectile);
+          state.projectiles.set(player.id, projectiles);
+          player.projectileId++;
+          player.sinceLastShot[i] = 0;
+        }
+        applyEffect({ effectIndex: 13, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 1000,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

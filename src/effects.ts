@@ -82,6 +82,8 @@ const initEffects = () => {
   const pewSound = getSound("dullPew0.wav");
   const disabledSound = getSound("disabled0.wav");
   const mineDropSound = getSound("mineDrop0.wav");
+  const plasmaLaunchSound = getSound("squishyPew1.wav");
+  const plasmaHitSound = getSound("wigglyThud0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -577,6 +579,42 @@ const initEffects = () => {
       if (effect.extra.needSound) {
         effect.extra.needSound = false;
         play3dSound(mineDropSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      }
+    },
+    initializer: () => {
+      return { needSound: true };
+    },
+  });
+  // Plasma Cannon Launch Sound - 13
+  effectDefs.push({
+    frames: 10,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        play3dSound(plasmaLaunchSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      }
+    },
+    initializer: () => {
+      return { needSound: true };
+    },
+  });
+  // Plasma Cannon Hit Sound - 14
+  effectDefs.push({
+    frames: 10,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        play3dSound(plasmaHitSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
       }
     },
     initializer: () => {

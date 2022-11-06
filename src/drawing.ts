@@ -723,10 +723,8 @@ const displayDockedMessages = () => {
     dockedMessageText.innerText = messageToDisplay.what;
     if (!lastDockedMessage) {
       // New message to show
-      if (shown) {
-        dockedMessage.classList.add("fadeIn");
-        dockedMessage.style.display = "block";
-      }
+      dockedMessage.classList.add("fadeIn");
+      dockedMessage.style.display = "block";
     } else {
       // New message to show, but we're already showing a message
       dockedMessageText.classList.add("notifyChanged");

@@ -322,7 +322,6 @@ const depositItemsIntoInventory = (
       user.inventory = user.inventory.filter((inventory) => inventory.amount > 0);
 
       try {
-        console.log(user.inventory);
         user.save();
         flashServerMessage(player.id, `Deposited ${whats.length === 1 ? whats[0] : "items"} into inventory`);
       } catch (e) {

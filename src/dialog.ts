@@ -47,7 +47,6 @@ const hide = () => {
   }
   shown = false;
   if (dockedMessage.style.display === "block") {
-    console.log("hiding docked message");
     dockedMessage.style.display = "none";
   }
 };

@@ -16,7 +16,7 @@ import {
   sectorBounds,
 } from "./game";
 import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection } from "./geometry";
-import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, teamColorsOpaque } from "./globals";
+import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, scourgeColor, scourgeColorOpaque, teamColorsOpaque } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
 import { drawProjectile } from "./projectileDrawing";
@@ -478,16 +478,18 @@ const drawPlayer = (player: Player, self: Player) => {
     // TODO Make this not care about how many teams there are
     ctx.filter = "grayscale(0%)";
     ctx.globalAlpha = 0.9;
-    drawBar({ x: -sprite.width * 0.4, y: -22 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: -27 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
     drawBar(
-      { x: -sprite.width * 0.4, y: -6 },
+      { x: -sprite.width * 0.4, y: -13 },
       sprite.width * 0.8,
       12,
       confederationColorOpaque,
       "#333333DD",
       player.repairs[1] / def.repairsRequired
     );
-    drawBar({ x: -sprite.width * 0.4, y: 8 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: 1 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: 15 }, sprite.width * 0.8, 12, scourgeColorOpaque, "#333333DD", player.repairs[3] / def.repairsRequired);
+
   }
   ctx.restore();
 };

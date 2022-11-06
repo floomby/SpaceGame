@@ -29,6 +29,7 @@ enum Faction {
   Alliance = 0,
   Confederation,
   Rogue,
+  Scourge,
   Count,
 }
 
@@ -40,6 +41,8 @@ const getFactionString = (faction: Faction) => {
       return "Confederation";
     case Faction.Rogue:
       return "Rogue";
+    case Faction.Scourge:
+      return "Scourge";
   }
 };
 

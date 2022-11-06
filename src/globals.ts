@@ -17,9 +17,13 @@ const rogueColor = "rgba(255, 153, 0, 0.341)";
 const rogueColorDark = "rgba(255, 153, 0, 0.8)";
 const rogueColorOpaque = "darkorange";
 
-const teamColorsLight = [allianceColor, confederationColor, rogueColor];
-const teamColorsDark = [allianceColorDark, confederationColorDark, rogueColorDark];
-const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque, rogueColorOpaque];
+const scourgeColor = "rgba(60, 255, 5, 0.431)";
+const scourgeColorDark = "rgba(60, 255, 5, 0.8)";
+const scourgeColorOpaque = "rgba(60, 255, 5, 1)";
+
+const teamColorsLight = [allianceColor, confederationColor, rogueColor, scourgeColor];
+const teamColorsDark = [allianceColorDark, confederationColorDark, rogueColorDark, scourgeColorDark];
+const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque, rogueColorOpaque, scourgeColorOpaque];
 
 const setFaction = (newFaction: Faction) => {
   faction = newFaction;
@@ -114,6 +118,9 @@ export {
   rogueColor,
   rogueColorDark,
   rogueColorOpaque,
+  scourgeColor,
+  scourgeColorDark,
+  scourgeColorOpaque,
   keybind,
   setKeybind,
   ownId,

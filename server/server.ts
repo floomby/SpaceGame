@@ -790,6 +790,7 @@ wss.on("connection", (ws) => {
               player.side = 0;
               player.energy = def.energy;
               player.health = def.health;
+              player.warping = 0;
               player.position = { x: station!.position.x, y: station!.position.y };
               for (let i = 0; i < player.armIndices.length; i++) {
                 const armDef = armDefs[player.armIndices[i]];

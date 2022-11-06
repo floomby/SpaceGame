@@ -1,4 +1,5 @@
 import { armDefs, ArmUsage, asteroidDefs, collectableDefs, defs, Faction, missileDefs, UnitKind } from "./defs";
+import { shown } from "./dialog";
 import { drawEffects, initEffects, effectSpriteDefs } from "./effects";
 import {
   Asteroid,
@@ -722,8 +723,10 @@ const displayDockedMessages = () => {
     dockedMessageText.innerText = messageToDisplay.what;
     if (!lastDockedMessage) {
       // New message to show
-      dockedMessage.classList.add("fadeIn");
-      dockedMessage.style.display = "block";
+      if (shown) {
+        dockedMessage.classList.add("fadeIn");
+        dockedMessage.style.display = "block";
+      }
     } else {
       // New message to show, but we're already showing a message
       dockedMessageText.classList.add("notifyChanged");

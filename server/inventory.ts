@@ -4,6 +4,7 @@ import { WebSocket } from "ws";
 import { market } from "./market";
 import { recipeMap } from "../src/recipes";
 import { inspect } from "util";
+import { isFreeArm } from "../src/defs/armaments";
 
 // You cannot deposit cargo and then die before encountering
 const depositCargo = (player: Player, what: string, amount: number, ws: WebSocket) => {
@@ -278,10 +279,13 @@ const depositItemsIntoInventory = (
   ws: WebSocket,
   player: Player,
   whats: string[],
+  take: string[],
   flashServerMessage: (id: number, message: string) => void,
   playerReverterForErrors: () => void
 ) => {
-  if (whats.length === 0) {
+  take = take.filter((what) => !isFreeArm(what));
+  whats = whats.filter((what) => !isFreeArm(what));
+  if (whats.length === 0 && take.length === 0) {
     return;
   }
   User.findOne({ id: player.id }, (err, user) => {
@@ -306,8 +310,21 @@ const depositItemsIntoInventory = (
           });
         }
       }
+      for (const what of take) {
+        const inventoryEntry = user.inventory.find((inventory) => inventory.what === what);
+        if (inventoryEntry) {
+          inventoryEntry.amount--;
+        } else {
+          playerReverterForErrors();
+          return;
+        }
+      }
+      user.inventory = user.inventory.filter((inventory) => inventory.amount > 0);
+
       try {
+        console.log(user.inventory);
         user.save();
+        flashServerMessage(player.id, `Deposited ${whats.length === 1 ? whats[0] : "items"} into inventory`);
       } catch (e) {
         console.log(e);
         playerReverterForErrors();
@@ -317,7 +334,6 @@ const depositItemsIntoInventory = (
       } catch (e) {
         console.trace(e);
       }
-      flashServerMessage(player.id, `Deposited ${whats.length === 1 ? whats[0] : "items"} into inventory`);
     }
   });
 };

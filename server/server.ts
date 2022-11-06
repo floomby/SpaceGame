@@ -573,7 +573,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     const sectorInfos: SectorInfo[] = [];
     sectorInfos.push({
       sector: sector,
-      resources: sectorAsteroidResources[sector].map(value => value.resource),
+      resources: sectorAsteroidResources[sector].map((value) => value.resource),
     });
 
     ws.send(
@@ -652,7 +652,7 @@ wss.on("connection", (ws) => {
           for (const sector of sectorsVisited) {
             sectorInfos.push({
               sector,
-              resources: sectorAsteroidResources[sector].map(value => value.resource),
+              resources: sectorAsteroidResources[sector].map((value) => value.resource),
             });
           }
 
@@ -955,13 +955,14 @@ wss.on("connection", (ws) => {
           const player = state.players.get(client.id);
           if (player) {
             // equip does the bounds checking for the index for us
-            let newPlayer = equip(player, data.payload.slotIndex, data.payload.what);
+            let newPlayer = equip(player, data.payload.slotIndex, data.payload.what, data.payload.fromInventory);
             if (newPlayer !== player) {
               state.players.set(client.id, newPlayer);
+              const toTake = data.payload.fromInventory ? [armDefs[newPlayer.armIndices[data.payload.slotIndex]].name] : [];
               // There is technically a bug here, if the player equips and then logs off, but the database has an error after they log off then
               // they what is deposited will be lost. I don't want to deal with it though (the correct thing is to pull their save from the database
               // and deal with it that way, but if we just had a database error this is unlikely to work anyways)
-              depositItemsIntoInventory(ws, player, [armDefs[player.armIndices[data.payload.slotIndex]].name], flashServerMessage, () => {
+              depositItemsIntoInventory(ws, player, [armDefs[player.armIndices[data.payload.slotIndex]].name], toTake, flashServerMessage, () => {
                 console.log("Error depositing armament into inventory, reverting player");
                 try {
                   const otherState = sectors.get(clients.get(idToWebsocket.get(player.id)!)!.currentSector)!;
@@ -1009,7 +1010,7 @@ wss.on("connection", (ws) => {
                 console.log("Error loading station: " + err);
                 return;
               }
-              const newPlayer = purchaseShip(player, data.payload.index, station.shipsAvailable);
+              const newPlayer = purchaseShip(player, data.payload.index, station.shipsAvailable, data.payload.fromInventory);
               if (newPlayer !== player) {
                 state.players.set(client.id, newPlayer);
                 const items = [defs[player.defIndex].name];
@@ -1018,10 +1019,11 @@ wss.on("connection", (ws) => {
                     items.push(armDefs[armIndex].name);
                   }
                 }
+                const toTake = data.payload.fromInventory ? [defs[newPlayer.defIndex].name] : [];
                 // There is technically a bug here, if the player equips and then logs off, but the database has an error after they log off then
                 // they what is deposited will be lost. I don't want to deal with it though (the correct thing is to pull their save from the database
                 // and deal with it that way, but if we just had a database error this is unlikely to work anyways)
-                depositItemsIntoInventory(ws, player, items, flashServerMessage, () => {
+                depositItemsIntoInventory(ws, player, items, toTake, flashServerMessage, () => {
                   console.log("Error depositing ship into inventory, reverting player");
                   try {
                     const otherState = sectors.get(clients.get(idToWebsocket.get(player.id)!)!.currentSector)!;
@@ -1078,11 +1080,15 @@ wss.on("connection", (ws) => {
         if (player.docked) {
           saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
         } else {
-          User.findOneAndUpdate({ id: removedClient.id }, { currentSector: removedClient.currentSector, sectorsVisited: Array.from(removedClient.sectorsVisited) }, (err) => {
-            if (err) {
-              console.log("Error saving user: " + err);
+          User.findOneAndUpdate(
+            { id: removedClient.id },
+            { currentSector: removedClient.currentSector, sectorsVisited: Array.from(removedClient.sectorsVisited) },
+            (err) => {
+              if (err) {
+                console.log("Error saving user: " + err);
+              }
             }
-          });
+          );
         }
       } else if (!player) {
         console.log("Warning: player not found on disconnect");
@@ -1286,7 +1292,6 @@ setInterval(() => {
       }
     }
 
-    
     const state = sectors.get(newSector);
     if (state) {
       const ws = idToWebsocket.get(transition.player.id);
@@ -1421,7 +1426,7 @@ const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
 };
 
 setInterval(() => {
-  for(const sector of sectorList) {
+  for (const sector of sectorList) {
     const faction = sectorFactions[sector];
     if (faction === null) {
       continue;

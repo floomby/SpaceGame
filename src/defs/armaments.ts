@@ -579,4 +579,9 @@ const initArmaments = () => {
   }
 };
 
-export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments };
+const isFreeArm = (name: string) => {
+  const armDef = armDefMap.get(name);
+  return armDef && armDef.def.cost === 0;
+}
+
+export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments, isFreeArm };

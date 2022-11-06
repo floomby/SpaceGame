@@ -1119,7 +1119,7 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   return player;
 };
 
-const purchaseShip = (player: Player, index: number, shipOptions: string[]) => {
+const purchaseShip = (player: Player, index: number, shipOptions: string[], bypassChecks: boolean) => {
   if (index >= defs.length || index < 0) {
     console.log("Warning: ship index out of range");
     return player;
@@ -1129,21 +1129,19 @@ const purchaseShip = (player: Player, index: number, shipOptions: string[]) => {
     console.log("Warning: ship not purchasable");
     return player;
   }
-  // if (playerDef.team !== def.team) {
-  //   console.log("Warning: ship not on same team");
-  //   return;
-  // }
-  if (!shipOptions.includes(def.name)) {
+  if (!bypassChecks && !shipOptions.includes(def.name)) {
     console.log("Warning: ship not available at this station");
     return player;
   }
-  if (player.credits !== undefined && def.price <= player.credits) {
+  if (bypassChecks || (player.credits !== undefined && def.price <= player.credits)) {
     const npc = player.npc;
     player.npc = undefined;
     const ret = copyPlayer(player);
     player.npc = npc;
     ret.npc = npc;
-    ret.credits -= def.price;
+    if (!bypassChecks) {
+      ret.credits -= def.price;
+    }
     ret.defIndex = index;
     ret.slotData = new Array(def.slots.length).map(() => ({}));
     ret.armIndices = emptyLoadout(index);

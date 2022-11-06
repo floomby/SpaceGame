@@ -89,23 +89,23 @@ class Swarmer implements NPC {
 
     switch (Math.floor(Math.random() * 5)) {
       case 0:
-        equip(this.player, 1, "Javelin Missile", true);
+        this.player = equip(this.player, 1, "Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 1:
-        equip(this.player, 1, "Tomahawk Missile", true);
+        this.player = equip(this.player, 1, "Tomahawk Missile", true);
         this.guidedSecondary = true;
         break;
       case 2:
-        equip(this.player, 1, "Laser Beam", true);
+        this.player = equip(this.player, 1, "Laser Beam", true);
         this.guidedSecondary = true;
         break;
       case 3:
-        equip(this.player, 1, "Heavy Javelin Missile", true);
+        this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 4:
-        equip(this.player, 1, "EMP Missile", true);
+        this.player = equip(this.player, 1, "EMP Missile", true);
         this.guidedSecondary = true;
         break;
     }
@@ -248,24 +248,24 @@ class Strafer implements NPC {
     this.usesAmmo = true;
     switch (Math.floor(Math.random() * 5)) {
       case 0:
-        equip(this.player, 1, "Javelin Missile", true);
+        this.player = equip(this.player, 1, "Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 1:
-        equip(this.player, 1, "Tomahawk Missile", true);
+        this.player = equip(this.player, 1, "Tomahawk Missile", true);
         this.guidedSecondary = true;
         break;
       case 2:
-        equip(this.player, 1, "Laser Beam", true);
+        this.player = equip(this.player, 1, "Laser Beam", true);
         this.guidedSecondary = true;
         this.usesAmmo = false;
         break;
       case 3:
-        equip(this.player, 1, "Heavy Javelin Missile", true);
+        this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 4:
-        equip(this.player, 1, "EMP Missile", true);
+        this.player = equip(this.player, 1, "EMP Missile", true);
         this.guidedSecondary = true;
         break;
     }

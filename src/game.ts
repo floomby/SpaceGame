@@ -1070,7 +1070,7 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   const def = defs[player.defIndex];
   if (slotIndex >= def.slots.length) {
     console.log("Warning: slot number too high");
-    return false;
+    return player;
   }
   let armDef: ArmamentDef | undefined = undefined;
   let defIndex: number;
@@ -1078,14 +1078,14 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
     const entry = armDefMap.get(what);
     if (!entry) {
       console.log("Warning: no such armament");
-      return false;
+      return player;
     }
     armDef = entry.def;
     defIndex = entry.index;
   } else {
     if (what >= armDefs.length) {
       console.log("Warning: armament index too high");
-      return false;
+      return player;
     }
     armDef = armDefs[what];
     defIndex = what;
@@ -1093,35 +1093,41 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   const slotKind = def.slots[slotIndex];
   if (slotKind !== armDef.kind) {
     console.log("Warning: wrong kind of armament", slotKind, armDef.kind);
-    return false;
+    return player;
   }
   if (slotIndex >= player.armIndices.length) {
     console.log("Warning: player armaments not initialized correctly");
-    return false;
+    return player;
   }
 
   if ((player.credits !== undefined && armDef.cost <= player.credits) || noCost) {
+    const npc = player.npc;
+    player.npc = undefined;
+    const ret = copyPlayer(player);
+    player.npc = npc;
+    ret.npc = npc;
+
     if (!noCost) {
-      player.credits -= armDef.cost;
+      ret.credits -= armDef.cost;
     }
-    player.armIndices[slotIndex] = defIndex;
+    ret.armIndices[slotIndex] = defIndex;
     if (armDef.equipMutator) {
-      armDef.equipMutator(player, slotIndex);
+      armDef.equipMutator(ret, slotIndex);
     }
-    return true;
+    return ret;
   }
-  return false;
+  return player;
 };
 
 const purchaseShip = (player: Player, index: number, shipOptions: string[]) => {
   if (index >= defs.length || index < 0) {
     console.log("Warning: ship index out of range");
-    return false;
+    return player;
   }
   const def = defs[index];
   if (def.price === undefined) {
     console.log("Warning: ship not purchasable");
-    return false;
+    return player;
   }
   // if (playerDef.team !== def.team) {
   //   console.log("Warning: ship not on same team");
@@ -1129,18 +1135,23 @@ const purchaseShip = (player: Player, index: number, shipOptions: string[]) => {
   // }
   if (!shipOptions.includes(def.name)) {
     console.log("Warning: ship not available at this station");
-    return false;
+    return player;
   }
   if (player.credits !== undefined && def.price <= player.credits) {
-    player.credits -= def.price;
-    player.defIndex = index;
-    player.slotData = new Array(def.slots.length).map(() => ({}));
-    player.armIndices = emptyLoadout(index);
-    player.health = def.health;
-    player.energy = def.energy;
-    return true;
+    const npc = player.npc;
+    player.npc = undefined;
+    const ret = copyPlayer(player);
+    player.npc = npc;
+    ret.npc = npc;
+    ret.credits -= def.price;
+    ret.defIndex = index;
+    ret.slotData = new Array(def.slots.length).map(() => ({}));
+    ret.armIndices = emptyLoadout(index);
+    ret.health = def.health;
+    ret.energy = def.energy;
+    return ret;
   }
-  return false;
+  return player;
 };
 
 const repairStation = (player: Player) => {

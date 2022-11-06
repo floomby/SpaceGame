@@ -274,4 +274,52 @@ const transferToShip = (ws: WebSocket, player: Player, what: string, amount: num
   });
 };
 
-export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip };
+const depositItemsIntoInventory = (
+  ws: WebSocket,
+  player: Player,
+  whats: string[],
+  flashServerMessage: (id: number, message: string) => void,
+  playerReverterForErrors: () => void
+) => {
+  if (whats.length === 0) {
+    return;
+  }
+  User.findOne({ id: player.id }, (err, user) => {
+    if (err) {
+      console.log(err);
+      playerReverterForErrors();
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Error finding user" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+    }
+    if (user) {
+      for (const what of whats) {
+        const inventoryEntry = user.inventory.find((inventory) => inventory.what === what);
+        if (inventoryEntry) {
+          inventoryEntry.amount++;
+        } else {
+          user.inventory.push({
+            what,
+            amount: 1,
+          });
+        }
+      }
+      try {
+        user.save();
+      } catch (e) {
+        console.log(e);
+        playerReverterForErrors();
+      }
+      try {
+        ws.send(JSON.stringify({ type: "inventory", payload: user.inventory }));
+      } catch (e) {
+        console.trace(e);
+      }
+      flashServerMessage(player.id, `Deposited ${whats.length === 1 ? whats[0] : "items"} into inventory`);
+    }
+  });
+};
+
+export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip, depositItemsIntoInventory };

@@ -33,20 +33,6 @@ const userSchema = new Schema({
   // TODO I should put validation of the uniqueness of keys in the inventory.
   // MongoDB does not appear to support this, but I have ideas for how to do it anyways.
   inventory: [inventorySchema],
-  armInventory: {
-    type: [String],
-    validate: {
-      validator: (v: string[]) => v.every((item) => armDefMap.has(item)),
-      message: (props) => `${props.value} is not a valid arm`,
-    },
-  },
-  shipInventory: {
-    type: [String],
-    validate: {
-      validator: (v: string[]) => v.every((item) => defMap.has(item)),
-      message: (props) => `${props.value} is not a valid ship`,
-    },
-  },
   sectorsVisited: {
     type: [Number],
   },

@@ -41,7 +41,7 @@ import mongoose from "mongoose";
 import { createHash } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
+import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
 import { market } from "./market";
 import {
   asteroidBounds,
@@ -530,7 +530,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     sectorsVisited: new Set([sector]),
   });
 
-  const player = {
+  let player = {
     position: { x: 0, y: 0 },
     radius: defs[defIndex].radius,
     speed: 0,
@@ -551,9 +551,9 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     v: { x: 0, y: 0 },
   };
 
-  equip(player, 0, "Basic mining laser", true);
-  equip(player, 1, "Tomahawk Missile", true);
-  equip(player, 2, "Laser Beam", true);
+  player = equip(player, 0, "Basic mining laser", true);
+  player = equip(player, 1, "Tomahawk Missile", true);
+  player = equip(player, 2, "Laser Beam", true);
 
   const state = sectors.get(sector)!;
 
@@ -954,7 +954,23 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            equip(player, data.payload.slotIndex, data.payload.what);
+            // equip does the bounds checking for the index for us
+            let newPlayer = equip(player, data.payload.slotIndex, data.payload.what);
+            if (newPlayer !== player) {
+              state.players.set(client.id, newPlayer);
+              // There is technically a bug here, if the player equips and then logs off, but the database has an error after they log off then
+              // they what is deposited will be lost. I don't want to deal with it though (the correct thing is to pull their save from the database
+              // and deal with it that way, but if we just had a database error this is unlikely to work anyways)
+              depositItemsIntoInventory(ws, player, [armDefs[player.armIndices[data.payload.slotIndex]].name], flashServerMessage, () => {
+                console.log("Error depositing armament into inventory, reverting player");
+                try {
+                  const otherState = sectors.get(clients.get(idToWebsocket.get(player.id)!)!.currentSector)!;
+                  otherState.players.set(player.id, player);
+                } catch (e) {
+                  console.log("Warning: unable to revert player" + e);
+                }
+              });
+            }
           }
         }
       } else if (data.type === "chat") {
@@ -993,7 +1009,28 @@ wss.on("connection", (ws) => {
                 console.log("Error loading station: " + err);
                 return;
               }
-              purchaseShip(player, data.payload.index, station.shipsAvailable);
+              const newPlayer = purchaseShip(player, data.payload.index, station.shipsAvailable);
+              if (newPlayer !== player) {
+                state.players.set(client.id, newPlayer);
+                const items = [defs[player.defIndex].name];
+                if (player.armIndices) {
+                  for (const armIndex of player.armIndices) {
+                    items.push(armDefs[armIndex].name);
+                  }
+                }
+                // There is technically a bug here, if the player equips and then logs off, but the database has an error after they log off then
+                // they what is deposited will be lost. I don't want to deal with it though (the correct thing is to pull their save from the database
+                // and deal with it that way, but if we just had a database error this is unlikely to work anyways)
+                depositItemsIntoInventory(ws, player, items, flashServerMessage, () => {
+                  console.log("Error depositing ship into inventory, reverting player");
+                  try {
+                    const otherState = sectors.get(clients.get(idToWebsocket.get(player.id)!)!.currentSector)!;
+                    otherState.players.set(player.id, player);
+                  } catch (e) {
+                    console.log("Warning: unable to revert player" + e);
+                  }
+                });
+              }
             });
           }
         }

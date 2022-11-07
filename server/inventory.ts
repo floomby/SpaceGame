@@ -78,6 +78,42 @@ const sendInventory = (ws: WebSocket, id: number) => {
   });
 };
 
+const discoverRecipe = (ws: WebSocket, id: number, what: string) => {
+  User.findOne({ id }, (err, user) => {
+    if (err) {
+      console.log(err);
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Error finding user for recipe discovery" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+    } else {
+      try {
+        if (user) {
+          if (recipeMap.has(what)) {
+            if (!user.recipesKnown.includes(what)) {
+              user.recipesKnown.push(what);
+              user.save();
+              ws.send(JSON.stringify({ type: "recipe", payload: user.recipesKnown }));
+            }
+          } else {
+            console.log(`Warning: recipe ${what} not found in discoverRecipe`);
+          }
+        } else {
+          console.log("Warning: user not found in discoverRecipe");
+        }
+      } catch (e) {
+        console.log(e);
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Error saving user" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+      }
+    }
+  });
+};
+
 const sellInventory = (ws: WebSocket, player: Player, what: string, amount: number) => {
   if (amount <= 0) {
     return;
@@ -150,6 +186,13 @@ const manufacture = (ws: WebSocket, player: Player, what: string, amount: number
       } else {
         try {
           if (user) {
+            if (!user.recipesKnow.includes(what)) {
+              try {
+                ws.send(JSON.stringify({ type: "error", payload: { message: "You don't know how to make that" } }));
+              } catch (e) {
+                console.trace(e);
+              }
+            }
             for (const [ingredient, quantity] of Object.entries(recipe.recipe.ingredients)) {
               const inventory = user.inventory.find((inventory) => inventory.what === ingredient);
               if (inventory) {
@@ -337,4 +380,4 @@ const depositItemsIntoInventory = (
   });
 };
 
-export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip, depositItemsIntoInventory };
+export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip, depositItemsIntoInventory, discoverRecipe };

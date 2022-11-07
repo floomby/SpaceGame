@@ -1,5 +1,6 @@
 import mongoose, { SchemaType } from "mongoose";
 import { armDefMap, defMap } from "../src/defs";
+import { recipeMap } from "../src/recipes";
 
 const Schema = mongoose.Schema;
 
@@ -44,6 +45,13 @@ const userSchema = new Schema({
   // TODO I should put validation of the uniqueness of keys in the inventory.
   // MongoDB does not appear to support this, but I have ideas for how to do it anyways.
   inventory: [inventorySchema],
+  recipesKnown: {
+    type: [String],
+    validate: {
+      validator: (v: string[]) => v.every((item) => recipeMap.has(item)),
+      message: (props) => `${props.value} is not a valid recipe`,
+    },
+  },
   sectorsVisited: {
     type: [Number],
   },

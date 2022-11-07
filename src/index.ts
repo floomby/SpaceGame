@@ -44,6 +44,7 @@ import {
   inventory,
   keybind,
   ownId,
+  recipesKnown,
   sectorData,
   selectedSecondary,
   setCurrentSector,
@@ -303,6 +304,7 @@ const run = () => {
       collectables: Collectable[];
       mines: Mine[];
       sectorInfos: SectorInfo[];
+      recipes: string[];
     }) => {
       setOwnId(data.id);
       setCurrentSector(data.sector);
@@ -327,6 +329,9 @@ const run = () => {
       }
       for (const sectorInfo of data.sectorInfos) {
         sectorData.set(sectorInfo.sector, sectorInfo);
+      }
+      for (const recipe of data.recipes) {
+        recipesKnown[recipe] = true;
       }
     }
   );
@@ -490,6 +495,12 @@ const run = () => {
       inventory[entry.what] = entry.amount;
     }
     runPostUpdaterOnly("inventory", inventory);
+  });
+
+  bindAction("recipe", (recipes: string[]) =>{
+    for (const recipe of recipes) {
+      recipesKnown[recipe] = true;
+    }
   });
 
   displayLoginDialog();

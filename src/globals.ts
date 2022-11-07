@@ -101,6 +101,8 @@ const clearInventory = () => {
   inventory = {};
 };
 
+let recipesKnown: { [key: string]: boolean } = {};
+
 let sectorData = new Map<number, SectorInfo>();
 
 export {
@@ -136,5 +138,6 @@ export {
   getVolumePref,
   inventory,
   clearInventory,
+  recipesKnown,
   sectorData,
 };

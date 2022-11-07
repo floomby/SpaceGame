@@ -94,7 +94,7 @@ const discoverRecipe = (ws: WebSocket, id: number, what: string) => {
             if (!user.recipesKnown.includes(what)) {
               user.recipesKnown.push(what);
               user.save();
-              ws.send(JSON.stringify({ type: "recipe", payload: user.recipesKnown }));
+              ws.send(JSON.stringify({ type: "recipe", payload: [what] }));
             }
           } else {
             console.log(`Warning: recipe ${what} not found in discoverRecipe`);
@@ -172,7 +172,7 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
   });
 };
 
-const manufacture = (ws: WebSocket, player: Player, what: string, amount: number) => {
+const manufacture = (ws: WebSocket, player: Player, what: string, amount: number, flashServerMessage: (id: number, message: string) => void) => {
   const recipe = recipeMap.get(what);
   if (recipe) {
     User.findOne({ id: player.id }, (err, user) => {
@@ -186,9 +186,10 @@ const manufacture = (ws: WebSocket, player: Player, what: string, amount: number
       } else {
         try {
           if (user) {
-            if (!user.recipesKnow.includes(what)) {
+            if (!user.recipesKnown.includes(what)) {
               try {
-                ws.send(JSON.stringify({ type: "error", payload: { message: "You don't know how to make that" } }));
+                flashServerMessage(player.id, `You don't know how to make ${what}`);
+                return;
               } catch (e) {
                 console.trace(e);
               }

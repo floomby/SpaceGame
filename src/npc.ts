@@ -11,6 +11,7 @@ import {
 } from "./game";
 import { l2Norm } from "./geometry";
 import { seekPosition, currentlyFacing, stopPlayer } from "./pathing";
+import { recipeMap } from "./recipes";
 
 type LootTable = { index: number; probability: number }[];
 
@@ -110,7 +111,10 @@ class Swarmer implements NPC {
         break;
     }
 
-    this.lootTable = [loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)];
+    for (const recipe of recipeMap.keys()) {
+      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.1));
+    }
+    this.lootTable = this.lootTable.concat([loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)]);
   }
 
   public targetId = 0;

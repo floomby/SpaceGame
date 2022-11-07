@@ -500,7 +500,11 @@ const run = () => {
   bindAction("recipe", (recipes: string[]) =>{
     for (const recipe of recipes) {
       recipesKnown[recipe] = true;
+      pushMessage(`Discovered blueprint for ${recipe}`);
     }
+    
+    // We don't need a separate post updater for this, since it's only used in the manufacturing dialog and inventory already redraws the needed elements
+    runPostUpdaterOnly("inventory", inventory);
   });
 
   displayLoginDialog();

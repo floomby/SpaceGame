@@ -135,6 +135,8 @@ sectorList.forEach((sector) => {
 const targets: Map<number, [TargetKind, number]> = new Map();
 const secondaries: Map<number, number> = new Map();
 
+const knownRecipes: Map<number, Set<string>> = new Map();
+
 const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
 for (let i = 0; i < sectorList.length; i++) {
@@ -159,6 +161,7 @@ export {
   targets,
   secondaries,
   asteroidBounds,
+  knownRecipes,
   uid,
   sectorInDirection,
 };

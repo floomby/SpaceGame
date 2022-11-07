@@ -457,7 +457,9 @@ const update = (
   onDeath: (player: Player) => void,
   flashServerMessage: (id: number, message: string) => void,
   removeCollectable: (id: number, collected: boolean) => void,
-  removeMine: (id: number, detonated: boolean) => void
+  removeMine: (id: number, detonated: boolean) => void,
+  knownRecipes: Map<number, Set<string>>,
+  discoverRecipe: (id: number, recipe: string) => void
 ) => {
   const ret: Mutated = { asteroids: new Set(), collectables: [], mines: [] };
 
@@ -612,10 +614,10 @@ const update = (
     if (def.kind !== UnitKind.Station) {
       for (const collectable of state.collectables.values()) {
         const collectableDef = collectableDefs[collectable.index];
-        if (circlesIntersect(player, collectable) && collectableDef.canBeCollected(player)) {
+        if (circlesIntersect(player, collectable) && collectableDef.canBeCollected(player, knownRecipes)) {
           state.collectables.delete(collectable.id);
           removeCollectable(collectable.id, true);
-          collectableDef.collectMutator(player);
+          collectableDef.collectMutator(player, discoverRecipe);
         }
       }
     }

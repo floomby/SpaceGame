@@ -47,6 +47,7 @@ const getFactionString = (faction: Faction) => {
 };
 
 const initDefs = () => {
+  // Do not change order on these things unless you remember what you are doing
   initRecipes();
   initShipsAndStations();
   initArmaments();

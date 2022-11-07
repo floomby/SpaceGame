@@ -41,12 +41,13 @@ import mongoose from "mongoose";
 import { createHash } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
+import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip, discoverRecipe } from "./inventory";
 import { market } from "./market";
 import {
   asteroidBounds,
   clients,
   idToWebsocket,
+  knownRecipes,
   secondaries,
   sectorAsteroidResources,
   sectorFactions,
@@ -561,6 +562,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
+  knownRecipes.set(id, new Set());
 
   // find one checkpoint for the id and update it, upserting if needed
   Checkpoint.findOneAndUpdate({ id }, { id, sector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
@@ -587,6 +589,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
           collectables: Array.from(state.collectables.values()),
           mines: Array.from(state.mines.values()),
           sectorInfos,
+          recipes: [],
         },
       })
     );
@@ -707,6 +710,7 @@ wss.on("connection", (ws) => {
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
+              knownRecipes.set(user.id, new Set(user.knownRecipes));
               ws.send(
                 JSON.stringify({
                   type: "init",
@@ -718,6 +722,7 @@ wss.on("connection", (ws) => {
                     collectables: Array.from(state.collectables.values()),
                     mines: Array.from(state.mines.values()),
                     sectorInfos,
+                    recipes: user.recipesKnown,
                   },
                 })
               );
@@ -991,7 +996,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            manufacture(ws, player, data.payload.what, Math.round(data.payload.amount));
+            manufacture(ws, player, data.payload.what, Math.round(data.payload.amount), flashServerMessage);
           }
         }
       } else if (data.type === "purchase") {
@@ -1077,6 +1082,7 @@ wss.on("connection", (ws) => {
       secondaries.delete(removedClient.id);
       clients.delete(ws);
       idToWebsocket.delete(removedClient.id);
+      knownRecipes.delete(removedClient.id);
       if (player) {
         if (player.docked) {
           saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
@@ -1208,6 +1214,17 @@ const allyCount = (team: Faction, sector: number) => {
 
 let frame = 0;
 
+const discoverer = (id: number, recipe: string) => {
+  const ws = idToWebsocket.get(id);
+  if (ws) {
+    const known = knownRecipes.get(id);
+    if (known) {
+      known.add(recipe);
+    }
+    discoverRecipe(ws, id, recipe);
+  }
+};
+
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -1231,7 +1248,9 @@ setInterval(() => {
       informDead,
       flashServerMessage,
       (id, collected) => removeCollectable(sector, id, collected),
-      (id, detonated) => removeMine(sector, id, detonated)
+      (id, detonated) => removeMine(sector, id, detonated),
+      knownRecipes,
+      discoverer
     );
     processAllNpcs(state);
     findSectorTransitions(state, sector, sectorTransitions);

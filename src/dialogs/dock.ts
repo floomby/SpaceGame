@@ -392,7 +392,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
     push(shipShop(), () => setupShipShop(station));
   });
   document.getElementById("openManufacturing")?.addEventListener("click", () => {
-    push(manufacturingBay(), () => setupManufacturingBay(station));
+    push(manufacturingBay(), () => setupManufacturingBay());
   });
   document.getElementById("openInventory")?.addEventListener("click", () => {
     push(inventoryDialog(), setupInventory);

@@ -112,7 +112,7 @@ class Swarmer implements NPC {
     }
 
     for (const recipe of recipeMap.keys()) {
-      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.4));
+      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.1));
     }
     this.lootTable = this.lootTable.concat([loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)]);
   }

@@ -114,7 +114,7 @@ class Swarmer implements NPC {
     for (const recipe of recipeMap.keys()) {
       this.lootTable.push(loot(`Recipe - ${recipe}`, 0.1));
     }
-    this.lootTable = this.lootTable.concat([loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)]);
+    this.lootTable = this.lootTable.concat([loot("Bounty", 0.2), loot("Health", 0.5), loot("Energy", 0.2), loot("Ammo", 0.3), loot("Spare Parts", 0.8)]);
   }
 
   public targetId = 0;
@@ -274,7 +274,10 @@ class Strafer implements NPC {
         break;
     }
 
-    this.lootTable = [loot("Bounty", 0.3), loot("Energy", 0.4), loot("Ammo", 0.5), loot("Spare Parts", 0.7)];
+    for (const recipe of recipeMap.keys()) {
+      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.1));
+    }
+    this.lootTable = this.lootTable.concat([loot("Bounty", 0.2), loot("Health", 0.5), loot("Energy", 0.2), loot("Ammo", 0.3), loot("Spare Parts", 0.8)]);
   }
 
   public targetId = 0;

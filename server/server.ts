@@ -1424,6 +1424,10 @@ const spawnSectorGuardians = (sector: number) => {
         addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
       }
       break;
+    case Faction.Scourge:
+      for (let i = 0; i < count; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Strafer", Faction.Scourge, uid());
+      }
   }
 };
 

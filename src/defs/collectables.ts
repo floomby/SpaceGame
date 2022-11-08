@@ -65,7 +65,7 @@ const initCollectables = () => {
     sprite: { x: 320, y: 512, width: 64, height: 64 },
     radius: 26,
     name: "Energy",
-    description: "Extra energy",
+    description: "Restore energy",
     canBeCollected: (player) => {
       const def = defs[player.defIndex];
       return !player.npc && player.energy < def.energy;
@@ -73,6 +73,21 @@ const initCollectables = () => {
     collectMutator: (player) => {
       const def = defs[player.defIndex];
       player.energy = def.energy;
+    },
+  });
+
+  collectableDefs.push({
+    sprite: { x: 320, y: 768, width: 64, height: 64 },
+    radius: 26,
+    name: "Health",
+    description: "Restore health",
+    canBeCollected: (player) => {
+      const def = defs[player.defIndex];
+      return !player.npc && player.health < def.health;
+    },
+    collectMutator: (player) => {
+      const def = defs[player.defIndex];
+      player.health = Math.min(def.health, player.health + 80);
     },
   });
 

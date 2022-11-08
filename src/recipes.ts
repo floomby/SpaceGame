@@ -27,7 +27,42 @@ const initRecipes = () => {
         "Refined Prifetium": 2,
         "Refined Russium": 2,
       },
-    }
+    },
+    {
+      name: "Ferrecium",
+      ingredients: {
+        Hemacite: 5,
+      },
+    },
+    {
+      name: "Ferrecium Alloy",
+      ingredients: {
+        Ferrecium: 3,
+        "Refined Prifetium": 2,
+      },
+    },
+    {
+      name: "Forward Fuselage",
+      ingredients: {
+        "Ferrecium Alloy": 12,
+        "Refined Russium": 4,
+      },
+    },
+    {
+      name: "Aft Fuselage",
+      ingredients: {
+        "Ferrecium Alloy": 15,
+        "Refined Russium": 5,
+      },
+    },
+    {
+      name: "Spartan",
+      ingredients: {
+        "Forward Fuselage": 1,
+        "Aft Fuselage": 1,
+        "Spare Parts": 10,
+      },
+    },
   ];
 
   recipes.forEach((recipe, index) => {

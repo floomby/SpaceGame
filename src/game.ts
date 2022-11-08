@@ -16,6 +16,7 @@ import {
   Faction,
   asteroidDefMap,
   mineDefs,
+  AsteroidDef,
 } from "./defs";
 import { projectileDefs } from "./defs/projectiles";
 import {
@@ -968,7 +969,15 @@ const randomAsteroids = (
   const prng = sfc32(seed, 4398, 25, 6987);
   const asteroids: Asteroid[] = [];
   const totalDensity = typeDensities.reduce((acc, cur) => acc + cur.density, 0);
-  const mapping = typeDensities.map((value) => asteroidDefMap.get(value.resource)?.def);
+  const mapping: { def: AsteroidDef, index: number }[] = [];
+  for (let i = 0; i < typeDensities.length; i++) {
+    const value = asteroidDefMap.get(typeDensities[i].resource);
+    if (value === undefined) {
+      console.log(`Warning: missing asteroid def for ${typeDensities[i].resource}, aborting`);
+      return [];
+    }
+    mapping.push(value);
+  }
   if (mapping.some((def) => def === undefined)) {
     console.log("Warning: invalid asteroid type, aborting");
     return [];
@@ -980,7 +989,7 @@ const randomAsteroids = (
       sum -= typeDensities[index].density;
       index++;
     }
-    const asteroidDef = mapping[index];
+    const asteroidDef = mapping[index].def;
     const asteroid: Asteroid = {
       position: {
         x: prng() * bounds.width + bounds.x,
@@ -988,7 +997,7 @@ const randomAsteroids = (
       },
       heading: prng() * 2 * Math.PI,
       resources: asteroidDef.resources,
-      defIndex: index,
+      defIndex: mapping[index].index,
       id: uid(),
       radius: asteroidDef.radius,
     };

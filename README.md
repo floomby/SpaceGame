@@ -20,11 +20,10 @@ A simple multiplayer game where you have a ship and do things.
 
 ### Next steps
 
-- Discovering recipes
+- Manufacturing slots and time
 - Armament purchase options for stations
-- Add the fourth faction
-- NPC behavior state graph factory for making behaviors and transitions between behaviors easier to handle
 - Manufacturing UI is pretty horrible to use
+- NPC behavior state graph factory for making behaviors and transitions between behaviors easier to handle
 - Make mine drawing not this ad-hoc thing it is right now
 - Figure out kill messages in a way that is performant for the server (low priority)
 

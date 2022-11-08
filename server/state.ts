@@ -35,11 +35,24 @@ const sectorList = (new Array(mapSize * mapSize)).fill(0).map((_, i) => i);
 const sectorAsteroidResources = sectorList.map(_ => [{ resource: "Prifecite", density: 1 }]);
 const sectorAsteroidCounts = sectorList.map(_ => 5);
 
+sectorAsteroidResources[0] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
+sectorAsteroidResources[1] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
+sectorAsteroidResources[2] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
+sectorAsteroidResources[3] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
+
 sectorAsteroidResources[5] = [{ resource: "Prifecite", density: 1 }, { resource: "Russanite", density: 1 }];
 sectorAsteroidResources[6] = [{ resource: "Prifecite", density: 1 }, { resource: "Russanite", density: 1 }];
+
 sectorAsteroidCounts[6] = 20;
+sectorAsteroidCounts[1] = 12;
+sectorAsteroidCounts[2] = 12;
 
 const sectorFactions: (Faction | null)[] = sectorList.map(_ => null);
+sectorFactions[0] = Faction.Scourge;
+sectorFactions[3] = Faction.Scourge;
+
+sectorFactions[1] = Faction.Rogue;
+sectorFactions[2] = Faction.Rogue;
 sectorFactions[5] = Faction.Rogue;
 sectorFactions[6] = Faction.Rogue;
 
@@ -52,6 +65,12 @@ sectorFactions[15] = Faction.Confederation;
 sectorFactions[11] = Faction.Confederation;
 
 const sectorGuardianCount = sectorList.map(_ => 0);
+
+sectorGuardianCount[0] = 2;
+sectorGuardianCount[3] = 2;
+
+sectorGuardianCount[1] = 2;
+sectorGuardianCount[2] = 2;
 sectorGuardianCount[5] = 5;
 sectorGuardianCount[6] = 5;
 

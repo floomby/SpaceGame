@@ -367,7 +367,13 @@ const depositItemsIntoInventory = (
 
       try {
         user.save();
-        flashServerMessage(player.id, `Deposited ${whats.length === 1 ? whats[0] : "items"} into inventory`);
+        if (whats.length > 0) {
+          try {
+            flashServerMessage(player.id, `Deposited ${whats.length === 1 ? whats[0] : "items"} into inventory`);
+          } catch (e) {
+            console.trace(e);
+          }
+        }
       } catch (e) {
         console.log(e);
         playerReverterForErrors();

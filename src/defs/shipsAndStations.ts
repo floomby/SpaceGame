@@ -45,6 +45,7 @@ type UnitDefinition = {
   sideThrustAcceleration?: number;
   repairsRequired?: number;
   scanRange?: number;
+  primaryDefIndex: number;
 };
 
 const defs: UnitDefinition[] = [];
@@ -76,6 +77,7 @@ const initShipsAndStations = () => {
     sideThrustMaxSpeed: 5,
     sideThrustAcceleration: 0.1,
     scanRange: 4000,
+    primaryDefIndex: 0,
   });
   // Drone - 1
   defs.push({
@@ -102,6 +104,7 @@ const initShipsAndStations = () => {
     sideThrustMaxSpeed: 5,
     sideThrustAcceleration: 0.1,
     scanRange: 4000,
+    primaryDefIndex: 0,
   });
   // Alliance Starbase - 2
   defs.push({
@@ -127,6 +130,7 @@ const initShipsAndStations = () => {
     deathEffect: 4,
     healthRegen: 0.06,
     repairsRequired: 8,
+    primaryDefIndex: 0,
   });
   // Confederacy Starbase - 3
   defs.push({
@@ -152,6 +156,7 @@ const initShipsAndStations = () => {
     deathEffect: 4,
     healthRegen: 0.06,
     repairsRequired: 8,
+    primaryDefIndex: 0,
   });
   // Advanced Fighter - 4
   defs.push({
@@ -178,6 +183,7 @@ const initShipsAndStations = () => {
     sideThrustMaxSpeed: 3,
     sideThrustAcceleration: 0.08,
     scanRange: 13000,
+    primaryDefIndex: 0,
   });
   // Seeker - 5
   defs.push({
@@ -204,6 +210,7 @@ const initShipsAndStations = () => {
     sideThrustMaxSpeed: 3,
     sideThrustAcceleration: 0.08,
     scanRange: 13000,
+    primaryDefIndex: 0,
   });
   // Strafer - 6
   defs.push({
@@ -230,6 +237,7 @@ const initShipsAndStations = () => {
     sideThrustMaxSpeed: 11,
     sideThrustAcceleration: 0.45,
     scanRange: 3000,
+    primaryDefIndex: 0,
   });
   // Rogue Starbase - 7
   defs.push({
@@ -250,6 +258,7 @@ const initShipsAndStations = () => {
     deathEffect: 4,
     healthRegen: 0.06,
     repairsRequired: 8,
+    primaryDefIndex: 0,
   });
   // Venture - 8
   defs.push({
@@ -276,6 +285,7 @@ const initShipsAndStations = () => {
     sideThrustMaxSpeed: 2,
     sideThrustAcceleration: 0.05,
     scanRange: 13000,
+    primaryDefIndex: 0,
   });
   // Spartan - 9
   defs.push({
@@ -302,6 +312,7 @@ const initShipsAndStations = () => {
     sideThrustMaxSpeed: 4,
     sideThrustAcceleration: 0.1,
     scanRange: 13000,
+    primaryDefIndex: 0,
   });
 
   for (let i = 0; i < defs.length; i++) {

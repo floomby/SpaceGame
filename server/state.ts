@@ -1,11 +1,25 @@
 import { randomUUID } from "crypto";
 import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize } from "../src/game";
 import { WebSocket } from "ws";
-import { Faction, initDefs } from "../src/defs";
+import { armDefs, defs, Faction, initDefs } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
+import { market } from "./market";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
+
+// Put the definition info into the marketplace
+for (let i = 0; i < defs.length; i++) {
+  const def = defs[i];
+  if (def.price !== undefined) {
+    market.set(def.name, Math.round(def.price * 0.8));
+  }
+}
+
+for (let i = 0; i < armDefs.length; i++) {
+  const def = armDefs[i];
+  market.set(def.name, Math.round(def.cost * 0.8));
+}
 
 const uid = () => {
   let ret = 0;
@@ -121,6 +135,8 @@ sectorList.forEach((sector) => {
 const targets: Map<number, [TargetKind, number]> = new Map();
 const secondaries: Map<number, number> = new Map();
 
+const knownRecipes: Map<number, Set<string>> = new Map();
+
 const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
 for (let i = 0; i < sectorList.length; i++) {
@@ -145,6 +161,7 @@ export {
   targets,
   secondaries,
   asteroidBounds,
+  knownRecipes,
   uid,
   sectorInDirection,
 };

@@ -1,5 +1,5 @@
 import { Asteroid, EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Missile, Player } from "./game";
-import { ctx, canvas, effectSprites } from "./drawing";
+import { ctx, canvas, effectSprites, sprites } from "./drawing";
 import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound";
 import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
@@ -82,6 +82,8 @@ const initEffects = () => {
   const pewSound = getSound("dullPew0.wav");
   const disabledSound = getSound("disabled0.wav");
   const mineDropSound = getSound("mineDrop0.wav");
+  const plasmaLaunchSound = getSound("squishyPew1.wav");
+  const plasmaHitSound = getSound("wigglyThud0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -583,6 +585,103 @@ const initEffects = () => {
       return { needSound: true };
     },
   });
+  // Plasma Cannon Launch Sound - 13
+  effectDefs.push({
+    frames: 10,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        play3dSound(plasmaLaunchSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      }
+    },
+    initializer: () => {
+      return { needSound: true };
+    },
+  });
+  // Plasma Cannon Hit - 14
+  effectDefs.push({
+    frames: 10,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        play3dSound(plasmaHitSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      }
+
+      const spriteIdx = 7;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * 2 * Math.PI, needSound: true };
+    },
+  });
+  // Mine explosion - 15
+  effectDefs.push({
+    frames: 15,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        effect.extra.panner = play3dSound(
+          popSound,
+          ((from as Position).x - self.position.x) / soundScale,
+          ((from as Position).y - self.position.y) / soundScale
+        );
+      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
+        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
+        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+      }
+
+      const spriteIdx = 6;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * Math.PI * 2, needSound: true };
+    },
+  });
 
   // Consult the spreadsheet for understanding where things are on the spritesheet
   effectSpriteDefs.push({
@@ -602,6 +701,12 @@ const initEffects = () => {
   });
   effectSpriteDefs.push({
     sprite: { x: 256, y: 576, width: 64, height: 64 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 0, y: 800, width: 128, height: 128 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 128, y: 800, width: 128, height: 128 },
   });
 };
 

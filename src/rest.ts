@@ -68,14 +68,15 @@ const getRestRaw = (query: string, callback: (value: any) => void, cache = false
     })
     .then((response) => {
       if (response && response.ok) {
-        const value = response.json();
-        if (cache) {
-          restCache.set(query, value);
-        }
-        return value;
+        return response.json();
       }
     })
-    ?.then(callback);
+    ?.then((data) => {
+      if (cache) {
+        restCache.set(query, data);
+      }
+      callback(data);
+    });
 };
 
 const nameMap = new Map<number, string>();

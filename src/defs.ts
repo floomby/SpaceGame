@@ -3,6 +3,7 @@
 import { ArmamentDef, armDefMap, armDefs, ArmUsage, initArmaments, maxMissileLifetime, mineDefs, missileDefs, TargetedKind } from "./defs/armaments";
 import { AsteroidDef, asteroidDefMap, asteroidDefs, initAsteroids } from "./defs/asteroids";
 import { collectableDefMap, collectableDefs, createCollectableFromDef, initCollectables } from "./defs/collectables";
+import { initProjectileDefs } from "./defs/projectiles";
 import {
   defMap,
   defs,
@@ -28,6 +29,7 @@ enum Faction {
   Alliance = 0,
   Confederation,
   Rogue,
+  Scourge,
   Count,
 }
 
@@ -39,15 +41,19 @@ const getFactionString = (faction: Faction) => {
       return "Confederation";
     case Faction.Rogue:
       return "Rogue";
+    case Faction.Scourge:
+      return "Scourge";
   }
 };
 
 const initDefs = () => {
+  // Do not change order on these things unless you remember what you are doing
   initRecipes();
   initShipsAndStations();
   initArmaments();
   initAsteroids();
   initCollectables();
+  initProjectileDefs();
 };
 
 export {

@@ -1,14 +1,12 @@
 import { bindPostUpdater, horizontalCenter, pop } from "../dialog";
 import { Player } from "../game";
-import { inventory, ownId } from "../globals";
+import { inventory, ownId, recipesKnown } from "../globals";
 import { sendManufacture } from "../net";
 import { maxManufacturable, recipes } from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
   const recipe = recipes[index];
-  console.log("recipe", recipe, Object.keys(recipe.ingredients));
   return `<ul>` + Object.keys(recipe.ingredients).map((ingredient) => {
-    console.log("ingredient", ingredient);
     const required = recipe.ingredients[ingredient] * amount;
     const have = inventory[ingredient] || 0;
     return `<li style="color: ${have >= required ? "green" : "red"};">${ingredient}: ${have} / ${required}</li>`;
@@ -18,6 +16,9 @@ const manufacturingToolTipText = (index: number, amount: number) => {
 const manufacturingTableHtml = () => {
   let html = `<table style="width: 100%; text-align: left;">`;
   for (let i = 0; i < recipes.length; i++) {
+    if (!recipesKnown.has(recipes[i].name)) {
+      continue;
+    }
     html += `<tr><td>${recipes[i].name}</td>
 <td>${inventory[recipes[i].name] || 0}</td>
 <td><input value="1" id="manufactureAmount${i}"/></td>
@@ -63,7 +64,6 @@ const populateManufacturingTable = () => {
           }
           const tooltip = document.getElementById(`manufacturingTooltip${i}`);
           if (tooltip) {
-            // tooltip.innerHTML = manufacturingToolTipText(i, value);
             if (amount.value !== "" && !isNaN(value) && value >= 0) {
               tooltip.innerHTML = manufacturingToolTipText(i, value);
             }
@@ -90,7 +90,7 @@ const manufacturingBay = () => {
   ]);
 };
 
-const setupManufacturingBay = (station: Player) => {
+const setupManufacturingBay = () => {
   const closeManufacturingBay = document.getElementById("closeManufacturingBay");
   if (closeManufacturingBay) {
     closeManufacturingBay.onclick = () => {

@@ -12,10 +12,11 @@ import {
   Player,
   TargetKind,
 } from "../game";
-import { l2NormSquared, Rectangle } from "../geometry";
+import { l2NormSquared, Position, Rectangle } from "../geometry";
 import { SlotKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
+import { projectileDefs } from "./projectiles";
 
 enum ArmUsage {
   Empty,
@@ -166,7 +167,7 @@ const initArmaments = () => {
         }
       }
     },
-    cost: 50,
+    cost: 0,
   });
   // Laser Beam - 6
   armDefs.push({
@@ -414,7 +415,7 @@ const initArmaments = () => {
     deathEffect: 10,
     turnRate: 0.3,
     hitMutator: (player, state, applyEffect) => {
-      player.disabled = 600;
+      player.disabled = 240;
     },
   });
   const empMissileIndex = missileDefs.length - 1;
@@ -462,13 +463,13 @@ const initArmaments = () => {
   });
 
   mineDefs.push({
-    explosionEffectIndex: 2,
+    explosionEffectIndex: 15,
     explosionMutator(mine, state) {
       // reuse the mine as the circle object for the collision detection for the explosion
       mine.radius = 50;
       const players = findAllPlayersOverlappingCircle(mine, state.players.values());
       for (let i = 0; i < players.length; i++) {
-        players[i].health -= 50;
+        players[i].health -= 80;
       }
     },
   });
@@ -480,7 +481,7 @@ const initArmaments = () => {
     kind: SlotKind.Mine,
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
-    maxAmmo: 10,
+    maxAmmo: 50,
     stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 33 && slotData.ammo > 0) {
@@ -496,7 +497,7 @@ const initArmaments = () => {
           radius: 15,
           team: player.team,
           defIndex: proximityMineIndex,
-          left: 600,
+          left: 1400,
           deploying: 30,
         };
         state.mines.set(id, mine);
@@ -505,13 +506,65 @@ const initArmaments = () => {
       }
     },
     equipMutator: (player, slotIndex) => {
-      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 10 };
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 50 };
     },
     frameMutator: (player, slotIndex) => {
       const slotData = player.slotData[slotIndex];
       slotData.sinceFired++;
     },
     cost: 200,
+  });
+
+  // Plasma Cannon - 12
+  armDefs.push({
+    name: "Plasma Cannon",
+    description: "A rapid firing, forward facing cannon which fires twin plasma bolts",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Untargeted,
+    energyCost: 15,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 15 && slotData.sinceFired > 10) {
+        player.energy -= 15;
+        slotData.sinceFired = 0;
+        const cos = Math.cos(player.heading);
+        const sin = Math.sin(player.heading);
+        const hardPoints: Position[] = [
+          { x: player.position.x - 10 * sin, y: player.position.y + 10 * cos },
+          { x: player.position.x + 10 * sin, y: player.position.y - 10 * cos },
+        ];
+        const projectileDef = projectileDefs[1];
+        for (let i = 0; i < hardPoints.length; i++) {
+          const projectile = {
+            position: hardPoints[i],
+            radius: projectileDef.radius,
+            speed: projectileDef.speed + player.speed,
+            heading: player.heading,
+            damage: 20,
+            team: player.team,
+            id: player.projectileId,
+            parent: player.id,
+            frameTillEXpire: projectileDef.framesToExpire,
+            idx: 1,
+          };
+          const projectiles = state.projectiles.get(player.id) || [];
+          projectiles.push(projectile);
+          state.projectiles.set(player.id, projectiles);
+          player.projectileId++;
+          player.sinceLastShot[i] = 0;
+        }
+        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 1500,
   });
 
   for (let i = 0; i < armDefs.length; i++) {
@@ -526,4 +579,9 @@ const initArmaments = () => {
   }
 };
 
-export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments };
+const isFreeArm = (name: string) => {
+  const armDef = armDefMap.get(name);
+  return armDef && armDef.def.cost === 0;
+}
+
+export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments, isFreeArm };

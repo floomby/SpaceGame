@@ -144,11 +144,11 @@ const sendDepositCargo = (id: number, what: string, amount: number) => {
   );
 };
 
-const sendEquip = (id: number, slotIndex: number, what: number) => {
+const sendEquip = (id: number, slotIndex: number, what: number, fromInventory = false) => {
   serverSocket.send(
     JSON.stringify({
       type: "equip",
-      payload: { id, slotIndex, what },
+      payload: { id, slotIndex, what, fromInventory },
     })
   );
 };
@@ -162,11 +162,11 @@ const sendChat = (id: number, message: string) => {
   );
 };
 
-const sendPurchase = (id: number, index: number) => {
+const sendPurchase = (id: number, index: number, fromInventory = false) => {
   serverSocket.send(
     JSON.stringify({
       type: "purchase",
-      payload: { id, index },
+      payload: { id, index, fromInventory },
     })
   );
 };

@@ -1,23 +1,23 @@
-import { addCargo, availableCargoCapacity, Player } from "../game";
+import { addCargo, availableCargoCapacity, Mutated, Player } from "../game";
 import { Position, Rectangle } from "../geometry";
 import { armDefs, ArmUsage } from "./armaments";
 import { clientUid as uid } from "../defs";
-import { defs } from "./shipsAndStations"
+import { defs } from "./shipsAndStations";
+import { recipeMap } from "../recipes";
 
 type CollectableDef = {
   sprite: Rectangle;
   radius: number;
   name: string;
   description: string;
-  canBeCollected: (player: Player) => boolean;
-  collectMutator: (player: Player) => void;
+  canBeCollected: (player: Player, knownRecipes: Map<number, Set<string>>) => boolean;
+  collectMutator: (player: Player, discoverRecipe: (id: number, what: string) => void) => void;
 };
 
 const collectableDefs: CollectableDef[] = [];
 const collectableDefMap = new Map<string, { index: number; def: CollectableDef }>();
 
 const initCollectables = () => {
-  
   collectableDefs.push({
     sprite: { x: 320, y: 64, width: 64, height: 64 },
     radius: 26,
@@ -60,6 +60,7 @@ const initCollectables = () => {
       }
     },
   });
+  
   collectableDefs.push({
     sprite: { x: 320, y: 512, width: 64, height: 64 },
     radius: 26,
@@ -74,6 +75,35 @@ const initCollectables = () => {
       player.energy = def.energy;
     },
   });
+
+  const recipeFor = (what: string) => {
+    if (!recipeMap.has(what)) {
+      throw new Error(`Unknown recipe ${what}`);
+    }
+    return {
+      sprite: { x: 256, y: 768, width: 64, height: 64 },
+      radius: 26,
+      name: `Recipe - ${what}`,
+      description: `Learn a new recipe for ${what}`,
+      canBeCollected: (player, knownRecipes) => {
+        if (player.npc) {
+          return false;
+        }
+        if (knownRecipes.has(player.id)) {
+          const recipes = knownRecipes.get(player.id)!;
+          return !recipes.has(what);
+        }
+        return false;
+      },
+      collectMutator: (player, discoverRecipe) => {
+        discoverRecipe(player.id, what);
+      },
+    };
+  };
+
+  for (const recipe of recipeMap.keys()) {
+    collectableDefs.push(recipeFor(recipe));
+  }
 
   for (let i = 0; i < collectableDefs.length; i++) {
     const def = collectableDefs[i];

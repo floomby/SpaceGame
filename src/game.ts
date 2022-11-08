@@ -17,6 +17,7 @@ import {
   asteroidDefMap,
   mineDefs,
 } from "./defs";
+import { projectileDefs } from "./defs/projectiles";
 import {
   Circle,
   Position,
@@ -205,7 +206,7 @@ const canRepair = (player: Player | undefined, station: Player | undefined, stri
   }
 };
 
-type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number };
+type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number, idx: number };
 
 type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; phase?: number };
 
@@ -216,11 +217,11 @@ const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: n
 };
 
 // Primary laser stats (TODO put this in a better place)
-const primaryRange = 1500;
-const primarySpeed = 20;
-const primaryFramesToExpire = primaryRange / primarySpeed;
-const primaryRadius = 1;
-const primaryEnergy = 3;
+// const primaryRange = 1500;
+// const primarySpeed = 20;
+// const primaryFramesToExpire = primaryRange / primarySpeed;
+// const primaryRadius = 1;
+// const primaryEnergy = 3;
 
 type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
 
@@ -456,7 +457,9 @@ const update = (
   onDeath: (player: Player) => void,
   flashServerMessage: (id: number, message: string) => void,
   removeCollectable: (id: number, collected: boolean) => void,
-  removeMine: (id: number, detonated: boolean) => void
+  removeMine: (id: number, detonated: boolean) => void,
+  knownRecipes: Map<number, Set<string>>,
+  discoverRecipe: (id: number, recipe: string) => void
 ) => {
   const ret: Mutated = { asteroids: new Set(), collectables: [], mines: [] };
 
@@ -490,212 +493,10 @@ const update = (
     }
   }
 
-  // Main loop for the players (ships and stations)
-  for (const [id, player] of state.players) {
-    if (player.docked) {
-      continue;
-    }
-    const def = defs[player.defIndex];
-    if (player.health <= 0) {
-      kill(def, player, state, applyEffect, onDeath, ret.collectables);
-    }
-
-    if (def.kind !== UnitKind.Station) {
-      for (const collectable of state.collectables.values()) {
-        const collectableDef = collectableDefs[collectable.index];
-        if (circlesIntersect(player, collectable) && collectableDef.canBeCollected(player)) {
-          state.collectables.delete(collectable.id);
-          removeCollectable(collectable.id, true);
-          collectableDef.collectMutator(player);
-        }
-      }
-    }
-
-    if (def.kind === UnitKind.Ship) {
-      if (player.disabled) {
-        player.warping = 0;
-        player.disabled -= 1;
-        player.position.x += player.v.x;
-        player.position.y += player.v.y;
-        player.heading = player.heading + (player.omega % (2 * Math.PI));
-      } else {
-        player.v.x = player.position.x;
-        player.v.y = player.position.y;
-        player.position.x += player.speed * Math.cos(player.heading);
-        player.position.y += player.speed * Math.sin(player.heading);
-        if (player.side) {
-          player.position.x += player.side * -Math.sin(player.heading);
-          player.position.y += player.side * Math.cos(player.heading);
-        }
-        player.v.x = player.position.x - player.v.x;
-        player.v.y = player.position.y - player.v.y;
-      }
-      if (player.toFirePrimary && player.energy > primaryEnergy) {
-        const projectile = {
-          position: { x: player.position.x, y: player.position.y },
-          radius: primaryRadius,
-          speed: primarySpeed,
-          heading: player.heading,
-          damage: def.primaryDamage,
-          team: player.team,
-          id: player.projectileId,
-          parent: id,
-          frameTillEXpire: primaryFramesToExpire,
-        };
-        const projectiles = state.projectiles.get(id) || [];
-        projectiles.push(projectile);
-        state.projectiles.set(id, projectiles);
-        player.projectileId++;
-        player.toFirePrimary = false;
-        player.energy -= primaryEnergy;
-        applyEffect({
-          effectIndex: 8,
-          from: { kind: EffectAnchorKind.Absolute, value: player.position },
-        });
-      }
-      // Run the secondary frameMutators
-      player.armIndices.forEach((armament, index) => {
-        const armDef = armDefs[armament];
-        if (armDef.frameMutator) {
-          armDef.frameMutator(player, index);
-        }
-      });
-      // Fire secondaries
-      if (player.toFireSecondary && !player.disabled) {
-        let slotId: number;
-        if (player.npc) {
-          slotId = player.npc.selectedSecondary;
-        } else {
-          slotId = serverSecondaries.get(id);
-        }
-        const armDef = armDefs[player.armIndices[slotId]];
-        // Targeted weapons
-        if (armDef.targeted === TargetedKind.Targeted) {
-          const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
-          if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
-            if (armDef.stateMutator) {
-              let target: Player | Asteroid | undefined;
-              if (targetKind === TargetKind.Player) {
-                target = state.players.get(targetId);
-              } else if (targetKind === TargetKind.Asteroid) {
-                target = state.asteroids.get(targetId);
-              }
-              if (target) {
-                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage, ret);
-              }
-            }
-          }
-          // Untargeted weapons
-        } else if (armDef.targeted === TargetedKind.Untargeted) {
-          if (slotId !== undefined && slotId < player.armIndices.length) {
-            if (armDef.stateMutator) {
-              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
-            }
-          }
-        }
-      }
-    } else {
-      // Have stations spin slowly
-      player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
-      // Have the stations fire their primary weapons
-      if (!player.inoperable && !player.disabled) {
-        let closestEnemy: Player | undefined;
-        let closestEnemyDistanceSquared = Infinity;
-        for (const [otherId, otherPlayer] of state.players) {
-          if (otherPlayer.docked || otherPlayer.inoperable) {
-            continue;
-          }
-          if (player.id === otherId) {
-            continue;
-          }
-          const otherDef = defs[otherPlayer.defIndex];
-          if (otherPlayer.team === player.team) {
-            continue;
-          }
-          const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
-          if (distanceSquared < closestEnemyDistanceSquared) {
-            closestEnemy = otherPlayer;
-            closestEnemyDistanceSquared = distanceSquared;
-          }
-        }
-        if (closestEnemy) {
-          const hardpointLocations = hardpointPositions(player, def);
-          const targetingVectors = hardpointLocations.map((hardpoint) =>
-            findInterceptAimingHeading(hardpoint, closestEnemy, primarySpeed, primaryRange)
-          );
-          for (let i = 0; i < def.hardpoints.length; i++) {
-            const targeting = targetingVectors[i];
-            if (targeting && player.energy > primaryEnergy && player.sinceLastShot[i] > def.primaryReloadTime) {
-              const projectile = {
-                position: hardpointLocations[i],
-                radius: primaryRadius,
-                speed: primarySpeed,
-                heading: targeting,
-                damage: def.primaryDamage,
-                team: player.team,
-                id: player.projectileId,
-                parent: id,
-                frameTillEXpire: primaryFramesToExpire,
-              };
-              const projectiles = state.projectiles.get(id) || [];
-              projectiles.push(projectile);
-              state.projectiles.set(id, projectiles);
-              player.projectileId++;
-              player.energy -= primaryEnergy;
-              player.sinceLastShot[i] = 0;
-              applyEffect({ effectIndex: 8, from: { kind: EffectAnchorKind.Absolute, value: hardpointLocations[i] } });
-            }
-          }
-        }
-      } else if (player.inoperable) {
-        for (let i = 0; i < player.repairs.length; i++) {
-          if (player.repairs[i] >= def.repairsRequired) {
-            console.log("Station repaired", id);
-            player.inoperable = false;
-            player.team = i;
-            player.health = def.health;
-            break;
-          }
-        }
-      }
-      if (player.disabled > 0) {
-        player.disabled = Math.max(0, player.disabled - 3);
-      }
-    }
-    // Update primary times since last shot (secondaries are handled in the frameMutators in the armDefs)
-    for (let i = 0; i < player.sinceLastShot.length; i++) {
-      player.sinceLastShot[i] += 1;
-    }
-    // Don't apply regen to players which are inoperable
-    if (!player.inoperable) {
-      player.health = Math.min(player.health + def.healthRegen, def.health);
-      player.energy = Math.min(player.energy + def.energyRegen, def.energy);
-    }
-    // If a warp is in progress, update the warp progress, then trigger the warp once time has elapsed
-    if (player.warping) {
-      player.warping += 1;
-      if (player.warping > def.warpTime) {
-        player.warping = 0;
-        state.players.delete(id);
-        serverWarpList.push({ player, to: player.warpTo });
-        applyEffect({
-          effectIndex: def.warpEffect,
-          from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
-        });
-      }
-    }
-  }
-  for (const collectable of state.collectables.values()) {
-    if (collectable.framesLeft <= 0) {
-      state.collectables.delete(collectable.id);
-      removeCollectable(collectable.id, false);
-      continue;
-    }
-    collectable.framesLeft -= 1;
-  }
   // Quadratic loop for the projectiles
   for (const [id, projectiles] of state.projectiles) {
     for (let i = 0; i < projectiles.length; i++) {
+      const projectileDef = projectileDefs[projectiles[i].idx];
       const projectile = projectiles[i];
       projectile.position.x += projectile.speed * Math.cos(projectile.heading);
       projectile.position.y += projectile.speed * Math.sin(projectile.heading);
@@ -714,15 +515,34 @@ const update = (
           projectiles.splice(i, 1);
           i--;
           didRemove = true;
+          if (projectileDef.hitEffect !== undefined) {
+            applyEffect({
+              effectIndex: projectileDef.hitEffect,
+              from: { kind: EffectAnchorKind.Absolute, value: projectile.position },
+            });
+          }
+          if (projectileDef.hitMutator) {
+            projectileDef.hitMutator(projectile, state);
+          }
           break;
         }
       }
       if (!didRemove && projectile.frameTillEXpire <= 0) {
+        if (projectileDef.endEffect !== undefined) {
+          applyEffect({
+            effectIndex: projectileDef.endEffect,
+            from: { kind: EffectAnchorKind.Absolute, value: projectile.position },
+          });
+        }
+        if (projectileDef.endMutator) {
+          projectileDef.endMutator(projectile, state);
+        }
         projectiles.splice(i, 1);
         i--;
       }
     }
   }
+
   // Another quadratic loop for the missiles
   for (const [id, missile] of state.missiles) {
     const missileDef = missileDefs[missile.defIndex];
@@ -779,6 +599,221 @@ const update = (
       state.missiles.delete(id);
       applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
     }
+  }
+
+  // Main loop for the players (ships and stations)
+  for (const [id, player] of state.players) {
+    if (player.docked) {
+      continue;
+    }
+    const def = defs[player.defIndex];
+    if (player.health <= 0) {
+      kill(def, player, state, applyEffect, onDeath, ret.collectables);
+    }
+
+    if (def.kind !== UnitKind.Station) {
+      for (const collectable of state.collectables.values()) {
+        const collectableDef = collectableDefs[collectable.index];
+        if (circlesIntersect(player, collectable) && collectableDef.canBeCollected(player, knownRecipes)) {
+          state.collectables.delete(collectable.id);
+          removeCollectable(collectable.id, true);
+          collectableDef.collectMutator(player, discoverRecipe);
+        }
+      }
+    }
+    
+    if (def.kind === UnitKind.Ship) {
+      const primaryDef = projectileDefs[def.primaryDefIndex];
+      if (player.disabled) {
+        player.warping = 0;
+        player.disabled -= 1;
+        player.position.x += player.v.x;
+        player.position.y += player.v.y;
+        player.heading = player.heading + (player.omega % (2 * Math.PI));
+      } else {
+        player.v.x = player.position.x;
+        player.v.y = player.position.y;
+        player.position.x += player.speed * Math.cos(player.heading);
+        player.position.y += player.speed * Math.sin(player.heading);
+        if (player.side) {
+          player.position.x += player.side * -Math.sin(player.heading);
+          player.position.y += player.side * Math.cos(player.heading);
+        }
+        player.v.x = player.position.x - player.v.x;
+        player.v.y = player.position.y - player.v.y;
+      }
+      if (player.toFirePrimary && player.energy > primaryDef.energy) {
+        const projectile = {
+          position: { x: player.position.x, y: player.position.y },
+          radius: primaryDef.radius,
+          speed: primaryDef.speed,
+          heading: player.heading,
+          damage: def.primaryDamage,
+          team: player.team,
+          id: player.projectileId,
+          parent: id,
+          frameTillEXpire: primaryDef.framesToExpire,
+          idx: def.primaryDefIndex,
+        };
+        const projectiles = state.projectiles.get(id) || [];
+        projectiles.push(projectile);
+        state.projectiles.set(id, projectiles);
+        player.projectileId++;
+        player.toFirePrimary = false;
+        player.energy -= primaryDef.energy;
+        if (primaryDef.fireEffect !== undefined) {
+          applyEffect({
+            effectIndex: primaryDef.fireEffect,
+            from: { kind: EffectAnchorKind.Absolute, value: player.position },
+          });
+        }
+      }
+      // Run the secondary frameMutators
+      player.armIndices.forEach((armament, index) => {
+        const armDef = armDefs[armament];
+        if (armDef.frameMutator) {
+          armDef.frameMutator(player, index);
+        }
+      });
+      // Fire secondaries
+      if (player.toFireSecondary && !player.disabled) {
+        let slotId: number;
+        if (player.npc) {
+          slotId = player.npc.selectedSecondary;
+        } else {
+          slotId = serverSecondaries.get(id);
+        }
+        const armDef = armDefs[player.armIndices[slotId]];
+        // Targeted weapons
+        if (armDef.targeted === TargetedKind.Targeted) {
+          const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
+          if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
+            if (armDef.stateMutator) {
+              let target: Player | Asteroid | undefined;
+              if (targetKind === TargetKind.Player) {
+                target = state.players.get(targetId);
+              } else if (targetKind === TargetKind.Asteroid) {
+                target = state.asteroids.get(targetId);
+              }
+              if (target) {
+                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage, ret);
+              }
+            }
+          }
+          // Untargeted weapons
+        } else if (armDef.targeted === TargetedKind.Untargeted) {
+          if (slotId !== undefined && slotId < player.armIndices.length) {
+            if (armDef.stateMutator) {
+              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
+            }
+          }
+        }
+      }
+    } else {
+      // Have stations spin slowly
+      player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
+      // Have the stations fire their primary weapons
+      if (!player.inoperable && !player.disabled) {
+        let closestEnemy: Player | undefined;
+        let closestEnemyDistanceSquared = Infinity;
+        for (const [otherId, otherPlayer] of state.players) {
+          if (otherPlayer.docked || otherPlayer.inoperable) {
+            continue;
+          }
+          if (player.id === otherId) {
+            continue;
+          }
+          if (otherPlayer.team === player.team) {
+            continue;
+          }
+          const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
+          if (distanceSquared < closestEnemyDistanceSquared) {
+            closestEnemy = otherPlayer;
+            closestEnemyDistanceSquared = distanceSquared;
+          }
+        }
+        if (closestEnemy) {
+          const primaryDef = projectileDefs[def.primaryDefIndex];
+          const hardpointLocations = hardpointPositions(player, def);
+          const targetingVectors = hardpointLocations.map((hardpoint) =>
+            findInterceptAimingHeading(hardpoint, closestEnemy, primaryDef.speed, primaryDef.range)
+          );
+          for (let i = 0; i < def.hardpoints.length; i++) {
+            const targeting = targetingVectors[i];
+            if (targeting && player.energy > primaryDef.energy && player.sinceLastShot[i] > def.primaryReloadTime) {
+              const projectile = {
+                position: hardpointLocations[i],
+                radius: primaryDef.radius,
+                speed: primaryDef.speed,
+                heading: targeting,
+                damage: def.primaryDamage,
+                team: player.team,
+                id: player.projectileId,
+                parent: id,
+                frameTillEXpire: primaryDef.framesToExpire,
+                idx: def.primaryDefIndex,
+              };
+              const projectiles = state.projectiles.get(id) || [];
+              projectiles.push(projectile);
+              state.projectiles.set(id, projectiles);
+              player.projectileId++;
+              player.energy -= primaryDef.energy;
+              player.sinceLastShot[i] = 0;
+              if (primaryDef.fireEffect !== undefined) {
+                applyEffect({
+                  effectIndex: primaryDef.fireEffect,
+                  from: { kind: EffectAnchorKind.Absolute, value: hardpointLocations[i] },
+                });
+              }
+            }
+          }
+        }
+      } else if (player.inoperable) {
+        for (let i = 0; i < player.repairs.length; i++) {
+          if (player.repairs[i] >= def.repairsRequired) {
+            console.log("Station repaired", id);
+            player.inoperable = false;
+            player.team = i;
+            player.health = def.health;
+            break;
+          }
+        }
+      }
+      if (player.disabled > 0) {
+        player.disabled = Math.max(0, player.disabled - 3);
+      }
+    }
+    // Update primary times since last shot (secondaries are handled in the frameMutators in the armDefs)
+    for (let i = 0; i < player.sinceLastShot.length; i++) {
+      player.sinceLastShot[i] += 1;
+    }
+    // Don't apply regen to players which are inoperable
+    if (!player.inoperable) {
+      player.health = Math.min(player.health + def.healthRegen, def.health);
+      player.energy = Math.min(player.energy + def.energyRegen, def.energy);
+    }
+    // If a warp is in progress, update the warp progress, then trigger the warp once time has elapsed
+    if (player.warping) {
+      player.warping += 1;
+      if (player.warping > def.warpTime) {
+        player.warping = 0;
+        state.players.delete(id);
+        serverWarpList.push({ player, to: player.warpTo });
+        applyEffect({
+          effectIndex: def.warpEffect,
+          from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+        });
+      }
+    }
+  }
+  // Collectable loop
+  for (const collectable of state.collectables.values()) {
+    if (collectable.framesLeft <= 0) {
+      state.collectables.delete(collectable.id);
+      removeCollectable(collectable.id, false);
+      continue;
+    }
+    collectable.framesLeft -= 1;
   }
   for (const collectable of ret.collectables) {
     state.collectables.set(collectable.id, collectable);
@@ -1037,7 +1072,7 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   const def = defs[player.defIndex];
   if (slotIndex >= def.slots.length) {
     console.log("Warning: slot number too high");
-    return false;
+    return player;
   }
   let armDef: ArmamentDef | undefined = undefined;
   let defIndex: number;
@@ -1045,14 +1080,14 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
     const entry = armDefMap.get(what);
     if (!entry) {
       console.log("Warning: no such armament");
-      return false;
+      return player;
     }
     armDef = entry.def;
     defIndex = entry.index;
   } else {
     if (what >= armDefs.length) {
       console.log("Warning: armament index too high");
-      return false;
+      return player;
     }
     armDef = armDefs[what];
     defIndex = what;
@@ -1060,54 +1095,63 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
   const slotKind = def.slots[slotIndex];
   if (slotKind !== armDef.kind) {
     console.log("Warning: wrong kind of armament", slotKind, armDef.kind);
-    return false;
+    return player;
   }
   if (slotIndex >= player.armIndices.length) {
     console.log("Warning: player armaments not initialized correctly");
-    return false;
+    return player;
   }
 
   if ((player.credits !== undefined && armDef.cost <= player.credits) || noCost) {
+    const npc = player.npc;
+    player.npc = undefined;
+    const ret = copyPlayer(player);
+    player.npc = npc;
+    ret.npc = npc;
+
     if (!noCost) {
-      player.credits -= armDef.cost;
+      ret.credits -= armDef.cost;
     }
-    player.armIndices[slotIndex] = defIndex;
+    ret.armIndices[slotIndex] = defIndex;
     if (armDef.equipMutator) {
-      armDef.equipMutator(player, slotIndex);
+      armDef.equipMutator(ret, slotIndex);
     }
-    return true;
+    return ret;
   }
-  return false;
+  return player;
 };
 
-const purchaseShip = (player: Player, index: number, shipOptions: string[]) => {
+const purchaseShip = (player: Player, index: number, shipOptions: string[], bypassChecks: boolean) => {
   if (index >= defs.length || index < 0) {
     console.log("Warning: ship index out of range");
-    return false;
+    return player;
   }
   const def = defs[index];
   if (def.price === undefined) {
     console.log("Warning: ship not purchasable");
-    return false;
+    return player;
   }
-  // if (playerDef.team !== def.team) {
-  //   console.log("Warning: ship not on same team");
-  //   return;
-  // }
-  if (!shipOptions.includes(def.name)) {
+  if (!bypassChecks && !shipOptions.includes(def.name)) {
     console.log("Warning: ship not available at this station");
-    return false;
+    return player;
   }
-  if (player.credits !== undefined && def.price <= player.credits) {
-    player.credits -= def.price;
-    player.defIndex = index;
-    player.slotData = new Array(def.slots.length).map(() => ({}));
-    player.armIndices = emptyLoadout(index);
-    player.health = def.health;
-    player.energy = def.energy;
-    return true;
+  if (bypassChecks || (player.credits !== undefined && def.price <= player.credits)) {
+    const npc = player.npc;
+    player.npc = undefined;
+    const ret = copyPlayer(player);
+    player.npc = npc;
+    ret.npc = npc;
+    if (!bypassChecks) {
+      ret.credits -= def.price;
+    }
+    ret.defIndex = index;
+    ret.slotData = new Array(def.slots.length).map(() => ({}));
+    ret.armIndices = emptyLoadout(index);
+    ret.health = def.health;
+    ret.energy = def.energy;
+    return ret;
   }
-  return false;
+  return player;
 };
 
 const repairStation = (player: Player) => {
@@ -1150,7 +1194,7 @@ const findAllAsteroidsOverlappingPoint = (point: Position, asteroids: IterableIt
   return overlappingAsteroids;
 };
 
-const isNearOperableEnemyStation = (player: Player, players: IterableIterator<Player>, distance = primaryRadius) => {
+const isNearOperableEnemyStation = (player: Player, players: IterableIterator<Player>, distance = 1500) => {
   for (const otherPlayer of players) {
     const otherDef = defs[otherPlayer.defIndex];
     if (otherDef.kind !== UnitKind.Station || otherPlayer.inoperable) {

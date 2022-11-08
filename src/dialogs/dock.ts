@@ -3,7 +3,7 @@
 
 import { armDefs, defs, Faction, SlotKind, UnitDefinition, UnitKind } from "../defs";
 import { CargoEntry, Player, ticksPerSecond } from "../game";
-import { lastSelf, ownId, state } from "../globals";
+import { inventory, lastSelf, ownId, state } from "../globals";
 import { sendDepositCargo, sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
@@ -159,10 +159,11 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   let index = 0;
   let html = `<table style="width: 80vw; text-align: left;">
   <colgroup>
-    <col span="1" style="width: 30vw;">
-    <col span="1" style="width: 10vw;">
-    <col span="1" style="width: 20vw;">
-    <col span="1" style="width: 20vw;">
+    <col span="1" style="width: 16vw;">
+    <col span="1" style="width: 16vw;">
+    <col span="1" style="width: 16vw;">
+    <col span="1" style="width: 16vw;">
+    <col span="1" style="width: 16vw;">
   </colgroup>`;
   html += '<tr><th>Armament</th><th></th><th style="text-align: left;">Price</th><th></th></tr>';
   for (const armDef of armDefs) {
@@ -171,6 +172,9 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   <td>${armDef.name}</td>
   <td><div class="tooltip">?<span class="tooltipText">&nbsp;${armDef.description}&nbsp;</span></div></td>
   <td>${armDef.cost}</td>
+  <td style="text-align: right;">
+    <button id="equipFromInventory${index}"${inventory.hasOwnProperty(armDef.name) ? "" : "disabled"}>Equip From Inventory</button>
+  </td>
   <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(ownId), armDef.cost)}>Equip</button></td></tr>`;
     }
   }
@@ -212,10 +216,10 @@ const populateShipList = (availableShips: { def: UnitDefinition; index: number }
   if (shipList) {
     shipList.innerHTML = `<table style="width: 80vw; text-align: left;">
   <colgroup>
-    <col span="1" style="width: 30vw;">
-    <col span="1" style="width: 10vw;">
-    <col span="1" style="width: 20vw;">
-    <col span="1" style="width: 20vw;">
+    <col span="1" style="width: 18vw;">
+    <col span="1" style="width: 18vw;">
+    <col span="1" style="width: 18vw;">
+    <col span="1" style="width: 18vw;">
   </colgroup>
   <tbody>
     ${availableShips
@@ -224,6 +228,9 @@ const populateShipList = (availableShips: { def: UnitDefinition; index: number }
     <td>${def.name}</td>
     <td><button id="previewShip${index}">Preview</button></td>
     <td>${def.price}</td>
+    <td style="text-align: right;">
+      <button id="equipShipFromInventory${index}"${inventory.hasOwnProperty(def.name) ? "" : "disabled"}>Equip From Inventory</button>
+    </td>
     <td><button id="purchase${index}" ${self.credits >= def.price ? "" : "disabled"}>Purchase</button></td></tr>`
       )
       .join("")}
@@ -326,9 +333,16 @@ const setupShipShop = (station: Player) => {
       } else {
         console.log("preview not found", `previewShip${index}`);
       }
+      const equip = document.getElementById(`equipShipFromInventory${index}`);
+      if (equip) {
+        equip.addEventListener("click", () => {
+          sendPurchase(ownId, index, true);
+          pop();
+        });
+      }
     }
   };
-  getRestRaw(`/shipsAvailable?id=${station.id}`, callback, false);
+  getRestRaw(`/shipsAvailable?id=${station.id}`, callback, true);
   document.getElementById("back")?.addEventListener("click", () => {
     pop();
   });
@@ -378,7 +392,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
     push(shipShop(), () => setupShipShop(station));
   });
   document.getElementById("openManufacturing")?.addEventListener("click", () => {
-    push(manufacturingBay(), () => setupManufacturingBay(station));
+    push(manufacturingBay(), () => setupManufacturingBay());
   });
   document.getElementById("openInventory")?.addEventListener("click", () => {
     push(inventoryDialog(), setupInventory);
@@ -389,7 +403,8 @@ const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
   let index = 0;
   for (const armDef of armDefs) {
     if (armDef.kind === kind) {
-      const button = document.getElementById(`equip${index++}`);
+      index++;
+      const button = document.getElementById(`equip${index - 1}`);
       if (button) {
         button.addEventListener("click", () => {
           const idx = armDefs.indexOf(armDef);
@@ -400,7 +415,18 @@ const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
           setupDockingUI(station, self);
         });
       } else {
-        console.log("button not found", `equip${index}`);
+        console.log("button not found", `equip${index - 1}`);
+      }
+      const equipFromInventory = document.getElementById(`equipFromInventory${index - 1}`);
+      if (equipFromInventory) {
+        equipFromInventory.addEventListener("click", () => {
+          const idx = armDefs.indexOf(armDef);
+          sendEquip(ownId, slotIndex, idx, true);
+          const self = state.players.get(ownId);
+          const station = state.players.get(self?.docked);
+          showDialog(dockDialog(station, self));
+          setupDockingUI(station, self);
+        });
       }
     }
   }
@@ -418,7 +444,9 @@ const bindDockingUpdaters = () => {
   bindUpdater("credits", creditsHtml);
   bindUpdater("arms", armsHtml);
   bindPostUpdater("arms", armsPostUpdate);
+  bindPostUpdater("inventory", armsPostUpdate);
   bindPostUpdater("ship", shipPostUpdate);
+  bindPostUpdater("inventory", shipPostUpdate);
 };
 
 export { docker, setDocker, showDocked, setShowDocked, dockDialog, setupDockingUI, bindDockingUpdaters };

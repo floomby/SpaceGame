@@ -1,4 +1,5 @@
 import { armDefs, ArmUsage, asteroidDefs, collectableDefs, defs, Faction, missileDefs, UnitKind } from "./defs";
+import { shown } from "./dialog";
 import { drawEffects, initEffects, effectSpriteDefs } from "./effects";
 import {
   Asteroid,
@@ -15,9 +16,10 @@ import {
   sectorBounds,
 } from "./game";
 import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection } from "./geometry";
-import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, teamColorsOpaque } from "./globals";
+import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, scourgeColor, scourgeColorOpaque, teamColorsOpaque } from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
+import { drawProjectile } from "./projectileDrawing";
 import { getNameOfPlayer } from "./rest";
 
 let canvas: HTMLCanvasElement;
@@ -476,16 +478,18 @@ const drawPlayer = (player: Player, self: Player) => {
     // TODO Make this not care about how many teams there are
     ctx.filter = "grayscale(0%)";
     ctx.globalAlpha = 0.9;
-    drawBar({ x: -sprite.width * 0.4, y: -22 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: -27 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
     drawBar(
-      { x: -sprite.width * 0.4, y: -6 },
+      { x: -sprite.width * 0.4, y: -13 },
       sprite.width * 0.8,
       12,
       confederationColorOpaque,
       "#333333DD",
       player.repairs[1] / def.repairsRequired
     );
-    drawBar({ x: -sprite.width * 0.4, y: 8 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: 1 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
+    drawBar({ x: -sprite.width * 0.4, y: 15 }, sprite.width * 0.8, 12, scourgeColorOpaque, "#333333DD", player.repairs[3] / def.repairsRequired);
+
   }
   ctx.restore();
 };
@@ -496,31 +500,6 @@ const drawMissile = (missile: Missile, self: Player) => {
   ctx.rotate(missile.heading);
   const sprite = missileSprites[missile.defIndex];
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
-  ctx.restore();
-};
-
-const drawProjectile = (projectile: Ballistic, self: Player) => {
-  ctx.save();
-  ctx.translate(projectile.position.x - self.position.x + canvas.width / 2, projectile.position.y - self.position.y + canvas.height / 2);
-  ctx.beginPath();
-  ctx.arc(0, 0, projectile.radius, 0, 2 * Math.PI);
-  ctx.fillStyle = "white";
-  ctx.closePath();
-  ctx.fill();
-
-  // draw a tail
-  const tailLength = 20;
-  const tailEnd = { x: -Math.cos(projectile.heading) * tailLength, y: -Math.sin(projectile.heading) * tailLength };
-  const gradient = ctx.createLinearGradient(0, 0, tailEnd.x, tailEnd.y);
-  gradient.addColorStop(0, "#FFFFFFFF");
-  gradient.addColorStop(1, "#FFFFFF00");
-  ctx.strokeStyle = gradient;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(tailEnd.x, tailEnd.y);
-  ctx.closePath();
-  ctx.stroke();
-
   ctx.restore();
 };
 

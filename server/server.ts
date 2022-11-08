@@ -41,12 +41,13 @@ import mongoose from "mongoose";
 import { createHash } from "crypto";
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositCargo, manufacture, sellInventory, sendInventory, transferToShip } from "./inventory";
+import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip, discoverRecipe } from "./inventory";
 import { market } from "./market";
 import {
   asteroidBounds,
   clients,
   idToWebsocket,
+  knownRecipes,
   secondaries,
   sectorAsteroidResources,
   sectorFactions,
@@ -530,7 +531,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     sectorsVisited: new Set([sector]),
   });
 
-  const player = {
+  let player = {
     position: { x: 0, y: 0 },
     radius: defs[defIndex].radius,
     speed: 0,
@@ -551,9 +552,9 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     v: { x: 0, y: 0 },
   };
 
-  equip(player, 0, "Basic mining laser", true);
-  equip(player, 1, "Tomahawk Missile", true);
-  equip(player, 2, "Laser Beam", true);
+  player = equip(player, 0, "Basic mining laser", true);
+  player = equip(player, 1, "Tomahawk Missile", true);
+  player = equip(player, 2, "Laser Beam", true);
 
   const state = sectors.get(sector)!;
 
@@ -561,6 +562,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
+  knownRecipes.set(id, new Set());
 
   // find one checkpoint for the id and update it, upserting if needed
   Checkpoint.findOneAndUpdate({ id }, { id, sector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
@@ -573,7 +575,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     const sectorInfos: SectorInfo[] = [];
     sectorInfos.push({
       sector: sector,
-      resources: sectorAsteroidResources[sector].map(value => value.resource),
+      resources: sectorAsteroidResources[sector].map((value) => value.resource),
     });
 
     ws.send(
@@ -587,6 +589,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
           collectables: Array.from(state.collectables.values()),
           mines: Array.from(state.mines.values()),
           sectorInfos,
+          recipes: [],
         },
       })
     );
@@ -652,7 +655,7 @@ wss.on("connection", (ws) => {
           for (const sector of sectorsVisited) {
             sectorInfos.push({
               sector,
-              resources: sectorAsteroidResources[sector].map(value => value.resource),
+              resources: sectorAsteroidResources[sector].map((value) => value.resource),
             });
           }
 
@@ -707,6 +710,7 @@ wss.on("connection", (ws) => {
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
+              knownRecipes.set(user.id, new Set(user.knownRecipes));
               ws.send(
                 JSON.stringify({
                   type: "init",
@@ -718,6 +722,7 @@ wss.on("connection", (ws) => {
                     collectables: Array.from(state.collectables.values()),
                     mines: Array.from(state.mines.values()),
                     sectorInfos,
+                    recipes: user.recipesKnown,
                   },
                 })
               );
@@ -790,6 +795,7 @@ wss.on("connection", (ws) => {
               player.side = 0;
               player.energy = def.energy;
               player.health = def.health;
+              player.warping = 0;
               player.position = { x: station!.position.x, y: station!.position.y };
               for (let i = 0; i < player.armIndices.length; i++) {
                 const armDef = armDefs[player.armIndices[i]];
@@ -954,7 +960,24 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            equip(player, data.payload.slotIndex, data.payload.what);
+            // equip does the bounds checking for the index for us
+            let newPlayer = equip(player, data.payload.slotIndex, data.payload.what, data.payload.fromInventory);
+            if (newPlayer !== player) {
+              state.players.set(client.id, newPlayer);
+              const toTake = data.payload.fromInventory ? [armDefs[newPlayer.armIndices[data.payload.slotIndex]].name] : [];
+              // There is technically a bug here, if the player equips and then logs off, but the database has an error after they log off then
+              // they what is deposited will be lost. I don't want to deal with it though (the correct thing is to pull their save from the database
+              // and deal with it that way, but if we just had a database error this is unlikely to work anyways)
+              depositItemsIntoInventory(ws, player, [armDefs[player.armIndices[data.payload.slotIndex]].name], toTake, flashServerMessage, () => {
+                console.log("Error depositing armament into inventory, reverting player");
+                try {
+                  const otherState = sectors.get(clients.get(idToWebsocket.get(player.id)!)!.currentSector)!;
+                  otherState.players.set(player.id, player);
+                } catch (e) {
+                  console.log("Warning: unable to revert player" + e);
+                }
+              });
+            }
           }
         }
       } else if (data.type === "chat") {
@@ -973,7 +996,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            manufacture(ws, player, data.payload.what, Math.round(data.payload.amount));
+            manufacture(ws, player, data.payload.what, Math.round(data.payload.amount), flashServerMessage);
           }
         }
       } else if (data.type === "purchase") {
@@ -993,7 +1016,29 @@ wss.on("connection", (ws) => {
                 console.log("Error loading station: " + err);
                 return;
               }
-              purchaseShip(player, data.payload.index, station.shipsAvailable);
+              const newPlayer = purchaseShip(player, data.payload.index, station.shipsAvailable, data.payload.fromInventory);
+              if (newPlayer !== player) {
+                state.players.set(client.id, newPlayer);
+                const items = [defs[player.defIndex].name];
+                if (player.armIndices) {
+                  for (const armIndex of player.armIndices) {
+                    items.push(armDefs[armIndex].name);
+                  }
+                }
+                const toTake = data.payload.fromInventory ? [defs[newPlayer.defIndex].name] : [];
+                // There is technically a bug here, if the player equips and then logs off, but the database has an error after they log off then
+                // they what is deposited will be lost. I don't want to deal with it though (the correct thing is to pull their save from the database
+                // and deal with it that way, but if we just had a database error this is unlikely to work anyways)
+                depositItemsIntoInventory(ws, player, items, toTake, flashServerMessage, () => {
+                  console.log("Error depositing ship into inventory, reverting player");
+                  try {
+                    const otherState = sectors.get(clients.get(idToWebsocket.get(player.id)!)!.currentSector)!;
+                    otherState.players.set(player.id, player);
+                  } catch (e) {
+                    console.log("Warning: unable to revert player" + e);
+                  }
+                });
+              }
             });
           }
         }
@@ -1037,15 +1082,20 @@ wss.on("connection", (ws) => {
       secondaries.delete(removedClient.id);
       clients.delete(ws);
       idToWebsocket.delete(removedClient.id);
+      knownRecipes.delete(removedClient.id);
       if (player) {
         if (player.docked) {
           saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
         } else {
-          User.findOneAndUpdate({ id: removedClient.id }, { currentSector: removedClient.currentSector, sectorsVisited: Array.from(removedClient.sectorsVisited) }, (err) => {
-            if (err) {
-              console.log("Error saving user: " + err);
+          User.findOneAndUpdate(
+            { id: removedClient.id },
+            { currentSector: removedClient.currentSector, sectorsVisited: Array.from(removedClient.sectorsVisited) },
+            (err) => {
+              if (err) {
+                console.log("Error saving user: " + err);
+              }
             }
-          });
+          );
         }
       } else if (!player) {
         console.log("Warning: player not found on disconnect");
@@ -1164,6 +1214,17 @@ const allyCount = (team: Faction, sector: number) => {
 
 let frame = 0;
 
+const discoverer = (id: number, recipe: string) => {
+  const ws = idToWebsocket.get(id);
+  if (ws) {
+    const known = knownRecipes.get(id);
+    if (known) {
+      known.add(recipe);
+    }
+    discoverRecipe(ws, id, recipe);
+  }
+};
+
 // Updating the game state
 setInterval(() => {
   frame++;
@@ -1187,7 +1248,9 @@ setInterval(() => {
       informDead,
       flashServerMessage,
       (id, collected) => removeCollectable(sector, id, collected),
-      (id, detonated) => removeMine(sector, id, detonated)
+      (id, detonated) => removeMine(sector, id, detonated),
+      knownRecipes,
+      discoverer
     );
     processAllNpcs(state);
     findSectorTransitions(state, sector, sectorTransitions);
@@ -1249,7 +1312,6 @@ setInterval(() => {
       }
     }
 
-    
     const state = sectors.get(newSector);
     if (state) {
       const ws = idToWebsocket.get(transition.player.id);
@@ -1384,7 +1446,7 @@ const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
 };
 
 setInterval(() => {
-  for(const sector of sectorList) {
+  for (const sector of sectorList) {
     const faction = sectorFactions[sector];
     if (faction === null) {
       continue;

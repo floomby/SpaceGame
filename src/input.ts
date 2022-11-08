@@ -6,6 +6,7 @@ import { sendChat, sendInput } from "./net";
 import { shown as isDialogShown } from "./dialog";
 import { canvas, canvasCoordsToGameCoords } from "./drawing";
 import { Position } from "./geometry";
+import { dumpCargoDialog, setupDumpCargoDialog } from "./dialogs/cargo";
 
 let chatInput: HTMLInputElement;
 
@@ -140,6 +141,13 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         if (!isDialogShown) {
           push(mapDialog(), setupMapDialog, "map");
         } else if (peekTag() === "map") {
+          pop();
+        }
+        break;
+      case keybind.cargo:
+        if (!isDialogShown) {
+          push(dumpCargoDialog, setupDumpCargoDialog, "dumpCargo")
+        } else if (peekTag() === "dumpCargo") {
           pop();
         }
         break;

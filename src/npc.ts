@@ -11,6 +11,7 @@ import {
 } from "./game";
 import { l2Norm } from "./geometry";
 import { seekPosition, currentlyFacing, stopPlayer } from "./pathing";
+import { recipeMap } from "./recipes";
 
 type LootTable = { index: number; probability: number }[];
 
@@ -89,28 +90,31 @@ class Swarmer implements NPC {
 
     switch (Math.floor(Math.random() * 5)) {
       case 0:
-        equip(this.player, 1, "Javelin Missile", true);
+        this.player = equip(this.player, 1, "Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 1:
-        equip(this.player, 1, "Tomahawk Missile", true);
+        this.player = equip(this.player, 1, "Tomahawk Missile", true);
         this.guidedSecondary = true;
         break;
       case 2:
-        equip(this.player, 1, "Laser Beam", true);
+        this.player = equip(this.player, 1, "Laser Beam", true);
         this.guidedSecondary = true;
         break;
       case 3:
-        equip(this.player, 1, "Heavy Javelin Missile", true);
+        this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 4:
-        equip(this.player, 1, "EMP Missile", true);
+        this.player = equip(this.player, 1, "EMP Missile", true);
         this.guidedSecondary = true;
         break;
     }
 
-    this.lootTable = [loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)];
+    for (const recipe of recipeMap.keys()) {
+      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.4));
+    }
+    this.lootTable = this.lootTable.concat([loot("Bounty", 0.2), loot("Energy", 0.4), loot("Ammo", 0.3), loot("Spare Parts", 0.8)]);
   }
 
   public targetId = 0;
@@ -248,24 +252,24 @@ class Strafer implements NPC {
     this.usesAmmo = true;
     switch (Math.floor(Math.random() * 5)) {
       case 0:
-        equip(this.player, 1, "Javelin Missile", true);
+        this.player = equip(this.player, 1, "Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 1:
-        equip(this.player, 1, "Tomahawk Missile", true);
+        this.player = equip(this.player, 1, "Tomahawk Missile", true);
         this.guidedSecondary = true;
         break;
       case 2:
-        equip(this.player, 1, "Laser Beam", true);
+        this.player = equip(this.player, 1, "Laser Beam", true);
         this.guidedSecondary = true;
         this.usesAmmo = false;
         break;
       case 3:
-        equip(this.player, 1, "Heavy Javelin Missile", true);
+        this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
         this.guidedSecondary = false;
         break;
       case 4:
-        equip(this.player, 1, "EMP Missile", true);
+        this.player = equip(this.player, 1, "EMP Missile", true);
         this.guidedSecondary = true;
         break;
     }

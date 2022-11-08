@@ -331,7 +331,7 @@ const run = () => {
         sectorData.set(sectorInfo.sector, sectorInfo);
       }
       for (const recipe of data.recipes) {
-        recipesKnown[recipe] = true;
+        recipesKnown.add(recipe);
       }
     }
   );
@@ -499,7 +499,7 @@ const run = () => {
 
   bindAction("recipe", (recipes: string[]) =>{
     for (const recipe of recipes) {
-      recipesKnown[recipe] = true;
+      recipesKnown.add(recipe);
       pushMessage(`Discovered blueprint for ${recipe}`);
     }
     

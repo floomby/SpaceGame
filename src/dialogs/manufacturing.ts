@@ -16,7 +16,7 @@ const manufacturingToolTipText = (index: number, amount: number) => {
 const manufacturingTableHtml = () => {
   let html = `<table style="width: 100%; text-align: left;">`;
   for (let i = 0; i < recipes.length; i++) {
-    if (!recipesKnown.hasOwnProperty(recipes[i].name)) {
+    if (!recipesKnown.has(recipes[i].name)) {
       continue;
     }
     html += `<tr><td>${recipes[i].name}</td>

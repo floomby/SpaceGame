@@ -101,7 +101,7 @@ const clearInventory = () => {
   inventory = {};
 };
 
-let recipesKnown: { [key: string]: boolean } = {};
+let recipesKnown: Set<string> = new Set();
 
 let sectorData = new Map<number, SectorInfo>();
 

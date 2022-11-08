@@ -211,7 +211,7 @@ const shipShop = () => {
   return horizontalCenter([shipPreviewer(self.defIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`]);
 };
 
-const populateShipList = (availableShips: { def: UnitDefinition; index: number }[], self: Player) => {
+const populateShipList = (availableShips: { def: UnitDefinition; index: number, atStation: boolean }[], self: Player) => {
   const shipList = document.getElementById("shipList");
   if (shipList) {
     shipList.innerHTML = `<table style="width: 80vw; text-align: left;">
@@ -224,14 +224,14 @@ const populateShipList = (availableShips: { def: UnitDefinition; index: number }
   <tbody>
     ${availableShips
       .map(
-        ({ def, index }) => `<tr>
+        ({ def, index, atStation }) => `<tr>
     <td>${def.name}</td>
     <td><button id="previewShip${index}">Preview</button></td>
     <td>${def.price}</td>
     <td style="text-align: right;">
       <button id="equipShipFromInventory${index}"${inventory.hasOwnProperty(def.name) ? "" : "disabled"}>Equip From Inventory</button>
     </td>
-    <td><button id="purchase${index}" ${self.credits >= def.price ? "" : "disabled"}>Purchase</button></td></tr>`
+    <td><button id="purchase${index}" ${self.credits >= def.price && atStation ? "" : "disabled"}>Purchase</button></td></tr>`
       )
       .join("")}
   </tbody>
@@ -308,12 +308,20 @@ const setupShipShop = (station: Player) => {
   const callback = (availability: { value: string[] }) => {
     const availableShips = defs
       .map((def, index) => {
-        return { def, index };
+        return { def, index, atStation: true };
       })
-      .filter(({ def }) => {
-        return def.kind === UnitKind.Ship && availability.value.includes(def.name);
+      .filter((ship) => {
+        if (ship.def.kind === UnitKind.Ship && availability.value.includes(ship.def.name)) {
+          return true;
+        };
+        if (inventory.hasOwnProperty(ship.def.name) && inventory[ship.def.name] > 0) {
+          ship.atStation = false;
+          return true;
+        }
+        return false;
       });
-    populateShipList(availableShips, self);
+
+    populateShipList(availableShips.concat(), self);
     console.log("available ships", availableShips);
     for (const { def, index } of availableShips) {
       const button = document.getElementById(`purchase${index}`);

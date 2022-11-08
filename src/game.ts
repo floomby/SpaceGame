@@ -206,7 +206,7 @@ const canRepair = (player: Player | undefined, station: Player | undefined, stri
   }
 };
 
-type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number, idx: number };
+type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number; idx: number };
 
 type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; phase?: number };
 
@@ -621,7 +621,7 @@ const update = (
         }
       }
     }
-    
+
     if (def.kind === UnitKind.Ship) {
       const primaryDef = projectileDefs[def.primaryDefIndex];
       if (player.disabled) {
@@ -644,7 +644,10 @@ const update = (
       }
       if (player.toFirePrimary && player.energy > primaryDef.energy) {
         const projectile = {
-          position: { x: player.position.x, y: player.position.y },
+          position: {
+            x: player.position.x + Math.cos(player.heading) * primaryDef.speed,
+            y: player.position.y + Math.sin(player.heading) * primaryDef.speed,
+          },
           radius: primaryDef.radius,
           speed: primaryDef.speed,
           heading: player.heading,

@@ -710,7 +710,7 @@ wss.on("connection", (ws) => {
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
-              knownRecipes.set(user.id, new Set(user.knownRecipes));
+              knownRecipes.set(user.id, new Set(user.recipesKnown));
               ws.send(
                 JSON.stringify({
                   type: "init",

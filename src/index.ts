@@ -97,6 +97,9 @@ let forceSetSecondary = false;
 let wasDisabled = false;
 
 // TODO There is a bunch of business logic in here that should be refactored into better places
+
+let lastEnergyWarning = Date.now();
+
 const loop = () => {
   const elapsed = Date.now() - lastFrameTime;
   lastFrameTime = Date.now();
@@ -226,6 +229,11 @@ const loop = () => {
   }
   setCanDockOrRepair(self, state);
   if (self) {
+    if (self.energy < 10 && Date.now() - lastEnergyWarning > 3000) {
+      lastEnergyWarning = Date.now();
+      pushMessage("Warning: Low energy!");
+    }
+
     if (self.canDock) {
       setDocker(() => {
         sendDock(ownId, self.canDock);

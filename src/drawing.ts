@@ -438,9 +438,10 @@ const drawPlayer = (player: Player, self: Player) => {
   ctx.save();
 
   const cloakOpacity = player.team === self.team ? 0.5 * cloakedAmount : cloakedAmount;
+  const cloakFilterString = `blur(${cloakedAmount * 2}px) opacity(${1 - cloakOpacity})`;
   if (cloakedAmount > 0) {
-    ctx.filter = `blur(${cloakedAmount * 2}px) opacity(${1 - cloakOpacity})`;
-  } 
+    ctx.filter = cloakFilterString;
+  }
 
   let sprite = composited[player.defIndex * Faction.Count + player.team];
   // let sprite = sprites[player.definitionIndex];
@@ -470,7 +471,7 @@ const drawPlayer = (player: Player, self: Player) => {
   if (player.warping) {
     const warpAmount = player.warping / def.warpTime;
     const warpFramesLeft = def.warpTime - player.warping;
-    ctx.filter = `drop-shadow(0 0 ${warpAmount * 10}px #FFFFFF)`;
+    ctx.filter = `drop-shadow(0 0 ${warpAmount * 10}px #FFFFFF) ${cloakFilterString}`;
     ctx.transform(Math.max(1, 10 / (warpFramesLeft + 3)), 0, 0, Math.min(1, warpFramesLeft / 10), 0, 0);
   }
   // if (sprite !== sprites[player.definitionIndex]) {
@@ -489,7 +490,7 @@ const drawPlayer = (player: Player, self: Player) => {
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
 
   if (player.disabled) {
-    ctx.filter = "saturate(0%)";
+    ctx.filter = `saturate(0%) ${cloakFilterString}`;
   }
 
   ctx.rotate(-player.heading);

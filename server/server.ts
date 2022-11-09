@@ -904,6 +904,8 @@ wss.on("connection", (ws) => {
               playerState.position.y = 5000;
             }
             playerState.v = { x: 0, y: 0 };
+            playerState.iv = { x: 0, y: 0 };
+            playerState.ir = 0;
             state.players.set(client.id, playerState);
             ws.send(
               JSON.stringify({
@@ -1411,10 +1413,11 @@ setInterval(() => {
         //   flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
         // }
       }
-      player.position.x = Math.random() * 400 - 200;
-      player.position.y = Math.random() * 400 - 200;
-      player.heading = (3 * Math.PI) / 2;
-      player.speed = 0;
+      // Lets just keep the coords and momentum of the player on warping
+      // player.position.x = Math.random() * 6000 - 3000;
+      // player.position.y = Math.random() * 6000 - 3000;
+      // player.heading = (3 * Math.PI) / 2;
+      // player.speed = 0;
       state.players.set(player.id, player);
     }
   }

@@ -84,6 +84,7 @@ const initEffects = () => {
   const mineDropSound = getSound("mineDrop0.wav");
   const plasmaLaunchSound = getSound("squishyPew1.wav");
   const plasmaHitSound = getSound("wigglyThud0.wav");
+  const impulseMissileHitSound = getSound("squishyPew0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -682,6 +683,50 @@ const initEffects = () => {
       return { heading: Math.random() * Math.PI * 2, needSound: true };
     },
   });
+  // Impulse Missile Death Effect - 16
+  effectDefs.push({
+    frames: 15,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        effect.extra.panner = play3dSound(
+          impulseMissileHitSound,
+          ((from as Position).x - self.position.x) / soundScale,
+          ((from as Position).y - self.position.y) / soundScale
+        );
+      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
+        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
+        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+      }
+
+      const spriteIdx = 8;
+      const width = effectSprites[spriteIdx].width;
+      const height = effectSprites[spriteIdx].height;
+
+      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
+        return;
+      }
+      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
+        return;
+      }
+
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.rotate(effect.extra.heading);
+      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
+      ctx.restore();
+    },
+    initializer: () => {
+      return { heading: Math.random() * Math.PI * 2, needSound: true };
+    },
+  });
 
   // Consult the spreadsheet for understanding where things are on the spritesheet
   effectSpriteDefs.push({
@@ -707,6 +752,9 @@ const initEffects = () => {
   });
   effectSpriteDefs.push({
     sprite: { x: 128, y: 800, width: 128, height: 128 },
+  });
+  effectSpriteDefs.push({
+    sprite: { x: 384, y: 512, width: 128, height: 128 },
   });
 };
 

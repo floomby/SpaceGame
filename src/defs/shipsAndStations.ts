@@ -1,3 +1,4 @@
+import { effectiveInfinity } from "../game";
 import { Position, Rectangle } from "../geometry";
 
 const computeBrakeDistance = (acceleration: number, speed: number) => {
@@ -46,6 +47,7 @@ type UnitDefinition = {
   repairsRequired?: number;
   scanRange?: number;
   primaryDefIndex: number;
+  mass: number;
 };
 
 const defs: UnitDefinition[] = [];
@@ -78,6 +80,7 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.1,
     scanRange: 4000,
     primaryDefIndex: 0,
+    mass: 10,
   });
   // Drone - 1
   defs.push({
@@ -105,6 +108,7 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.1,
     scanRange: 4000,
     primaryDefIndex: 0,
+    mass: 10,
   });
   // Alliance Starbase - 2
   defs.push({
@@ -131,6 +135,7 @@ const initShipsAndStations = () => {
     healthRegen: 0.06,
     repairsRequired: 8,
     primaryDefIndex: 0,
+    mass: effectiveInfinity,
   });
   // Confederacy Starbase - 3
   defs.push({
@@ -157,6 +162,7 @@ const initShipsAndStations = () => {
     healthRegen: 0.06,
     repairsRequired: 8,
     primaryDefIndex: 0,
+    mass: effectiveInfinity,
   });
   // Advanced Fighter - 4
   defs.push({
@@ -184,6 +190,7 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.08,
     scanRange: 13000,
     primaryDefIndex: 0,
+    mass: 20,
   });
   // Seeker - 5
   defs.push({
@@ -211,6 +218,7 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.08,
     scanRange: 13000,
     primaryDefIndex: 0,
+    mass: 20,
   });
   // Strafer - 6
   defs.push({
@@ -238,6 +246,7 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.45,
     scanRange: 3000,
     primaryDefIndex: 0,
+    mass: 8,
   });
   // Rogue Starbase - 7
   defs.push({
@@ -259,6 +268,7 @@ const initShipsAndStations = () => {
     healthRegen: 0.06,
     repairsRequired: 8,
     primaryDefIndex: 0,
+    mass: effectiveInfinity,
   });
   // Venture - 8
   defs.push({
@@ -286,6 +296,7 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.05,
     scanRange: 13000,
     primaryDefIndex: 0,
+    mass: 50,
   });
   // Spartan - 9
   defs.push({
@@ -313,6 +324,7 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.1,
     scanRange: 13000,
     primaryDefIndex: 0,
+    mass: 40,
   });
 
   for (let i = 0; i < defs.length; i++) {

@@ -104,6 +104,8 @@ type Player = Entity & {
   omega?: number;
   v?: Position;
   cloak?: number;
+  iv: Position;
+  ir: number;
 };
 
 type Asteroid = Circle & {
@@ -450,6 +452,21 @@ const kill = (
   }
 };
 
+const dampenImpulse = (player: Player) => {
+  player.iv.x *= 0.98;
+  player.iv.y *= 0.98;
+  if (Math.abs(player.iv.x) < 0.01) {
+    player.iv.x = 0;
+  }
+  if (Math.abs(player.iv.y) < 0.01) {
+    player.iv.y = 0;
+  }
+  player.ir *= 0.98;
+  if (Math.abs(player.ir) < 0.001) {
+    player.ir = 0;
+  }
+}
+
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
 type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: Mine[] };
 
@@ -593,7 +610,7 @@ const update = (
         applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
         didRemove = true;
         if (missileDef.hitMutator) {
-          missileDef.hitMutator(otherPlayer, state, applyEffect);
+          missileDef.hitMutator(otherPlayer, state, applyEffect, missile);
         }
         break;
       }
@@ -652,6 +669,12 @@ const update = (
         player.v.x = player.position.x - player.v.x;
         player.v.y = player.position.y - player.v.y;
       }
+      // Apply impulse
+      player.heading = player.heading + (player.ir % (2 * Math.PI));
+      player.position.x += player.iv.x;
+      player.position.y += player.iv.y;
+      dampenImpulse(player);
+
       if (player.toFirePrimary && player.energy > primaryDef.energy) {
         const projectile = {
           position: {

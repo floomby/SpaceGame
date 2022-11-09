@@ -13,8 +13,8 @@ import {
   Player,
   TargetKind,
 } from "../game";
-import { l2NormSquared, Position, Rectangle } from "../geometry";
-import { SlotKind } from "./shipsAndStations";
+import { findHeadingBetween, l2Norm, l2NormSquared, Position, Rectangle } from "../geometry";
+import { defs, SlotKind, UnitKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
 import { projectileDefs } from "./projectiles";
@@ -71,7 +71,7 @@ type MissileDef = {
   // TODO this should be easier to use (having all these indices is error prone)
   deathEffect: number;
   turnRate?: number;
-  hitMutator?: (player: Player, state: GlobalState, applyEffect: (effectTrigger: EffectTrigger) => void) => void;
+  hitMutator?: (player: Player, state: GlobalState, applyEffect: (effectTrigger: EffectTrigger) => void, missile: Missile) => void;
 };
 
 const armDefs: ArmamentDef[] = [];
@@ -308,7 +308,7 @@ const initArmaments = () => {
       const slotData = player.slotData[slotIndex];
       slotData.sinceFired++;
     },
-    cost: 100,
+    cost: 800,
   });
 
   missileDefs.push({
@@ -362,7 +362,7 @@ const initArmaments = () => {
       const slotData = player.slotData[slotIndex];
       slotData.sinceFired++;
     },
-    cost: 100,
+    cost: 200,
   });
   // Advanced mining laser - 10
   armDefs.push({
@@ -403,7 +403,7 @@ const initArmaments = () => {
         }
       }
     },
-    cost: 150,
+    cost: 250,
   });
 
   missileDefs.push({
@@ -414,7 +414,7 @@ const initArmaments = () => {
     acceleration: 0.1,
     lifetime: 800,
     deathEffect: 10,
-    turnRate: 0.3,
+    turnRate: 0.1,
     hitMutator: (player, state, applyEffect) => {
       player.disabled = 240;
     },
@@ -605,6 +605,76 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 2000,
+  });
+
+  // Impulse Missile - 14
+  missileDefs.push({
+    sprite: { x: 192, y: 0, width: 32, height: 16 },
+    radius: 11,
+    speed: 30,
+    damage: 0,
+    acceleration: 0.3,
+    lifetime: 300,
+    deathEffect: 16,
+    turnRate: 0.2,
+    hitMutator: (player, state, applyEffect, missile) => {
+      missile.radius = 110;
+      const players = findAllPlayersOverlappingCircle(missile, state.players.values());
+      for (let i = 0; i < players.length; i++) {
+        const def = defs[players[i].defIndex];
+        if (def.kind === UnitKind.Station) {
+          continue;
+        }
+        const heading = findHeadingBetween(missile.position, players[i].position);
+        const dist = Math.max(l2Norm(missile.position, players[i].position) - player.radius, 11);
+        const impulse = 2500 / dist / def.mass;
+        players[i].iv.x += impulse * Math.cos(heading);
+        players[i].iv.y += impulse * Math.sin(heading);
+        players[i].ir += Math.random() * 0.09;
+      }
+    },
+  });
+  const impulseMissileIndex = missileDefs.length - 1;
+  armDefs.push({
+    name: "Impulse Missile",
+    description: "A guided missile you can use to knock around your enemies",
+    kind: SlotKind.Utility,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Targeted,
+    maxAmmo: 30,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 1 && slotData.sinceFired > 30 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
+        if ((target as Player).inoperable) {
+          return;
+        }
+        player.energy -= 1;
+        slotData.sinceFired = 0;
+        slotData.ammo--;
+        const id = uid();
+        const missile: Missile = {
+          id,
+          position: { x: player.position.x, y: player.position.y },
+          speed: player.speed + 1,
+          heading: player.heading,
+          radius: missileDefs[impulseMissileIndex].radius,
+          team: player.team,
+          damage: missileDefs[impulseMissileIndex].damage,
+          target: target.id,
+          defIndex: impulseMissileIndex,
+          lifetime: missileDefs[impulseMissileIndex].lifetime,
+        };
+        state.missiles.set(id, missile);
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 30 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 300,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

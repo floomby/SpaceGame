@@ -28,6 +28,7 @@ import {
   findSectorTransitions,
   sectorBounds,
   SectorInfo,
+  CloakedState,
 } from "../src/game";
 import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, getFactionString } from "../src/defs";
 import { appendFile, readFileSync } from "fs";
@@ -494,6 +495,8 @@ const initFromDatabase = async () => {
       side: 0,
       isPC: true,
       v: { x: 0, y: 0 },
+      iv: { x: 0, y: 0 },
+      ir: 0,
     };
     const sector = sectors.get(station.sector);
     if (sector) {
@@ -551,6 +554,8 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     side: 0,
     isPC: true,
     v: { x: 0, y: 0 },
+    iv: { x: 0, y: 0 },
+    ir: 0,
   };
 
   player = equip(player, 0, "Basic mining laser", true);
@@ -682,6 +687,7 @@ wss.on("connection", (ws) => {
                 playerState.position.x = -5000;
                 playerState.position.y = 5000;
               }
+              // All these "fixes" are for making old checkpoints work with new code
               // Update the player on load to match what is expected
               if (playerState.defIndex === undefined) {
                 playerState.defIndex = (playerState as any).definitionIndex;
@@ -701,6 +707,13 @@ wss.on("connection", (ws) => {
               while (playerState.slotData.length < def.slots.length) {
                 playerState.armIndices.push(def.slots[playerState.slotData.length]);
                 playerState.slotData.push({});
+              }
+              // fix the impulse
+              if (playerState.ir === undefined) {
+                playerState.ir = 0;
+              }
+              if (playerState.iv === undefined) {
+                playerState.iv = { x: 0, y: 0 };
               }
 
               playerState.v = { x: 0, y: 0 };
@@ -805,6 +818,10 @@ wss.on("connection", (ws) => {
               player.energy = def.energy;
               player.health = def.health;
               player.warping = 0;
+              player.ir = 0;
+              player.iv.x = 0;
+              player.iv.y = 0;
+              player.cloak = CloakedState.Uncloaked;
               player.position = { x: station!.position.x, y: station!.position.y };
               for (let i = 0; i < player.armIndices.length; i++) {
                 const armDef = armDefs[player.armIndices[i]];

@@ -86,6 +86,8 @@ class Swarmer implements NPC {
       npc: this,
       team,
       v: { x: 0, y: 0 },
+      iv: { x: 0, y: 0 },
+      ir: 0,
     };
 
     switch (Math.floor(Math.random() * 5)) {
@@ -247,6 +249,8 @@ class Strafer implements NPC {
       team,
       side: 0,
       v: { x: 0, y: 0 },
+      iv: { x: 0, y: 0 },
+      ir: 0,
     };
 
     this.usesAmmo = true;

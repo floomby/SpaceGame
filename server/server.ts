@@ -49,6 +49,7 @@ import {
   idToWebsocket,
   knownRecipes,
   secondaries,
+  secondariesToActivate,
   sectorAsteroidResources,
   sectorFactions,
   sectorGuardianCount,
@@ -562,6 +563,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
+  secondariesToActivate.set(id, []);
   knownRecipes.set(id, new Set());
 
   // find one checkpoint for the id and update it, upserting if needed
@@ -694,6 +696,12 @@ wss.on("connection", (ws) => {
                 playerState.credits = 500;
               }
               playerState.credits = Math.round(playerState.credits);
+              // fix the slot data
+              const def = defs[playerState.defIndex];
+              while (playerState.slotData.length < def.slots.length) {
+                playerState.armIndices.push(def.slots[playerState.slotData.length]);
+                playerState.slotData.push({});
+              }
 
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
@@ -710,6 +718,7 @@ wss.on("connection", (ws) => {
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
+              secondariesToActivate.set(user.id, []);
               knownRecipes.set(user.id, new Set(user.recipesKnown));
               ws.send(
                 JSON.stringify({
@@ -904,6 +913,17 @@ wss.on("connection", (ws) => {
         if (client && data.payload.id === client.id) {
           secondaries.set(client.id, data.payload.secondary);
         }
+      } else if (data.type === "secondaryActivation") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            if (typeof data.payload.secondary === "number" && data.payload.secondary < player.armIndices.length) {
+              secondariesToActivate.get(client.id)?.push(data.payload.secondary);
+            }
+          }
+        }
       } else if (data.type === "sellCargo") {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
@@ -1080,6 +1100,7 @@ wss.on("connection", (ws) => {
       state.players.delete(removedClient.id);
       targets.delete(removedClient.id);
       secondaries.delete(removedClient.id);
+      secondariesToActivate.delete(removedClient.id);
       clients.delete(ws);
       idToWebsocket.delete(removedClient.id);
       knownRecipes.delete(removedClient.id);
@@ -1250,12 +1271,14 @@ setInterval(() => {
       (id, collected) => removeCollectable(sector, id, collected),
       (id, detonated) => removeMine(sector, id, detonated),
       knownRecipes,
-      discoverer
+      discoverer,
+      secondariesToActivate
     );
     processAllNpcs(state);
     findSectorTransitions(state, sector, sectorTransitions);
 
     // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for server CPU)
+    // TODO I should not be sending the players out of range or the cloaked players to the clients that should not be able to have that information
     const playerData: Player[] = [];
     const npcs: (NPC | undefined)[] = [];
     for (const player of state.players.values()) {

@@ -47,6 +47,11 @@ type Entity = Circle & { id: number; speed: number; heading: number };
 
 type CargoEntry = { what: string; amount: number };
 
+enum CloakedState {
+  Cloaked = 120,
+  Uncloaked = 0,
+}
+
 // There is a bunch of information that the clients do not need but end up receiving anyways
 // The server should probably not send the extra information
 // This would reduces throughput through the single hottest path in the client code
@@ -70,6 +75,7 @@ type CargoEntry = { what: string; amount: number };
 //   warping
 //   repairs
 //   disabled
+//   cloak
 type Player = Entity & {
   health: number;
   sinceLastShot: number[];
@@ -97,6 +103,7 @@ type Player = Entity & {
   disabled?: number;
   omega?: number;
   v?: Position;
+  cloak?: number;
 };
 
 type Asteroid = Circle & {
@@ -288,7 +295,7 @@ const findClosestTarget = (player: Player, state: GlobalState, scanRange: number
   }
   const scanRangeSquared = scanRange * scanRange;
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked || otherPlayer.inoperable) {
+    if (otherPlayer.docked || otherPlayer.inoperable || (otherPlayer.team !== player.team && otherPlayer.cloak)) {
       continue;
     }
     if (onlyEnemy && player.team === otherPlayer.team) {
@@ -310,7 +317,7 @@ const findFurthestTarget = (player: Player, state: GlobalState, scanRange: numbe
   let ret: Player | undefined = undefined;
   let maxDistance = 0;
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked || otherPlayer.inoperable) {
+    if (otherPlayer.docked || otherPlayer.inoperable || (otherPlayer.team !== player.team && otherPlayer.cloak)) {
       continue;
     }
     if (onlyEnemy && player.team === otherPlayer.team) {
@@ -338,7 +345,7 @@ const findNextTarget = (player: Player, current: Player | undefined, state: Glob
   let foundFurther = false;
   const scanRangeSquared = scanRange * scanRange;
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked || otherPlayer.inoperable) {
+    if (otherPlayer.docked || otherPlayer.inoperable || (otherPlayer.team !== player.team && otherPlayer.cloak)) {
       continue;
     }
     if (onlyEnemy && player.team === otherPlayer.team) {
@@ -370,7 +377,7 @@ const findPreviousTarget = (player: Player, current: Player | undefined, state: 
   let foundCloser = false;
   const scanRangeSquared = scanRange * scanRange;
   for (const [id, otherPlayer] of state.players) {
-    if (otherPlayer.docked || otherPlayer.inoperable) {
+    if (otherPlayer.docked || otherPlayer.inoperable || (otherPlayer.team !== player.team && otherPlayer.cloak)) {
       continue;
     }
     if (onlyEnemy && player.team === otherPlayer.team) {
@@ -460,7 +467,8 @@ const update = (
   removeCollectable: (id: number, collected: boolean) => void,
   removeMine: (id: number, detonated: boolean) => void,
   knownRecipes: Map<number, Set<string>>,
-  discoverRecipe: (id: number, recipe: string) => void
+  discoverRecipe: (id: number, recipe: string) => void,
+  secondariesToActivate: Map<number, number[]>
 ) => {
   const ret: Mutated = { asteroids: new Set(), collectables: [], mines: [] };
 
@@ -571,7 +579,7 @@ const update = (
     }
     missile.lifetime -= 1;
     let didRemove = false;
-    for (const [otherId, otherPlayer] of state.players) {
+    for (const otherPlayer of state.players.values()) {
       if (otherPlayer.docked || otherPlayer.inoperable) {
         continue;
       }
@@ -627,6 +635,7 @@ const update = (
       const primaryDef = projectileDefs[def.primaryDefIndex];
       if (player.disabled) {
         player.warping = 0;
+        player.cloak = 0;
         player.disabled -= 1;
         player.position.x += player.v.x;
         player.position.y += player.v.y;
@@ -709,6 +718,37 @@ const update = (
           if (slotId !== undefined && slotId < player.armIndices.length) {
             if (armDef.stateMutator) {
               armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
+            }
+          }
+        }
+      }
+      const playerSecondaryActivation = secondariesToActivate.get(id);
+      if (playerSecondaryActivation) {
+        while (playerSecondaryActivation.length > 0) {
+          const slotId = playerSecondaryActivation.pop();
+          const armDef = armDefs[player.armIndices[slotId]];
+          // Targeted weapons
+          if (armDef.targeted === TargetedKind.Targeted) {
+            const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
+            if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
+              if (armDef.stateMutator) {
+                let target: Player | Asteroid | undefined;
+                if (targetKind === TargetKind.Player) {
+                  target = state.players.get(targetId);
+                } else if (targetKind === TargetKind.Asteroid) {
+                  target = state.asteroids.get(targetId);
+                }
+                if (target) {
+                  armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage, ret);
+                }
+              }
+            }
+            // Untargeted weapons
+          } else if (armDef.targeted === TargetedKind.Untargeted) {
+            if (slotId !== undefined && slotId < player.armIndices.length) {
+              if (armDef.stateMutator) {
+                armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
+              }
             }
           }
         }
@@ -969,7 +1009,7 @@ const randomAsteroids = (
   const prng = sfc32(seed, 4398, 25, 6987);
   const asteroids: Asteroid[] = [];
   const totalDensity = typeDensities.reduce((acc, cur) => acc + cur.density, 0);
-  const mapping: { def: AsteroidDef, index: number }[] = [];
+  const mapping: { def: AsteroidDef; index: number }[] = [];
   for (let i = 0; i < typeDensities.length; i++) {
     const value = asteroidDefMap.get(typeDensities[i].resource);
     if (value === undefined) {
@@ -1254,6 +1294,7 @@ export {
   SectorTransition,
   SectorInfo,
   Entity,
+  CloakedState,
   update,
   applyInputs,
   processAllNpcs,

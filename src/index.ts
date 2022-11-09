@@ -19,6 +19,7 @@ import {
   CargoEntry,
   Mine,
   SectorInfo,
+  CloakedState,
 } from "./game";
 import {
   init as initDialog,
@@ -43,6 +44,7 @@ import {
   initBlankState,
   inventory,
   keybind,
+  lastSelf,
   ownId,
   recipesKnown,
   sectorData,
@@ -168,7 +170,7 @@ const loop = () => {
     }
   }
 
-  if (target?.inoperable) {
+  if (target?.inoperable || target?.team !== self?.team && target?.cloak === CloakedState.Cloaked) {
     target = undefined;
     targetId = 0;
   }
@@ -274,7 +276,18 @@ const loop = () => {
 };
 
 const targetAtCoords = (coords: Position) => {
-  const possibleTargets = findAllPlayersOverlappingPoint(coords, state.players.values()).filter((p) => p.id !== ownId && !p.inoperable);
+  let possibleTargets = findAllPlayersOverlappingPoint(coords, state.players.values()).filter((p) => p.id !== ownId && !p.inoperable);
+  if (lastSelf) {
+    possibleTargets = possibleTargets.filter((p) => {
+      if (p.team === lastSelf.team) {
+        return true;
+      }
+      if (p.cloak && p.cloak === CloakedState.Cloaked) {
+        return false;
+      }
+      return true;
+    });
+  }
   if (possibleTargets.length) {
     const target = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
     targetId = target.id;

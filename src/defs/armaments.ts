@@ -2,6 +2,7 @@ import {
   addCargo,
   Asteroid,
   availableCargoCapacity,
+  CloakedState,
   EffectAnchorKind,
   EffectTrigger,
   findAllPlayersOverlappingCircle,
@@ -565,6 +566,45 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 1500,
+  });
+
+  // Cloaking Generator - 13
+  armDefs.push({
+    name: "Cloaking Generator",
+    description: "A cloaking generator which renders the ship invisible to enemy sensors",
+    kind: SlotKind.Utility,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Untargeted,
+    energyCost: 10,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (slotData.sinceFired > 60) {
+        if (player.cloak === 0) {
+          if (player.energy > 10) {
+            player.energy -= 10;
+            player.cloak = 1;
+          }
+        } else {
+          player.cloak = 0;
+        }
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.cloak = 0;
+      player.slotData[slotIndex] = { sinceFired: 1000 };
+    },
+    // NOTE right now you can equip multiple cloaking generators to get faster cloaking
+    frameMutator: (player, slotIndex) => {
+      if (player.cloak > 0 && player.cloak < CloakedState.Cloaked) {
+        player.cloak++;
+      }
+      const slotData = player.slotData[slotIndex];
+      if (slotData.sinceFired === undefined) {
+        slotData.sinceFired = 1000;
+      }
+      slotData.sinceFired++;
+    },
+    cost: 2000,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

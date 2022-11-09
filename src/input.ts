@@ -1,12 +1,13 @@
 import { peekTag, pop, push } from "./dialog";
 import { mapDialog, setupMapDialog } from "./dialogs/map";
 import { Input } from "./game";
-import { keybind, ownId, selectedSecondary, setSelectedSecondary } from "./globals";
-import { sendChat, sendInput } from "./net";
+import { keybind, lastSelf, ownId, selectedSecondary, setSelectedSecondary } from "./globals";
+import { sendChat, sendInput, sendSecondaryActivation } from "./net";
 import { shown as isDialogShown } from "./dialog";
 import { canvas, canvasCoordsToGameCoords } from "./drawing";
 import { Position } from "./geometry";
 import { dumpCargoDialog, setupDumpCargoDialog } from "./dialogs/cargo";
+import { armDefs, defs } from "./defs";
 
 let chatInput: HTMLInputElement;
 
@@ -61,6 +62,8 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
       return;
     }
 
+    const altPressed = e.altKey;
+
     let changed = false;
     const oldSecondary = selectedSecondary;
     switch (e.key) {
@@ -102,34 +105,74 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         input.previousTargetAsteroid = true;
         break;
       case keybind.selectSecondary0:
-        setSelectedSecondary(0);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 0);
+        } else {
+          setSelectedSecondary(0);
+        }
         break;
       case keybind.selectSecondary1:
-        setSelectedSecondary(1);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 1);
+        } else {
+          setSelectedSecondary(1);
+        }
         break;
       case keybind.selectSecondary2:
-        setSelectedSecondary(2);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 2);
+        } else {
+          setSelectedSecondary(2);
+        }
         break;
       case keybind.selectSecondary3:
-        setSelectedSecondary(3);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 3);
+        } else {
+          setSelectedSecondary(3);
+        }
         break;
       case keybind.selectSecondary4:
-        setSelectedSecondary(4);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 4);
+        } else {
+          setSelectedSecondary(4);
+        }
         break;
       case keybind.selectSecondary5:
-        setSelectedSecondary(5);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 5);
+        } else {
+          setSelectedSecondary(5);
+        }
         break;
       case keybind.selectSecondary6:
-        setSelectedSecondary(6);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 6);
+        } else {
+          setSelectedSecondary(6);
+        }
         break;
       case keybind.selectSecondary7:
-        setSelectedSecondary(7);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 7);
+        } else {
+          setSelectedSecondary(7);
+        }
         break;
       case keybind.selectSecondary8:
-        setSelectedSecondary(8);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 8);
+        } else {
+          setSelectedSecondary(8);
+        }
         break;
       case keybind.selectSecondary9:
-        setSelectedSecondary(9);
+        if (e.altKey) {
+          sendSecondaryActivation(ownId, 9);
+        } else {
+          setSelectedSecondary(9);
+        }
         break;
       case keybind.chat:
         if (!isDialogShown) {

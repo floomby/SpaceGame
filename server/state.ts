@@ -153,6 +153,7 @@ sectorList.forEach((sector) => {
 // BTW I do not like this design
 const targets: Map<number, [TargetKind, number]> = new Map();
 const secondaries: Map<number, number> = new Map();
+const secondariesToActivate: Map<number, number[]> = new Map();
 
 const knownRecipes: Map<number, Set<string>> = new Map();
 
@@ -179,6 +180,7 @@ export {
   warpList,
   targets,
   secondaries,
+  secondariesToActivate,
   asteroidBounds,
   knownRecipes,
   uid,

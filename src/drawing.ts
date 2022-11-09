@@ -14,9 +14,18 @@ import {
   Player,
   TargetKind,
   sectorBounds,
+  CloakedState,
 } from "./game";
 import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection } from "./geometry";
-import { allianceColorOpaque, confederationColorOpaque, lastSelf, rogueColorOpaque, scourgeColor, scourgeColorOpaque, teamColorsOpaque } from "./globals";
+import {
+  allianceColorOpaque,
+  confederationColorOpaque,
+  lastSelf,
+  rogueColorOpaque,
+  scourgeColor,
+  scourgeColorOpaque,
+  teamColorsOpaque,
+} from "./globals";
 import { KeyBindings } from "./keybindings";
 import { sfc32 } from "./prng";
 import { drawProjectile } from "./projectileDrawing";
@@ -338,7 +347,9 @@ const drawMiniMap = (position: Position, width: number, height: number, self: Pl
       Math.abs(player.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
       Math.abs(player.position.y - self.position.y) * miniMapScaleFactor < height / 2
     ) {
-      drawMiniMapPlayer(center, player, self, miniMapScaleFactor);
+      if (player.team === self.team || player.cloak !== CloakedState.Cloaked) {
+        drawMiniMapPlayer(center, player, self, miniMapScaleFactor);
+      }
     }
   }
 };
@@ -418,8 +429,19 @@ const drawAsteroid = (asteroid: Asteroid, self: Player) => {
 };
 
 const drawPlayer = (player: Player, self: Player) => {
+  const cloakedAmount = !player.cloak ? 0 : player.cloak / CloakedState.Cloaked;
+  if (cloakedAmount === 1 && player.team !== self.team) {
+    return;
+  }
+
   const def = defs[player.defIndex];
   ctx.save();
+
+  const cloakOpacity = player.team === self.team ? 0.5 * cloakedAmount : cloakedAmount;
+  if (cloakedAmount > 0) {
+    ctx.filter = `blur(${cloakedAmount * 2}px) opacity(${1 - cloakOpacity})`;
+  } 
+
   let sprite = composited[player.defIndex * Faction.Count + player.team];
   // let sprite = sprites[player.definitionIndex];
 
@@ -489,7 +511,6 @@ const drawPlayer = (player: Player, self: Player) => {
     );
     drawBar({ x: -sprite.width * 0.4, y: 1 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
     drawBar({ x: -sprite.width * 0.4, y: 15 }, sprite.width * 0.8, 12, scourgeColorOpaque, "#333333DD", player.repairs[3] / def.repairsRequired);
-
   }
   ctx.restore();
 };
@@ -882,7 +903,7 @@ const drawSectorBounds = (self: Player) => {
   const distanceToRight = sectorBounds.x + sectorBounds.width - self.position.x;
   const distanceToTop = self.position.y - sectorBounds.y;
   const distanceToBottom = sectorBounds.y + sectorBounds.height - self.position.y;
-  
+
   const distances = [distanceToLeft, distanceToRight, distanceToTop, distanceToBottom];
   closestEdgeDistance = Math.min(...distances);
   if (closestEdgeDistance === distanceToLeft) {
@@ -1114,7 +1135,9 @@ const drawEverything = (
             drawHighlight(lastSelf, player);
           }
           drawPlayer(player, lastSelf);
-          drawName(lastSelf, player);
+          if (player.team === self.team || player.cloak !== CloakedState.Cloaked) {
+            drawName(lastSelf, player);
+          }
         }
       }
       if (self) {
@@ -1124,6 +1147,8 @@ const drawEverything = (
         if (
           player !== self &&
           (distance < def.scanRange || playerDef.kind === UnitKind.Station) &&
+          (player.team === self.team || !player.cloak) &&
+          !player.docked &&
           (Math.abs(self.position.x - player.position.x) > canvas.width / 2 || Math.abs(self.position.y - player.position.y) > canvas.height / 2)
         ) {
           arrows.push({

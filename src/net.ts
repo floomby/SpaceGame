@@ -230,6 +230,15 @@ const sendTransferToShip = (id: number, what: string, amount: number) => {
   );
 };
 
+const sendSecondaryActivation = (id: number, secondary: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "secondaryActivation",
+      payload: { id, secondary },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -254,4 +263,5 @@ export {
   sendSellInventory,
   sendManufacture,
   sendTransferToShip,
+  sendSecondaryActivation,
 };

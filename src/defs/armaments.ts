@@ -575,15 +575,13 @@ const initArmaments = () => {
     kind: SlotKind.Utility,
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Untargeted,
-    energyCost: 10,
+    // Thirty cloaking energy plus the 10 for cloaking energy margin
+    energyCost: 40,
     stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (slotData.sinceFired > 60) {
         if (player.cloak === 0) {
-          if (player.energy > 10) {
-            player.energy -= 10;
-            player.cloak = 1;
-          }
+          player.cloak = 1;
         } else {
           player.cloak = 0;
         }
@@ -595,14 +593,23 @@ const initArmaments = () => {
     },
     // NOTE right now you can equip multiple cloaking generators to get faster cloaking
     frameMutator: (player, slotIndex) => {
-      if (player.cloak > 0 && player.cloak < CloakedState.Cloaked) {
+      if (player.cloak > CloakedState.Uncloaked && player.cloak < CloakedState.Cloaked) {
         player.cloak++;
+        // Make cloaking take energy
+        // This works out to 30 energy being drained during the cloaking process
+        player.energy = Math.max(0, player.energy - 10 / CloakedState.Cloaked);
       }
       const slotData = player.slotData[slotIndex];
       if (slotData.sinceFired === undefined) {
         slotData.sinceFired = 1000;
       }
       slotData.sinceFired++;
+      if (player.energy < 10) {
+        player.cloak = CloakedState.Uncloaked;
+      }
+      if (player.cloak) {
+        player.energy = Math.max(0, player.energy - 0.06);
+      }
     },
     cost: 2000,
   });

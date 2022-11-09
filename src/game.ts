@@ -465,7 +465,7 @@ const dampenImpulse = (player: Player) => {
   if (Math.abs(player.ir) < 0.001) {
     player.ir = 0;
   }
-}
+};
 
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
 type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: Mine[] };
@@ -649,6 +649,8 @@ const update = (
     }
 
     if (def.kind === UnitKind.Ship) {
+      const energyBeforeActing = player.energy;
+      const wasCloaked = !!player.cloak;
       const primaryDef = projectileDefs[def.primaryDefIndex];
       if (player.disabled) {
         player.warping = 0;
@@ -776,6 +778,12 @@ const update = (
           }
         }
       }
+      // Make doing things while cloaked cost triple energy
+      // Do not change this without looking at the cloaking generator in the armaments also
+      if (wasCloaked) {
+        const deltaEnergy = energyBeforeActing - player.energy;
+        player.energy = Math.max(0, player.energy - 2 * deltaEnergy);
+      }
     } else {
       // Have stations spin slowly
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
@@ -861,15 +869,21 @@ const update = (
     }
     // If a warp is in progress, update the warp progress, then trigger the warp once time has elapsed
     if (player.warping) {
-      player.warping += 1;
-      if (player.warping > def.warpTime) {
+      if (player.energy < 10) {
         player.warping = 0;
-        state.players.delete(id);
-        serverWarpList.push({ player, to: player.warpTo });
-        applyEffect({
-          effectIndex: def.warpEffect,
-          from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
-        });
+      } else {
+        player.warping += 1;
+        // Energy use while cloaked is tripled
+        player.energy -= player.cloak? 60 / def.warpTime : 20 / def.warpTime;
+        if (player.warping > def.warpTime) {
+          player.warping = 0;
+          state.players.delete(id);
+          serverWarpList.push({ player, to: player.warpTo });
+          applyEffect({
+            effectIndex: def.warpEffect,
+            from: { kind: EffectAnchorKind.Absolute, value: player.position, heading: player.heading, speed: player.speed },
+          });
+        }
       }
     }
   }

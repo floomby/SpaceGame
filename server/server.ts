@@ -1315,12 +1315,12 @@ setInterval(() => {
     const state = sectors.get(newSector);
     if (state) {
       const ws = idToWebsocket.get(transition.player.id);
+      const sectorInfo = { sector: newSector, resources: sectorAsteroidResources[newSector].map((value) => value.resource) };
       if (ws) {
         const client = clients.get(ws)!;
         client.currentSector = newSector;
         client.sectorDataSent = false;
         client.sectorsVisited.add(newSector);
-        const sectorInfo = { sector: newSector, resources: sectorAsteroidResources[newSector].map((value) => value.resource) };
         ws.send(
           JSON.stringify({
             type: "warp",
@@ -1333,11 +1333,11 @@ setInterval(() => {
             },
           })
         );
-        transition.player.position = transition.coords;
-        transition.player.heading = headingFromCardinalDirection(transition.direction);
-        transition.player.speed = 0;
-        state.players.set(transition.player.id, transition.player);
       }
+      transition.player.position = transition.coords;
+      transition.player.heading = headingFromCardinalDirection(transition.direction);
+      transition.player.speed = 0;
+      state.players.set(transition.player.id, transition.player);
     }
   }
 

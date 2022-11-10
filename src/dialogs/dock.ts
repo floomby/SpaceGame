@@ -51,7 +51,15 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
   <td>${entry.what}</td>
   <td>${entry.amount}</td>
   <td><input type="text" id="sellCargoAmount${index}" value="${entry.amount}" size="6" /></td>
-  <td style="text-align: right;"><button id="sellCargo${index}">Sell</button></td>
+  <td style="text-align: right;"><div class="tooltip">
+    <button id="sellCargo${index}">Sell</button>
+    <span class="tooltipText" id="sellCargoTooltip${entry.what}">${domFromRest(
+      `/priceOf?what=${entry.what}`,
+      (price) => `${price} Credits/Unit`,
+      undefined,
+      true
+    )}</span>
+  <div></td>
   <td style="text-align: right;"><button id="depositCargo${index}">Deposit</button></td>
 </tr>`;
     index++;

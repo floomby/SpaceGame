@@ -417,6 +417,20 @@ if (useSsl) {
   });
 }
 
+app.get("/priceOf", (req, res) => {
+  const what = req.query.what;
+  if (!what || typeof what !== "string") {
+    res.send(JSON.stringify({ error: "Invalid get parameters" }));
+    return;
+  }
+  const price = market.get(what);
+  if (!price) {
+    res.send(JSON.stringify({ error: "Invalid item" }));
+    return;
+  }
+  res.send(JSON.stringify({ value: price }));
+});
+
 app.get("/kill", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {

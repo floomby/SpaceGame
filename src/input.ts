@@ -68,39 +68,59 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
       case keybind.up:
         changed = !input.up;
         input.up = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.down:
         changed = !input.down;
         input.down = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.left:
         changed = !input.left;
         input.left = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.right:
         changed = !input.right;
         input.right = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.secondary:
         changed = !input.secondary;
         input.secondary = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.dock:
         input.dock = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.nextTarget:
         input.nextTarget = true;
         targetEnemy = e.getModifierState("Control");
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.previousTarget:
         input.previousTarget = true;
         targetEnemy = e.getModifierState("Control");
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.nextTargetAsteroid:
         input.nextTargetAsteroid = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.previousTargetAsteroid:
         input.previousTargetAsteroid = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.selectSecondary0:
         if (e.ctrlKey) {
@@ -204,6 +224,8 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         } else if (peekTag() === "map") {
           pop();
         }
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.cargo:
         if (!isDialogShown) {
@@ -211,9 +233,13 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         } else if (peekTag() === "dumpCargo") {
           pop();
         }
+        e.preventDefault();
+        e.stopPropagation();
         break;
       case keybind.quickTargetClosestEnemy:
         input.quickTargetClosestEnemy = true;
+        e.preventDefault();
+        e.stopPropagation();
         break;
     }
     if (changed) {

@@ -34,6 +34,10 @@ app.get("/", (req, res) => {
   res.sendFile("index.html", { root });
 });
 
+app.get("/styles.css", (req, res) => {
+  res.sendFile("styles.css", { root });
+});
+
 // Rest api stuff for things that are not "realtime"
 app.get("/available", (req, res) => {
   const name = req.query.name;

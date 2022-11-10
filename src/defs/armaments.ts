@@ -591,7 +591,7 @@ const initArmaments = () => {
       player.cloak = 0;
       player.slotData[slotIndex] = { sinceFired: 1000 };
     },
-    // NOTE right now you can equip multiple cloaking generators to get faster cloaking
+    // NOTE right now you can equip and use multiple cloaking generators to get faster cloaking (probably fine to leave it like this)
     frameMutator: (player, slotIndex) => {
       if (player.cloak > CloakedState.Uncloaked && player.cloak < CloakedState.Cloaked) {
         player.cloak++;
@@ -610,6 +610,7 @@ const initArmaments = () => {
       if (player.cloak) {
         player.energy = Math.max(0, player.energy - 0.06);
       }
+      slotData.active = !!player.cloak;
     },
     cost: 2000,
   });
@@ -682,6 +683,36 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 300,
+  });
+
+  // Hull Regenerator - 15
+  armDefs.push({
+    name: "Hull Regenerator",
+    description: "Uses energy to rapidly regenerate a ships hull",
+    kind: SlotKind.Utility,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Untargeted,
+    energyCost: 0.3,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (slotData.sinceFired > 60) {
+        slotData.active = !slotData.active;
+      }  
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { active: false, sinceFired: 1000 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      const def = defs[player.defIndex];
+      if (slotData.active) {
+        if (player.energy > 0.3 && player.health < def.health) {
+          player.health = Math.min(def.health, player.health + 0.3);
+          player.energy -= 0.3;
+        }
+      }
+    },
+    cost: 500,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

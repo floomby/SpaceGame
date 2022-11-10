@@ -62,8 +62,6 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
       return;
     }
 
-    const altPressed = e.altKey;
-
     let changed = false;
     const oldSecondary = selectedSecondary;
     switch (e.key) {
@@ -105,71 +103,91 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         input.previousTargetAsteroid = true;
         break;
       case keybind.selectSecondary0:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 0);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(0);
         }
         break;
       case keybind.selectSecondary1:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 1);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(1);
         }
         break;
       case keybind.selectSecondary2:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 2);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(2);
         }
         break;
       case keybind.selectSecondary3:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 3);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(3);
         }
         break;
       case keybind.selectSecondary4:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 4);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(4);
         }
         break;
       case keybind.selectSecondary5:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 5);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(5);
         }
         break;
       case keybind.selectSecondary6:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 6);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(6);
         }
         break;
       case keybind.selectSecondary7:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 7);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(7);
         }
         break;
       case keybind.selectSecondary8:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 8);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(8);
         }
         break;
       case keybind.selectSecondary9:
-        if (e.altKey) {
+        if (e.ctrlKey) {
           sendSecondaryActivation(ownId, 9);
+          e.preventDefault();
+          e.stopPropagation();
         } else {
           setSelectedSecondary(9);
         }

@@ -30,7 +30,7 @@ const controlsText = (bindings: KeyBindings) => {
       <tr><td style="padding-right: 3vw;">Left Mouse</td><td>Fire primary</td></tr>
       <tr><td style="padding-right: 3vw;">Right Mouse</td><td>Target unit/asteroid under cursor</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.quickTargetClosestEnemy}</td><td>Target closest enemy</td></tr>
-      <tr><td style="padding-right: 3vw;">${keys.secondary}</td><td>Fire secondary</td></tr>
+      <tr><td style="padding-right: 3vw;">${keys.secondary}</td><td>Use secondary</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.dock}</td><td>Dock/Repair</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.up}</td><td>Accelerate</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.down}</td><td>Decelerate</td></tr>
@@ -61,7 +61,7 @@ const controlsText = (bindings: KeyBindings) => {
       <tr><td style="padding-right: 3vw;">${keys.selectSecondary7}</td><td>Select secondary 7</td></tr>
       <tr><td style="padding-right: 3vw;">${keys.selectSecondary8}</td><td>Select secondary 8</td></tr>
     </table>
-    <p>Use the alt key modifier to fire secondaries without switching to them.</p> 
+    <p>Use the ctrl key modifier to use secondaries without switching to them.</p>
   </div>
 </div>`;
 };

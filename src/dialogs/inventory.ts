@@ -2,16 +2,25 @@ import { bindPostUpdater, bindUpdater, horizontalCenter, pop } from "../dialog";
 import { availableCargoCapacity } from "../game";
 import { inventory, lastSelf, ownId } from "../globals";
 import { sendSellInventory, sendTransferToShip } from "../net";
+import { domFromRest } from "../rest";
 
 const inventoryTableHtml = () => {
-  let html = `<table style="width: 100%; text-align: left;">`
+  let html = `<table style="width: 100%; text-align: left;">`;
 
   for (const [what, amount] of Object.entries(inventory)) {
     html += `<tr>
   <td>${what}</td>
   <td>${amount}</td>
   <td><input type="text" id="sellInventoryAmount${what}" value="${amount}" size="6" /></td>
-  <td style="text-align: right;"><button id="sellInventory${what}">Sell</button></td>
+  <td style="text-align: right;"><div class="tooltip">
+    <button id="sellInventory${what}">Sell</button>
+    <span class="tooltipText" id="sellInventoryTooltip${what}">${domFromRest(
+      `/priceOf?what=${what}`,
+      (price) => `${price} Credits/Unit`,
+      undefined,
+      true
+    )}</span>
+  <div></td>
   <td style="text-align: right;"><button id="transferToShip${what}">Transfer to Ship</button></td>
 </tr>`;
   }
@@ -104,7 +113,7 @@ const setupInventory = () => {
 };
 
 const bindInventoryUpdaters = () => {
-  bindUpdater("inventoryCredits", x => x);
+  bindUpdater("inventoryCredits", (x) => x);
   bindPostUpdater("inventory", populateInventoryTable);
 };
 

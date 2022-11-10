@@ -78,6 +78,8 @@ enum CloakedState {
 //   cloak
 type Player = Entity & {
   health: number;
+  // This is for primary weapons (it is an array because stations have multiple independent hardpoints)
+  // Ships just have one element in the array
   sinceLastShot: number[];
   toFirePrimary?: boolean;
   toFireSecondary?: boolean;
@@ -548,7 +550,7 @@ const update = (
             });
           }
           if (projectileDef.hitMutator) {
-            projectileDef.hitMutator(projectile, state);
+            projectileDef.hitMutator(projectile, state, otherPlayer);
           }
           break;
         }

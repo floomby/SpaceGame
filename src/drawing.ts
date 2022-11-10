@@ -266,7 +266,8 @@ const drawHUD = (player: Player, selectedSecondary: number) => {
   drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#774422CC", "#333333CC", totalCargo / defs[player.defIndex].cargoCapacity);
   for (let i = 0; i < player.armIndices.length; i++) {
     let armDef = armDefs[player.armIndices[i]];
-    ctx.fillStyle = i === selectedSecondary ? "yellow" : "white";
+    let slotData = player.slotData[i];
+    ctx.fillStyle = i === selectedSecondary ? (slotData?.active ? "#9ACD32" : "yellow") : slotData?.active ? "green" : "white";
     ctx.font = "14px Arial";
     ctx.textAlign = "left";
     ctx.fillText(armDef.name, 10, canvas.height - 10 - (player.armIndices.length - i) * 20);
@@ -1136,7 +1137,7 @@ const drawEverything = (
             drawHighlight(lastSelf, player);
           }
           drawPlayer(player, lastSelf);
-          if (player.team === self.team || player.cloak !== CloakedState.Cloaked) {
+          if (player.team === lastSelf.team || player.cloak !== CloakedState.Cloaked) {
             drawName(lastSelf, player);
           }
         }

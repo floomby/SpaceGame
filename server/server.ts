@@ -129,11 +129,6 @@ app.get("/available", (req, res) => {
   });
 });
 
-// Unused now
-// app.get("/sectorList", (req, res) => {
-//   res.send(JSON.stringify({ value: sectorList }));
-// });
-
 app.get("/nameOf", (req, res) => {
   const id = req.query.id;
   if (!id || typeof id !== "string") {
@@ -861,7 +856,6 @@ wss.on("connection", (ws) => {
           if (player) {
             const station = state.players.get(data.payload.station)!;
             if (canRepair(player, station, false)) {
-              // This condition will need to change once there are more than 2 teams
               if (!station.repairs || station.repairs.length !== Faction.Count) {
                 console.log(`Warning: Station repairs array is not correctly initialized (${station.id})`);
               } else {

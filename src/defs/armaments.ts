@@ -553,7 +553,6 @@ const initArmaments = () => {
           projectiles.push(projectile);
           state.projectiles.set(player.id, projectiles);
           player.projectileId++;
-          player.sinceLastShot[i] = 0;
         }
         applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
       }
@@ -697,7 +696,7 @@ const initArmaments = () => {
       const slotData = player.slotData[slotId];
       if (slotData.sinceFired > 60) {
         slotData.active = !slotData.active;
-      }  
+      }
     },
     equipMutator: (player, slotIndex) => {
       player.slotData[slotIndex] = { active: false, sinceFired: 1000 };
@@ -715,6 +714,61 @@ const initArmaments = () => {
     cost: 500,
   });
 
+  // Disruptor - 16
+  const disruptorTimes = [5, 5, 5, 40];
+  armDefs.push({
+    name: "Disruptor Cannon",
+    description: "Fires projectiles that reduce the enemy's energy",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Untargeted,
+    energyCost: 8,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (slotData.sinceFired > disruptorTimes[disruptorTimes.length - 1]) {
+        slotData.idx = 0;
+      }
+      const time = disruptorTimes[slotData.idx];
+      if (player.energy > 8 && slotData.sinceFired > time) {
+        slotData.idx = (slotData.idx + 1) % disruptorTimes.length;
+        player.energy -= 8;
+        slotData.sinceFired = 0;
+        const cos = Math.cos(player.heading);
+        const sin = Math.sin(player.heading);
+        const projectileDef = projectileDefs[2];
+
+        const projectile = {
+          position: {
+            x: player.position.x + cos * 0.8 * player.radius,
+            y: player.position.y + sin * 0.8 * player.radius,
+          },
+          radius: projectileDef.radius,
+          speed: projectileDef.speed + player.speed,
+          heading: player.heading,
+          damage: 20,
+          team: player.team,
+          id: player.projectileId,
+          parent: player.id,
+          frameTillEXpire: projectileDef.framesToExpire,
+          idx: 2,
+        };
+        const projectiles = state.projectiles.get(player.id) || [];
+        projectiles.push(projectile);
+        state.projectiles.set(player.id, projectiles);
+        player.projectileId++;
+        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, idx: 0 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 1500,
+  });
+
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];
     armDefMap.set(def.name, { index: i, def });
@@ -730,6 +784,6 @@ const initArmaments = () => {
 const isFreeArm = (name: string) => {
   const armDef = armDefMap.get(name);
   return armDef && armDef.def.cost === 0;
-}
+};
 
 export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments, isFreeArm };

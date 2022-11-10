@@ -1,4 +1,4 @@
-import { Ballistic, findAllPlayersOverlappingCircle, GlobalState } from "../game";
+import { Ballistic, findAllPlayersOverlappingCircle, GlobalState, Player } from "../game";
 
 type ProjectileDef = {
   drawIndex: number;
@@ -11,7 +11,7 @@ type ProjectileDef = {
   endEffect?: number;
   endMutator?: (ballistic: Ballistic, state: GlobalState) => void;
   hitEffect?: number;
-  hitMutator?: (ballistic: Ballistic, state: GlobalState) => void;
+  hitMutator?: (ballistic: Ballistic, state: GlobalState, player?: Player) => void;
 };
 
 const projectileDefs: ProjectileDef[] = [];
@@ -51,6 +51,22 @@ const initProjectileDefs = () => {
   projectileDefs[projectileDefs.length - 1].framesToExpire =
     projectileDefs[projectileDefs.length - 1].range / projectileDefs[projectileDefs.length - 1].speed;
   projectileDefs[projectileDefs.length - 1].endMutator = projectileDefs[projectileDefs.length - 1].hitMutator;
+
+  // 1 - Disruptor
+  projectileDefs.push({
+    drawIndex: 2,
+    speed: 10,
+    range: 500,
+    energy: 8,
+    radius: 2,
+    // TODO Make the sound effect for this
+    fireEffect: 8,
+    hitMutator(ballistic, state, player) {
+      player!.energy -= 12;
+    },
+  });
+  projectileDefs[projectileDefs.length - 1].framesToExpire =
+    projectileDefs[projectileDefs.length - 1].range / projectileDefs[projectileDefs.length - 1].speed;
 };
 
 export { projectileDefs, initProjectileDefs };

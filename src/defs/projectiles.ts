@@ -55,13 +55,13 @@ const initProjectileDefs = () => {
   // 1 - Disruptor
   projectileDefs.push({
     drawIndex: 2,
-    speed: 10,
-    range: 500,
+    speed: 12,
+    range: 450,
     energy: 2,
     radius: 2,
     fireEffect: 17,
     hitMutator(ballistic, state, player) {
-      player!.energy -= 12;
+      player.energy = Math.max(player!.energy - 12, 0);
     },
   });
   projectileDefs[projectileDefs.length - 1].framesToExpire =

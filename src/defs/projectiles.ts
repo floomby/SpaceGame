@@ -59,8 +59,7 @@ const initProjectileDefs = () => {
     range: 500,
     energy: 8,
     radius: 2,
-    // TODO Make the sound effect for this
-    fireEffect: 8,
+    fireEffect: 17,
     hitMutator(ballistic, state, player) {
       player!.energy -= 12;
     },

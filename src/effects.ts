@@ -85,6 +85,7 @@ const initEffects = () => {
   const plasmaLaunchSound = getSound("squishyPew1.wav");
   const plasmaHitSound = getSound("wigglyThud0.wav");
   const impulseMissileHitSound = getSound("squishyPew0.wav");
+  const disruptorLaunchSound = getSound("resonantPew0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -725,6 +726,24 @@ const initEffects = () => {
     },
     initializer: () => {
       return { heading: Math.random() * Math.PI * 2, needSound: true };
+    },
+  });
+  // Disruptor Launch sound - 17
+  effectDefs.push({
+    frames: 10,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
+
+      if (effect.extra.needSound) {
+        effect.extra.needSound = false;
+        play3dSound(disruptorLaunchSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      }
+    },
+    initializer: () => {
+      return { needSound: true };
     },
   });
 

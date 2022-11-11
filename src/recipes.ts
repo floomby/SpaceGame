@@ -63,6 +63,12 @@ const initRecipes = () => {
         "Spare Parts": 10,
       },
     },
+    {
+      name: "Refined Zirathium",
+      ingredients: {
+        Aziracite: 6,
+      },
+    },
   ];
 
   recipes.forEach((recipe, index) => {

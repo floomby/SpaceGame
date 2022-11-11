@@ -1,5 +1,5 @@
 import { getFactionString, Faction } from "../defs";
-import { horizontalCenter, setDialogBackground, push as pushDialog, pop as popDialog, show as showDialog, pop } from "../dialog";
+import { horizontalCenter, setDialogBackground, push as pushDialog, pop as popDialog, show as showDialog, pop, center } from "../dialog";
 import { faction, keybind, setFaction, allianceColor, confederationColor } from "../globals";
 import { KeyBindings } from "../keybindings";
 import { register, login } from "../net";
@@ -122,14 +122,14 @@ const setupRegisterDialog = (username: string, password: string) => {
   document.getElementById("backToLogin")?.addEventListener("click", () => popDialog());
 };
 
-const loginDialog = horizontalCenter([
+const loginDialog = `<div class="center">${horizontalCenter([
   "<h2>Login</h2>",
   `<div id="errorSpot"></div>`,
   `<input type="text" placeholder="Username" id="username"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,
   `<br/><button id="loginButton">Login</button>`,
   `<button style="margin-top: 10px;" id="openRegister">Register</button>`,
-]);
+])}</div>`;
 
 const setupLoginDialog = () => {
   const passwordInput = document.getElementById("password") as HTMLInputElement;

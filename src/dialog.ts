@@ -22,7 +22,7 @@ const onPushCallbacks: (() => void)[] = [];
 
 const show = (html: string) => {
   div.style.display = "flex";
-  div.innerHTML = `<div class="center" id="staged">${html}</div>
+  div.innerHTML = `<div class="center" id="staged" style="overflow: auto;">${html}</div>
     <div id="stackPlace"></div>`;
   staged = document.getElementById("staged") as HTMLDivElement;
   stackPlace = document.getElementById("stackPlace") as HTMLDivElement;
@@ -115,6 +115,10 @@ const clearStack = (reshow = true) => {
 
 const horizontalCenter = (html: string[]) => {
   return `<div style="text-align: center;">${html.map((html) => `<div style="display: inline-block;">${html}</div>`).join("<br/>")}</div>`;
+};
+
+const center = (html: string) => {
+  return `<div class="center">${html}</div>`;
 };
 
 const updaters: Map<string, (value: any) => string> = new Map();
@@ -215,6 +219,7 @@ export {
   hide,
   clear,
   horizontalCenter,
+  center,
   bindUpdater,
   updateDom,
   bindPostUpdater,

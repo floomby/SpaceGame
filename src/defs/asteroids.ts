@@ -33,6 +33,13 @@ const initAsteroids = () => {
     mineral: "Hemacite",
     difficulty: 2,
   });
+  asteroidDefs.push({
+    resources: 1000,
+    sprite: { x: 384, y: 640, width: 64, height: 64 },
+    radius: 19,
+    mineral: "Aziracite",
+    difficulty: 2,
+  });
 
   for (let i = 0; i < asteroidDefs.length; i++) {
     const def = asteroidDefs[i];

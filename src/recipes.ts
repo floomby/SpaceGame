@@ -42,6 +42,12 @@ const initRecipes = () => {
       },
     },
     {
+      name: "Refined Zirathium",
+      ingredients: {
+        Aziracite: 6,
+      },
+    },
+    {
       name: "Forward Fuselage",
       ingredients: {
         "Ferrecium Alloy": 12,
@@ -51,8 +57,16 @@ const initRecipes = () => {
     {
       name: "Aft Fuselage",
       ingredients: {
-        "Ferrecium Alloy": 15,
+        "Ferrecium Alloy": 45,
         "Refined Russium": 5,
+      },
+    },
+    {
+      name: "Reinforced Plating",
+      ingredients: {
+        "Ferrecium Alloy": 10,
+        "Refined Prifetium": 2,
+        "Refined Zirathium": 1,
       },
     },
     {
@@ -60,7 +74,31 @@ const initRecipes = () => {
       ingredients: {
         "Forward Fuselage": 1,
         "Aft Fuselage": 1,
-        "Spare Parts": 10,
+        "Reinforced Plating": 10,
+      },
+    },
+    {
+      name: "Boson Incabulator",
+      ingredients: {
+        "Refined Zirathium": 2,
+        "Spare Parts": 2,
+      },
+    },
+    {
+      name: "Refractive Plating",
+      ingredients: {
+        "Ferrecium Alloy": 2,
+        "Refined Prifetium": 1,
+        "Spare Parts": 1,
+      },
+    },
+    {
+      name: "Striker",
+      ingredients: {
+        "Forward Fuselage": 1,
+        "Aft Fuselage": 1,
+        "Refractive Plating": 3,
+        "Boson Incabulator": 1,
       },
     },
   ];

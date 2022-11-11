@@ -607,7 +607,12 @@ const initArmaments = () => {
         player.cloak = CloakedState.Uncloaked;
       }
       if (player.cloak) {
-        player.energy = Math.max(0, player.energy - 0.06);
+        const def = defs[player.defIndex];
+        if (def.isCloaky) {
+          player.energy = Math.max(0, player.energy - 0.0006 * def.mass);
+        } else {
+          player.energy = Math.max(0, player.energy - 0.006 * def.mass);
+        }
       }
       slotData.active = !!player.cloak;
     },

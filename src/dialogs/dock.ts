@@ -183,7 +183,7 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   <td style="text-align: right;">
     <button id="equipFromInventory${index}"${inventory.hasOwnProperty(armDef.name) ? "" : "disabled"}>Equip From Inventory</button>
   </td>
-  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(ownId), armDef.cost)}>Equip</button></td></tr>`;
+  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(ownId), armDef.cost)}>Purchase</button></td></tr>`;
     }
   }
   html += "</table>";
@@ -206,7 +206,7 @@ const shipViewer = () => {
 const shipPreviewer = (definitionIndex: number) => {
   const def = defs[definitionIndex];
   return `<div style="display: flex; flex-direction: row;">
-  <canvas id="shipPreview" width="200" height="200"></canvas>
+  <canvas id="shipPreview" width="200" height="200" style="width: 200px; height: 200px;"></canvas>
   <div style="width: 60vw;">
     <div id="shipStatsPreview" style="width: 100%">
     </div>

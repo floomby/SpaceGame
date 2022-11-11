@@ -57,7 +57,7 @@ const initProjectileDefs = () => {
     drawIndex: 2,
     speed: 10,
     range: 500,
-    energy: 8,
+    energy: 2,
     radius: 2,
     fireEffect: 17,
     hitMutator(ballistic, state, player) {

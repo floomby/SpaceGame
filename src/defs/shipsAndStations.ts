@@ -48,6 +48,7 @@ type UnitDefinition = {
   scanRange?: number;
   primaryDefIndex: number;
   mass: number;
+  isCloaky?: boolean;
 };
 
 const defs: UnitDefinition[] = [];
@@ -115,12 +116,12 @@ const initShipsAndStations = () => {
     name: "Alliance Starbase",
     description: "Alliance starbase",
     sprite: { x: 0, y: 32, width: 256, height: 256 },
-    health: 1000,
+    health: 10000,
     speed: 0,
-    energy: 1000,
+    energy: 5000,
     energyRegen: 0.5,
     primaryReloadTime: 10,
-    primaryDamage: 15,
+    primaryDamage: 40,
     radius: 120,
     kind: UnitKind.Station,
     hardpoints: [
@@ -142,12 +143,12 @@ const initShipsAndStations = () => {
     name: "Confederacy Starbase",
     description: "Confederacy starbase",
     sprite: { x: 0, y: 288, width: 256, height: 256 },
-    health: 1000,
+    health: 10000,
     speed: 0,
-    energy: 1100,
+    energy: 5500,
     energyRegen: 0.5,
     primaryReloadTime: 10,
-    primaryDamage: 15,
+    primaryDamage: 40,
     radius: 144,
     kind: UnitKind.Station,
     hardpoints: [
@@ -324,7 +325,36 @@ const initShipsAndStations = () => {
     sideThrustAcceleration: 0.1,
     scanRange: 13000,
     primaryDefIndex: 0,
-    mass: 40,
+    mass: 50,
+  });
+  // Striker - 10
+  defs.push({
+    name: "Striker",
+    description: "The Striker is optimized for cloaking, but sacrifices firepower and durability",
+    sprite: { x: 320, y: 832, width: 64, height: 64 },
+    health: 230,
+    speed: 8,
+    energy: 300,
+    energyRegen: 0.3,
+    primaryReloadTime: 8,
+    primaryDamage: 4,
+    radius: 16,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Utility, SlotKind.Utility],
+    cargoCapacity: 50,
+    deathEffect: 3,
+    turnRate: 0.07,
+    acceleration: 0.12,
+    healthRegen: 0.08,
+    price: 4000,
+    warpTime: 90,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 5,
+    sideThrustAcceleration: 0.1,
+    scanRange: 15000,
+    primaryDefIndex: 2,
+    mass: 8,
+    isCloaky: true,
   });
 
   for (let i = 0; i < defs.length; i++) {

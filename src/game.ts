@@ -228,13 +228,6 @@ const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: n
   }
 };
 
-// Primary laser stats (TODO put this in a better place)
-// const primaryRange = 1500;
-// const primarySpeed = 20;
-// const primaryFramesToExpire = primaryRange / primarySpeed;
-// const primaryRadius = 1;
-// const primaryEnergy = 3;
-
 type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
 
 enum EffectAnchorKind {
@@ -749,7 +742,7 @@ const update = (
           }
         }
       }
-      const playerSecondaryActivation = secondariesToActivate.get(id);
+      const playerSecondaryActivation = player.npc ? player.npc.secondariesToFire : secondariesToActivate.get(id);
       if (playerSecondaryActivation) {
         while (playerSecondaryActivation.length > 0) {
           const slotId = playerSecondaryActivation.pop();

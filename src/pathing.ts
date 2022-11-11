@@ -48,6 +48,7 @@ const seekPosition = (player: Player, position: Position, input: Input) => {
   input.down = false;
 };
 
+// Does not use angle
 const arrivePosition = (player: Player, position: Position, input: Input, epsilon = 10) => {
   const def = defs[player.defIndex];
   const heading = findHeadingBetween(player.position, position);
@@ -80,11 +81,12 @@ const arrivePosition = (player: Player, position: Position, input: Input, epsilo
     if (player.speed > 0) {
       input.down = true;
       input.up = false;
+      return false;
     } else {
       input.down = false;
       input.up = false;
+      return true;
     }
-    return;
   }
 
   if (player.speed === targetSpeed) {
@@ -97,6 +99,7 @@ const arrivePosition = (player: Player, position: Position, input: Input, epsilo
     input.up = false;
     input.down = true;
   }
+  return false;
 };
 
 const stopPlayer = (player: Player, input: Input, stopRotation = true) => {

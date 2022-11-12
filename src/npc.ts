@@ -1,4 +1,4 @@
-import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, UnitDefinition } from "./defs";
+import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition } from "./defs";
 import { projectileDefs } from "./defs/projectiles";
 import {
   applyInputs,
@@ -13,7 +13,7 @@ import {
   sectorBounds,
   sectorDelta,
 } from "./game";
-import { l2Norm, pointOutsideRectangle, Position } from "./geometry";
+import { findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position } from "./geometry";
 import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
 import { recipeMap } from "./recipes";
 
@@ -145,7 +145,19 @@ const passiveGoToRandomValidNeighboringSector = () => {
   })();
 };
 
-const stupidSwarmCombat = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number) => {
+const useMines = (npc: NPC, target: Player, slot: number, distance: number) => {
+  if (distance > 300 && findSmallAngleBetween(target.heading, findHeadingBetween(npc.player.position, target.position)) < Math.PI / 4) {
+    npc.secondariesToFire.push(slot);
+  }
+}
+
+const stupidSwarmCombat = (
+  primaryRange: number,
+  secondaryGuided: boolean,
+  secondaryRange: number,
+  energyThreshold: number,
+  mineSlot: null | number
+) => {
   return new (class extends State {
     process = (state: GlobalState, npc: NPC, sector, target) => {
       const newState = this.checkTransitions(state, npc, target);
@@ -172,6 +184,9 @@ const stupidSwarmCombat = (primaryRange: number, secondaryGuided: boolean, secon
           npc.input.secondary = false;
         }
         applyInputs(npc.input, npc.player, seekPositionUsingAngle(npc.player, target.position, npc.input));
+        if (mineSlot !== null) {
+          useMines(npc, target, mineSlot, distance);
+        }
       } else {
         stopPlayer(npc.player, npc.input, true);
         applyInputs(npc.input, npc.player);
@@ -184,7 +199,62 @@ const stupidSwarmCombat = (primaryRange: number, secondaryGuided: boolean, secon
   })();
 };
 
-const randomCombatManeuver = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number) => {
+const runAway = (
+  primaryRange: number,
+  secondaryGuided: boolean,
+  secondaryRange: number,
+  energyThreshold: number,
+  mineSlot: null | number
+) => {
+  return new (class extends State {
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
+      if (newState) {
+        return newState;
+      }
+      if (target) {
+        const distance = l2Norm(npc.player.position, target.position);
+        const facing = currentlyFacing(npc.player, target);
+        if (distance < primaryRange && facing && npc.player.energy > energyThreshold) {
+          npc.input.primary = true;
+        } else {
+          npc.input.primary = false;
+        }
+        if (distance < secondaryRange) {
+          if (secondaryGuided) {
+            npc.input.secondary = true;
+          } else if (facing) {
+            npc.input.secondary = true;
+          } else {
+            npc.input.secondary = false;
+          }
+        } else {
+          npc.input.secondary = false;
+        }
+        applyInputs(npc.input, npc.player, seekPositionUsingAngle(npc.player, this.memory.to, npc.input));
+        if (mineSlot !== null) {
+          useMines(npc, target, mineSlot, distance);
+        }
+      } else {
+        stopPlayer(npc.player, npc.input, true);
+        applyInputs(npc.input, npc.player);
+      }
+      return this;
+    };
+    onEnter = (npc: NPC) => {
+      this.memory.to = { x: npc.player.position.x + Math.random() * 4000 - 2000, y: npc.player.position.y + Math.random() * 4000 - 2000 };
+      npc.selectedSecondary = 1;
+    };
+  })();
+};
+
+const randomCombatManeuver = (
+  primaryRange: number,
+  secondaryGuided: boolean,
+  secondaryRange: number,
+  energyThreshold: number,
+  mineSlot: null | number
+) => {
   return new (class extends State {
     process = (state: GlobalState, npc: NPC, sector, target) => {
       const newState = this.checkTransitions(state, npc, target);
@@ -212,6 +282,9 @@ const randomCombatManeuver = (primaryRange: number, secondaryGuided: boolean, se
         }
         applyInputs(npc.input, npc.player, seekPositionUsingAngle(npc.player, this.memory.to, npc.input));
         this.memory.completed = l2Norm(npc.player.position, this.memory.to) < 100;
+        if (mineSlot !== null) {
+          useMines(npc, target, mineSlot, distance);
+        }
       } else {
         stopPlayer(npc.player, npc.input, true);
         applyInputs(npc.input, npc.player);
@@ -226,12 +299,13 @@ const randomCombatManeuver = (primaryRange: number, secondaryGuided: boolean, se
   })();
 };
 
-const makeTestStateGraph = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number) => {
+const makeBasicStateGraph = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number, mineSlot: null | number) => {
   const idle = idleState();
   const passiveGoTo = passiveGoToRandomPointInSector();
   const passiveGoToSector = passiveGoToRandomValidNeighboringSector();
-  const swarm = stupidSwarmCombat(primaryRange, secondaryGuided, secondaryRange, energyThreshold);
-  const randomManeuver = randomCombatManeuver(primaryRange, secondaryGuided, secondaryRange, energyThreshold);
+  const swarm = stupidSwarmCombat(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
+  const randomManeuver = randomCombatManeuver(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
+  const run = runAway(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
   idle.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoTo });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoToSector });
@@ -244,6 +318,22 @@ const makeTestStateGraph = (primaryRange: number, secondaryGuided: boolean, seco
     trigger: (_, npc, ___, target) => Math.random() < 0.01 && l2Norm(npc.player.position, target.position) < 500,
     state: randomManeuver,
   });
+  swarm.transitions.push({
+    trigger: (_, npc) => {
+      const def = defs[npc.player.defIndex];
+      return npc.player.health < def.health / 3;
+    },
+    state: run,
+  });
+  run.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
+  run.transitions.push({
+    trigger: (_, npc) => {
+      const def = defs[npc.player.defIndex];
+      return npc.player.health > def.health / 3;
+    },
+    state: run,
+  });
+  run.transitions.push({ trigger: () => Math.random() < 0.002, state: run });
   randomManeuver.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
   randomManeuver.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
   randomManeuver.transitions.push({ trigger: () => Math.random() < 0.005, state: swarm });
@@ -310,39 +400,46 @@ class ActiveSwarmer implements NPC {
       ir: 0,
     };
 
+    let mineSlot = def.slots.indexOf(SlotKind.Mine);
+    if (mineSlot === -1) {
+      mineSlot = null;
+    } else {
+      this.player = equip(this.player, mineSlot, "Proximity Mine", true);
+    }
+
     switch (Math.floor(Math.random() * 12)) {
       case 0:
       case 1:
       case 2:
         this.player = equip(this.player, 1, "Javelin Missile", true);
-        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot);
         break;
       case 3:
       case 4:
         this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3, mineSlot);
         break;
       case 5:
         this.player = equip(this.player, 1, "Laser Beam", true);
-        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38, mineSlot);
         break;
       case 6:
         this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
-        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3, mineSlot);
         break;
       case 7:
       case 8:
         this.player = equip(this.player, 1, "Disruptor Cannon", true);
-        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3, mineSlot);
         break;
       case 9:
       case 10:
         this.player = equip(this.player, 1, "Plasma Cannon", true);
-        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot);
         break;
       case 11:
         this.player = equip(this.player, 1, "EMP Missile", true);
-        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot);
         break;
     }
 

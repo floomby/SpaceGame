@@ -213,6 +213,12 @@ body {
   cursor: pointer;
 }
 
+#dialog button:disabled {
+  color: rgb(144, 144, 144);
+  background-color: rgba(13, 15, 21, 0.9);
+  cursor: auto;
+}
+
 #dialog button#openRegister, #dialog button#backToLogin {
   background-color: transparent;
   color: #ccc;

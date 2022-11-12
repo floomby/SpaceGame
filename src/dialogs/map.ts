@@ -47,7 +47,7 @@ const sectorNumberToXY = (sector: number) => {
 };
 
 const mapDialog = () => {
-  return horizontalCenter([
+  return `<div class="unselectable">${horizontalCenter([
     `<h1>Map</h1>`,
     `<h3>Current Sector: ${sectorNumberToXY(currentSector)}</h3>`,
     `<div style="display: flex; flex-direction: row;">
@@ -56,7 +56,7 @@ const mapDialog = () => {
   <div id="sectorInfo" style="width: 30vw; text-align: left;"></div>
 </div>`,
     `<br/><button id="closeMap">Close</button>`,
-  ]);
+  ])}</div>`;
 };
 
 const setupMapDialog = () => {

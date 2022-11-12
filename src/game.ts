@@ -228,13 +228,6 @@ const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: n
   }
 };
 
-// Primary laser stats (TODO put this in a better place)
-// const primaryRange = 1500;
-// const primarySpeed = 20;
-// const primaryFramesToExpire = primaryRange / primarySpeed;
-// const primaryRadius = 1;
-// const primaryEnergy = 3;
-
 type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
 
 enum EffectAnchorKind {
@@ -749,7 +742,7 @@ const update = (
           }
         }
       }
-      const playerSecondaryActivation = secondariesToActivate.get(id);
+      const playerSecondaryActivation = player.npc ? player.npc.secondariesToFire : secondariesToActivate.get(id);
       if (playerSecondaryActivation) {
         while (playerSecondaryActivation.length > 0) {
           const slotId = playerSecondaryActivation.pop();
@@ -904,12 +897,12 @@ const update = (
   return ret;
 };
 
-const processAllNpcs = (state: GlobalState) => {
+const processAllNpcs = (state: GlobalState, sector: number) => {
   for (const [id, player] of state.players) {
     if (!player.npc) {
       continue;
     }
-    player.npc.process(state);
+    player.npc.process(state, sector);
   }
 };
 
@@ -1308,6 +1301,20 @@ const effectiveInfinity = 1000000000;
 
 const mapSize = 4;
 const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20000 };
+const sectorDelta = 20500;
+
+const isValidSectorInDirection = (sector: number, direction: CardinalDirection) => {
+  if (direction === CardinalDirection.Up) {
+    return sector >= mapSize;
+  } else if (direction === CardinalDirection.Down) {
+    return sector < mapSize * (mapSize - 1);
+  } else if (direction === CardinalDirection.Left) {
+    return sector % mapSize !== 0;
+  } else if (direction === CardinalDirection.Right) {
+    return sector % mapSize !== mapSize - 1;
+  }
+  return false;
+};
 
 type SectorInfo = {
   sector: number;
@@ -1368,6 +1375,8 @@ export {
   effectiveInfinity,
   serverMessagePersistTime,
   clientMineDeploymentUpdater,
+  isValidSectorInDirection,
   sectorBounds,
+  sectorDelta,
   mapSize,
 };

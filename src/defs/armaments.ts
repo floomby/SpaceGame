@@ -774,6 +774,54 @@ const initArmaments = () => {
     cost: 1500,
   });
 
+  // Shotgun - 17
+  armDefs.push({
+    name: "Shotgun",
+    description: "A gun that shoots in a wide direction",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Energy,
+    energyCost: 11,
+    targeted: TargetedKind.Untargeted,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      const projectileDef = projectileDefs[0]
+
+      if (player.energy > 11 && slotData.sinceFired > 25) {
+        slotData.sinceFired = 0;
+        player.energy -= 11;
+
+        for (let i = 0; i < 10; i++) {
+          const projectile = {
+            position: {x: player.position.x, y: player.position.y},
+            radius: projectileDef.radius,
+            speed: projectileDef.speed + player.speed,
+            heading: player.heading + (i-5)*0.15,
+            damage: 20,
+            team: player.team,
+            id: player.projectileId,
+            parent: player.id,
+            frameTillEXpire: projectileDef.framesToExpire,
+            idx: 0,
+          };
+
+          const projectiles = state.projectiles.get(player.id) || [];
+          projectiles.push(projectile);
+          state.projectiles.set(player.id, projectiles);
+          player.projectileId++;
+        }
+      }
+      applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 26 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 1300,
+  })
+
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];
     armDefMap.set(def.name, { index: i, def });

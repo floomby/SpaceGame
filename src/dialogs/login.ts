@@ -128,8 +128,8 @@ const loginDialog = `<div class="center">${horizontalCenter([
   `<input type="text" placeholder="Username" id="username"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,
   `<br/><button id="loginButton">Login</button>`,
-  `<button style="margin-top: 10px;" id="openRegister">Register</button>`,
-  `<button style="marin-top: 10px;" id="changePassword">Change Password</button>`
+  `<button style="margin-top: 10px;" id="openRegister" class="secondary">Register</button>`,
+  `<button style="marin-top: 10px;" id="changePassword" class="secondary">Change Password</button>`
 ])}</div>`;
 
 const setupLoginDialog = () => {
@@ -168,7 +168,7 @@ const changePasswordDialog = `<div class="center">${horizontalCenter([
   `<input style="margin-top: 10px;" type="password" placeholder="Previous Password" id="passwordOld"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="passwordNew"/>`,
   `<br/><button id="changeButton">Change</button>`,
-  `<button style="margin-top: 10px;" id="changeToLogin">Back</button>`,
+  `<button style="margin-top: 10px;" id="changeToLogin" class="secondary">Back</button>`,
 ])}</div>`;
 
 const setupChangePasswordDialog = () => {

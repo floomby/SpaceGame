@@ -36,8 +36,8 @@ const sectorAsteroidResources = sectorList.map(_ => [{ resource: "Prifecite", de
 const sectorAsteroidCounts = sectorList.map(_ => 5);
 
 sectorAsteroidResources[0] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
-sectorAsteroidResources[1] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
-sectorAsteroidResources[2] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
+sectorAsteroidResources[1] = [{ resource: "Aziracite", density: 1 }, { resource: "Hemacite", density: 1 }];
+sectorAsteroidResources[2] = [{ resource: "Aziracite", density: 1 }, { resource: "Hemacite", density: 1 }];
 sectorAsteroidResources[3] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
 
 sectorAsteroidResources[5] = [{ resource: "Prifecite", density: 1 }, { resource: "Russanite", density: 1 }];
@@ -59,10 +59,14 @@ sectorFactions[6] = Faction.Rogue;
 sectorFactions[12] = Faction.Alliance;
 sectorFactions[13] = Faction.Alliance;
 sectorFactions[8] = Faction.Alliance;
+sectorFactions[4] = Faction.Alliance;
+sectorFactions[9] = Faction.Alliance;
 
 sectorFactions[14] = Faction.Confederation;
 sectorFactions[15] = Faction.Confederation;
 sectorFactions[11] = Faction.Confederation;
+sectorFactions[7] = Faction.Confederation;
+sectorFactions[10] = Faction.Confederation;
 
 const sectorGuardianCount = sectorList.map(_ => 0);
 
@@ -77,10 +81,14 @@ sectorGuardianCount[6] = 5;
 sectorGuardianCount[12] = 8;
 sectorGuardianCount[13] = 5;
 sectorGuardianCount[8] = 5;
+sectorGuardianCount[4] = 2;
+sectorGuardianCount[9] = 2;
 
 sectorGuardianCount[14] = 5;
 sectorGuardianCount[15] = 8;
 sectorGuardianCount[11] = 5;
+sectorGuardianCount[7] = 2;
+sectorGuardianCount[10] = 2;
 
 const sectorHasStarbase = sectorList.map(_ => false);
 sectorHasStarbase[5] = true;

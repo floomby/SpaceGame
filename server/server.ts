@@ -908,7 +908,7 @@ setInterval(() => {
       discoverer,
       secondariesToActivate
     );
-    processAllNpcs(state);
+    processAllNpcs(state, sector);
     findSectorTransitions(state, sector, sectorTransitions);
 
     // TODO Consider culling the state information to only send nearby players and projectiles (this trades networking bandwidth for server CPU)
@@ -1084,7 +1084,7 @@ const spawnSectorGuardians = (sector: number) => {
       break;
     case Faction.Scourge:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Strafer", Faction.Scourge, uid());
+        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid());
       }
   }
 };

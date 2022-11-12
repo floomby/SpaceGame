@@ -1,7 +1,20 @@
 import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, UnitDefinition } from "./defs";
-import { applyInputs, effectiveInfinity, equip, findClosestTarget, findHeadingBetween, GlobalState, Input, Player, sectorBounds } from "./game";
-import { l2Norm, Position } from "./geometry";
-import { seekPosition, currentlyFacing, stopPlayer, arrivePosition } from "./pathing";
+import { projectileDefs } from "./defs/projectiles";
+import {
+  applyInputs,
+  effectiveInfinity,
+  equip,
+  findClosestTarget,
+  findHeadingBetween,
+  GlobalState,
+  Input,
+  isValidSectorInDirection,
+  Player,
+  sectorBounds,
+  sectorDelta,
+} from "./game";
+import { l2Norm, pointOutsideRectangle, Position } from "./geometry";
+import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
 import { recipeMap } from "./recipes";
 
 // TODO Consider reimplementing this to not be a cascading probability table
@@ -28,7 +41,7 @@ interface NPC {
   secondariesToFire: number[];
   lootTable: LootTable;
   targetId: number;
-  process: (state: GlobalState) => void;
+  process: (state: GlobalState, sector: number) => void;
 }
 
 type Completed = {
@@ -36,16 +49,16 @@ type Completed = {
 };
 
 type StateTransition = {
-  trigger: (state: GlobalState, npc: NPC, memory: Completed) => boolean;
+  trigger: (state: GlobalState, npc: NPC, memory: Completed, target: Player | undefined) => boolean;
   state: State;
 };
 
 abstract class State {
   public transitions: StateTransition[] = [];
   protected memory: Completed | any = {};
-  protected checkTransitions(state: GlobalState, npc: NPC): State | null {
+  protected checkTransitions(state: GlobalState, npc: NPC, target: Player | undefined): State | null {
     for (const transition of this.transitions) {
-      if (transition.trigger(state, npc, this.memory)) {
+      if (transition.trigger(state, npc, this.memory, target)) {
         const ret = transition.state;
         ret.onEnter(npc);
         return ret;
@@ -54,15 +67,14 @@ abstract class State {
     return null;
   }
 
-  abstract process: (state: GlobalState, npc: NPC) => State;
+  abstract process: (state: GlobalState, npc: NPC, sector: number, target: Player | undefined) => State;
   abstract onEnter: (npc: NPC) => void;
 }
 
-// Idk how useful this is since passiveGoTo is a superset of this behavior
 const idleState = () => {
   return new (class extends State {
-    process = (state: GlobalState, npc: NPC) => {
-      const newState = this.checkTransitions(state, npc);
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
       if (newState) {
         return newState;
       }
@@ -70,36 +82,165 @@ const idleState = () => {
       applyInputs(npc.input, npc.player);
       return this;
     };
-    onEnter = (npc: NPC) => {
-      console.log("Entered idle state");
-    };
+    onEnter = (npc: NPC) => {};
   })();
 };
 
 const passiveGoToRandomPointInSector = () => {
   return new (class extends State {
-    process = (state: GlobalState, npc: NPC) => {
-      const newState = this.checkTransitions(state, npc);
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
       if (newState) {
         return newState;
       }
-      this.memory.completed = arrivePosition(npc.player, this.memory.to as Position, npc.input);
-      applyInputs(npc.input, npc.player);
+      const angle = arrivePositionUsingAngle(npc.player, this.memory.to as Position, npc.input);
+      this.memory.completed = angle === undefined;
+      applyInputs(npc.input, npc.player, angle);
       return this;
     };
     onEnter = (npc: NPC) => {
-      console.log("Entered passiveGoToRandomPointInSector state");
       this.memory.completed = false;
       this.memory.to = { x: Math.random() * sectorBounds.width + sectorBounds.x, y: Math.random() * sectorBounds.height + sectorBounds.y };
     };
   })();
 };
 
-const makeTestStateGraph = () => {
+const passiveGoToRandomValidNeighboringSector = () => {
+  return new (class extends State {
+    process = (state: GlobalState, npc: NPC, sector: number, target: Player | undefined) => {
+      if (this.memory.startSector === undefined) {
+        this.memory.startSector = sector;
+        let valid = false;
+        while (!valid) {
+          if (Math.random() < 0.5) {
+            this.memory.to = { x: +npc.player.position.x + sectorDelta * Math.sign(Math.random() - 0.5), y: npc.player.position.y };
+          } else {
+            this.memory.to = { x: npc.player.position.x, y: +npc.player.position.y + sectorDelta * Math.sign(Math.random() - 0.5) };
+          }
+          const direction = pointOutsideRectangle(this.memory.to, sectorBounds);
+          if (direction === null) {
+            continue;
+          }
+          valid = isValidSectorInDirection(sector, direction);
+        }
+      }
+      const newState = this.checkTransitions(state, npc, target);
+      if (newState) {
+        return newState;
+      }
+      this.memory.completed = sector !== this.memory.startSector;
+      applyInputs(npc.input, npc.player, arrivePositionUsingAngle(npc.player, this.memory.to as Position, npc.input));
+      return this;
+    };
+    onEnter = (npc: NPC) => {
+      this.memory.completed = false;
+      this.memory.startSector = undefined;
+    };
+  })();
+};
+
+const stupidSwarmCombat = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number) => {
+  return new (class extends State {
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
+      if (newState) {
+        return newState;
+      }
+      if (target) {
+        const distance = l2Norm(npc.player.position, target.position);
+        const facing = currentlyFacing(npc.player, target);
+        if (distance < primaryRange && facing && npc.player.energy > energyThreshold) {
+          npc.input.primary = true;
+        } else {
+          npc.input.primary = false;
+        }
+        if (distance < secondaryRange) {
+          if (secondaryGuided) {
+            npc.input.secondary = true;
+          } else if (facing) {
+            npc.input.secondary = true;
+          } else {
+            npc.input.secondary = false;
+          }
+        } else {
+          npc.input.secondary = false;
+        }
+        applyInputs(npc.input, npc.player, seekPositionUsingAngle(npc.player, target.position, npc.input));
+      } else {
+        stopPlayer(npc.player, npc.input, true);
+        applyInputs(npc.input, npc.player);
+      }
+      return this;
+    };
+    onEnter = (npc: NPC) => {
+      npc.selectedSecondary = 1;
+    };
+  })();
+};
+
+const randomCombatManeuver = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number) => {
+  return new (class extends State {
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
+      if (newState) {
+        return newState;
+      }
+      if (target) {
+        const distance = l2Norm(npc.player.position, target.position);
+        const facing = currentlyFacing(npc.player, target);
+        if (distance < primaryRange && facing && npc.player.energy > energyThreshold) {
+          npc.input.primary = true;
+        } else {
+          npc.input.primary = false;
+        }
+        if (distance < secondaryRange) {
+          if (secondaryGuided) {
+            npc.input.secondary = true;
+          } else if (facing) {
+            npc.input.secondary = true;
+          } else {
+            npc.input.secondary = false;
+          }
+        } else {
+          npc.input.secondary = false;
+        }
+        applyInputs(npc.input, npc.player, seekPositionUsingAngle(npc.player, this.memory.to, npc.input));
+        this.memory.completed = l2Norm(npc.player.position, this.memory.to) < 100;
+      } else {
+        stopPlayer(npc.player, npc.input, true);
+        applyInputs(npc.input, npc.player);
+      }
+      return this;
+    };
+    onEnter = (npc: NPC) => {
+      npc.selectedSecondary = 1;
+      this.memory.completed = false;
+      this.memory.to = { x: Math.random() * 700 - 350 + npc.player.position.x, y: Math.random() * 700 - 350 + npc.player.position.y };
+    };
+  })();
+};
+
+const makeTestStateGraph = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number) => {
   const idle = idleState();
   const passiveGoTo = passiveGoToRandomPointInSector();
+  const passiveGoToSector = passiveGoToRandomValidNeighboringSector();
+  const swarm = stupidSwarmCombat(primaryRange, secondaryGuided, secondaryRange, energyThreshold);
+  const randomManeuver = randomCombatManeuver(primaryRange, secondaryGuided, secondaryRange, energyThreshold);
+  idle.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   idle.transitions.push({ trigger: () => Math.random() < 0.005, state: passiveGoTo });
+  idle.transitions.push({ trigger: () => Math.random() < 0.004, state: passiveGoToSector });
+  passiveGoTo.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   passiveGoTo.transitions.push({ trigger: (_, __, memory) => memory.completed, state: idle });
+  passiveGoToSector.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
+  passiveGoToSector.transitions.push({ trigger: (_, __, memory) => memory.completed, state: passiveGoTo });
+  swarm.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
+  swarm.transitions.push({
+    trigger: (_, npc, ___, target) => Math.random() < 0.01 && l2Norm(npc.player.position, target.position) < 500,
+    state: randomManeuver,
+  });
+  randomManeuver.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
+  randomManeuver.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
+  randomManeuver.transitions.push({ trigger: () => Math.random() < 0.005, state: swarm });
   return idle;
 };
 
@@ -163,41 +304,39 @@ class ActiveSwarmer implements NPC {
       ir: 0,
     };
 
-    let guidedSecondary: Boolean;
-
     switch (Math.floor(Math.random() * 12)) {
       case 0:
       case 1:
       case 2:
         this.player = equip(this.player, 1, "Javelin Missile", true);
-        guidedSecondary = false;
+        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3);
         break;
       case 3:
       case 4:
         this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        guidedSecondary = true;
+        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3);
         break;
       case 5:
         this.player = equip(this.player, 1, "Laser Beam", true);
-        guidedSecondary = true;
+        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38);
         break;
       case 6:
         this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
-        guidedSecondary = false;
+        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3);
         break;
       case 7:
       case 8:
-        this.player = equip(this.player, 1, "Disruptor", true);
-        guidedSecondary = false;
+        this.player = equip(this.player, 1, "Disruptor Cannon", true);
+        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3);
         break;
       case 9:
       case 10:
         this.player = equip(this.player, 1, "Plasma Cannon", true);
-        guidedSecondary = false;
+        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3);
         break;
       case 11:
         this.player = equip(this.player, 1, "EMP Missile", true);
-        guidedSecondary = true;
+        this.currentState = makeTestStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3);
         break;
     }
 
@@ -212,14 +351,25 @@ class ActiveSwarmer implements NPC {
       loot("Spare Parts", 0.8),
     ]);
 
-    this.currentState = makeTestStateGraph();
     this.stateGraphMemory.set(this.currentState, this.currentState.onEnter(this));
   }
 
   private currentState: State;
 
-  public process(state: GlobalState) {
-    this.currentState = this.currentState.process(state, this);
+  private frame = Math.floor(Math.random() * 60);
+
+  public process(state: GlobalState, sector: number) {
+    let target: Player | undefined = undefined;
+    const def = defs[this.player.defIndex];
+    if (this.frame++ % 60 === 0) {
+      const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
+      this.targetId = newTarget?.id ?? 0;
+      target = newTarget;
+    }
+    if (!target && this.targetId) {
+      target = state.players.get(this.targetId);
+    }
+    this.currentState = this.currentState.process(state, this, sector, target);
   }
 }
 
@@ -579,9 +729,9 @@ class Strafer implements NPC {
 const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number) => {
   let npc: NPC;
   switch (what) {
-    case "Striker":
-      npc = new ActiveSwarmer(what, team, id);
-      break;
+    // case "Striker":
+    //   npc = new ActiveSwarmer(what, team, id);
+    //   break;
     case "Strafer":
     case 6:
       // case 0:
@@ -589,7 +739,7 @@ const addNpc = (state: GlobalState, what: string | number, team: Faction, id: nu
       npc = new Strafer(what, team, id);
       break;
     default:
-      npc = new Swarmer(what, team, id);
+      npc = new ActiveSwarmer(what, team, id);
       break;
   }
   // console.log(npc);

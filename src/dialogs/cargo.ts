@@ -20,7 +20,7 @@ const dumpCargoHtml = (cargo?: CargoEntry[]) => {
   <td>${entry.what}</td>
   <td>${entry.amount}</td>
   <td><input type="text" id="dumpCargoAmount${index}" value="${entry.amount}" size="7" /></td>
-  <td style="text-align: right;"><button id="dumpCargo${index}">Dump</button></td></tr>`;
+  <td><button id="dumpCargo${index}">Dump</button></td></tr>`;
     index++;
   }
   html += "</table>";

@@ -51,7 +51,7 @@ const enterKeyHandler = (f: () => void) => (e: KeyboardEvent) => {
 const registerDialog = horizontalCenter([
   "<h2>Register</h2>",
   `<div id="registerErrorSpot"></div>`,
-  `<input type="text" placeholder="Username" id="registerUsername"/>`,
+  `<input type="text" placeholder="Username" id="registerUsername" style="color: black;"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="registerPassword"/>`,
   `<br/><fieldset>
   <legend>Select Faction</legend>

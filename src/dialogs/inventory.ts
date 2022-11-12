@@ -11,7 +11,7 @@ const inventoryTableHtml = () => {
     html += `<tr>
   <td>${what}</td>
   <td>${amount}</td>
-  <td><input type="text" id="sellInventoryAmount${what}" value="${amount}" size="6" /></td>
+  <td><input type="text" id="sellInventoryAmount${what}" value="${amount}" size="6" style="color: black;"/></td>
   <td style="text-align: right;"><div class="tooltip">
     <button id="sellInventory${what}">Sell</button>
     <span class="tooltipText" id="sellInventoryTooltip${what}">${domFromRest(

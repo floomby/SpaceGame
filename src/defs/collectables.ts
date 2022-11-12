@@ -48,7 +48,7 @@ const initCollectables = () => {
     name: "Ammo",
     description: "Extra ammo",
     canBeCollected: (player) => {
-      return !player.npc;
+      return true;
     },
     collectMutator: (player) => {
       for (let i = 0; i < player.armIndices.length; i++) {
@@ -68,7 +68,7 @@ const initCollectables = () => {
     description: "Restore energy",
     canBeCollected: (player) => {
       const def = defs[player.defIndex];
-      return !player.npc && player.energy < def.energy;
+      return player.energy < def.energy;
     },
     collectMutator: (player) => {
       const def = defs[player.defIndex];
@@ -83,7 +83,7 @@ const initCollectables = () => {
     description: "Restore health",
     canBeCollected: (player) => {
       const def = defs[player.defIndex];
-      return !player.npc && player.health < def.health;
+      return player.health < def.health;
     },
     collectMutator: (player) => {
       const def = defs[player.defIndex];

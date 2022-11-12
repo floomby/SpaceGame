@@ -380,6 +380,42 @@ app.get("/usersOnline", (req, res) => {
   res.send(JSON.stringify(Array.from(clients.values()).map((client) => client.name)));
 });
 
+app.get("/changePassword", (req, res) => {
+  const username = req.query.username as string;
+  const oldPassword = req.query.old as string;
+  const newPassword = req.query.new as string;
+
+  User.find({ name: username }, (err, users) => {
+    if (err) {
+      res.send("Database error: " + err);
+      return;
+    }
+
+    if (users.length === 0) {
+      res.send(`Cannot find user "${username}"`);
+      return;
+    }
+
+    if (users.length > 1) {
+      res.send("Found more than one user")
+      return;
+    }
+
+    const user = users[0];
+
+    if (hash(oldPassword) !== user.password) {
+      res.send("Incorrect password")
+      return;
+    }
+
+    user.password = hash(newPassword)
+    user.save()
+
+    res.send(true);
+    return;
+  });
+})
+
 export default () => {
   if (useSsl) {
     app.use(express.static("resources"));

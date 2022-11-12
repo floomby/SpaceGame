@@ -12,12 +12,12 @@ const registeringDialog = horizontalCenter(["<h3>Registering...</h3>"]);
 
 const doRegister = (username: string, password: string) => {
   register(username, password, faction);
-  pushDialog(registeringDialog, () => {}, "registering");
+  pushDialog(registeringDialog, () => { }, "registering");
 };
 
 const doLogin = (username: string, password: string) => {
   login(username, password, faction);
-  pushDialog(loggingInDialog, () => {}, "loggingIn");
+  pushDialog(loggingInDialog, () => { }, "loggingIn");
 };
 
 const loginHandler = () => {
@@ -129,6 +129,7 @@ const loginDialog = `<div class="center">${horizontalCenter([
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,
   `<br/><button id="loginButton">Login</button>`,
   `<button style="margin-top: 10px;" id="openRegister">Register</button>`,
+  `<button style="marin-top: 10px;" id="changePassword">Change Password</button>`
 ])}</div>`;
 
 const setupLoginDialog = () => {
@@ -151,7 +152,44 @@ const setupLoginDialog = () => {
       "register"
     )
   );
+  document.getElementById("changePassword")?.addEventListener("click", () => {
+    pushDialog(
+      changePasswordDialog,
+      setupChangePasswordDialog,
+      "changePassword"
+    )
+  })
 };
+
+const changePasswordDialog = `<div class="center">${horizontalCenter([
+  "<h2>Change Password</h2>",
+  `<div id="changeErrorSpot"></div>`,
+  `<input type="text" placeholder="Username" id="changeUsername"/>`,
+  `<input style="margin-top: 10px;" type="password" placeholder="Previous Password" id="passwordOld"/>`,
+  `<input style="margin-top: 10px;" type="password" placeholder="Password" id="passwordNew"/>`,
+  `<br/><button id="changeButton">Change</button>`,
+  `<button style="margin-top: 10px;" id="changeToLogin">Back</button>`,
+])}</div>`;
+
+const setupChangePasswordDialog = () => {
+  document.getElementById("changeButton")?.addEventListener("click", () => {
+    const username = document.getElementById("changeUsername") as HTMLInputElement
+    const old = document.getElementById("passwordOld") as HTMLInputElement
+    const passwordNew = document.getElementById("passwordNew") as HTMLInputElement
+
+    fetch(`/changePassword?username=${encodeURIComponent(username.value)}&old=${encodeURIComponent(old.value)}&new=${encodeURIComponent(passwordNew.value)}`).then(res => res.text()).then(text => {
+      if (text === "true") {
+        popDialog()
+      } else {
+        document.getElementById("changeErrorSpot").innerText = text;
+      }
+    })
+  })
+
+  document.getElementById("changeToLogin")?.addEventListener("click", () => {
+    popDialog()
+  })
+}
 
 const displayLoginDialog = () => {
   showDialog(loginDialog);

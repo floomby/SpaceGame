@@ -79,6 +79,8 @@ const idleState = () => {
         return newState;
       }
       stopPlayer(npc.player, npc.input, true);
+      npc.input.primary = false;
+      npc.input.secondary = false;
       applyInputs(npc.input, npc.player);
       return this;
     };

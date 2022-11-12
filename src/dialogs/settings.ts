@@ -13,7 +13,7 @@ const settingsDialog = () =>
     `<input type="range" min="0" max="1" value="${getVolume()}" class="slider" id="volumeSlider" step="0.05"><br/>`,
     keylayoutSelector(),
     `<button style="margin-top: 10px;" id="viewControls">View Controls</button>`,
-    `<button style="margin-top: 10px;" id="closeSettings">Close</button>`,
+    `<button style="margin-top: 10px;" id="closeSettings" class="secondary">Close</button>`,
   ]);
 
 const setupSettingsDialog = () => {

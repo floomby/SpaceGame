@@ -21,7 +21,7 @@ const manufacturingTableHtml = () => {
     }
     html += `<tr><td>${recipes[i].name}</td>
 <td>${inventory[recipes[i].name] || 0}</td>
-<td><input value="1" id="manufactureAmount${i}"/></td>
+<td><input value="1" id="manufactureAmount${i}" style="color: black;"/></td>
 <td>/${maxManufacturable(i, inventory)}</td>
 <td><div class="tooltip">
   <button id="manufacture${i}">Manufacture</button>

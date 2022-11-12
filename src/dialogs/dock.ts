@@ -50,7 +50,7 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
     html += `<tr>
   <td>${entry.what}</td>
   <td>${entry.amount}</td>
-  <td><input type="text" id="sellCargoAmount${index}" value="${entry.amount}" size="6" /></td>
+  <td><input type="text" id="sellCargoAmount${index}" value="${entry.amount}" size="6" style="color: black;"/></td>
   <td style="text-align: right;"><div class="tooltip">
     <button id="sellCargo${index}">Sell</button>
     <span class="tooltipText" id="sellCargoTooltip${entry.what}">${domFromRest(

@@ -55,12 +55,12 @@ const keylayoutSelector = () => `<fieldset>
 <div style="text-align: left;">
   <input type="radio" id="qwerty" name="keyboard" value="qwerty">
   <label for="qwerty">QWERTY</label>
-  <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(qwertyBindings)}&nbsp;</span></div>
+  <!--<div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(qwertyBindings)}&nbsp;</span></div>-->
 </div>
 <div style="text-align: left;">
   <input type="radio" id="dvorak" name="keyboard" value="dvorak">
   <label for="dvorak">Dvorak</label>
-  <div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>
+  <!--<div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>-->
 </div>
 </fieldset>`;
 

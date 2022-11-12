@@ -27,8 +27,8 @@ const controlsText = (bindings: KeyBindings) => {
   <div style="width: 45%; float: left;">
     <table style="width: 100%; text-align: left; white-space: nowrap;" id="controls">
       <tr><th>Key</th><th>Action</th></tr>
-      <tr><td><kbd>Left Mouse</kbd></td><td>Fire primary</td></tr>
-      <tr><td><kbd>Right Mouse</kbd></td><td>Target unit/asteroid under cursor</td></tr>
+      <tr><td>Left Mouse</td><td>Fire primary</td></tr>
+      <tr><td>Right Mouse</td><td>Target unit/asteroid under cursor</td></tr>
       <tr><td><kbd>${keys.quickTargetClosestEnemy}</kbd></td><td>Target closest enemy</td></tr>
       <tr><td><kbd>${keys.secondary}</kbd></td><td>Use secondary</td></tr>
       <tr><td><kbd>${keys.dock}</kbd></td><td>Dock/Repair</td></tr>
@@ -39,8 +39,8 @@ const controlsText = (bindings: KeyBindings) => {
       <tr><td><kbd>${keys.selectSecondary9}</kbd></td><td>Select secondary 9</td></tr>
       <tr><td><kbd>${keys.nextTarget}</kbd></td><td>Target next closest ship/station</td></tr>
       <tr><td><kbd>${keys.previousTarget}</kbd></td><td>Target next furthest ship/station</td></tr>
-      <tr><td><kbd>Ctrl + ${keys.nextTarget}</kbd></td><td>Target next closest enemy</td></tr>
-      <tr><td><kbd>Ctrl + ${keys.previousTarget}</kbd></td><td>Target next furthest enemy</td></tr>
+      <tr><td><kbd>Ctrl</kbd> + <kbd>${keys.nextTarget}</kbd></td><td>Target next closest enemy</td></tr>
+      <tr><td><kbd>Ctrl</kbd> + <kbd>${keys.previousTarget}</kbd></td><td>Target next furthest enemy</td></tr>
       <tr><td><kbd>${keys.nextTargetAsteroid}</kbd></td><td>Target next closest asteroid</td></tr>
       <tr><td><kbd>${keys.previousTargetAsteroid}</kbd></td><td>Target next furthest asteroid</td></tr>
     </table>

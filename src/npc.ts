@@ -97,6 +97,8 @@ const passiveGoToRandomPointInSector = () => {
       }
       const angle = arrivePositionUsingAngle(npc.player, this.memory.to as Position, npc.input);
       this.memory.completed = angle === undefined;
+      npc.input.primary = false;
+      npc.input.secondary = false;
       applyInputs(npc.input, npc.player, angle);
       return this;
     };
@@ -131,6 +133,8 @@ const passiveGoToRandomValidNeighboringSector = () => {
         return newState;
       }
       this.memory.completed = sector !== this.memory.startSector;
+      npc.input.primary = false;
+      npc.input.secondary = false;
       applyInputs(npc.input, npc.player, arrivePositionUsingAngle(npc.player, this.memory.to as Position, npc.input));
       return this;
     };

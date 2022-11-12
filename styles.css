@@ -233,6 +233,17 @@ body {
   width: fit-content;
 }
 
+#dialog h2 {
+  margin-bottom: 0.2rem;
+}
+
+.error {
+  color: red;
+  font-size: 1.4em;
+  font-weight: bold;
+  margin-bottom: 1.2rem;
+}
+
 kbd {
 	margin: 0px 0.1em;
 	padding: 0.2em 0.5em;

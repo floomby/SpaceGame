@@ -364,7 +364,7 @@ const run = () => {
     popDialog();
     const errorSpot = document.getElementById("errorSpot") as HTMLDivElement;
     if (errorSpot) {
-      errorSpot.innerHTML = `<h2 style="color: red;">Invalid login: ${data.error}<h2>`;
+      errorSpot.innerText = `Invalid login: ${data.error}`;
     }
   });
 
@@ -375,7 +375,7 @@ const run = () => {
     popDialog();
     const errorSpot = document.getElementById("registerErrorSpot") as HTMLDivElement;
     if (errorSpot) {
-      errorSpot.innerHTML = `<h2 style="color: red;">Unable to register: ${data.error}<h2>`;
+      errorSpot.innerText = `Unable to register: ${data.error}`;
     }
   });
 

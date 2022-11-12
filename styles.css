@@ -195,3 +195,27 @@ body {
 .square:hover {
   background-color: #2e2e2e;
 }
+
+#dialog input {
+  border: 1px solid grey;
+  background-color: rgba(45, 54, 76, 0.7);
+  padding: 0.6rem 0.8rem;
+  border-radius: 1.6rem;
+  color: white;
+}
+
+#dialog button {
+  background-color: rgba(45, 54, 76, 0.9);
+  color: #eee;
+  font-size: 0.9rem;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 1.4rem;
+  cursor: pointer;
+}
+
+#dialog button#openRegister, #dialog button#backToLogin {
+  background-color: transparent;
+  color: #ccc;
+  text-decoration: underline;
+}

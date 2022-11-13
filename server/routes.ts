@@ -327,7 +327,9 @@ app.get("/stopProfiling", (req, res) => {
 });
 
 app.get("/totalPlayers", (req, res) => {
-  res.send(Array.from(sectors.values()).map((sector) => sector.players.size).reduce((a, b) => a + b, 0).toString());
+  const ret = `Total: ${Array.from(sectors.values()).map((sector) => sector.players.size).reduce((a, b) => a + b, 0).toString()}<br/>` +
+    Array.from(sectors.entries()).map(([sector, sectorData]) => `${sector}: ${sectorData.players.size.toString()}`).join("<br/>");
+  res.send(ret);
 });
 
 app.get("/fixDataBase", (req, res) => {

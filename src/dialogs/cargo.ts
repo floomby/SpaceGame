@@ -7,12 +7,12 @@ const dumpCargoHtml = (cargo?: CargoEntry[]) => {
   if (!cargo) {
     return "";
   }
-  let html = `<table style="width: 100%; text-align: center;">
+  let html = `<table style="width: min(100vw, 1080px); text-align: center;">
 <colgroup>
-  <col span="1" style="width: 40vw;">
-  <col span="1" style="width: 20vw;">
-  <col span="1" style="width: 20vw;">
-  <col span="1" style="width: 20vw;">
+  <col span="1" style="width: 40%;">
+  <col span="1" style="width: 20%;">
+  <col span="1" style="width: 20%;">
+  <col span="1" style="width: 20%;">
 </colgroup>`;
   let index = 0;
   for (const entry of cargo) {

@@ -124,7 +124,7 @@ const setupRegisterDialog = (username: string, password: string) => {
 
 const loginDialog = `<div class="center">${horizontalCenter([
   "<h2>Login</h2>",
-  `<div id="errorSpot"></div>`,
+  `<div id="errorSpot" class="error"></div>`,
   `<input type="text" placeholder="Username" id="username"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,
   `<br/><button id="loginButton">Login</button>`,
@@ -163,7 +163,7 @@ const setupLoginDialog = () => {
 
 const changePasswordDialog = `<div class="center">${horizontalCenter([
   "<h2>Change Password</h2>",
-  `<div id="changeErrorSpot"></div>`,
+  `<div id="changeErrorSpot" class="error"></div>`,
   `<input type="text" placeholder="Username" id="changeUsername"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Previous Password" id="passwordOld"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="passwordNew"/>`,

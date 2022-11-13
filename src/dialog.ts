@@ -114,7 +114,7 @@ const clearStack = (reshow = true) => {
 };
 
 const horizontalCenter = (html: string[]) => {
-  return `<div style="text-align: center;">${html.map((html) => `<div style="display: inline-block;">${html}</div>`).join("<br/>")}</div>`;
+  return `<div style="text-align: center;">${html.map((html) => `<div>${html}</div>`).join("")}</div>`;
 };
 
 const center = (html: string) => {

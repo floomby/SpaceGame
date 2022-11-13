@@ -296,6 +296,40 @@ app.get("/addNPC", (req, res) => {
   res.send("true");
 });
 
+app.get("/startProfiling", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== adminHash) {
+    res.send("Invalid password");
+    return;
+  }
+  console.profile();
+  res.send("true");
+});
+
+app.get("/stopProfiling", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== adminHash) {
+    res.send("Invalid password");
+    return;
+  }
+  console.profileEnd();
+  res.send("true");
+});
+
+app.get("/totalPlayers", (req, res) => {
+  res.send(Array.from(sectors.values()).map((sector) => sector.players.size).reduce((a, b) => a + b, 0).toString());
+});
+
 app.get("/fixDataBase", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {
@@ -397,24 +431,24 @@ app.get("/changePassword", (req, res) => {
     }
 
     if (users.length > 1) {
-      res.send("Found more than one user")
+      res.send("Found more than one user");
       return;
     }
 
     const user = users[0];
 
     if (hash(oldPassword) !== user.password) {
-      res.send("Incorrect password")
+      res.send("Incorrect password");
       return;
     }
 
-    user.password = hash(newPassword)
-    user.save()
+    user.password = hash(newPassword);
+    user.save();
 
     res.send(true);
     return;
   });
-})
+});
 
 export default () => {
   if (useSsl) {

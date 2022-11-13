@@ -87,7 +87,6 @@ const initFromDatabase = async () => {
       health: def.health,
       id: station.id,
       sinceLastShot: [effectiveInfinity, effectiveInfinity, effectiveInfinity, effectiveInfinity],
-      projectileId: 0,
       energy: def.energy,
       defIndex: station.definitionIndex,
       armIndices: [],
@@ -152,7 +151,6 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     health: defs[defIndex].health,
     id: id,
     sinceLastShot: [effectiveInfinity],
-    projectileId: 0,
     energy: defs[defIndex].energy,
     defIndex: defIndex,
     armIndices: emptyLoadout(defIndex),
@@ -331,6 +329,7 @@ wss.on("connection", (ws) => {
               if (playerState.energy > def.energy) {
                 playerState.energy = def.energy;
               }
+              (playerState as any).projectileId = undefined
 
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
@@ -921,7 +920,7 @@ setInterval(() => {
       playerData.push(player);
     }
 
-    const projectileData: Ballistic[] = Array.from(state.projectiles.values()).flat();
+    const projectileData: Ballistic[] = Array.from(state.projectiles.values());
     let asteroidData: Asteroid[] = state.asteroidsDirty ? Array.from(state.asteroids.values()) : Array.from(mutated.asteroids);
     const missileData: Missile[] = Array.from(state.missiles.values());
 

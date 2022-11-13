@@ -1174,10 +1174,8 @@ const drawEverything = (
     for (const [id, missile] of state.missiles) {
       drawMissile(missile, lastSelf);
     }
-    for (const [id, projectiles] of state.projectiles) {
-      for (const projectile of projectiles) {
-        drawProjectile(projectile, lastSelf);
-      }
+    for (const projectile of state.projectiles.values()) {
+      drawProjectile(projectile, lastSelf);
     }
     drawEffects(lastSelf, state, sixtieths);
     if (self) {

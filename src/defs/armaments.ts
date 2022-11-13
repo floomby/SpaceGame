@@ -544,15 +544,13 @@ const initArmaments = () => {
             heading: player.heading,
             damage: 20,
             team: player.team,
-            id: player.projectileId,
+            id: state.projectileId,
             parent: player.id,
             frameTillEXpire: projectileDef.framesToExpire,
             idx: 1,
           };
-          const projectiles = state.projectiles.get(player.id) || [];
-          projectiles.push(projectile);
-          state.projectiles.set(player.id, projectiles);
-          player.projectileId++;
+          state.projectiles.set(state.projectileId, projectile);
+          state.projectileId++;
         }
         applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
       }
@@ -752,15 +750,13 @@ const initArmaments = () => {
           heading: player.heading,
           damage: 20,
           team: player.team,
-          id: player.projectileId,
+          id: state.projectileId,
           parent: player.id,
           frameTillEXpire: projectileDef.framesToExpire,
           idx: 2,
         };
-        const projectiles = state.projectiles.get(player.id) || [];
-        projectiles.push(projectile);
-        state.projectiles.set(player.id, projectiles);
-        player.projectileId++;
+        state.projectiles.set(state.projectileId++, projectile);
+        state.projectileId++;
         applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
       }
     },
@@ -798,16 +794,13 @@ const initArmaments = () => {
             heading: player.heading + (i-5)*0.15,
             damage: 20,
             team: player.team,
-            id: player.projectileId,
+            id: state.projectileId,
             parent: player.id,
             frameTillEXpire: projectileDef.framesToExpire,
             idx: 0,
           };
-
-          const projectiles = state.projectiles.get(player.id) || [];
-          projectiles.push(projectile);
-          state.projectiles.set(player.id, projectiles);
-          player.projectileId++;
+          state.projectiles.set(state.projectileId, projectile);
+          state.projectileId++;
         }
       }
       applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });

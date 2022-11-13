@@ -151,6 +151,7 @@ sectorList.forEach((sector) => {
     collectables: new Map(),
     asteroidsDirty: false,
     mines: new Map(),
+    projectileId: 1,
   });
 });
 

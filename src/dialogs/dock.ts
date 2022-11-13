@@ -183,11 +183,14 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   <td style="text-align: right;">
     <button id="equipFromInventory${index}"${inventory.hasOwnProperty(armDef.name) ? "" : "disabled"}>Equip From Inventory</button>
   </td>
-  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(state.players.get(ownId), armDef.cost)}>Purchase</button></td></tr>`;
+  <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(
+        state.players.get(ownId),
+        armDef.cost
+      )}>Purchase</button></td></tr>`;
     }
   }
   html += "</table>";
-  return horizontalCenter([html, '<br><button id="back">Back</button>']);
+  return horizontalCenter([html, '<br/><button id="back">Back</button>', "<br/>"]);
 };
 
 const shipViewer = () => {
@@ -216,10 +219,10 @@ const shipPreviewer = (definitionIndex: number) => {
 
 const shipShop = () => {
   const self = state.players.get(ownId);
-  return horizontalCenter([shipPreviewer(self.defIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`]);
+  return horizontalCenter([shipPreviewer(self.defIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`, "<br/>"]);
 };
 
-const populateShipList = (availableShips: { def: UnitDefinition; index: number, atStation: boolean }[], self: Player) => {
+const populateShipList = (availableShips: { def: UnitDefinition; index: number; atStation: boolean }[], self: Player) => {
   const shipList = document.getElementById("shipList");
   if (shipList) {
     shipList.innerHTML = `<table style="width: 80vw; text-align: left;">
@@ -321,7 +324,7 @@ const setupShipShop = (station: Player) => {
       .filter((ship) => {
         if (ship.def.kind === UnitKind.Ship && availability.value.includes(ship.def.name)) {
           return true;
-        };
+        }
         if (inventory.hasOwnProperty(ship.def.name) && inventory[ship.def.name] > 0) {
           ship.atStation = false;
           return true;
@@ -385,8 +388,10 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     <h3>Armaments</h3>
     <div id="arms">${armsHtml(self.armIndices)}</div>
   </div>
+  <div style="clear: both;"></div>
 </div>`,
     `<br/><button id="undock">Undock</button>`,
+    "<br/>",
   ]);
 };
 

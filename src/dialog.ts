@@ -22,8 +22,9 @@ const onPushCallbacks: (() => void)[] = [];
 
 const show = (html: string) => {
   div.style.display = "flex";
-  div.innerHTML = `<div class="center" id="staged" style="overflow: auto;">${html}</div>
-    <div id="stackPlace"></div>`;
+  div.innerHTML = `
+  <div class="center"><div style="margin: auto;" id="staged">${html}</div></div>
+  <div id="stackPlace" class="center"></div>`;
   staged = document.getElementById("staged") as HTMLDivElement;
   stackPlace = document.getElementById("stackPlace") as HTMLDivElement;
   stackPlace.style.display = "none";
@@ -67,7 +68,7 @@ const showStack = () => {
     }
     staged.style.display = "none";
     const { html, callback } = stack[stack.length - 1];
-    stackPlace.innerHTML = `<div class="center">${html}</div>`;
+    stackPlace.innerHTML = `<div style="margin: auto;">${html}</div>`;
     stackPlace.style.display = "flex";
     callback();
   } else {

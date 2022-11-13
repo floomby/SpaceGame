@@ -828,22 +828,35 @@ const initArmaments = () => {
     kind: SlotKind.Utility,
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
-    energyCost: 0.4,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
-      if (targetKind === TargetKind.Player && player.energy > 0.5) {
+    energyCost: 0.6,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
+      const slotData = player.slotData[slotIndex]
+
+      if (targetKind === TargetKind.Player && player.energy > 0.5 && slotData.sinceFired > 4) {
+        slotData.sinceFired = 0
+
         target = target as Player;
 
-        target.iv = { x: -target.v.x * 0.9, y: -target.v.y * 0.9 };
+        const mass = defs[player.defIndex].mass
 
-        player.energy -= 0.4
+        target.iv = { x: Math.min(-target.v.x * 0.9 * (20/mass), -target.v.x), y: Math.min(-target.v.y * 0.9  * (20/mass), -target.v.y)};
+
+        player.energy -= 0.6
 
         applyEffect({
           effectIndex: 0,
           // Fine to just use the reference here
           from: { kind: EffectAnchorKind.Player, value: player.id },
-          to: { kind: EffectAnchorKind.Asteroid, value: target.id },
+          to: { kind: EffectAnchorKind.Player, value: target.id },
         });
       }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 5 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
     },
     cost: 1000,
   });

@@ -820,7 +820,33 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 1300,
-  })
+  });
+
+  armDefs.push({
+    name: "Tractor Beam",
+    description: "A beam that stops the movement of your target",
+    kind: SlotKind.Utility,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Targeted,
+    energyCost: 0.4,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
+      if (targetKind === TargetKind.Player && player.energy > 0.5) {
+        target = target as Player;
+
+        target.iv = { x: -target.v.x * 0.9, y: -target.v.y * 0.9 };
+
+        player.energy -= 0.4
+
+        applyEffect({
+          effectIndex: 0,
+          // Fine to just use the reference here
+          from: { kind: EffectAnchorKind.Player, value: player.id },
+          to: { kind: EffectAnchorKind.Asteroid, value: target.id },
+        });
+      }
+    },
+    cost: 1000,
+  });
 
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];

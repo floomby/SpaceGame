@@ -14,6 +14,7 @@ const settingsDialog = () =>
     keylayoutSelector(),
     `<button style="margin-top: 10px;" id="viewControls">View Controls</button>`,
     `<button style="margin-top: 10px;" id="closeSettings" class="secondary">Close</button>`,
+    "<br/>",
   ]);
 
 const setupSettingsDialog = () => {
@@ -43,6 +44,11 @@ const initSettings = () => {
   const settingsIcon = document.getElementById("settingsIcon");
   if (settingsIcon) {
     settingsIcon.addEventListener("click", () => {
+      if (peekTag() === "controls") {
+        setDialogBackground(teamColorsLight[faction]);
+        popDialog();
+        return;
+      }
       if (peekTag() !== "settings") {
         pushDialog(settingsDialog(), setupSettingsDialog, "settings");
         setDialogBackground(teamColorsDark[faction]);

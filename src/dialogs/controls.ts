@@ -68,7 +68,12 @@ const controlsText = (bindings: KeyBindings) => {
 };
 
 const showControls = () => {
-  const help = horizontalCenter(["<h2>Controls</h2>", controlsText(keybind), `<br/><button id="closeControls" class="secondary">Close</button>`]);
+  const help = horizontalCenter([
+    "<h2>Controls</h2>",
+    controlsText(keybind),
+    `<br/><button id="closeControls" class="secondary">Close</button>`,
+    "<br/>",
+  ]);
 
   push(
     help,

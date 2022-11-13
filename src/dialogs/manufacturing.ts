@@ -87,6 +87,7 @@ const manufacturingBay = () => {
     "<div id='manufacturingTable'></div>",
     "<br/>",
     '<button id="closeManufacturingBay">Close</button>',
+    "<br/>",
   ]);
 };
 

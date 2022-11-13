@@ -2,14 +2,25 @@
 <html>
   <head>
     <title>Space IO Game</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" />
   </head>
-  <body style="background-color: darkgray">
+  <body style="background-color: darkgray; overflow-x: hidden;">
     <canvas id="canvas" width="800" height="600" style="position: absolute; left: 0px; top: 0px; z-index: 0"></canvas>
     <script data-main="dist/app" src="dist/require.min.js"></script>
     <div
       id="dialog"
-      style="color: white; position: absolute; left: 0px; top: 0px; z-index: 3; width: 100%; height: 100%; background-color: rgba(22, 45, 34, 0.341)"
+      style="
+        color: white;
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        z-index: 3;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(22, 45, 34, 0.341);
+        overflow-y: auto;
+        overflow-x: hidden;
+      "
     ></div>
     <img src="resources/gear.svg" id="settingsIcon" class="settings unselectable" style="display: none" />
     <img src="resources/box.svg" id="cargoIcon" class="cargo unselectable" style="display: none" />

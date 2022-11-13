@@ -56,6 +56,7 @@ const mapDialog = () => {
   <div id="sectorInfo" style="width: 30vw; text-align: left;"></div>
 </div>`,
     `<br/><button id="closeMap">Close</button>`,
+    "<br/>",
   ])}</div>`;
 };
 

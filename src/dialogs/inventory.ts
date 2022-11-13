@@ -99,6 +99,7 @@ const inventoryDialog = () => {
     "<div id='inventoryTable'></div>",
     "<br/>",
     '<button id="closeInventory">Close</button>',
+    "<br/>",
   ]);
 };
 

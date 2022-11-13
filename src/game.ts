@@ -83,7 +83,6 @@ type Player = Entity & {
   sinceLastShot: number[];
   toFirePrimary?: boolean;
   toFireSecondary?: boolean;
-  projectileId: number;
   energy: number;
   defIndex: number;
   team: number;
@@ -252,12 +251,13 @@ type EffectTrigger = {
 
 type GlobalState = {
   players: Map<number, Player>;
-  projectiles: Map<number, Ballistic[]>;
+  projectiles: Map<number, Ballistic>;
   asteroids: Map<number, Asteroid>;
   missiles: Map<number, Missile>;
   collectables: Map<number, Collectable>;
   asteroidsDirty?: boolean;
   mines: Map<number, Mine>;
+  projectileId?: number;
 };
 
 const setCanDockOrRepair = (player: Player, state: GlobalState) => {
@@ -515,52 +515,47 @@ const update = (
   }
 
   // Quadratic loop for the projectiles
-  for (const [id, projectiles] of state.projectiles) {
-    for (let i = 0; i < projectiles.length; i++) {
-      const projectileDef = projectileDefs[projectiles[i].idx];
-      const projectile = projectiles[i];
-      projectile.position.x += projectile.speed * Math.cos(projectile.heading);
-      projectile.position.y += projectile.speed * Math.sin(projectile.heading);
-      projectile.frameTillEXpire -= 1;
-      let didRemove = false;
-      for (const [otherId, otherPlayer] of state.players) {
-        if (otherPlayer.docked || otherPlayer.inoperable) {
-          continue;
-        }
-        const def = defs[otherPlayer.defIndex];
-        if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
-          otherPlayer.health -= projectile.damage;
-          if (otherPlayer.health <= 0) {
-            kill(def, otherPlayer, state, applyEffect, onDeath, ret.collectables);
-          }
-          projectiles.splice(i, 1);
-          i--;
-          didRemove = true;
-          if (projectileDef.hitEffect !== undefined) {
-            applyEffect({
-              effectIndex: projectileDef.hitEffect,
-              from: { kind: EffectAnchorKind.Absolute, value: projectile.position },
-            });
-          }
-          if (projectileDef.hitMutator) {
-            projectileDef.hitMutator(projectile, state, otherPlayer);
-          }
-          break;
-        }
+  for (const projectile of state.projectiles.values()) {
+    const projectileDef = projectileDefs[projectile.idx];
+    projectile.position.x += projectile.speed * Math.cos(projectile.heading);
+    projectile.position.y += projectile.speed * Math.sin(projectile.heading);
+    projectile.frameTillEXpire -= 1;
+    let didRemove = false;
+    for (const [otherId, otherPlayer] of state.players) {
+      if (otherPlayer.docked || otherPlayer.inoperable) {
+        continue;
       }
-      if (!didRemove && projectile.frameTillEXpire <= 0) {
-        if (projectileDef.endEffect !== undefined) {
+      const def = defs[otherPlayer.defIndex];
+      if (projectile.team !== otherPlayer.team && pointInCircle(projectile.position, otherPlayer)) {
+        otherPlayer.health -= projectile.damage;
+        if (otherPlayer.health <= 0) {
+          kill(def, otherPlayer, state, applyEffect, onDeath, ret.collectables);
+        }
+        state.projectiles.delete(projectile.id);
+        didRemove = true;
+        if (projectileDef.hitEffect !== undefined) {
           applyEffect({
-            effectIndex: projectileDef.endEffect,
+            effectIndex: projectileDef.hitEffect,
             from: { kind: EffectAnchorKind.Absolute, value: projectile.position },
           });
         }
-        if (projectileDef.endMutator) {
-          projectileDef.endMutator(projectile, state);
+        if (projectileDef.hitMutator) {
+          projectileDef.hitMutator(projectile, state, otherPlayer);
         }
-        projectiles.splice(i, 1);
-        i--;
+        break;
       }
+    }
+    if (!didRemove && projectile.frameTillEXpire <= 0) {
+      if (projectileDef.endEffect !== undefined) {
+        applyEffect({
+          effectIndex: projectileDef.endEffect,
+          from: { kind: EffectAnchorKind.Absolute, value: projectile.position },
+        });
+      }
+      if (projectileDef.endMutator) {
+        projectileDef.endMutator(projectile, state);
+      }
+      state.projectiles.delete(projectile.id);
     }
   }
 
@@ -683,15 +678,13 @@ const update = (
           heading: player.heading,
           damage: def.primaryDamage,
           team: player.team,
-          id: player.projectileId,
+          id: state.projectileId,
           parent: id,
           frameTillEXpire: primaryDef.framesToExpire,
           idx: def.primaryDefIndex,
         };
-        const projectiles = state.projectiles.get(id) || [];
-        projectiles.push(projectile);
-        state.projectiles.set(id, projectiles);
-        player.projectileId++;
+        state.projectiles.set(state.projectileId, projectile);
+        state.projectileId++;
         player.toFirePrimary = false;
         player.energy -= primaryDef.energy;
         if (primaryDef.fireEffect !== undefined) {
@@ -818,15 +811,13 @@ const update = (
                 heading: targeting,
                 damage: def.primaryDamage,
                 team: player.team,
-                id: player.projectileId,
+                id: state.projectileId,
                 parent: id,
                 frameTillEXpire: primaryDef.framesToExpire,
                 idx: def.primaryDefIndex,
               };
-              const projectiles = state.projectiles.get(id) || [];
-              projectiles.push(projectile);
-              state.projectiles.set(id, projectiles);
-              player.projectileId++;
+              state.projectiles.set(state.projectileId, projectile);
+              state.projectileId++;
               player.energy -= primaryDef.energy;
               player.sinceLastShot[i] = 0;
               if (primaryDef.fireEffect !== undefined) {
@@ -869,7 +860,7 @@ const update = (
       } else {
         player.warping += 1;
         // Energy use while cloaked is tripled
-        player.energy -= player.cloak? 60 / def.warpTime : 20 / def.warpTime;
+        player.energy -= player.cloak ? 60 / def.warpTime : 20 / def.warpTime;
         if (player.warping > def.warpTime) {
           player.warping = 0;
           state.players.delete(id);

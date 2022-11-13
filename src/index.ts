@@ -405,15 +405,8 @@ const run = () => {
       mine.phase = Math.random() * Math.PI * 2;
       state.mines.set(mine.id, mine);
     }
-
-    const projectiles = data.projectiles as Ballistic[];
-    while (projectiles.length) {
-      let parentId = projectiles[0].parent;
-      let projectileGroup = [] as Ballistic[];
-      while (projectiles.length && projectiles[0].parent === parentId) {
-        projectileGroup.push(projectiles.shift());
-      }
-      state.projectiles.set(parentId, projectileGroup);
+    for (const projectile of data.projectiles as Ballistic[]) {
+      state.projectiles.set(projectile.id, projectile);
     }
     const self = state.players.get(ownId);
     if (self) {

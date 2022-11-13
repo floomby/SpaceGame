@@ -63,6 +63,7 @@ const controlsText = (bindings: KeyBindings) => {
     </table>
     <p>Use the ctrl key modifier to use secondaries without switching to them.</p>
   </div>
+  <div style="clear: both;"></div>
 </div>`;
 };
 

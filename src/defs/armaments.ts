@@ -52,7 +52,7 @@ type ArmamentDef = {
   ) => void;
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
   equipMutator?: (player: Player, slotIndex: number) => void;
-  frameMutator?: (player: Player, slotIndex: number, state: GlobalState) => void;
+  frameMutator?: (player: Player, slotIndex: number, state: GlobalState, flashServerMessage: (id: number, message: string) => void) => void;
 };
 
 // Idk if this needs a more efficient implementation or not
@@ -865,6 +865,40 @@ const initArmaments = () => {
       }
     },
     cost: 1000,
+  });
+
+  // Energy Cell - 19
+  armDefs.push({
+    name: "Energy Cell",
+    description: "Disposable energy cells boost your ships energy production for a short time",
+    kind: SlotKind.Utility,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Untargeted,
+    maxAmmo: 3,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
+      const slotData = player.slotData[slotIndex];
+      if (slotData.active) {
+        return;
+      }
+      if (slotData.ammo > 0) {
+        slotData.ammo--;
+        slotData.active = 300;
+      }
+    },
+    frameMutator: (player, slotIndex, state, flashServerMessage) => {
+      const slotData = player.slotData[slotIndex];
+      if (slotData.active) {
+        slotData.active--;
+        player.energy += 0.3;
+        if (slotData.active === 0) {
+          flashServerMessage(player.id, "Energy cell depleted!");
+        }
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { ammo: 3, active: 0 };
+    },
+    cost: 400,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

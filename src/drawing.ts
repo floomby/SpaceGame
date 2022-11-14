@@ -1063,8 +1063,6 @@ type ArrowData = {
   inoperable?: boolean;
 };
 
-let didWarn = false;
-
 const drawEverything = (
   state: GlobalState,
   self: Player,
@@ -1088,11 +1086,7 @@ const drawEverything = (
 
     clearCanvas();
     if (!self && !lastSelf) {
-      if (!didWarn) {
-        // Seems to happen on server startup (I think the server is just sending a state update before the init message)
-        console.log("Warning: Missing self reference (FIXME)");
-        didWarn = true;
-      }
+      // We can't draw anything without being initialized yet
       return;
     }
 

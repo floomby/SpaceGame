@@ -698,7 +698,7 @@ const update = (
       player.armIndices.forEach((armament, index) => {
         const armDef = armDefs[armament];
         if (armDef.frameMutator) {
-          armDef.frameMutator(player, index, state);
+          armDef.frameMutator(player, index, state, flashServerMessage);
         }
       });
       // Fire secondaries

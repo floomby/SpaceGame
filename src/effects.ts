@@ -86,6 +86,7 @@ const initEffects = () => {
   const plasmaHitSound = getSound("wigglyThud0.wav");
   const impulseMissileHitSound = getSound("squishyPew0.wav");
   const disruptorLaunchSound = getSound("resonantPew0.wav");
+  const tractorSound = getSound("tractor0.wav");
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -191,7 +192,7 @@ const initEffects = () => {
       ctx.fillStyle = color;
       ctx.fill();
 
-      ctx.filter = "blur(20px)";
+      ctx.filter = "blur(10px)";
       ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.arc((to as Position).x - (from as Position).x, (to as Position).y - (from as Position).y, 30, 0, Math.PI * 2);
@@ -741,6 +742,80 @@ const initEffects = () => {
         effect.extra.needSound = false;
         play3dSound(disruptorLaunchSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
       }
+    },
+    initializer: () => {
+      return { needSound: true };
+    },
+  });
+  // Tractor Beam - 18
+  effectDefs.push({
+    frames: 30,
+    draw: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      let [to, toCircle] = resolveAnchor(effect.to, state);
+      if (!from || !to) {
+        return;
+      }
+
+      const heading = findHeadingBetween(from as Position, to as Position);
+      if (toCircle) {
+        to = {
+          x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
+          y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
+        };
+      }
+
+      if (self) {
+        effect.extra.lastSelfX = self.position.x;
+        effect.extra.lastSelfY = self.position.y;
+      }
+
+      if (effect.extra.needSound) {
+        const midX = ((from as Position).x + (to as Position).x) / 2;
+        const midY = ((from as Position).y + (to as Position).y) / 2;
+        effect.extra.needSound = false;
+        play3dSound(tractorSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale);
+      }
+
+      const cos = Math.cos(heading);
+      const sin = Math.sin(heading);
+      const halfBeamWidth = 2.5;
+      const offsets = [
+        { x: -halfBeamWidth * sin, y: halfBeamWidth * cos },
+        { x: halfBeamWidth * sin, y: -halfBeamWidth * cos },
+      ];
+
+      const alpha = Math.min(framesLeft / 10, 1);
+      const color = `rgba(255, 155, 10, ${alpha})`;
+
+      ctx.save();
+      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = "orange";
+      ctx.beginPath();
+      ctx.moveTo((to as Position).x - (from as Position).x + offsets[1].x, (to as Position).y - (from as Position).y + offsets[1].y);
+      ctx.moveTo(offsets[1].x, offsets[1].y);
+      ctx.arc(0, 0, halfBeamWidth, heading - Math.PI / 2, heading + Math.PI / 2, true);
+      ctx.lineTo(offsets[0].x, offsets[0].y);
+      ctx.arc(
+        (to as Position).x - (from as Position).x,
+        (to as Position).y - (from as Position).y,
+        halfBeamWidth,
+        heading + Math.PI / 2,
+        heading - Math.PI / 2,
+        true
+      );
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      ctx.filter = "blur(10px)";
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc((to as Position).x - (from as Position).x, (to as Position).y - (from as Position).y, 30, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
     },
     initializer: () => {
       return { needSound: true };

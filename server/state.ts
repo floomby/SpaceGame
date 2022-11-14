@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize } from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds } from "../src/game";
 import { WebSocket } from "ws";
 import { armDefs, defs, Faction, initDefs } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
@@ -166,11 +166,11 @@ const secondariesToActivate: Map<number, number[]> = new Map();
 
 const knownRecipes: Map<number, Set<string>> = new Map();
 
-const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
+// const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
 for (let i = 0; i < sectorList.length; i++) {
   const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(sectorAsteroidCounts[i], asteroidBounds, sectorList[i], uid, sectorAsteroidResources[i]);
+  const testAsteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i]);
   for (const asteroid of testAsteroids) {
     sector.asteroids.set(asteroid.id, asteroid);
   }
@@ -190,7 +190,6 @@ export {
   targets,
   secondaries,
   secondariesToActivate,
-  asteroidBounds,
   knownRecipes,
   uid,
   sectorInDirection,

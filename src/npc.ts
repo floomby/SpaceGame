@@ -1,4 +1,4 @@
-import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition } from "./defs";
+import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition, UnitKind } from "./defs";
 import { projectileDefs } from "./defs/projectiles";
 import {
   applyInputs,
@@ -146,10 +146,16 @@ const passiveGoToRandomValidNeighboringSector = () => {
 };
 
 const useMines = (npc: NPC, target: Player, slot: number, distance: number) => {
-  if (distance > 300 && findSmallAngleBetween(target.heading, findHeadingBetween(npc.player.position, target.position)) < Math.PI / 4) {
+  const targetDef = defs[target.defIndex];
+  if (
+    targetDef.kind === UnitKind.Ship &&
+    distance > 300 &&
+    distance < 600 &&
+    findSmallAngleBetween(target.heading, findHeadingBetween(npc.player.position, target.position)) < Math.PI / 4
+  ) {
     npc.secondariesToFire.push(slot);
   }
-}
+};
 
 const stupidSwarmCombat = (
   primaryRange: number,
@@ -199,13 +205,7 @@ const stupidSwarmCombat = (
   })();
 };
 
-const runAway = (
-  primaryRange: number,
-  secondaryGuided: boolean,
-  secondaryRange: number,
-  energyThreshold: number,
-  mineSlot: null | number
-) => {
+const runAway = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number, mineSlot: null | number) => {
   return new (class extends State {
     process = (state: GlobalState, npc: NPC, sector, target) => {
       const newState = this.checkTransitions(state, npc, target);
@@ -299,7 +299,13 @@ const randomCombatManeuver = (
   })();
 };
 
-const makeBasicStateGraph = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number, mineSlot: null | number) => {
+const makeBasicStateGraph = (
+  primaryRange: number,
+  secondaryGuided: boolean,
+  secondaryRange: number,
+  energyThreshold: number,
+  mineSlot: null | number
+) => {
   const idle = idleState();
   const passiveGoTo = passiveGoToRandomPointInSector();
   const passiveGoToSector = passiveGoToRandomValidNeighboringSector();

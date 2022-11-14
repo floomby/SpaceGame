@@ -264,14 +264,14 @@ const drawHUD = (player: Player, selectedSecondary: number) => {
   const def = defs[player.defIndex];
   const totalCargo = def.cargoCapacity - availableCargoCapacity(player);
   drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#774422CC", "#333333CC", totalCargo / defs[player.defIndex].cargoCapacity);
-  for (let i = 0; i < player.armIndices.length; i++) {
-    let armDef = armDefs[player.armIndices[i]];
-    let slotData = player.slotData[i];
-    ctx.fillStyle = i === selectedSecondary ? (slotData?.active ? "#9ACD32" : "yellow") : slotData?.active ? "green" : "white";
+  for (let i = 1; i <= player.armIndices.length; i++) {
+    let armDef = armDefs[player.armIndices[i % player.armIndices.length]];
+    let slotData = player.slotData[i % player.armIndices.length];
+    ctx.fillStyle = (i % player.armIndices.length) === selectedSecondary ? (slotData?.active ? "#9ACD32" : "yellow") : slotData?.active ? "green" : "white";
     ctx.font = "14px Arial";
     ctx.textAlign = "left";
-    ctx.fillText(armDef.name, 10, canvas.height - 10 - (player.armIndices.length - i) * 20);
-    if (i === selectedSecondary) {
+    ctx.fillText(armDef.name, 10, canvas.height - 10 - (player.armIndices.length - i + 1) * 20);
+    if (i % player.armIndices.length === selectedSecondary) {
       if (armDef.usage === ArmUsage.Energy && armDef.energyCost !== undefined) {
         const color = armDef.energyCost > player.energy ? "#EE2200CC" : "#0022FFCC";
         drawBar({ x: canvas.width / 2 + 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, color, "#333333CC", player.energy / def.energy);
@@ -607,7 +607,7 @@ const drawTarget = (where: Rectangle, self: Player, target: Player) => {
   }
   const def = defs[target.defIndex];
   ctx.font = "12px Arial";
-  ctx.fillText(def.name, where.x + where.width / 2, where.y + 10);
+  ctx.fillText(def.name, where.x + where.width / 2, where.y + 15);
 };
 
 const drawTargetAsteroid = (where: Rectangle, self: Player, targetAsteroid: Asteroid) => {
@@ -634,6 +634,9 @@ const drawTargetAsteroid = (where: Rectangle, self: Player, targetAsteroid: Aste
   ctx.rotate(targetAsteroid.heading);
   ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
   ctx.restore();
+  const def = asteroidDefs[targetAsteroid.defIndex];
+  ctx.font = "12px Arial";
+  ctx.fillText(def.mineral, where.x + where.width / 2, where.y + 15);
 };
 
 const drawArrow = (self: Player, targetPosition: Position, fillStyle: string, highlight: boolean, distance: number) => {

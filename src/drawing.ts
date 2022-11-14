@@ -18,6 +18,7 @@ import {
 } from "./game";
 import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection } from "./geometry";
 import {
+  addLoadingText,
   allianceColorOpaque,
   confederationColorOpaque,
   lastSelf,
@@ -159,6 +160,7 @@ let composited: ImageBitmap[] = [];
 
 // Without offscreen precompositing drawing would be very complex and slower
 const doPreCompositing = (stencils: ImageBitmap[], callback: () => void) => {
+  addLoadingText("Precompositing");
   const compositePromises: Promise<ImageBitmap>[] = [];
   for (let i = 0; i < defs.length; i++) {
     for (let j = 0; j < Faction.Count; j++) {
@@ -206,6 +208,7 @@ const initDrawing = (callback: () => void) => {
     canvas.height = window.innerHeight;
   });
   ctx = canvas.getContext("2d");
+  addLoadingText("Loading sprites");
   const spriteSheet = new Image();
   spriteSheet.onload = () => {
     const stencilSheet = new Image();
@@ -1060,8 +1063,6 @@ type ArrowData = {
   inoperable?: boolean;
 };
 
-let didWarn = false;
-
 const drawEverything = (
   state: GlobalState,
   self: Player,
@@ -1085,11 +1086,7 @@ const drawEverything = (
 
     clearCanvas();
     if (!self && !lastSelf) {
-      if (!didWarn) {
-        // Seems to happen on server startup (I think the server is just sending a state update before the init message)
-        console.log("Warning: Missing self reference (FIXME)");
-        didWarn = true;
-      }
+      // We can't draw anything without being initialized yet
       return;
     }
 

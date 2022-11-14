@@ -245,14 +245,26 @@ body {
 }
 
 kbd {
-	margin: 0px 0.1em;
-	padding: 0.2em 0.5em;
-	border-radius: 5px;
-	border: 1px solid rgb(204, 204, 204);
-	color: rgb(51, 51, 51);
-	font-size: 13px;
+  margin: 0px 0.1em;
+  padding: 0.2em 0.5em;
+  border-radius: 5px;
+  border: 1px solid rgb(204, 204, 204);
+  color: rgb(51, 51, 51);
+  font-size: 13px;
   box-shadow: inset -2px -1px 0 0 #ccc;
-	background-color: rgb(247, 247, 247);
-	text-shadow: 0 1px 0 #fff;
+  background-color: rgb(247, 247, 247);
+  text-shadow: 0 1px 0 #fff;
   font-family: monospace;
+}
+
+.loading {
+  top: 0;
+  left: 0;
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  background-color: black;
+  color: white;
+  font: 1rem Inconsolata, monospace;
+  text-shadow: 0 0 5px #c8c8c8;
 }

@@ -1,4 +1,4 @@
-import { getVolumePref } from "./globals";
+import { addLoadingText, getVolumePref } from "./globals";
 
 let ctx: AudioContext;
 let volume: GainNode;

@@ -4,9 +4,10 @@
     <title>Space IO Game</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body style="background-color: darkgray; overflow-x: hidden;">
+  <body style="overflow-x: hidden;">
+    <div class="loading" id="loadingText"></div>
     <canvas id="canvas" width="800" height="600" style="position: absolute; left: 0px; top: 0px; z-index: 0"></canvas>
-    <script data-main="dist/app" src="dist/require.min.js"></script>
+    <script data-main="dist/app" src="dist/require.min.js" onload="document.getElementById('loadingText').innerHTML = 'Loaded require.js<br/>'"></script>
     <div
       id="dialog"
       style="

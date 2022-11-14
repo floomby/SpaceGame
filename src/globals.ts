@@ -105,6 +105,10 @@ let recipesKnown: Set<string> = new Set();
 
 let sectorData = new Map<number, SectorInfo>();
 
+const addLoadingText = (text: string) => {
+  document.getElementById("loadingText")!.innerHTML += text + "<br/>";
+}
+
 export {
   faction,
   setFaction,
@@ -140,4 +144,5 @@ export {
   clearInventory,
   recipesKnown,
   sectorData,
+  addLoadingText,
 };

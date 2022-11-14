@@ -52,7 +52,7 @@ type ArmamentDef = {
   ) => void;
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
   equipMutator?: (player: Player, slotIndex: number) => void;
-  frameMutator?: (player: Player, slotIndex: number) => void;
+  frameMutator?: (player: Player, slotIndex: number, state: GlobalState) => void;
 };
 
 // Idk if this needs a more efficient implementation or not
@@ -780,7 +780,7 @@ const initArmaments = () => {
     targeted: TargetedKind.Untargeted,
     stateMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
       const slotData = player.slotData[slotIndex];
-      const projectileDef = projectileDefs[0]
+      const projectileDef = projectileDefs[0];
 
       if (player.energy > 11 && slotData.sinceFired > 25) {
         slotData.sinceFired = 0;
@@ -788,10 +788,10 @@ const initArmaments = () => {
 
         for (let i = 0; i < 10; i++) {
           const projectile = {
-            position: {x: player.position.x, y: player.position.y},
+            position: { x: player.position.x, y: player.position.y },
             radius: projectileDef.radius,
             speed: projectileDef.speed + player.speed,
-            heading: player.heading + (i-5)*0.15,
+            heading: player.heading + (i - 5) * 0.15,
             damage: 20,
             team: player.team,
             id: state.projectileId,
@@ -813,7 +813,59 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 1300,
-  })
+  });
+
+  // Tractor Beam - 18
+  armDefs.push({
+    name: "Tractor Beam",
+    description: "A beam that stops the movement of your target",
+    kind: SlotKind.Utility,
+    usage: ArmUsage.Energy,
+    targeted: TargetedKind.Targeted,
+    energyCost: 10,
+    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
+      const slotData = player.slotData[slotIndex];
+
+      if (targetKind === TargetKind.Player && player.energy > 10 && slotData.sinceFired > 10 && l2Norm(player.position, target.position) < 1200) {
+        const targetDef = defs[target.defIndex];
+        if (targetDef.kind === UnitKind.Station) {
+          return;
+        }
+        slotData.sinceFired = 0;
+        applyEffect({
+          effectIndex: 18,
+          from: { kind: EffectAnchorKind.Player, value: player.id },
+          to: { kind: EffectAnchorKind.Player, value: target.id },
+        });
+
+        slotData.targets.push({ time: 30, id: target.id });
+        player.energy -= 10;
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 46, targets: [] };
+    },
+    frameMutator: (player, slotIndex, state) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+      for (let i = 0; i < slotData.targets.length; i++) {
+        const target = state.players.get(slotData.targets[i].id);
+        if (!target || slotData.targets[i].time < 0) {
+          slotData.targets.splice(i, 1);
+          i--;
+        } else {
+          slotData.targets[i].time--;
+          const mass = defs[target.defIndex].mass;
+          const heading = findHeadingBetween(player.position, target.position);
+          target.speed = Math.max(0, target.speed - 8 / mass);
+          target.side = Math.max(0, Math.abs(target.side) - 3 / mass) * Math.sign(target.side);
+          target.iv.x -= (Math.cos(heading) * 4) / mass;
+          target.iv.y -= (Math.sin(heading) * 4) / mass;
+        }
+      }
+    },
+    cost: 1000,
+  });
 
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];

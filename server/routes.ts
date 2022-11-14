@@ -1,7 +1,7 @@
 import { createServer } from "http";
 import { createServer as createSecureServer } from "https";
 import { maxNameLength } from "../src/game";
-import { defMap, Faction } from "../src/defs";
+import { armDefMap, asteroidDefMap, defMap, Faction, UnitKind } from "../src/defs";
 import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
@@ -10,8 +10,9 @@ import { User, Station } from "./dataModels";
 
 import { addNpc } from "../src/npc";
 import { market } from "./market";
-import { clients, sectorFactions, sectorHasStarbase, sectorList, sectors, uid } from "./state";
+import { clients, idToWebsocket, sectorFactions, sectorHasStarbase, sectorList, sectors, uid } from "./state";
 import { adminHash, credentials, hash, httpPort } from "./settings";
+import { recipeMap } from "../src/recipes";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -256,6 +257,97 @@ app.get("/resetEverything", (req, res) => {
   });
 });
 
+app.get("/unlockEverything", (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== adminHash) {
+    res.send("Invalid password");
+    return;
+  }
+  const name = req.query.name;
+  if (!name || typeof name !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  User.findOne({ name }, (err, user) => {
+    if (err) {
+      res.send("Database error: " + err);
+      return;
+    }
+    if (!user) {
+      res.send("User not found");
+      return;
+    }
+    user.recipesKnown = Array.from(Object.keys(recipeMap));
+    user.sectorsVisited = sectorList;
+    // Give the user one of each ship
+    for (const [key, def] of defMap) {
+      if (def.def.kind === UnitKind.Station) {
+        continue;
+      }
+      const inventory = user.inventory.find((item) => item.what === key);
+      if (inventory) {
+        inventory.amount += 1;
+      } else {
+        user.inventory.push({
+          what: key,
+          amount: 1,
+        });
+      }
+    }
+    // Give the user one of each armament
+    for (const [key, def] of armDefMap) {
+      const inventory = user.inventory.find((item) => item.what === key);
+      if (inventory) {
+        inventory.amount += 1;
+      } else {
+        user.inventory.push({
+          what: key,
+          amount: 1,
+        });
+      }
+    }
+    // Give the user 10000 of each mineral
+    for (const [key, def] of asteroidDefMap) {
+      const inventory = user.inventory.find((item) => item.what === key);
+      if (inventory) {
+        inventory.amount += 10000;
+      } else {
+        user.inventory.push({
+          what: key,
+          amount: 10000,
+        });
+      }
+    }
+
+    user.save((err) => {
+      if (err) {
+        res.send("Database error: " + err);
+        return;
+      }
+
+      const ws = idToWebsocket.get(user.id);
+      if (ws) {
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Error finding user for inventory population" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+        const client = clients.get(ws);
+        if (client) {
+          client.sectorsVisited = new Set(sectorList);
+        }
+      }
+
+      res.send("true");
+    });
+  });
+});
+
 app.get("/addNPC", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {
@@ -327,8 +419,14 @@ app.get("/stopProfiling", (req, res) => {
 });
 
 app.get("/totalPlayers", (req, res) => {
-  const ret = `Total: ${Array.from(sectors.values()).map((sector) => sector.players.size).reduce((a, b) => a + b, 0).toString()}<br/>` +
-    Array.from(sectors.entries()).map(([sector, sectorData]) => `${sector}: ${sectorData.players.size.toString()}`).join("<br/>");
+  const ret =
+    `Total: ${Array.from(sectors.values())
+      .map((sector) => sector.players.size)
+      .reduce((a, b) => a + b, 0)
+      .toString()}<br/>` +
+    Array.from(sectors.entries())
+      .map(([sector, sectorData]) => `${sector}: ${sectorData.players.size.toString()}`)
+      .join("<br/>");
   res.send(ret);
 });
 

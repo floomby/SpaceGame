@@ -35,7 +35,7 @@ const manufacturingTableHtml = () => {
 const populateManufacturingTable = () => {
   const manufacturingTable = document.getElementById("manufacturingTable");
   if (manufacturingTable) {
-    manufacturingTable.innerHTML = manufacturingTableHtml();
+    manufacturingTable.innerHTML = recipesKnown.size > 0 ? manufacturingTableHtml() : "<h3>No blueprints collected. Kill enemies to find blueprints.<h3>";
   }
   for (let i = 0; i < recipes.length; i++) {
     const button = document.getElementById(`manufacture${i}`) as HTMLButtonElement;

@@ -42,7 +42,6 @@ import { inspect } from "util";
 import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip, discoverRecipe } from "./inventory";
 import { market } from "./market";
 import {
-  asteroidBounds,
   clients,
   idToWebsocket,
   knownRecipes,
@@ -1130,7 +1129,7 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
     console.log(`Respawning ${removedCount} asteroids in sector ${sector}`);
     const newAsteroids = randomAsteroids(
       removedCount,
-      asteroidBounds,
+      sectorBounds,
       Date.now(),
       uid,
       sectorAsteroidResources[sectorList.findIndex((s) => s === sector)]

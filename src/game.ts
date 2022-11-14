@@ -667,6 +667,8 @@ const update = (
       player.position.y += player.iv.y;
       dampenImpulse(player);
 
+      let energyGain = 0;
+
       if (player.toFirePrimary && player.energy > primaryDef.energy) {
         const projectile = {
           position: {
@@ -698,7 +700,10 @@ const update = (
       player.armIndices.forEach((armament, index) => {
         const armDef = armDefs[armament];
         if (armDef.frameMutator) {
-          armDef.frameMutator(player, index, state, flashServerMessage);
+          const gain = armDef.frameMutator(player, index, state, flashServerMessage);
+          if (gain) {
+            energyGain += gain;
+          }
         }
       });
       // Fire secondaries
@@ -769,7 +774,7 @@ const update = (
       // Make doing things while cloaked cost triple energy
       // Do not change this without looking at the cloaking generator in the armaments also
       if (wasCloaked) {
-        const deltaEnergy = energyBeforeActing - player.energy;
+        const deltaEnergy = energyBeforeActing - player.energy + energyGain;
         player.energy = Math.max(0, player.energy - 2 * deltaEnergy);
       }
     } else {

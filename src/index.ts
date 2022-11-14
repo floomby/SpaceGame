@@ -39,6 +39,7 @@ import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
 import { drawEverything, fadeOutCollectable, fadeOutMine, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
+  addLoadingText,
   clearInventory,
   currentSector,
   initBlankState,
@@ -313,7 +314,10 @@ const targetAtCoords = (coords: Position) => {
 };
 
 const run = () => {
+  addLoadingText("Initializing client game state");
   initBlankState();
+
+  addLoadingText("Binding network handlers");
 
   bindAction(
     "init",
@@ -521,14 +525,18 @@ const run = () => {
     runPostUpdaterOnly("inventory", inventory);
   });
 
+  addLoadingText("Launching...");
   displayLoginDialog();
 
   loop();
 };
 
 const toRun = () => {
+  addLoadingText("Initializing dialog subsystem");
   initDialog();
+  addLoadingText("Initializing game data");
   initDefs();
+  addLoadingText("Initializing drawing subsystem");
   initDrawing(() => {
     connect(run);
   });

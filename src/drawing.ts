@@ -18,6 +18,7 @@ import {
 } from "./game";
 import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection } from "./geometry";
 import {
+  addLoadingText,
   allianceColorOpaque,
   confederationColorOpaque,
   lastSelf,
@@ -159,6 +160,7 @@ let composited: ImageBitmap[] = [];
 
 // Without offscreen precompositing drawing would be very complex and slower
 const doPreCompositing = (stencils: ImageBitmap[], callback: () => void) => {
+  addLoadingText("Precompositing");
   const compositePromises: Promise<ImageBitmap>[] = [];
   for (let i = 0; i < defs.length; i++) {
     for (let j = 0; j < Faction.Count; j++) {
@@ -206,6 +208,7 @@ const initDrawing = (callback: () => void) => {
     canvas.height = window.innerHeight;
   });
   ctx = canvas.getContext("2d");
+  addLoadingText("Loading sprites");
   const spriteSheet = new Image();
   spriteSheet.onload = () => {
     const stencilSheet = new Image();

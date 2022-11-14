@@ -1,6 +1,7 @@
 import { Input, Player, maxNameLength, TargetKind } from "./game";
 import { Faction } from "./defs";
 import { wsUrl } from "./config";
+import { addLoadingText } from "./globals";
 
 let serverSocket: WebSocket;
 
@@ -26,10 +27,12 @@ const bindings: Map<string, (data: any) => void> = new Map();
 
 // Client connection code
 const connect = (callback: (socket: WebSocket) => void) => {
+  addLoadingText("Connecting to server...");
   const socket = new WebSocket(wsUrl);
   socket.onopen = () => {
     console.log(`Connected to the server at ${wsUrl}`);
     serverSocket = socket;
+    addLoadingText("Connected to server!");
     callback(socket);
   };
   socket.onclose = () => {

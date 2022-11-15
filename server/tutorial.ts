@@ -19,6 +19,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
           if (state) {
             const npc = addTutorialRoamingVenture(state, uid());
             (npc as NPC).killed = () => {
+              client.inTutorial = TutorialStage.SwitchSecondary;
               sendTutorialStage(ws, TutorialStage.SwitchSecondary);
             };
           }

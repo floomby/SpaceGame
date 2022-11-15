@@ -1,8 +1,8 @@
 import { Faction } from "./defs";
 import { sectorNumberToXY } from "./dialogs/map";
 import { pushMessage } from "./drawing";
-import { TutorialStage } from "./game";
-import { faction, keybind, lastSelf, selectedSecondary, state } from "./globals";
+import { mapSize, TutorialStage } from "./game";
+import { currentSector, faction, keybind, lastSelf, selectedSecondary, state } from "./globals";
 
 let promptInterval: number;
 
@@ -25,53 +25,64 @@ tutorialCheckers.set(TutorialStage.Kill, () => {
   return false;
 });
 
-let currentWeapon: number;
+let switchWeaponComplete = false;
+
+const completeSwitchWeapon = () => {
+  switchWeaponComplete = true;
+};
+
+tutorialCheckers.set(TutorialStage.SwitchSecondary, () => {
+  return switchWeaponComplete;
+});
 
 const tutorialPrompters = new Map<TutorialStage, () => void>();
 
 tutorialPrompters.set(TutorialStage.Move, () => {
   const fx = () => pushMessage(`Press ${keybind.up} to accelerate and ${keybind.down} to decelerate`);
-  promptInterval = window.setInterval(fx, 1000 * 15);
+  promptInterval = window.setInterval(fx, 1000 * 6);
   fx();
 });
 
 tutorialPrompters.set(TutorialStage.Strafe, () => {
   const fx = () => pushMessage(`Press ${keybind.left} to strafe left and ${keybind.right} to strafe right`);
   clearInterval(promptInterval);
-  promptInterval = window.setInterval(fx, 1000 * 15);
+  promptInterval = window.setInterval(fx, 1000 * 6);
   fx();
 });
 
 tutorialPrompters.set(TutorialStage.Done, () => {
   pushMessage("Tutorial complete!");
-  const fx = () => pushMessage(`You may now open the map and warp to sector ${sectorNumberToXY(faction === Faction.Alliance ? 12 : 15)}`);
+  const fx = () => {
+    if (currentSector > mapSize * mapSize) {
+      pushMessage(`You may now open the map and warp to sector ${sectorNumberToXY(faction === Faction.Alliance ? 12 : 6)}`);
+    } else {
+      clearInterval(promptInterval);
+    }
+  };
   clearInterval(promptInterval);
-  promptInterval = window.setInterval(fx, 1000 * 15);
+  promptInterval = window.setInterval(fx, 1000 * 6);
   fx();
 });
 
 tutorialPrompters.set(TutorialStage.Shoot, () => {
   const fx = () => pushMessage(`Use left mouse button to fire primary weapon`);
   clearInterval(promptInterval);
-  promptInterval = window.setInterval(fx, 1000 * 15);
+  promptInterval = window.setInterval(fx, 1000 * 6);
   fx();
 });
 
 tutorialPrompters.set(TutorialStage.Kill, () => {
   const fx = () => pushMessage(`Use your primary weapon to destroy the enemy`);
   clearInterval(promptInterval);
-  promptInterval = window.setInterval(fx, 1000 * 20);
+  promptInterval = window.setInterval(fx, 1000 * 6);
   fx();
 });
 
 tutorialPrompters.set(TutorialStage.SwitchSecondary, () => {
-  const fx = () => {
-    pushMessage(`Use the number keys to switch to change your secondary`);
-    currentWeapon = selectedSecondary;
-  }
+  const fx = () => pushMessage(`Use the number keys to switch to change your secondary`);
   clearInterval(promptInterval);
-  promptInterval = window.setInterval(fx, 1000 * 15);
+  promptInterval = window.setInterval(fx, 1000 * 6);
   fx();
 });
 
-export { tutorialCheckers, tutorialPrompters };
+export { tutorialCheckers, tutorialPrompters, completeSwitchWeapon };

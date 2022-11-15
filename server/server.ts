@@ -737,6 +737,9 @@ wss.on("connection", (ws) => {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
           if (client.inTutorial === data.payload.stage) {
+            if (client.inTutorial !== data.payload.stage) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Tutorial stage mismatch" } }));
+            }
             client.inTutorial = advanceTutorialStage(client.id, data.payload.stage, ws);
             sendTutorialStage(ws, client.inTutorial);
           }

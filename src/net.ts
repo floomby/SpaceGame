@@ -194,7 +194,7 @@ const sendRepair = (id: number, station: number) => {
       })
     );
     lastSentRepair = Date.now();
-  } 
+  }
 };
 
 const sendDumpCargo = (id: number, what: string, amount: number) => {
@@ -242,13 +242,18 @@ const sendSecondaryActivation = (id: number, secondary: number) => {
   );
 };
 
+const tutorialStagesCompleted = new Set<TutorialStage>();
+
 const sendTutorialStageComplete = (id: number, stage: TutorialStage) => {
-  serverSocket.send(
-    JSON.stringify({
-      type: "tutorialStageComplete",
-      payload: { id, stage },
-    })
-  );
+  if (!tutorialStagesCompleted.has(stage)) {
+    serverSocket.send(
+      JSON.stringify({
+        type: "tutorialStageComplete",
+        payload: { id, stage },
+      })
+    );
+    tutorialStagesCompleted.add(stage);
+  }
 };
 
 export {

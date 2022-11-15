@@ -857,7 +857,7 @@ const addNpc = (state: GlobalState, what: string | number, team: Faction, id: nu
 
 const aimlessPassiveRoaming = (bounds: Rectangle) => {
   const roam = passiveGoToRandomPointInSector(bounds);
-  roam.transitions.push({ trigger: () => Math.random() < 0.01, state: roam });
+  roam.transitions.push({ trigger: () => Math.random() < 0.05, state: roam });
   roam.transitions.push({ trigger: (_, __, memory) => memory.completed, state: roam });
   return roam;
 }

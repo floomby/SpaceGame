@@ -564,7 +564,9 @@ wss.on("connection", (ws) => {
       } else if (data.type === "secondary") {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
-          secondaries.set(client.id, data.payload.secondary);
+          if (typeof data.payload.secondary === "number" && data.payload.secondary >= 0) {
+            secondaries.set(client.id, data.payload.secondary);
+          }
         }
       } else if (data.type === "secondaryActivation") {
         const client = clients.get(ws);
@@ -572,7 +574,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            if (typeof data.payload.secondary === "number" && data.payload.secondary < player.armIndices.length) {
+            if (typeof data.payload.secondary === "number" && data.payload.secondary < player.armIndices.length && data.payload.secondary >= 0) {
               secondariesToActivate.get(client.id)?.push(data.payload.secondary);
             }
           }

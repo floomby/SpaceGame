@@ -717,36 +717,7 @@ const update = (
         } else {
           slotId = serverSecondaries.get(id);
         }
-        const armDef = armDefs[player.armIndices[slotId]];
-        // Targeted weapons
-        if (armDef.targeted === TargetedKind.Targeted) {
-          const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
-          if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
-            if (armDef.stateMutator) {
-              let target: Player | Asteroid | undefined;
-              if (targetKind === TargetKind.Player) {
-                target = state.players.get(targetId);
-              } else if (targetKind === TargetKind.Asteroid) {
-                target = state.asteroids.get(targetId);
-              }
-              if (target) {
-                armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage, ret);
-              }
-            }
-          }
-          // Untargeted weapons
-        } else if (armDef.targeted === TargetedKind.Untargeted) {
-          if (slotId !== undefined && slotId < player.armIndices.length) {
-            if (armDef.stateMutator) {
-              armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
-            }
-          }
-        }
-      }
-      const playerSecondaryActivation = player.npc ? player.npc.secondariesToFire : secondariesToActivate.get(id);
-      if (playerSecondaryActivation) {
-        while (playerSecondaryActivation.length > 0) {
-          const slotId = playerSecondaryActivation.pop();
+        if (slotId < player.armIndices.length) {
           const armDef = armDefs[player.armIndices[slotId]];
           // Targeted weapons
           if (armDef.targeted === TargetedKind.Targeted) {
@@ -769,6 +740,39 @@ const update = (
             if (slotId !== undefined && slotId < player.armIndices.length) {
               if (armDef.stateMutator) {
                 armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
+              }
+            }
+          }
+        }
+      }
+      const playerSecondaryActivation = player.npc ? player.npc.secondariesToFire : secondariesToActivate.get(id);
+      if (playerSecondaryActivation) {
+        while (playerSecondaryActivation.length > 0) {
+          const slotId = playerSecondaryActivation.pop();
+          if (slotId !== undefined && slotId < player.armIndices.length) {
+            const armDef = armDefs[player.armIndices[slotId]];
+            // Targeted weapons
+            if (armDef.targeted === TargetedKind.Targeted) {
+              const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
+              if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
+                if (armDef.stateMutator) {
+                  let target: Player | Asteroid | undefined;
+                  if (targetKind === TargetKind.Player) {
+                    target = state.players.get(targetId);
+                  } else if (targetKind === TargetKind.Asteroid) {
+                    target = state.asteroids.get(targetId);
+                  }
+                  if (target) {
+                    armDef.stateMutator(state, player, targetKind, target, applyEffect, slotId, flashServerMessage, ret);
+                  }
+                }
+              }
+              // Untargeted weapons
+            } else if (armDef.targeted === TargetedKind.Untargeted) {
+              if (slotId !== undefined && slotId < player.armIndices.length) {
+                if (armDef.stateMutator) {
+                  armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
+                }
               }
             }
           }

@@ -94,7 +94,7 @@ const loadCollectableSprites = (spriteSheet: HTMLImageElement, callback: () => v
   });
 };
 
-// Arguably thing should be in effects.ts, but crosscutting is basically unavoidable and it is almost identical the the other loading functions
+// Arguably this should be in effects.ts, but crosscutting is basically unavoidable and it is almost identical the the other loading functions
 const loadEffectSprites = (spriteSheet: HTMLImageElement, callback: () => void) => {
   const spritePromises: Promise<ImageBitmap>[] = [];
   for (let i = 0; i < effectSpriteDefs.length; i++) {
@@ -651,7 +651,7 @@ const drawArrow = (self: Player, targetPosition: Position, fillStyle: string, hi
   ctx.translate(position.x, position.y);
   ctx.rotate(heading);
   if (highlight) {
-    ctx.filter = "drop-shadow(0 0 5px #FFFFFF)";
+    ctx.filter = "drop-shadow(0 0 10px #FFFFFF)";
   }
   ctx.fillStyle = fillStyle;
   ctx.beginPath();
@@ -706,12 +706,13 @@ type Message = {
   what: string;
   framesRemaining: number;
   whileDocked: boolean;
+  color: string;
 };
 
 let messages: Message[] = [];
 
-const pushMessage = (what: string, framesRemaining: number = 240) => {
-  messages.push({ what, framesRemaining, whileDocked: !!lastSelf?.docked });
+const pushMessage = (what: string, framesRemaining: number = 240, color = "white") => {
+  messages.push({ what, framesRemaining, whileDocked: !!lastSelf?.docked, color });
 };
 
 const reduceMessageTimeRemaining = (sixtieths: number) => {
@@ -727,10 +728,13 @@ const drawMessages = () => {
   ctx.textAlign = "center";
   let y = 30;
   for (const message of messages) {
+    const savedAlpha = ctx.globalAlpha;
     const alpha = Math.min(message.framesRemaining / 60, 1);
-    ctx.fillStyle = `rgb(255, 255, 255, ${alpha})`;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = message.color;
     ctx.fillText(message.what, canvas.width / 2, y);
     y += 30 * alpha;
+    ctx.globalAlpha = savedAlpha;
   }
 };
 

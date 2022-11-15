@@ -1,11 +1,10 @@
-import { TutorialStage } from "../src/game";
+import { equip, TutorialStage } from "../src/game";
 import { WebSocket } from "ws";
 import { clients, sectors, uid } from "./state";
 import { Faction } from "../src/defs";
 import { addTutorialRoamingVenture, NPC } from "../src/npc";
 
 const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) => {
-  const client = clients.get(ws);
   switch (stage) {
     case TutorialStage.Move:
       return TutorialStage.Strafe;
@@ -28,6 +27,21 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
       return TutorialStage.Kill;
     case TutorialStage.SwitchSecondary:
       {
+        const client = clients.get(ws);
+        if (client) {
+          const state = sectors.get(client.currentSector);
+          if (state) {
+            const player = state.players.get(client.id);
+            if (player) {
+              state.players.set(client.id, equip(player, 1, "Javelin Missile", true));
+            }
+          }
+        }
+      }
+      return TutorialStage.FireJavelin;
+    case TutorialStage.FireJavelin:
+      {
+        const client = clients.get(ws);
         if (client) {
           const player = sectors.get(client.currentSector)?.players.get(id);
           if (player) {

@@ -1331,6 +1331,7 @@ enum TutorialStage {
   Shoot,
   Kill,
   SwitchSecondary,
+  FireJavelin,
 }
 
 export {

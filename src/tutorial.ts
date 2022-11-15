@@ -2,7 +2,7 @@ import { Faction } from "./defs";
 import { sectorNumberToXY } from "./dialogs/map";
 import { pushMessage } from "./drawing";
 import { TutorialStage } from "./game";
-import { faction, keybind, lastSelf } from "./globals";
+import { faction, keybind, lastSelf, selectedSecondary, state } from "./globals";
 
 let promptInterval: number;
 
@@ -15,6 +15,17 @@ tutorialCheckers.set(TutorialStage.Move, () => {
 tutorialCheckers.set(TutorialStage.Strafe, () => {
   return lastSelf && lastSelf.side !== 0;
 });
+
+tutorialCheckers.set(TutorialStage.Shoot, () => {
+  return state.projectiles.size > 0;
+});
+
+tutorialCheckers.set(TutorialStage.Kill, () => {
+  // Server will check this condition
+  return false;
+});
+
+let currentWeapon: number;
 
 const tutorialPrompters = new Map<TutorialStage, () => void>();
 
@@ -34,6 +45,30 @@ tutorialPrompters.set(TutorialStage.Strafe, () => {
 tutorialPrompters.set(TutorialStage.Done, () => {
   pushMessage("Tutorial complete!");
   const fx = () => pushMessage(`You may now open the map and warp to sector ${sectorNumberToXY(faction === Faction.Alliance ? 12 : 15)}`);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 15);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.Shoot, () => {
+  const fx = () => pushMessage(`Use left mouse button to fire primary weapon`);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 15);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.Kill, () => {
+  const fx = () => pushMessage(`Use your primary weapon to destroy the enemy`);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 20);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.SwitchSecondary, () => {
+  const fx = () => {
+    pushMessage(`Use the number keys to switch to change your secondary`);
+    currentWeapon = selectedSecondary;
+  }
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 15);
   fx();

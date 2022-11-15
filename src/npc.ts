@@ -13,7 +13,7 @@ import {
   sectorBounds,
   sectorDelta,
 } from "./game";
-import { findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position } from "./geometry";
+import { findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "./geometry";
 import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
 import { recipeMap } from "./recipes";
 
@@ -42,6 +42,7 @@ interface NPC {
   lootTable: LootTable;
   targetId: number;
   process: (state: GlobalState, sector: number) => void;
+  killed?: () => void;
 }
 
 type Completed = {
@@ -88,7 +89,7 @@ const idleState = () => {
   })();
 };
 
-const passiveGoToRandomPointInSector = () => {
+const passiveGoToRandomPointInSector = (bounds: Rectangle = sectorBounds) => {
   return new (class extends State {
     process = (state: GlobalState, npc: NPC, sector, target) => {
       const newState = this.checkTransitions(state, npc, target);
@@ -104,7 +105,7 @@ const passiveGoToRandomPointInSector = () => {
     };
     onEnter = (npc: NPC) => {
       this.memory.completed = false;
-      this.memory.to = { x: Math.random() * sectorBounds.width + sectorBounds.x, y: Math.random() * sectorBounds.height + sectorBounds.y };
+      this.memory.to = { x: Math.random() * bounds.width + bounds.x, y: Math.random() * bounds.height + bounds.y };
     };
   })();
 };
@@ -852,4 +853,81 @@ const addNpc = (state: GlobalState, what: string | number, team: Faction, id: nu
   state.players.set(npc.player.id, npc.player);
 };
 
-export { NPC, LootTable, addNpc, processLootTable };
+// Tutorial NPCs below
+
+const aimlessPassiveRoaming = (bounds: Rectangle) => {
+  const roam = passiveGoToRandomPointInSector(bounds);
+  roam.transitions.push({ trigger: () => Math.random() < 0.01, state: roam });
+  roam.transitions.push({ trigger: (_, __, memory) => memory.completed, state: roam });
+  return roam;
+}
+
+class TutorialRoamingVenture implements NPC {
+  public player: Player;
+
+  public input: Input = {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    primary: false,
+    secondary: false,
+  };
+  public angle: number = undefined;
+
+  public selectedSecondary = 1;
+
+  public lootTable: LootTable = [];
+
+  public secondariesToFire: number[] = [];
+
+  public stateGraphMemory: Map<State, any> = new Map();
+
+  public targetId: number;
+
+  constructor(id: number) {
+    const { def, index } = defMap.get("Venture");
+
+    const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
+
+    this.player = {
+      position: { x: Math.random() * bounds.width + bounds.x, y: Math.random() * bounds.height + bounds.y },
+      radius: def.radius,
+      speed: 0,
+      heading: Math.random() * 2 * Math.PI,
+      health: def.health,
+      id: id,
+      sinceLastShot: [effectiveInfinity],
+      energy: def.energy,
+      defIndex: index,
+      armIndices: emptyLoadout(index),
+      slotData: emptySlotData(def),
+      cargo: [],
+      credits: 500,
+      npc: this,
+      team: Faction.Rogue,
+      side: 0,
+      v: { x: 0, y: 0 },
+      iv: { x: 0, y: 0 },
+      ir: 0,
+    };
+  
+    this.currentState = aimlessPassiveRoaming(bounds);
+
+    this.stateGraphMemory.set(this.currentState, this.currentState.onEnter(this));
+  }
+
+  private currentState: State;
+
+  public process(state: GlobalState, sector: number) {
+    this.currentState = this.currentState.process(state, this, sector, undefined);
+  }
+};
+
+const addTutorialRoamingVenture = (state: GlobalState, id: number) => {
+  const npc = new TutorialRoamingVenture(id);
+  state.players.set(npc.player.id, npc.player);
+  return npc;
+};
+
+export { NPC, LootTable, addNpc, processLootTable, addTutorialRoamingVenture };

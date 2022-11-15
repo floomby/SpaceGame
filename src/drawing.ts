@@ -273,7 +273,7 @@ const drawHUD = (player: Player, selectedSecondary: number) => {
     ctx.fillStyle = (i % player.armIndices.length) === selectedSecondary ? (slotData?.active ? "#9ACD32" : "yellow") : slotData?.active ? "green" : "white";
     ctx.font = "14px Arial";
     ctx.textAlign = "left";
-    ctx.fillText(armDef.name, 10, canvas.height - 10 - (player.armIndices.length - i + 1) * 20);
+    ctx.fillText(`${i % player.armIndices.length}: ${armDef.name}`, 10, canvas.height - 10 - (player.armIndices.length - i + 1) * 20);
     if (i % player.armIndices.length === selectedSecondary) {
       if (armDef.usage === ArmUsage.Energy && armDef.energyCost !== undefined) {
         const color = armDef.energyCost > player.energy ? "#EE2200CC" : "#0022FFCC";

@@ -443,6 +443,9 @@ const kill = (
       if (toDrop !== undefined) {
         collectables.push(createCollectableFromDef(toDrop, player.position));
       }
+      if (player.npc.killed) {
+        player.npc.killed();
+      }
     }
   }
 };
@@ -1321,6 +1324,9 @@ enum TutorialStage {
   Done = 0,
   Move,
   Strafe,
+  Shoot,
+  Kill,
+  SwitchSecondary,
 }
 
 export {

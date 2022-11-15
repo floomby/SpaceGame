@@ -1,4 +1,4 @@
-import { Input, Player, maxNameLength, TargetKind } from "./game";
+import { Input, Player, maxNameLength, TargetKind, TutorialStage } from "./game";
 import { Faction } from "./defs";
 import { wsUrl } from "./config";
 import { addLoadingText } from "./globals";
@@ -242,6 +242,15 @@ const sendSecondaryActivation = (id: number, secondary: number) => {
   );
 };
 
+const sendTutorialStageComplete = (id: number, stage: TutorialStage) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "tutorialStageComplete",
+      payload: { id, stage },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -267,4 +276,5 @@ export {
   sendManufacture,
   sendTransferToShip,
   sendSecondaryActivation,
+  sendTutorialStageComplete,
 };

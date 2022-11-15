@@ -1,4 +1,4 @@
-import { connect, bindAction, sendDock, sendTarget, sendSecondary, sendAngle, sendRepair } from "./net";
+import { connect, bindAction, sendDock, sendTarget, sendSecondary, sendAngle, sendRepair, sendTutorialStageComplete } from "./net";
 import {
   Player,
   Ballistic,
@@ -20,6 +20,7 @@ import {
   Mine,
   SectorInfo,
   CloakedState,
+  TutorialStage,
 } from "./game";
 import {
   init as initDialog,
@@ -55,8 +56,10 @@ import {
   setLastSelf,
   setOwnId,
   setSelectedSecondary,
+  setTutorialStage,
   state,
   teamColorsLight,
+  tutorialStage,
 } from "./globals";
 import { initSettings } from "./dialogs/settings";
 import { deadDialog, setupDeadDialog } from "./dialogs/dead";
@@ -67,6 +70,7 @@ import { initCargo } from "./dialogs/cargo";
 import { Position } from "./geometry";
 import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
 import { bindInventoryUpdaters } from "./dialogs/inventory";
+import { tutorialCheckers } from "./tutorial";
 
 let chats: ChatMessage[] = [];
 
@@ -105,6 +109,19 @@ const loop = () => {
   const elapsed = Date.now() - lastFrameTime;
   lastFrameTime = Date.now();
   const sixtieths = elapsed / 16.666666666666666666666666666667;
+
+  if (loop) {
+    if (tutorialStage !== TutorialStage.Done) {
+      const checker = tutorialCheckers.get(tutorialStage);
+      if (checker) {
+        if(checker()) {
+          sendTutorialStageComplete(ownId, tutorialStage);
+        }
+      } else {
+        console.log("No tutorial checker for stage", tutorialStage);
+      }
+    }
+  }
 
   let target: Player | undefined = undefined;
   let targetAsteroid: Asteroid | undefined = undefined;
@@ -523,6 +540,10 @@ const run = () => {
     
     // We don't need a separate post updater for this, since it's only used in the manufacturing dialog and inventory already redraws the needed elements
     runPostUpdaterOnly("inventory", inventory);
+  });
+
+  bindAction("tutorialStage", (stage: TutorialStage) => {
+    setTutorialStage(stage);
   });
 
   addLoadingText("Launching...");

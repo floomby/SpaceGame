@@ -1317,6 +1317,12 @@ type SectorInfo = {
   resources: string[];
 };
 
+enum TutorialStage {
+  Done = 0,
+  Move,
+  Strafe,
+}
+
 export {
   GlobalState,
   Input,
@@ -1337,6 +1343,7 @@ export {
   SectorInfo,
   Entity,
   CloakedState,
+  TutorialStage,
   update,
   applyInputs,
   processAllNpcs,

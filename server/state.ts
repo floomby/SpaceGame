@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds } from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage } from "../src/game";
 import { WebSocket } from "ws";
 import { armDefs, defs, Faction, initDefs } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
@@ -107,6 +107,7 @@ type ClientData = {
   lastMessageTime: number;
   sectorDataSent: boolean;
   sectorsVisited: Set<number>;
+  inTutorial: TutorialStage;
 };
 
 /*
@@ -118,6 +119,9 @@ type ClientData = {
 */
 
 const sectorInDirection = (sector: number, direction: CardinalDirection) => {
+  if (sector >= mapSize * mapSize) {
+    return null;
+  }
   const x = sector % mapSize;
   const y = Math.floor(sector / mapSize);
   if (direction === CardinalDirection.Up) {

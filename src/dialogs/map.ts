@@ -41,6 +41,9 @@ const mapHtml =
   "</div>";
 
 const sectorNumberToXY = (sector: number) => {
+  if (sector > mapSize * mapSize) {
+    return "Tutorial Sector";
+  }
   const x = sector % mapSize;
   const y = Math.floor(sector / mapSize);
   return `${x}-${y}`;
@@ -72,4 +75,4 @@ const setupMapDialog = () => {
   }
 };
 
-export { mapDialog, setupMapDialog };
+export { mapDialog, setupMapDialog, sectorNumberToXY };

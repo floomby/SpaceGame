@@ -29,8 +29,10 @@ import {
   sectorBounds,
   SectorInfo,
   CloakedState,
+  TutorialStage,
+  mapSize,
 } from "../src/game";
-import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind } from "../src/defs";
+import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, clientUid } from "../src/defs";
 import { appendFile } from "fs";
 import { useSsl } from "../src/config";
 
@@ -60,6 +62,7 @@ import {
 import { CardinalDirection, headingFromCardinalDirection } from "../src/geometry";
 import { credentials, hash, wsPort } from "./settings";
 import Routes from "./routes";
+import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -74,6 +77,7 @@ mongoose
 
 Routes();
 
+// This is for loading the stations from the database on server startup
 const initFromDatabase = async () => {
   const stations = await Station.find({});
   for (const station of stations) {
@@ -128,18 +132,24 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     return;
   }
 
-  const sector = faction === Faction.Alliance ? 12 : 15;
+  const sectorToWarpTo = faction === Faction.Alliance ? 12 : 15;
+
+  let tutorialSector = clientUid();
+  while (sectors.has(tutorialSector)) {
+    tutorialSector = clientUid();
+  }
 
   clients.set(ws, {
     id: id,
     name,
     input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
     angle: 0,
-    currentSector: sector,
+    currentSector: tutorialSector,
     lastMessage: "",
     lastMessageTime: Date.now(),
     sectorDataSent: false,
-    sectorsVisited: new Set([sector]),
+    sectorsVisited: new Set(),
+    inTutorial: TutorialStage.Move,
   });
 
   let player = {
@@ -153,8 +163,8 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     energy: defs[defIndex].energy,
     defIndex: defIndex,
     armIndices: emptyLoadout(defIndex),
-    slotData: [{}, {}, {}],
-    cargo: [{ what: "Teddy Bears", amount: 30 }],
+    slotData: new Array(defs[defIndex].slots.length).fill({}),
+    cargo: [],
     credits: 500,
     team: faction,
     side: 0,
@@ -164,52 +174,58 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     ir: 0,
   };
 
-  player = equip(player, 0, "Basic mining laser", true);
-  player = equip(player, 1, "Tomahawk Missile", true);
-  player = equip(player, 2, "Laser Beam", true);
+  // player = equip(player, 0, "Basic mining laser", true);
+  // player = equip(player, 1, "Laser Beam", true);
+  // player = equip(player, 1, "Tomahawk Missile", true);
 
-  const state = sectors.get(sector)!;
+  const state = {
+    players: new Map(),
+    projectiles: new Map(),
+    asteroids: new Map(),
+    missiles: new Map(),
+    collectables: new Map(),
+    asteroidsDirty: false,
+    mines: new Map(),
+    projectileId: 1,
+  };
 
+  sectors.set(tutorialSector, state);
   state.players.set(id, player);
+
+  // Idk the right way to handle this right now
+  // Just delete the tutorial sector after a while
+  setTimeout(() => {
+    sectors.delete(tutorialSector);
+  }, 1000 * 60 * 60 * 3);
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);
   secondariesToActivate.set(id, []);
   knownRecipes.set(id, new Set());
 
-  // find one checkpoint for the id and update it, upserting if needed
-  Checkpoint.findOneAndUpdate({ id }, { id, sector, data: JSON.stringify(player) }, { upsert: true }, (err) => {
-    if (err) {
-      ws.send(JSON.stringify({ type: "error", payload: { message: "Server error creating default player" } }));
-      console.log("Error saving checkpoint: " + err);
-      return;
-    }
-
-    const sectorInfos: SectorInfo[] = [];
-    sectorInfos.push({
-      sector: sector,
-      resources: sectorAsteroidResources[sector].map((value) => value.resource),
-    });
-
-    ws.send(
-      JSON.stringify({
-        type: "init",
-        payload: {
-          id: id,
-          sector,
-          faction,
-          asteroids: Array.from(state.asteroids.values()),
-          collectables: Array.from(state.collectables.values()),
-          mines: Array.from(state.mines.values()),
-          sectorInfos,
-          recipes: [],
-        },
-      })
-    );
-    sendInventory(ws, id);
-
-    console.log("Registered client with id: ", id);
+  const sectorInfos: SectorInfo[] = [];
+  sectorInfos.push({
+    sector: sectorToWarpTo,
+    resources: sectorAsteroidResources[sectorToWarpTo].map((value) => value.resource),
   });
+
+  ws.send(
+    JSON.stringify({
+      type: "init",
+      payload: {
+        id: id,
+        sector: tutorialSector,
+        faction,
+        asteroids: Array.from(state.asteroids.values()),
+        collectables: Array.from(state.collectables.values()),
+        mines: Array.from(state.mines.values()),
+        sectorInfos,
+        recipes: [],
+      },
+    })
+  );
+  sendInventory(ws, id);
+  sendTutorialStage(ws, TutorialStage.Move);
 };
 
 const saveCheckpoint = (id: number, sector: number, data: string, sectorsVisited: Set<number>) => {
@@ -328,7 +344,7 @@ wss.on("connection", (ws) => {
               if (playerState.energy > def.energy) {
                 playerState.energy = def.energy;
               }
-              (playerState as any).projectileId = undefined
+              (playerState as any).projectileId = undefined;
 
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
@@ -342,6 +358,7 @@ wss.on("connection", (ws) => {
                 lastMessageTime: Date.now(),
                 sectorDataSent: false,
                 sectorsVisited,
+                inTutorial: TutorialStage.Done,
               });
               targets.set(user.id, [TargetKind.None, 0]);
               secondaries.set(user.id, 0);
@@ -448,7 +465,9 @@ wss.on("connection", (ws) => {
               const playerCopy = copyPlayer(player);
               const checkpointData = JSON.stringify(playerCopy);
 
-              saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+              if (!client.inTutorial) {
+                saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+              }
             }
           }
         }
@@ -464,7 +483,9 @@ wss.on("connection", (ws) => {
             state.players.set(client.id, player);
             const checkpointData = JSON.stringify(player);
 
-            saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+            if (!client.inTutorial) {
+              saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+            }
           }
         }
       } else if (data.type === "repair") {
@@ -710,6 +731,14 @@ wss.on("connection", (ws) => {
             }
           }
         }
+      } else if (data.type === "tutorialStageComplete") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          if (client.inTutorial === data.payload.stage) {
+            client.inTutorial = advanceTutorialStage(client.id, data.payload.stage, ws);
+            sendTutorialStage(ws, client.inTutorial);
+          }
+        }
       } else {
         console.log("Unknown message from client: ", data);
       }
@@ -738,7 +767,9 @@ wss.on("connection", (ws) => {
       knownRecipes.delete(removedClient.id);
       if (player) {
         if (player.docked) {
-          saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
+          if (!removedClient.inTutorial) {
+            saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
+          }
         } else {
           User.findOneAndUpdate(
             { id: removedClient.id },
@@ -970,7 +1001,10 @@ setInterval(() => {
     const state = sectors.get(newSector);
     if (state) {
       const ws = idToWebsocket.get(transition.player.id);
-      const sectorInfo = { sector: newSector, resources: sectorAsteroidResources[newSector].map((value) => value.resource) };
+      const sectorInfo = {
+        sector: newSector,
+        resources: newSector < mapSize * mapSize ? sectorAsteroidResources[newSector].map((value) => value.resource) : [],
+      };
       if (ws) {
         const client = clients.get(ws)!;
         client.currentSector = newSector;
@@ -991,7 +1025,6 @@ setInterval(() => {
       }
       transition.player.position = transition.coords;
       transition.player.heading = headingFromCardinalDirection(transition.direction);
-      transition.player.speed = 0;
       state.players.set(transition.player.id, transition.player);
     }
   }

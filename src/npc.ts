@@ -930,4 +930,159 @@ const addTutorialRoamingVenture = (state: GlobalState, id: number) => {
   return npc;
 };
 
-export { NPC, LootTable, addNpc, processLootTable, addTutorialRoamingVenture };
+class TutorialStrafer implements NPC {
+  public player: Player;
+
+  public input: Input = {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    primary: false,
+    secondary: false,
+  };
+  public angle: number = undefined;
+
+  public selectedSecondary = 1;
+
+  public lootTable: LootTable = [];
+
+  public secondariesToFire: number[] = [];
+
+  private guidedSecondary: boolean;
+  private usesAmmo: boolean;
+
+  public doNotShootYet: boolean = true;
+
+  constructor(id: number) {
+    const { def, index } = defMap.get("Strafer");
+
+    const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
+
+    this.player = {
+      position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
+      radius: def.radius,
+      speed: 0,
+      heading: Math.random() * 2 * Math.PI,
+      health: def.health,
+      id: id,
+      sinceLastShot: [effectiveInfinity],
+      energy: def.energy,
+      defIndex: index,
+      armIndices: emptyLoadout(index),
+      slotData: emptySlotData(def),
+      cargo: [],
+      credits: 500,
+      npc: this,
+      team: Faction.Rogue,
+      side: 0,
+      v: { x: 0, y: 0 },
+      iv: { x: 0, y: 0 },
+      ir: 0,
+    };
+
+    this.usesAmmo = true;
+    this.guidedSecondary = false;
+    this.player = equip(this.player, 1, "Javelin Missile", true);
+  }
+
+  public targetId = 0;
+
+  private strafeDirection = true;
+
+  private frame = Math.floor(Math.random() * 60);
+
+  public process(state: GlobalState) {
+    let target: Player | undefined = undefined;
+    const def = defs[this.player.defIndex];
+    if (this.frame % 60 === 0) {
+      const newTarget = findClosestTarget(this.player, state, def.scanRange, true, true);
+      this.targetId = newTarget?.id ?? 0;
+      target = newTarget;
+    }
+
+    if (this.targetId !== 0) {
+      if (!target) {
+        target = state.players.get(this.targetId);
+      }
+      if (target) {
+        const dist = l2Norm(this.player.position, target.position);
+        this.angle = findHeadingBetween(this.player.position, target.position);
+        if (dist < 200) {
+          this.input.primary = true;
+          this.input.down = true;
+          this.input.up = false;
+          this.input.right = !this.strafeDirection;
+          this.input.left = this.strafeDirection;
+        } else if (dist > 1000) {
+          this.input.primary = false;
+          this.input.down = false;
+          this.input.up = true;
+          this.input.left = false;
+          this.input.right = false;
+          this.input.left = false;
+        } else {
+          this.input.primary = true;
+          this.input.down = true;
+          this.input.up = false;
+          this.input.left = false;
+          this.input.right = !this.strafeDirection;
+          this.input.left = this.strafeDirection;
+        }
+        if (this.frame % 90 == 0 && dist < 400) {
+          if (Math.random() < 0.5) {
+            this.strafeDirection = !this.strafeDirection;
+          }
+        }
+        const targetDist = l2Norm(this.player.position, target.position);
+        const facing = currentlyFacing(this.player, target);
+        if ((targetDist < 500 || ((this.player.energy > 50 || this.usesAmmo) && targetDist < 1000)) && facing) {
+          this.input.primary = true;
+        } else {
+          this.input.primary = false;
+        }
+        this.input.secondary = (!this.guidedSecondary && targetDist < 1500 && facing) || (this.guidedSecondary && targetDist < 1500);
+      } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 2000) {
+        this.input.primary = false;
+        this.input.secondary = false;
+        this.angle = findHeadingBetween(this.player.position, { x: 0, y: 0 });
+        this.input.down = false;
+        this.input.up = true;
+        this.input.left = false;
+        this.input.right = false;
+      } else {
+        this.input.primary = false;
+        this.input.secondary = false;
+        stopPlayer(this.player, this.input);
+      }
+    } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 2000) {
+      this.input.primary = false;
+      this.input.secondary = false;
+      this.angle = findHeadingBetween(this.player.position, { x: 0, y: 0 });
+      this.input.down = false;
+      this.input.up = true;
+      this.input.left = false;
+      this.input.right = false;
+    } else {
+      this.input.primary = false;
+      this.input.secondary = false;
+      stopPlayer(this.player, this.input);
+    }
+
+    if (this.doNotShootYet) {
+      this.input.primary = false;
+      this.input.secondary = false;
+    }
+
+    applyInputs(this.input, this.player, this.angle);
+    this.frame++;
+  }
+}
+
+const addTutorialStrafer = (state: GlobalState, id: number) => {
+  const npc = new TutorialStrafer(id);
+  state.players.set(npc.player.id, npc.player);
+  return npc;
+};
+
+export { NPC, LootTable, addNpc, processLootTable, addTutorialRoamingVenture, addTutorialStrafer };

@@ -114,7 +114,7 @@ const loop = () => {
     if (tutorialStage !== TutorialStage.Done) {
       const checker = tutorialCheckers.get(tutorialStage);
       if (checker) {
-        if(checker()) {
+        if (checker()) {
           sendTutorialStageComplete(ownId, tutorialStage);
         }
       } else {
@@ -191,7 +191,7 @@ const loop = () => {
     }
   }
 
-  if (target?.inoperable || target?.team !== self?.team && target?.cloak === CloakedState.Cloaked) {
+  if (target?.inoperable || (target?.team !== self?.team && target?.cloak === CloakedState.Cloaked)) {
     target = undefined;
     targetId = 0;
   }
@@ -532,12 +532,12 @@ const run = () => {
     runPostUpdaterOnly("inventory", inventory);
   });
 
-  bindAction("recipe", (recipes: string[]) =>{
+  bindAction("recipe", (recipes: string[]) => {
     for (const recipe of recipes) {
       recipesKnown.add(recipe);
       pushMessage(`Discovered blueprint for ${recipe}`);
     }
-    
+
     // We don't need a separate post updater for this, since it's only used in the manufacturing dialog and inventory already redraws the needed elements
     runPostUpdaterOnly("inventory", inventory);
   });
@@ -568,3 +568,6 @@ if (document.readyState === "complete") {
 } else {
   document.addEventListener("DOMContentLoaded", toRun);
 }
+
+// Breaking my own rule of not exporting out of this file... (it's for the tutorial, which hooks into half the client stuff)
+export { targetAsteroidId, targetId };

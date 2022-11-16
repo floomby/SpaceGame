@@ -283,7 +283,7 @@ const setCanDockOrRepair = (player: Player, state: GlobalState) => {
   }
 };
 
-const findClosestTarget = (player: Player, state: GlobalState, scanRange: number, onlyEnemy = false) => {
+const findClosestTarget = (player: Player, state: GlobalState, scanRange: number, onlyEnemy = false, unlimitedRange = false) => {
   let ret: Player | undefined = undefined;
   let minDistance = Infinity;
   let def: UnitDefinition;
@@ -302,7 +302,7 @@ const findClosestTarget = (player: Player, state: GlobalState, scanRange: number
       continue;
     }
     const distanceSquared = l2NormSquared(player.position, otherPlayer.position);
-    if (distanceSquared < minDistance && distanceSquared < scanRangeSquared) {
+    if (distanceSquared < minDistance && (distanceSquared < scanRangeSquared || unlimitedRange)) {
       minDistance = distanceSquared;
       ret = otherPlayer;
     }
@@ -444,7 +444,13 @@ const kill = (
         collectables.push(createCollectableFromDef(toDrop, player.position));
       }
       if (player.npc.killed) {
-        player.npc.killed();
+        // This should be protected with a try/catch because the killed handler can interact with anything
+        // and the game update loop is not protected against exceptions
+        try {
+          player.npc.killed();
+        } catch (e) {
+          console.error(e);
+        }
       }
     }
   }
@@ -1332,6 +1338,11 @@ enum TutorialStage {
   Kill,
   SwitchSecondary,
   FireJavelin,
+  SelectAsteroid,
+  CollectResources,
+  LaserBeam,
+  TargetEnemy,
+  Map
 }
 
 export {

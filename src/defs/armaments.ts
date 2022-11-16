@@ -134,9 +134,9 @@ const initArmaments = () => {
     targeted: TargetedKind.Empty,
     cost: 0,
   });
-  // Basic mining laser - 5
+  // Basic Mining Laser - 5
   armDefs.push({
-    name: "Basic mining laser",
+    name: "Basic Mining Laser",
     description: "A low powered mining laser",
     kind: SlotKind.Mining,
     usage: ArmUsage.Energy,
@@ -370,9 +370,9 @@ const initArmaments = () => {
     },
     cost: 200,
   });
-  // Advanced mining laser - 10
+  // Advanced Mining Laser - 10
   armDefs.push({
-    name: "Advanced mining laser",
+    name: "Advanced Mining Laser",
     description: "A high powered mining laser",
     kind: SlotKind.Mining,
     usage: ArmUsage.Energy,

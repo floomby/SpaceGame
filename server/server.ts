@@ -56,6 +56,7 @@ import {
   sectorList,
   sectors,
   targets,
+  tutorialRespawnPoints,
   uid,
   warpList,
 } from "./state";
@@ -147,7 +148,6 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     currentSector: tutorialSector,
     lastMessage: "",
     lastMessageTime: Date.now(),
-    sectorDataSent: false,
     sectorsVisited: new Set(),
     inTutorial: TutorialStage.Move,
   });
@@ -174,7 +174,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     ir: 0,
   };
 
-  // player = equip(player, 0, "Basic mining laser", true);
+  // player = equip(player, 0, "Basic Mining Laser", true);
   // player = equip(player, 1, "Laser Beam", true);
   // player = equip(player, 1, "Tomahawk Missile", true);
 
@@ -196,6 +196,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   // Just delete the tutorial sector after a while
   setTimeout(() => {
     sectors.delete(tutorialSector);
+    tutorialRespawnPoints.delete(tutorialSector);
   }, 1000 * 60 * 60 * 3);
 
   targets.set(id, [TargetKind.None, 0]);
@@ -356,7 +357,6 @@ wss.on("connection", (ws) => {
                 currentSector: checkpoint.sector,
                 lastMessage: "",
                 lastMessageTime: Date.now(),
-                sectorDataSent: false,
                 sectorsVisited,
                 inTutorial: TutorialStage.Done,
               });
@@ -510,6 +510,20 @@ wss.on("connection", (ws) => {
       } else if (data.type === "respawn") {
         const client = clients.get(ws);
         if (client && data.payload.id === client.id) {
+          if (client.inTutorial) {
+            const state = sectors.get(client.currentSector);
+            if (state) {
+              const playerState = tutorialRespawnPoints.get(client.currentSector);
+              if (playerState) {
+                state.players.set(client.id, playerState);
+              } else {
+                ws.send(JSON.stringify({ type: "error", payload: { message: "Missing tutorial respawn checkpoint" } }));
+              }
+            } else {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Tutorial sector invalid" } }));
+            }
+            return;
+          }
           Checkpoint.findOne({ id: data.payload.id }, (err, checkpoint) => {
             if (err) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading checkpoint" } }));
@@ -1013,8 +1027,9 @@ setInterval(() => {
       if (ws) {
         const client = clients.get(ws)!;
         client.currentSector = newSector;
-        client.sectorDataSent = false;
-        client.sectorsVisited.add(newSector);
+        if (newSector < mapSize * mapSize) {
+          client.sectorsVisited.add(newSector);
+        }
         ws.send(
           JSON.stringify({
             type: "warp",
@@ -1043,7 +1058,6 @@ setInterval(() => {
       if (ws) {
         const client = clients.get(ws)!;
         client.currentSector = to;
-        client.sectorDataSent = false;
         ws.send(
           JSON.stringify({
             type: "warp",

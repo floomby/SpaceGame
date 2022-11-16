@@ -47,6 +47,7 @@ import {
   clients,
   idToWebsocket,
   knownRecipes,
+  saveCheckpoint,
   secondaries,
   secondariesToActivate,
   sectorAsteroidResources,
@@ -227,21 +228,6 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   );
   sendInventory(ws, id);
   sendTutorialStage(ws, TutorialStage.Move);
-};
-
-const saveCheckpoint = (id: number, sector: number, data: string, sectorsVisited: Set<number>) => {
-  Checkpoint.findOneAndUpdate({ id }, { id, sector, data }, { upsert: true }, (err) => {
-    if (err) {
-      console.log("Error saving checkpoint: " + err);
-      return;
-    }
-    User.findOneAndUpdate({ id }, { id, sectorsVisited: Array.from(sectorsVisited) }, { upsert: false }, (err) => {
-      if (err) {
-        console.log("Error saving user: " + err);
-        return;
-      }
-    });
-  });
 };
 
 // TODO Need to go over this carefully, checking to make sure that malicious clients can't do anything bad
@@ -513,7 +499,7 @@ wss.on("connection", (ws) => {
           if (client.inTutorial) {
             const state = sectors.get(client.currentSector);
             if (state) {
-              const playerState = tutorialRespawnPoints.get(client.currentSector);
+              const playerState = tutorialRespawnPoints.get(client.id);
               if (playerState) {
                 state.players.set(client.id, playerState);
               } else {

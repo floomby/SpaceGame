@@ -5,9 +5,10 @@ import { keybind, lastSelf, ownId, selectedSecondary, setSelectedSecondary } fro
 import { sendChat, sendInput, sendSecondaryActivation } from "./net";
 import { shown as isDialogShown } from "./dialog";
 import { canvas, canvasCoordsToGameCoords } from "./drawing";
-import { Position } from "./geometry";
+import { Position, positiveMod } from "./geometry";
 import { dumpCargoDialog, setupDumpCargoDialog } from "./dialogs/cargo";
 import { armDefs, defs } from "./defs";
+import { isEmptySlot } from "./defs/armaments";
 
 let chatInput: HTMLInputElement;
 
@@ -34,6 +35,22 @@ const setSelectedSecondaryChanged = (state: boolean) => {
 };
 
 let targetEnemy = false;
+
+const nextValidWeapon = (reverse: boolean) => {
+  if (!lastSelf) {
+    return null;
+  }
+  let ret = positiveMod(selectedSecondary + (reverse ? -1 : 1), lastSelf.armIndices.length);
+  while (isEmptySlot(lastSelf.armIndices[ret])) {
+    ret = positiveMod(ret + (reverse ? -1 : 1), lastSelf.armIndices.length);
+    if (ret === selectedSecondary) {
+      return null;
+    }
+  }
+  return ret;
+}
+
+let lastWheelEvent = Date.now();
 
 const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
   chatInput = document.getElementById("chatInput") as HTMLInputElement;
@@ -347,6 +364,21 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
   };
 
   chatInput.blur();
+
+  document.onwheel = (e) => {
+    if (Date.now() - lastWheelEvent < 100) {
+      return;
+    }
+    if (isDialogShown) {
+      return;
+    }
+    // switch weapons
+    const switchTo = nextValidWeapon(e.deltaY > 0);
+    if (switchTo !== null) {
+      setSelectedSecondary(switchTo);
+    }
+  }
+
 };
 
 const hideChat = () => {

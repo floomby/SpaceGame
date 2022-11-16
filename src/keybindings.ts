@@ -1,6 +1,7 @@
 enum KeyLayouts {
   Qwerty,
   Dvorak,
+  Azerty,
 }
 
 type KeyBindings = {
@@ -36,7 +37,6 @@ const qwertyBindings: KeyBindings = {
   down: "s",
   left: "a",
   right: "d",
-  // primary: " ",
   secondary: " ",
   dock: "r",
   nextTarget: "x",
@@ -56,7 +56,6 @@ const qwertyBindings: KeyBindings = {
   chat: "Enter",
   map: "m",
   cargo: "q",
-  // warp: "w",
   quickTargetClosestEnemy: "e",
 };
 
@@ -84,12 +83,48 @@ const dvorakBindings: KeyBindings = {
   chat: "Enter",
   map: "m",
   cargo: "'",
-  // warp: ",",
   quickTargetClosestEnemy: ".",
 };
 
-const useKeybindings = (layout: KeyLayouts) => {
-  return layout === KeyLayouts.Qwerty ? qwertyBindings : dvorakBindings;
+const azertyBindings: KeyBindings = {
+  up: "z",
+  down: "s",
+  left: "q",
+  right: "d",
+  secondary: " ",
+  dock: "r",
+  nextTarget: "x",
+  previousTarget: "w",
+  nextTargetAsteroid: "v",
+  previousTargetAsteroid: "c",
+  selectSecondary0: "0",
+  selectSecondary1: "1",
+  selectSecondary2: "2",
+  selectSecondary3: "3",
+  selectSecondary4: "4",
+  selectSecondary5: "5",
+  selectSecondary6: "6",
+  selectSecondary7: "7",
+  selectSecondary8: "8",
+  selectSecondary9: "9",
+  chat: "Enter",
+  map: ",",
+  cargo: "a",
+  quickTargetClosestEnemy: "e",
 };
 
-export { KeyBindings, KeyLayouts, qwertyBindings, dvorakBindings, useKeybindings };
+
+const useKeybindings = (layout: KeyLayouts) => {
+  switch (layout) {
+    case KeyLayouts.Qwerty:
+      return qwertyBindings;
+    case KeyLayouts.Dvorak:
+      return dvorakBindings;
+    case KeyLayouts.Azerty:
+      return azertyBindings;
+    default:
+      throw new Error("Unknown key layout " + layout);
+  }
+};
+
+export { KeyBindings, KeyLayouts, qwertyBindings, dvorakBindings, azertyBindings, useKeybindings };

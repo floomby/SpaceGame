@@ -1,5 +1,5 @@
 import { keybind, setKeybind } from "../globals";
-import { dvorakBindings, KeyBindings, qwertyBindings } from "../keybindings";
+import { azertyBindings, dvorakBindings, KeyBindings, qwertyBindings } from "../keybindings";
 
 const keybindingTooltipText = (bindings: KeyBindings) => {
   let keys = { ...bindings };
@@ -62,11 +62,17 @@ const keylayoutSelector = () => `<fieldset>
   <label for="dvorak">Dvorak</label>
   <!--<div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(dvorakBindings)}&nbsp;</span></div>-->
 </div>
+<div style="text-align: left;">
+  <input type="radio" id="azerty" name="keyboard" value="azerty">
+  <label for="azerty">Azerty</label>
+  <!--<div class="tooltip">?<span class="bigTooltipText">&nbsp;${keybindingTooltipText(azertyBindings)}&nbsp;</span></div>-->
+</div>
 </fieldset>`;
 
 const keylayoutSelectorSetup = () => {
   const qwerty = document.getElementById("qwerty") as HTMLInputElement;
   const dvorak = document.getElementById("dvorak") as HTMLInputElement;
+  const azerty = document.getElementById("azerty") as HTMLInputElement;
   qwerty?.addEventListener("change", () => {
     if (qwerty.checked) {
       setKeybind(qwertyBindings);
@@ -77,10 +83,17 @@ const keylayoutSelectorSetup = () => {
       setKeybind(dvorakBindings);
     }
   });
+  azerty?.addEventListener("change", () => {
+    if (azerty.checked) {
+      setKeybind(azertyBindings);
+    }
+  });
   if (keybind === qwertyBindings) {
     qwerty.checked = true;
-  } else {
+  } else if (keybind === dvorakBindings) {
     dvorak.checked = true;
+  } else if (keybind === azertyBindings) {
+    azerty.checked = true;
   }
 };
 

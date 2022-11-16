@@ -53,12 +53,7 @@ type ArmamentDef = {
   // effectMutator?: (state: GlobalState, slotIndex: number, player: Player, target: Player | undefined) => void;
   equipMutator?: (player: Player, slotIndex: number) => void;
   // I will change the return type as needed, but right now the only thing that we need is energy gained
-  frameMutator?: (
-    player: Player,
-    slotIndex: number,
-    state: GlobalState,
-    flashServerMessage: (id: number, message: string) => void
-  ) => void | number;
+  frameMutator?: (player: Player, slotIndex: number, state: GlobalState, flashServerMessage: (id: number, message: string) => void) => void | number;
 };
 
 // Idk if this needs a more efficient implementation or not
@@ -926,4 +921,8 @@ const isFreeArm = (name: string) => {
   return armDef && armDef.def.cost === 0;
 };
 
-export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments, isFreeArm };
+const isEmptySlot = (armIndex: number) => {
+  return armIndex < 5;
+};
+
+export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments, isFreeArm, isEmptySlot };

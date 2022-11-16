@@ -1,7 +1,7 @@
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
-import { KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
+import { azertyBindings, dvorakBindings, KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
 import { completeSwitchWeapon, tutorialPrompters } from "./tutorial";
 
 let faction: Faction = Faction.Alliance;
@@ -51,8 +51,10 @@ let keybind = useKeybindings(getKeybindPref() ?? defaultKeyLayout);
 const setKeybind = (newKeybind: KeyBindings) => {
   if (newKeybind === qwertyBindings) {
     localStorage.setItem("layout", JSON.stringify(KeyLayouts.Qwerty));
-  } else {
+  } else if (newKeybind === dvorakBindings) {
     localStorage.setItem("layout", JSON.stringify(KeyLayouts.Dvorak));
+  } else if (newKeybind === azertyBindings) {
+    localStorage.setItem("layout", JSON.stringify(KeyLayouts.Azerty));
   }
   keybind = newKeybind;
 };

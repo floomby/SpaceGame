@@ -53,11 +53,15 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
           setTimeout(() => {
             const state = sectors.get(client.currentSector);
             if (state) {
-              const asteroids = randomAsteroids(40, sectorBounds, client.currentSector, uid, [{ resource: "Prifecite", density: 1 }]);
-              for (const asteroid of asteroids) {
-                state.asteroids.set(asteroid.id, asteroid);
+              const player = state.players.get(client.id);
+              if (player) {
+                const boundsAround = { x: player.position.x - 1000, y: player.position.y - 1000, width: 2000, height: 2000 };
+                const asteroids = randomAsteroids(20, boundsAround, client.currentSector, uid, [{ resource: "Prifecite", density: 1 }]);
+                for (const asteroid of asteroids) {
+                  state.asteroids.set(asteroid.id, asteroid);
+                }
+                state.asteroidsDirty = true;
               }
-              state.asteroidsDirty = true;
             }
           }, 2000);
         }
@@ -76,8 +80,8 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
               {
                 const client = clients.get(ws);
                 if (client) {
-                client.inTutorial = TutorialStage.Map;
-                sendTutorialStage(ws, TutorialStage.Map);
+                  client.inTutorial = TutorialStage.Map;
+                  sendTutorialStage(ws, TutorialStage.Map);
                   const player = sectors.get(client.currentSector)?.players.get(id);
                   if (player) {
                     client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
@@ -115,7 +119,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
               saveCheckpoint(client.id, client.currentSector, playerData, client.sectorsVisited);
             }
           }
-        } 
+        }
       }
       return TutorialStage.Done;
     case TutorialStage.Done:

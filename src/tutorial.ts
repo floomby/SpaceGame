@@ -167,7 +167,7 @@ tutorialPrompters.set(TutorialStage.LaserBeam, () => {
 });
 
 tutorialPrompters.set(TutorialStage.Map, () => {
-  const fx = () => pushMessage(`Press ${keybind.map} to open the map and warp to sector ${sectorNumberToXY(faction === Faction.Alliance ? 12 : 6)}`, 600, "green");
+  const fx = () => pushMessage(`Press ${keybind.map} to open the map and warp to sector ${sectorNumberToXY(faction === Faction.Alliance ? 12 : 15)}`, 600, "green");
   clearTimeout(promptTimeout);
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);

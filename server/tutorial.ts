@@ -18,26 +18,24 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
           if (state) {
             const npc = addTutorialRoamingVenture(state, uid());
             (npc as NPC).killed = () => {
-              client.inTutorial = TutorialStage.SwitchSecondary;
-              sendTutorialStage(ws, TutorialStage.SwitchSecondary);
+              const client = clients.get(ws);
+              if (client) {
+                client.inTutorial = TutorialStage.SwitchSecondary;
+                sendTutorialStage(ws, TutorialStage.SwitchSecondary);
+                const state = sectors.get(client.currentSector);
+                if (state) {
+                  const player = state.players.get(client.id);
+                  if (player) {
+                    state.players.set(client.id, equip(player, 1, "Javelin Missile", true));
+                  }
+                }
+              }
             };
           }
         }
       }
       return TutorialStage.Kill;
     case TutorialStage.SwitchSecondary:
-      {
-        const client = clients.get(ws);
-        if (client) {
-          const state = sectors.get(client.currentSector);
-          if (state) {
-            const player = state.players.get(client.id);
-            if (player) {
-              state.players.set(client.id, equip(player, 1, "Javelin Missile", true));
-            }
-          }
-        }
-      }
       return TutorialStage.FireJavelin;
     case TutorialStage.FireJavelin:
       {

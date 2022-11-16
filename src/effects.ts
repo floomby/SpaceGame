@@ -471,7 +471,7 @@ const initEffects = () => {
       return { needSound: true };
     },
   });
-  // Advanced mining laser effect - 9
+  // Advanced Mining Laser effect - 9
   effectDefs.push({
     frames: 10,
     draw: (effect, self, state) => {

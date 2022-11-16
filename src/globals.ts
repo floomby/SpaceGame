@@ -1,7 +1,8 @@
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
-import { GlobalState, Player, SectorInfo } from "./game";
+import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
 import { KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
+import { completeSwitchWeapon, tutorialPrompters } from "./tutorial";
 
 let faction: Faction = Faction.Alliance;
 
@@ -72,6 +73,9 @@ const setCurrentSector = (newCurrentSector: number) => {
 let selectedSecondary = 0;
 
 const setSelectedSecondary = (newSelectedSecondary: number) => {
+  if (tutorialStage === TutorialStage.SwitchSecondary) {
+    completeSwitchWeapon();
+  }
   selectedSecondary = newSelectedSecondary;
 };
 
@@ -109,6 +113,18 @@ const addLoadingText = (text: string) => {
   document.getElementById("loadingText")!.innerHTML += text + "<br/>";
 }
 
+let tutorialStage: TutorialStage = TutorialStage.Done;
+
+const setTutorialStage = (newTutorialStage: TutorialStage) => {
+  tutorialStage = newTutorialStage;
+  const prompter = tutorialPrompters.get(tutorialStage);
+  if (prompter) {
+    prompter();
+  } else {
+    console.log("No tutorial prompter for stage " + tutorialStage);
+  }
+};
+
 export {
   faction,
   setFaction,
@@ -145,4 +161,6 @@ export {
   recipesKnown,
   sectorData,
   addLoadingText,
+  tutorialStage,
+  setTutorialStage,
 };

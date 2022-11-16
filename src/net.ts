@@ -1,4 +1,4 @@
-import { Input, Player, maxNameLength, TargetKind } from "./game";
+import { Input, Player, maxNameLength, TargetKind, TutorialStage } from "./game";
 import { Faction } from "./defs";
 import { wsUrl } from "./config";
 import { addLoadingText } from "./globals";
@@ -194,7 +194,7 @@ const sendRepair = (id: number, station: number) => {
       })
     );
     lastSentRepair = Date.now();
-  } 
+  }
 };
 
 const sendDumpCargo = (id: number, what: string, amount: number) => {
@@ -242,6 +242,20 @@ const sendSecondaryActivation = (id: number, secondary: number) => {
   );
 };
 
+const tutorialStagesCompleted = new Set<TutorialStage>();
+
+const sendTutorialStageComplete = (id: number, stage: TutorialStage) => {
+  if (!tutorialStagesCompleted.has(stage)) {
+    serverSocket.send(
+      JSON.stringify({
+        type: "tutorialStageComplete",
+        payload: { id, stage },
+      })
+    );
+    tutorialStagesCompleted.add(stage);
+  }
+};
+
 export {
   connect,
   bindAction,
@@ -267,4 +281,5 @@ export {
   sendManufacture,
   sendTransferToShip,
   sendSecondaryActivation,
+  sendTutorialStageComplete,
 };

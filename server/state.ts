@@ -1,9 +1,11 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds } from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage } from "../src/game";
 import { WebSocket } from "ws";
 import { armDefs, defs, Faction, initDefs } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
 import { market } from "./market";
+import { NPC } from "../src/npc";
+import { Checkpoint, User } from "./dataModels";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
@@ -105,8 +107,9 @@ type ClientData = {
   currentSector: number;
   lastMessage: string;
   lastMessageTime: number;
-  sectorDataSent: boolean;
   sectorsVisited: Set<number>;
+  inTutorial: TutorialStage;
+  tutorialNpc?: NPC;
 };
 
 /*
@@ -118,6 +121,9 @@ type ClientData = {
 */
 
 const sectorInDirection = (sector: number, direction: CardinalDirection) => {
+  if (sector >= mapSize * mapSize) {
+    return null;
+  }
   const x = sector % mapSize;
   const y = Math.floor(sector / mapSize);
   if (direction === CardinalDirection.Up) {
@@ -170,11 +176,28 @@ const knownRecipes: Map<number, Set<string>> = new Map();
 
 for (let i = 0; i < sectorList.length; i++) {
   const sector = sectors.get(sectorList[i])!;
-  const testAsteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i]);
-  for (const asteroid of testAsteroids) {
+  const asteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i]);
+  for (const asteroid of asteroids) {
     sector.asteroids.set(asteroid.id, asteroid);
   }
 }
+
+const tutorialRespawnPoints = new Map<number, Player>();
+
+const saveCheckpoint = (id: number, sector: number, data: string, sectorsVisited: Set<number>) => {
+  Checkpoint.findOneAndUpdate({ id }, { id, sector, data }, { upsert: true }, (err) => {
+    if (err) {
+      console.log("Error saving checkpoint: " + err);
+      return;
+    }
+    User.findOneAndUpdate({ id }, { id, sectorsVisited: Array.from(sectorsVisited) }, { upsert: false }, (err) => {
+      if (err) {
+        console.log("Error saving user: " + err);
+        return;
+      }
+    });
+  });
+};
 
 export {
   sectorList,
@@ -191,6 +214,8 @@ export {
   secondaries,
   secondariesToActivate,
   knownRecipes,
+  tutorialRespawnPoints,
   uid,
   sectorInDirection,
+  saveCheckpoint,
 };

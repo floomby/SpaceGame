@@ -48,7 +48,7 @@ const nextValidWeapon = (reverse: boolean) => {
     }
   }
   return ret;
-}
+};
 
 let lastWheelEvent = Date.now();
 
@@ -246,7 +246,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.cargo:
         if (!isDialogShown) {
-          push(dumpCargoDialog, setupDumpCargoDialog, "dumpCargo")
+          push(dumpCargoDialog, setupDumpCargoDialog, "dumpCargo");
         } else if (peekTag() === "dumpCargo") {
           pop();
         }
@@ -377,8 +377,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
     if (switchTo !== null) {
       setSelectedSecondary(switchTo);
     }
-  }
-
+  };
 };
 
 const hideChat = () => {

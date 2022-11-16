@@ -27,14 +27,8 @@ tutorialCheckers.set(TutorialStage.Kill, () => {
   return false;
 });
 
-let switchWeaponComplete = false;
-
-const completeSwitchWeapon = () => {
-  switchWeaponComplete = true;
-};
-
 tutorialCheckers.set(TutorialStage.SwitchSecondary, () => {
-  return switchWeaponComplete;
+  return selectedSecondary === 1;
 });
 
 tutorialCheckers.set(TutorialStage.FireJavelin, () => {
@@ -101,7 +95,12 @@ tutorialPrompters.set(TutorialStage.Kill, () => {
 });
 
 tutorialPrompters.set(TutorialStage.SwitchSecondary, () => {
-  const fx = () => pushMessage(`Use the number keys to change your selected secondary`, 600, "green");
+  const fx = () => {
+    pushMessage(`Javelin missiles have been equipped in secondary slot 1`, 600, "green");
+    promptTimeout = window.setTimeout(() => {
+      pushMessage(`Press ${keybind.selectSecondary1} to select the Javelins`, 600, "green");
+    }, 1000 * 1.5);
+  };
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
   fx();
@@ -109,11 +108,9 @@ tutorialPrompters.set(TutorialStage.SwitchSecondary, () => {
 
 tutorialPrompters.set(TutorialStage.FireJavelin, () => {
   const fx = () => {
-    pushMessage(`Javelin missiles have been equipped in secondary slot 1`, 600, "green");
-    promptTimeout = window.setTimeout(() => {
-      pushMessage(`Switch to slot 1 and use the Space Bar to fire the Javelin Missiles`, 600, "green");
-    }, 1000);
+    pushMessage(`Now use the Space Key to fire some Javelin missiles`, 600, "green");
   };
+  clearTimeout(promptTimeout);
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
   fx();
@@ -174,4 +171,4 @@ tutorialPrompters.set(TutorialStage.Map, () => {
   fx();
 });
 
-export { tutorialCheckers, tutorialPrompters, completeSwitchWeapon };
+export { tutorialCheckers, tutorialPrompters };

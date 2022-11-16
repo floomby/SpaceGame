@@ -2,7 +2,7 @@ import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
 import { azertyBindings, dvorakBindings, KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
-import { completeSwitchWeapon, tutorialPrompters } from "./tutorial";
+import { tutorialPrompters } from "./tutorial";
 
 let faction: Faction = Faction.Alliance;
 
@@ -75,9 +75,6 @@ const setCurrentSector = (newCurrentSector: number) => {
 let selectedSecondary = 0;
 
 const setSelectedSecondary = (newSelectedSecondary: number) => {
-  if (tutorialStage === TutorialStage.SwitchSecondary) {
-    completeSwitchWeapon();
-  }
   selectedSecondary = newSelectedSecondary;
 };
 

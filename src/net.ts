@@ -5,11 +5,11 @@ import { addLoadingText } from "./globals";
 
 let serverSocket: WebSocket;
 
-const login = (name: string, password: string, faction: Faction) => {
+const login = (name: string, password: string) => {
   serverSocket.send(
     JSON.stringify({
       type: "login",
-      payload: { name, password, faction },
+      payload: { name, password },
     })
   );
 };

@@ -282,13 +282,13 @@ wss.on("connection", (ws) => {
               return;
             }
             if (!checkpoint) {
-              setupPlayer(user.id, ws, name, data.payload.faction);
+              setupPlayer(user.id, ws, name, user.faction);
             } else {
               const state = sectors.get(checkpoint.sector);
               if (!state) {
                 ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
                 console.log("Warning: Checkpoint sector not found (programming error)");
-                setupPlayer(user.id, ws, name, data.payload.faction);
+                setupPlayer(user.id, ws, name, user.faction);
                 return;
               }
               const playerState = JSON.parse(checkpoint.data) as Player;

@@ -16,7 +16,7 @@ const doRegister = (username: string, password: string) => {
 };
 
 const doLogin = (username: string, password: string) => {
-  login(username, password, faction);
+  login(username, password);
   pushDialog(loggingInDialog, () => { }, "loggingIn");
 };
 

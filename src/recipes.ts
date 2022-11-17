@@ -16,6 +16,7 @@ type RecipeDag = {
   minLevel?: number;
   drawLevel?: number;
   svgGroup?: any;
+  isNaturalResource?: boolean;
 };
 
 const recipeDagMap = new Map<string, RecipeDag>();
@@ -149,6 +150,18 @@ const initRecipes = () => {
       if (ingredientDag) {
         ingredientDag.above.push(recipeDag);
         recipeDag.below.push(ingredientDag);
+      } else {
+        const newResource = {
+          above: [recipeDag],
+          below: [],
+          recipe: {
+            name: ingredient,
+            ingredients: {},
+          },
+          isNaturalResource: true,
+        };
+        recipeDagMap.set(ingredient, newResource);
+        recipeDag.below.push(newResource);
       }
     });
   });

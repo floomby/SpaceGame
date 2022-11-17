@@ -2,15 +2,21 @@ import { bindPostUpdater, horizontalCenter, pop } from "../dialog";
 import { Player } from "../game";
 import { inventory, ownId, recipesKnown } from "../globals";
 import { sendManufacture } from "../net";
-import { maxManufacturable, recipes } from "../recipes";
+import { maxManufacturable, recipes, recipeDagRoot, RecipeDag, recipesPerLevel } from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
   const recipe = recipes[index];
-  return `<ul>` + Object.keys(recipe.ingredients).map((ingredient) => {
-    const required = recipe.ingredients[ingredient] * amount;
-    const have = inventory[ingredient] || 0;
-    return `<li style="color: ${have >= required ? "green" : "red"};">${ingredient}: ${have} / ${required}</li>`;
-  }).join("") + `</ul>`;
+  return (
+    `<ul>` +
+    Object.keys(recipe.ingredients)
+      .map((ingredient) => {
+        const required = recipe.ingredients[ingredient] * amount;
+        const have = inventory[ingredient] || 0;
+        return `<li style="color: ${have >= required ? "green" : "red"};">${ingredient}: ${have} / ${required}</li>`;
+      })
+      .join("") +
+    `</ul>`
+  );
 };
 
 const manufacturingTableHtml = () => {
@@ -35,7 +41,8 @@ const manufacturingTableHtml = () => {
 const populateManufacturingTable = () => {
   const manufacturingTable = document.getElementById("manufacturingTable");
   if (manufacturingTable) {
-    manufacturingTable.innerHTML = recipesKnown.size > 0 ? manufacturingTableHtml() : "<h3>No blueprints collected. Kill enemies to find blueprints.<h3>";
+    manufacturingTable.innerHTML =
+      recipesKnown.size > 0 ? manufacturingTableHtml() : "<h3>No blueprints collected. Kill enemies to find blueprints.<h3>";
   }
   for (let i = 0; i < recipes.length; i++) {
     const button = document.getElementById(`manufacture${i}`) as HTMLButtonElement;
@@ -43,13 +50,13 @@ const populateManufacturingTable = () => {
       const amount = document.getElementById(`manufactureAmount${i}`) as HTMLInputElement;
       if (amount) {
         const value = parseInt(amount.value);
-          if (amount.value === "" || isNaN(value) || value <= 0 || value > maxManufacturable(i, inventory)) {
-            amount.style.backgroundColor = "#ffaaaa";
-            button.disabled = true;
-          } else {
-            amount.style.backgroundColor = "#aaffaa";
-            button.disabled = false;
-          }
+        if (amount.value === "" || isNaN(value) || value <= 0 || value > maxManufacturable(i, inventory)) {
+          amount.style.backgroundColor = "#ffaaaa";
+          button.disabled = true;
+        } else {
+          amount.style.backgroundColor = "#aaffaa";
+          button.disabled = false;
+        }
         amount.addEventListener("keyup", (e) => {
           const value = parseInt(amount.value);
           if (amount.value === "" || isNaN(value) || value <= 0 || value > maxManufacturable(i, inventory)) {
@@ -80,7 +87,7 @@ const populateManufacturingTable = () => {
   }
 };
 
-const manufacturingBay = () => {
+const manufacturingBayOld = () => {
   return horizontalCenter([
     "<h2>Manufacturing Bay</h2>",
     "<br/>",
@@ -98,11 +105,126 @@ const setupManufacturingBay = () => {
       pop();
     };
   }
-  populateManufacturingTable();
+  // populateManufacturingTable();
+  const manufacturingTree = document.getElementById("manufacturingTree");
+  if (manufacturingTree) {
+    manufacturingTree.onresize = () => {
+      console.log("resize");
+    };
+  }
+  drawDag();
 };
 
 const bindManufacturingUpdaters = () => {
-  bindPostUpdater("inventory", populateManufacturingTable);
+  // bindPostUpdater("inventory", populateManufacturingTable);
+};
+
+const manufacturingBay = () => {
+  return horizontalCenter([
+    "<h2>Manufacturing Bay</h2>",
+    `<div class="manufacturing"><svg id="manufacturingTree" height="1000" width="2000">
+  <g>
+    <rect x="0" y="0" width="2000" height="1000" fill="#cccccccc" stroke="black" stroke-width="1" />
+  </g>
+</svg></div>`,
+    "<br/>",
+    '<button id="closeManufacturingBay">Close</button>',
+    "<br/>",
+  ]);
+};
+
+const drawDag = () => {
+  const horizontalSpacing = 200;
+  const ns = "http://www.w3.org/2000/svg";
+
+  const manufacturingTree = document.getElementById("manufacturingTree") as unknown as SVGSVGElement;
+  if (manufacturingTree) {
+    const coordinates = new Map<RecipeDag, { x: number; y: number }>();
+    const alreadyDrawn = new Set<RecipeDag>();
+    const drawnPerLevel = new Array(recipeDagRoot.minLevel + 1).fill(0);
+    // make a new group
+    const nodeGroup = document.createElementNS(ns, "g");
+
+    const marginX = 100;
+    const marginY = 0;
+    const centerX = manufacturingTree.clientWidth / 2;
+
+    const drawSvgElements = (recipe: RecipeDag) => {
+      if (recipeDagRoot === recipe) {
+        for (const child of recipe.below) {
+          drawSvgElements(child);
+        }
+        return;
+      }
+      if (alreadyDrawn.has(recipe)) {
+        return;
+      }
+      alreadyDrawn.add(recipe);
+      const level = recipe.drawLevel;
+      const levelOffset = (recipesPerLevel[level] * horizontalSpacing + 100) / 2;
+      const x = drawnPerLevel[level] * horizontalSpacing + marginX + centerX - levelOffset;
+      const y = (recipeDagRoot.minLevel + 1 - level) * 100 + marginY;
+      console.log("drawing", recipe.recipe?.name, "at", x, y, drawnPerLevel[level]);
+      coordinates.set(recipe, { x, y });
+      drawnPerLevel[level] += 1;
+      const rect = document.createElementNS(ns, "rect");
+      rect.setAttribute("x", x.toString());
+      rect.setAttribute("y", y.toString());
+      rect.setAttribute("width", "100");
+      rect.setAttribute("height", "50");
+      rect.setAttribute("fill", "white");
+      rect.setAttribute("stroke", "black");
+      rect.setAttribute("stroke-width", "1");
+      nodeGroup.appendChild(rect);
+      const text = document.createElementNS(ns, "text");
+      text.setAttribute("x", (x + 50).toString());
+      text.setAttribute("y", (y + 25).toString());
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("alignment-baseline", "middle");
+      text.setAttribute("font-size", "12");
+      text.innerHTML = recipe.recipe?.name || "Root";
+      nodeGroup.appendChild(text);
+      for (const child of recipe.below) {
+        drawSvgElements(child);
+      }
+    };
+
+    drawSvgElements(recipeDagRoot);
+
+    const edgeGroup = document.createElementNS(ns, "g");
+    const drawnEdges = new Set<RecipeDag>();
+
+    const drawEdges = (recipe: RecipeDag) => {
+      if (recipeDagRoot === recipe) {
+        for (const child of recipe.below) {
+          drawEdges(child);
+        }
+        return;
+      }
+      if (drawnEdges.has(recipe)) {
+        return;
+      }
+      drawnEdges.add(recipe);
+      const { x: x1, y: y1 } = coordinates.get(recipe)!;
+      for (const child of recipe.below) {
+        const { x: x2, y: y2 } = coordinates.get(child)!;
+        const line = document.createElementNS(ns, "line");
+        line.setAttribute("x1", (x1 + 50).toString());
+        line.setAttribute("y1", (y1 + 50).toString());
+        line.setAttribute("x2", (x2 + 50).toString());
+        line.setAttribute("y2", y2.toString());
+        line.setAttribute("stroke", "black");
+        line.setAttribute("stroke-width", "1");
+        edgeGroup.appendChild(line);
+        drawEdges(child);
+      }
+    };
+
+    drawEdges(recipeDagRoot);
+
+    manufacturingTree.appendChild(edgeGroup);
+    manufacturingTree.appendChild(nodeGroup);
+  }
 };
 
 export { manufacturingBay, setupManufacturingBay, bindManufacturingUpdaters };

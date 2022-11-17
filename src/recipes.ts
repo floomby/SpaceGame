@@ -5,8 +5,9 @@ type Recipe = {
 
 let recipes: Recipe[] = [];
 
-let recipeMap = new Map<string, { index: number; recipe: Recipe }>();
+const recipeMap = new Map<string, { index: number; recipe: Recipe }>();
 
+// TODO Move this type into only client code
 type RecipeDag = {
   above: RecipeDag[];
   below: RecipeDag[];
@@ -14,8 +15,10 @@ type RecipeDag = {
   maxLevel?: number;
   minLevel?: number;
   drawLevel?: number;
+  svgGroup?: any;
 };
 
+const recipeDagMap = new Map<string, RecipeDag>();
 let recipeDagRoot: RecipeDag;
 let drawsPerLevel: number[];
 
@@ -129,8 +132,6 @@ const initRecipes = () => {
     recipe: null,
   };
 
-  const recipeDagMap = new Map<string, RecipeDag>();
-
   recipes.forEach((recipe, index) => {
     recipeMap.set(recipe.name, { index, recipe });
     recipeDagMap.set(recipe.name, {
@@ -192,8 +193,16 @@ const initRecipes = () => {
     recipeDag.drawLevel = recipeDag.below.length > 0 ? Math.floor((recipeDag.minLevel + recipeDag.maxLevel) / 2) : recipeDag.minLevel;
     drawsPerLevel[recipeDag.drawLevel]++;
   }
+};
 
-  console.log(recipeDagRoot);
+const computeTotalRequirements = (currentNode: RecipeDag, values: { [key: string]: number }, multiplier = 1) => {
+  for (const ingredient of currentNode.below) {
+    if (values[ingredient.recipe.name] === undefined) {
+      values[ingredient.recipe.name] = 0;
+    }
+    values[ingredient.recipe.name] += currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier;
+    computeTotalRequirements(ingredient, values, currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier);
+  }
 };
 
 const maxManufacturable = (index: number, inventory: { [key: string]: number }) => {
@@ -206,4 +215,14 @@ const maxManufacturable = (index: number, inventory: { [key: string]: number }) 
   return max;
 };
 
-export { RecipeDag, initRecipes, recipes, recipeMap, maxManufacturable, recipeDagRoot, drawsPerLevel as recipesPerLevel };
+export {
+  RecipeDag,
+  initRecipes,
+  recipes,
+  recipeMap,
+  maxManufacturable,
+  recipeDagRoot,
+  drawsPerLevel as recipesPerLevel,
+  computeTotalRequirements,
+  recipeDagMap,
+};

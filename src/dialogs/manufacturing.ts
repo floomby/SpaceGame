@@ -2,7 +2,7 @@ import { bindPostUpdater, horizontalCenter, pop } from "../dialog";
 import { Player } from "../game";
 import { inventory, ownId, recipesKnown } from "../globals";
 import { sendManufacture } from "../net";
-import { maxManufacturable, recipes, recipeDagRoot, RecipeDag, recipesPerLevel } from "../recipes";
+import { maxManufacturable, recipes, recipeDagRoot, RecipeDag, recipesPerLevel, computeTotalRequirements, recipeDagMap } from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
   const recipe = recipes[index];
@@ -139,6 +139,9 @@ const manufacturingBay = () => {
     text {
       cursor: pointer;
     }
+    .highlighted {
+      bounding-box: 2px solid green;
+    }
   </style>
   <g>
     <rect x="0" y="0" width="2000" height="1000" fill="#cccccccc" stroke="black" stroke-width="1" />
@@ -151,10 +154,11 @@ const manufacturingBay = () => {
 };
 
 let selectedRecipe: RecipeDag = undefined
+let totalRequirements: { [key: string]: number } = undefined
 
 const drawDag = () => {
   const horizontalSpacing = 200;
-  const verticalSpacing = 130;
+  const verticalSpacing = 160;
   const ns = "http://www.w3.org/2000/svg";
 
   const manufacturingTree = document.getElementById("manufacturingTree") as unknown as SVGSVGElement;
@@ -162,13 +166,13 @@ const drawDag = () => {
     const coordinates = new Map<RecipeDag, { x: number; y: number }>();
     const alreadyDrawn = new Set<RecipeDag>();
     const drawnPerLevel = new Array(recipeDagRoot.minLevel + 1).fill(0);
-    // make a new group
     const nodeGroup = document.createElementNS(ns, "g");
 
     const marginX = 100;
     const marginY = 0;
     const centerX = manufacturingTree.clientWidth / 2;
 
+    // Also populates the amount texts
     const drawEdges = (recipe: RecipeDag, highlight = false) => {
       if (recipeDagRoot === recipe) {
         for (const child of recipe.below) {
@@ -181,19 +185,29 @@ const drawDag = () => {
       }
       drawnEdges.add(recipe);
       const { x: x1, y: y1 } = coordinates.get(recipe)!;
-      if (recipe === selectedRecipe) {
-        highlight = true;
-      }
       for (const child of recipe.below) {
+        if (highlight) {
+          console.log((child.svgGroup as SVGElement).childNodes);
+          const amount = totalRequirements[child.recipe.name];
+          ((child.svgGroup as SVGElement).childNodes[2] as SVGTextElement).innerHTML = amount.toString();
+          console.log(amount, child.recipe.name);
+        }
         const { x: x2, y: y2 } = coordinates.get(child)!;
-        drawConnectionSpline(edgeGroup, x1 + 50, y1 + 50, x2 + 50, y2, highlight);
+        drawConnectionSpline(edgeGroup, x1 + 50, y1 + 60, x2 + 50, y2, highlight);
         drawEdges(child, highlight);
       }
     };
 
     const redrawEdges = () => {
+      for (const dagNode of recipeDagMap.values()) {
+        if (dagNode.svgGroup) {
+          (dagNode.svgGroup as SVGElement).children[2].innerHTML = "";
+        }
+      }
       edgeGroup.innerHTML = "";
       drawnEdges.clear();
+      console.log(totalRequirements);
+      drawEdges(selectedRecipe, true);
       drawEdges(recipeDagRoot);
     };
 
@@ -207,6 +221,8 @@ const drawDag = () => {
       if (alreadyDrawn.has(recipe)) {
         return;
       }
+      const container = document.createElementNS(ns, "g");
+      recipe.svgGroup = container;
       alreadyDrawn.add(recipe);
       const level = recipe.drawLevel;
       const levelOffset = (recipesPerLevel[level] * horizontalSpacing + 100) / 2;
@@ -219,30 +235,49 @@ const drawDag = () => {
       rect.setAttribute("x", x.toString());
       rect.setAttribute("y", y.toString());
       rect.setAttribute("width", "100");
-      rect.setAttribute("height", "50");
+      rect.setAttribute("height", "60");
       rect.setAttribute("fill", "white");
       rect.setAttribute("stroke", "black");
       rect.setAttribute("stroke-width", "1");
-      nodeGroup.appendChild(rect);
+      container.appendChild(rect);
       const text = document.createElementNS(ns, "text");
       text.setAttribute("x", (x + 50).toString());
-      text.setAttribute("y", (y + 25).toString());
+      text.setAttribute("y", (y + 20).toString());
       text.setAttribute("text-anchor", "middle");
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
       text.innerHTML = recipe.recipe?.name || "Root";
-      nodeGroup.appendChild(text);
+      container.appendChild(text);
 
+      const amount = document.createElementNS(ns, "text");
+      amount.setAttribute("x", (x + 50).toString());
+      amount.setAttribute("y", (y + 40).toString());
+      amount.setAttribute("text-anchor", "middle");
+      amount.setAttribute("alignment-baseline", "middle");
+      amount.setAttribute("font-size", "12");
+      amount.innerHTML = "";
+      container.appendChild(amount);
+
+      nodeGroup.appendChild(container);
+      
       const clickHandler = (e) => {
-        console.log("clicked", recipe.recipe?.name);
+        
       }
 
       rect.addEventListener("click", clickHandler);
       text.addEventListener("click", clickHandler);
 
       const highlightHandler = (e) => {
-        selectedRecipe = recipe;
-        redrawEdges();
+        if (selectedRecipe !== recipe) {
+          if (selectedRecipe) {
+            (selectedRecipe.svgGroup as SVGElement).classList.remove("highlighted");
+          }
+          selectedRecipe = recipe;
+          totalRequirements = {};
+          computeTotalRequirements(recipe, totalRequirements);
+          (selectedRecipe.svgGroup as SVGElement).classList.add("highlighted");
+          redrawEdges();
+        }
       };
       rect.addEventListener("mouseover", highlightHandler);
       text.addEventListener("mouseover", highlightHandler);

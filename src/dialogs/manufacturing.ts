@@ -1,8 +1,19 @@
-import { bindPostUpdater, horizontalCenter, pop } from "../dialog";
+import { bindPostUpdater, horizontalCenter, peekTag, pop } from "../dialog";
 import { Player } from "../game";
 import { inventory, ownId, recipesKnown } from "../globals";
-import { sendManufacture } from "../net";
-import { maxManufacturable, recipes, recipeDagRoot, RecipeDag, recipesPerLevel, recipeDagMap, computeUsedRequirementsShared, clearUnsatisfied, naturalResources, markUnsatisfied } from "../recipes";
+import { sendCompositeManufacture, sendManufacture } from "../net";
+import {
+  maxManufacturable,
+  recipes,
+  recipeDagRoot,
+  RecipeDag,
+  recipesPerLevel,
+  recipeDagMap,
+  computeUsedRequirementsShared,
+  clearUnsatisfied,
+  naturalResources,
+  markUnsatisfied,
+} from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
   const recipe = recipes[index];
@@ -117,8 +128,12 @@ const setupManufacturingBay = () => {
 
 let redrawInfo = () => {};
 
+const redrawInfoWrapper = () => {
+  redrawInfo();
+};
+
 const bindManufacturingUpdaters = () => {
-  bindPostUpdater("inventory", redrawInfo);
+  bindPostUpdater("inventory", redrawInfoWrapper);
 };
 
 const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: number, y2: number, stroke: string) => {
@@ -216,7 +231,7 @@ const drawDag = () => {
           ((child.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("fill", child.unsatisfied ? "#ffcccc" : "white");
         }
         const { x: x2, y: y2 } = coordinates.get(child)!;
-        drawConnectionSpline(edgeGroup, x1 + 50, y1 + 60, x2 + 50, y2, highlight ? child.unsatisfied ? "red" : "green" : "black");
+        drawConnectionSpline(edgeGroup, x1 + 50, y1 + 60, x2 + 50, y2, highlight ? (child.unsatisfied ? "red" : "green") : "black");
       }
       if (highlight) {
         ((recipe.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("stroke", recipe.unsatisfied ? "red" : "green");
@@ -243,7 +258,7 @@ const drawDag = () => {
       drawnEdges.clear();
       drawEdges(selectedRecipe, true);
       drawEdges(recipeDagRoot);
-      return !!recipeDagRoot.unsatisfied;
+      return !recipeDagRoot.unsatisfied;
     };
 
     const drawSvgElements = (recipe: RecipeDag) => {
@@ -263,7 +278,6 @@ const drawDag = () => {
       const levelOffset = (recipesPerLevel[level] * horizontalSpacing + 100) / 2;
       const x = drawnPerLevel[level] * horizontalSpacing + marginX + centerX - levelOffset;
       const y = (recipeDagRoot.minLevel + 1 - level) * verticalSpacing + marginY;
-      console.log("drawing", recipe.recipe?.name, "at", x, y, drawnPerLevel[level]);
       coordinates.set(recipe, { x, y });
       drawnPerLevel[level] += 1;
       const rect = document.createElementNS(ns, "rect");
@@ -350,9 +364,9 @@ const drawDag = () => {
         manufacturingPopup.appendChild(buttonText);
 
         const click = (e) => {
-          if (manufacturable) {
-            console.log("Manufacture", recipe.recipe?.name);
-          }
+          // if (manufacturable) {
+          sendCompositeManufacture(ownId, recipe.recipe.name, 1);
+          // }
         };
         button.addEventListener("click", click);
         buttonText.addEventListener("click", click);
@@ -362,6 +376,7 @@ const drawDag = () => {
 
       rect.addEventListener("click", clickHandler);
       text.addEventListener("click", clickHandler);
+      amount.addEventListener("click", clickHandler);
 
       const highlightHandler = (e) => {
         try {
@@ -398,7 +413,15 @@ const drawDag = () => {
     manufacturingTree.appendChild(nodeGroup);
 
     // Change the dom update binding to the closure we just created
-    redrawInfo = redrawEdges;
+    redrawInfo = () => {
+      if (peekTag() === "manufacturing" && manufacturingPopup) {
+        manufacturingTree.removeChild(manufacturingPopup);
+        manufacturingPopup = null;
+      } else {
+        manufacturingPopup = null;
+      }
+      manufacturable = redrawEdges();
+    };
   }
 };
 

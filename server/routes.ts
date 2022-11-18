@@ -12,7 +12,8 @@ import { addNpc } from "../src/npc";
 import { market } from "./market";
 import { clients, idToWebsocket, sectorFactions, sectorHasStarbase, sectorList, sectors, uid } from "./state";
 import { adminHash, credentials, hash, httpPort } from "./settings";
-import { recipeMap } from "../src/recipes";
+import { recipeMap, recipes } from "../src/recipes";
+import { isFreeArm } from "../src/defs/armaments";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -282,7 +283,8 @@ app.get("/unlockEverything", (req, res) => {
       res.send("User not found");
       return;
     }
-    user.recipesKnown = Array.from(Object.keys(recipeMap));
+    user.recipesKnown = recipes.map((recipe) => recipe.name);
+    console.log(user.recipesKnown);
     user.sectorsVisited = sectorList;
     // Give the user one of each ship
     for (const [key, def] of defMap) {
@@ -301,6 +303,9 @@ app.get("/unlockEverything", (req, res) => {
     }
     // Give the user one of each armament
     for (const [key, def] of armDefMap) {
+      if (isFreeArm(def.def.name)) {
+        continue;
+      }
       const inventory = user.inventory.find((item) => item.what === key);
       if (inventory) {
         inventory.amount += 1;

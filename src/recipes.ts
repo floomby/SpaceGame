@@ -235,8 +235,8 @@ const computeUsedRequirementsShared = (
   currentNode: RecipeDag,
   inventoryObject: { [key: string]: number },
   existingInventory: { [key: string]: number },
-  usage = new Map<RecipeDag, number>(),
-  multiplier = 1
+  multiplier = 1,
+  usage = new Map<RecipeDag, number>()
 ) => {
   for (const ingredient of currentNode.below) {
     const use = usage.get(ingredient);
@@ -258,8 +258,8 @@ const computeUsedRequirementsShared = (
         ingredient,
         inventoryObject,
         existingInventory,
-        usage,
-        currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier
+        currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier,
+        usage
       );
     }
     usage.set(ingredient, (existingInventory[ingredient.recipe.name] || 0) - inventoryObject[ingredient.recipe.name]);

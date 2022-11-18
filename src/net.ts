@@ -224,6 +224,15 @@ const sendManufacture = (id: number, what: string, amount: number) => {
   );
 };
 
+const sendCompositeManufacture = (id: number, what: string, amount: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "compositeManufacture",
+      payload: { id, what, amount },
+    })
+  );
+};
+
 const sendTransferToShip = (id: number, what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
@@ -279,6 +288,7 @@ export {
   sendDumpCargo,
   sendSellInventory,
   sendManufacture,
+  sendCompositeManufacture,
   sendTransferToShip,
   sendSecondaryActivation,
   sendTutorialStageComplete,

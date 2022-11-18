@@ -132,6 +132,37 @@ const initRecipes = () => {
         "Refined Zirathium": 2,
       },
     },
+    {
+      name: "Light Warhead",
+      ingredients: {
+        "Refined Prifetium": 1,
+        "Refined Russium": 1,
+      },
+    },
+    {
+      name: "Heavy Warhead",
+      ingredients: {
+        "Refined Prifetium": 2,
+        "Refined Russium": 2,
+      },
+    },
+    {
+      name: "Javelin Missile",
+      ingredients: {
+        "Ferrecium Alloy": 1,
+        "Light Warhead": 1,
+      },
+      isArmament: true,
+    },
+    {
+      name: "Heavy Javelin Missile",
+      ingredients: {
+        "Spare Parts": 1,
+        "Heavy Warhead": 1,
+        "Javelin Missile": 1,
+      },
+      isArmament: true,
+    },
   ];
 
   recipeDagRoot = {
@@ -176,9 +207,9 @@ const initRecipes = () => {
 
   // Attach ships and weapons to the root
   for (const recipeDag of recipeDagMap.values()) {
-    if (recipeDag.above.length === 0) {
-      recipeDagRoot.below.push(recipeDag);
+    if (recipeDag.recipe.isShip || recipeDag.recipe.isArmament) {
       recipeDag.above.push(recipeDagRoot);
+      recipeDagRoot.below.push(recipeDag);
     }
   }
 
@@ -208,6 +239,7 @@ const initRecipes = () => {
 
   clearShow();
   setShowShips();
+  setShowArmaments();
   computeLevels();
 };
 
@@ -231,7 +263,11 @@ const computeLevels = () => {
 
   for (const recipeDag of recipeDagMap.values()) {
     if (recipeDag.show) {
-      recipeDag.drawLevel = recipeDag.below.length > 0 ? Math.floor((recipeDag.minLevel + recipeDag.maxLevel) / 2) : recipeDag.minLevel;
+      if (recipeDag.recipe.isArmament || recipeDag.recipe.isShip) {
+        recipeDag.drawLevel = recipeDag.maxLevel;
+      } else {
+        recipeDag.drawLevel = recipeDag.below.length > 0 ? Math.floor((recipeDag.minLevel + recipeDag.maxLevel) / 2) : recipeDag.minLevel;
+      }
       drawsPerLevel[recipeDag.drawLevel]++;
     }
   }

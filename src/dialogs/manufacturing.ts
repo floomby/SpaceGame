@@ -16,6 +16,7 @@ import {
   clearShow,
   setShowShips,
   setShowArmaments,
+  computeLevels,
 } from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
@@ -141,13 +142,22 @@ const bindManufacturingUpdaters = () => {
   bindPostUpdater("inventory", redrawInfoWrapper);
 };
 
-const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: number, y2: number, stroke: string) => {
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`);
-  path.setAttribute("stroke", stroke);
-  path.setAttribute("stroke-width", "1");
-  path.setAttribute("fill", "none");
-  svg.appendChild(path);
+const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: number, y2: number, stroke: string, terminate = false) => {
+  if (y2 < y1 && !terminate) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${y1 + 100} ${x2} ${y2 - 100} ${x2} ${y2}`);
+    path.setAttribute("stroke", stroke);
+    path.setAttribute("stroke-width", "1");
+    path.setAttribute("fill", "none");
+    svg.appendChild(path);
+  } else {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`);
+    path.setAttribute("stroke", stroke);
+    path.setAttribute("stroke-width", "1");
+    path.setAttribute("fill", "none");
+    svg.appendChild(path);
+  }
 };
 
 const filterButton = (what: string) => {
@@ -184,6 +194,7 @@ const setupFilterButtons = (what: string) => {
       if (showWeapons) {
         setShowArmaments();
       }
+      computeLevels();
       drawDag();
     };
   }
@@ -278,7 +289,7 @@ const drawDag = () => {
       drawnEdges.add(recipe);
       const { x: x1, y: y1 } = coordinates.get(recipe)!;
       for (const child of recipe.below) {
-        const childOfChildIsUnsatisfied = drawEdges(child, highlight);
+        drawEdges(child, highlight);
         if (highlight) {
           const amount = inventoryUsage.get(child) ?? 0;
           const have = inventory[child.recipe.name] || 0;

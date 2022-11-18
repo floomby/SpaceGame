@@ -367,7 +367,7 @@ const drawDag = () => {
       text.setAttribute("text-anchor", "middle");
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
-      text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") ? recipe.recipe?.name || "Root" : "???";
+      text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") || recipe.isNaturalResource ? recipe.recipe?.name || "Root" : "???";
       container.appendChild(text);
 
       const amount = document.createElementNS(ns, "text");
@@ -444,9 +444,11 @@ const drawDag = () => {
         manufacturingTree.appendChild(manufacturingPopup);
       };
 
-      rect.addEventListener("click", clickHandler);
-      text.addEventListener("click", clickHandler);
-      amount.addEventListener("click", clickHandler);
+      if (!recipe.isNaturalResource) {
+        rect.addEventListener("click", clickHandler);
+        text.addEventListener("click", clickHandler);
+        amount.addEventListener("click", clickHandler);
+      }
 
       const highlightHandler = (e) => {
         try {

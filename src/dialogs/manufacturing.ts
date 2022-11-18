@@ -367,7 +367,7 @@ const drawDag = () => {
       text.setAttribute("text-anchor", "middle");
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
-      text.innerHTML = recipe.recipe?.name || "Root";
+      text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") ? recipe.recipe?.name || "Root" : "???";
       container.appendChild(text);
 
       const amount = document.createElementNS(ns, "text");
@@ -388,7 +388,7 @@ const drawDag = () => {
         }
         if (selectedRecipe !== recipe) {
           selectedRecipe = recipe;
-          manufacturable = redrawEdges();
+          manufacturable = redrawEdges() && recipesKnown.has(recipe.recipe?.name);
         }
         manufacturingPopup = document.createElementNS(ns, "g");
         manufacturingPopup.setAttribute("id", "manufacturingPopup");
@@ -410,7 +410,7 @@ const drawDag = () => {
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("alignment-baseline", "middle");
         text.setAttribute("font-size", "12");
-        text.innerHTML = recipe.recipe?.name || "Root";
+        text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") ? recipe.recipe?.name || "Root" : "???";
         manufacturingPopup.appendChild(text);
         // Add a manufacturing button
         const button = document.createElementNS(ns, "rect");
@@ -458,7 +458,7 @@ const drawDag = () => {
               }
             }
             selectedRecipe = recipe;
-            manufacturable = redrawEdges();
+            manufacturable = redrawEdges() && recipesKnown.has(recipe.recipe?.name);
           }
         } catch (e) {
           console.error(e);

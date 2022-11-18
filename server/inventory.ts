@@ -301,7 +301,8 @@ const compositeManufacture = (
             const missing = checkRecipeKnowledge(recipeDag, user.recipesKnown);
             if (missing.length > 0) {
               try {
-                flashServerMessage(player.id, `You don't know how to make ${missing.join(", ")}`);
+                // flashServerMessage(player.id, `You don't know how to make ${missing.join(", ")}`);
+                flashServerMessage(player.id, `Requisite knowledge missing`);
                 return;
               } catch (e) {
                 console.trace(e);

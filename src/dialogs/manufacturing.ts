@@ -148,7 +148,7 @@ const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: numbe
 const manufacturingBay = () => {
   return horizontalCenter([
     "<h2>Manufacturing Bay</h2>",
-    `<div class="manufacturing"><svg id="manufacturingTree" height="2000" width="2000">
+    `<div id="manufacturingContainer"><div class="manufacturing"><svg id="manufacturingTree" height="2000" width="2000">
   <style>
     rect {
       cursor: pointer;
@@ -163,7 +163,7 @@ const manufacturingBay = () => {
   <g>
     <rect x="0" y="0" width="2000" height="2000" fill="#cccccccc" stroke="black" stroke-width="1" />
   </g>
-</svg></div>`,
+</svg></div></div>`,
     "<br/>",
     '<button id="closeManufacturingBay">Close</button>',
     "<br/>",
@@ -266,6 +266,9 @@ const drawDag = () => {
         for (const child of recipe.below) {
           drawSvgElements(child);
         }
+        return;
+      }
+      if (!recipe.show) {
         return;
       }
       if (alreadyDrawn.has(recipe)) {

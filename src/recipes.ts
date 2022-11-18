@@ -1,13 +1,14 @@
 type Recipe = {
   name: string;
   ingredients: { [key: string]: number };
+  isShip?: boolean;
+  isArmament?: boolean;
 };
 
 let recipes: Recipe[] = [];
 
 const recipeMap = new Map<string, { index: number; recipe: Recipe }>();
 
-// TODO Move this type into only client code
 type RecipeDag = {
   above: RecipeDag[];
   below: RecipeDag[];
@@ -18,12 +19,14 @@ type RecipeDag = {
   svgGroup?: any;
   isNaturalResource?: boolean;
   unsatisfied?: boolean;
+  show?: boolean;
 };
 
 const recipeDagMap = new Map<string, RecipeDag>();
 let recipeDagRoot: RecipeDag;
 let drawsPerLevel: number[];
 const naturalResources: RecipeDag[] = [];
+const nodesAtBottom = new Set<RecipeDag>();
 
 const initRecipes = () => {
   recipes = [
@@ -94,6 +97,7 @@ const initRecipes = () => {
         "Aft Fuselage": 1,
         "Reinforced Plating": 10,
       },
+      isShip: true,
     },
     {
       name: "Boson Incabulator",
@@ -119,6 +123,7 @@ const initRecipes = () => {
         "Boson Incabulator": 1,
         "Flux Modulator": 1,
       },
+      isShip: true,
     },
     {
       name: "Flux Modulator",
@@ -169,6 +174,7 @@ const initRecipes = () => {
     });
   });
 
+  // Attach ships and weapons to the root
   for (const recipeDag of recipeDagMap.values()) {
     if (recipeDag.above.length === 0) {
       recipeDagRoot.below.push(recipeDag);
@@ -176,17 +182,23 @@ const initRecipes = () => {
     }
   }
 
-  const nodesAtBottom = new Set<RecipeDag>();
+  // Find all nodes that are at the bottom of the graph
   for (const recipeDag of recipeDagMap.values()) {
     if (recipeDag.below.length === 0) {
       nodesAtBottom.add(recipeDag);
     }
+    recipeDag.show = true;
   }
 
   const setMinHeight = (recipeDag: RecipeDag, height: number) => {
     if (recipeDag.minLevel === undefined || recipeDag.minLevel < height) {
       recipeDag.minLevel = height;
-      recipeDag.above.forEach((above) => setMinHeight(above, height + 1));
+      // Keep all weapons and ships at the level right below the root even if they feed into something else
+      recipeDag.above.forEach((above) => {
+        if (!(recipeDag.recipe?.isShip || recipeDag.recipe?.isArmament) || !(above.recipe?.isShip || above.recipe?.isArmament)) {
+          setMinHeight(above, height + 1);
+        }
+      });
     }
   };
 
@@ -194,10 +206,22 @@ const initRecipes = () => {
     setMinHeight(node, 0);
   }
 
+  clearShow();
+  setShowShips();
+  computeLevels();
+};
+
+const computeLevels = () => {
   const setMaxHeight = (recipeDag: RecipeDag, height: number) => {
-    if (recipeDag.maxLevel === undefined || recipeDag.maxLevel > height) {
-      recipeDag.maxLevel = height;
-      recipeDag.below.forEach((below) => setMaxHeight(below, height - 1));
+    if (recipeDag.show) {
+      if (recipeDag.maxLevel === undefined || recipeDag.maxLevel > height) {
+        recipeDag.maxLevel = height;
+        recipeDag.below.forEach((below) => {
+          if (!(recipeDag.recipe?.isShip || recipeDag.recipe?.isArmament) || !(below.recipe?.isShip || below.recipe?.isArmament)) {
+            setMaxHeight(below, height - 1);
+          }
+        });
+      }
     }
   };
 
@@ -206,8 +230,10 @@ const initRecipes = () => {
   drawsPerLevel = new Array(recipeDagRoot.maxLevel + 1).fill(0);
 
   for (const recipeDag of recipeDagMap.values()) {
-    recipeDag.drawLevel = recipeDag.below.length > 0 ? Math.floor((recipeDag.minLevel + recipeDag.maxLevel) / 2) : recipeDag.minLevel;
-    drawsPerLevel[recipeDag.drawLevel]++;
+    if (recipeDag.show) {
+      recipeDag.drawLevel = recipeDag.below.length > 0 ? Math.floor((recipeDag.minLevel + recipeDag.maxLevel) / 2) : recipeDag.minLevel;
+      drawsPerLevel[recipeDag.drawLevel]++;
+    }
   }
 };
 
@@ -278,6 +304,37 @@ const markUnsatisfied = (currentNode: RecipeDag) => {
 const clearUnsatisfied = () => {
   for (const recipeDag of recipeDagMap.values()) {
     recipeDag.unsatisfied = false;
+  }
+};
+
+const propagateShowDown = (currentNode: RecipeDag) => {
+  if (currentNode.show) {
+    return;
+  }
+  currentNode.show = true;
+  currentNode.below.forEach((below) => propagateShowDown(below));
+};
+
+const clearShow = () => {
+  for (const recipeDag of recipeDagMap.values()) {
+    recipeDag.show = false;
+  }
+  recipeDagRoot.show = true;
+};
+
+const setShowShips = () => {
+  for (const recipeDag of recipeDagMap.values()) {
+    if (recipeDag.recipe.isShip) {
+      propagateShowDown(recipeDag);
+    }
+  }
+};
+
+const setShowArmaments = () => {
+  for (const recipeDag of recipeDagMap.values()) {
+    if (recipeDag.recipe.isArmament) {
+      propagateShowDown(recipeDag);
+    }
   }
 };
 

@@ -268,3 +268,20 @@ kbd {
   font: 1rem Inconsolata, monospace;
   text-shadow: 0 0 5px #c8c8c8;
 }
+
+.manufacturing {
+  max-height: 80vh;
+  max-width: 95vw;
+  overflow-y: auto;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.manufacturing::-webkit-scrollbar {
+  display: none;
+}
+
+#manufacturingTree {
+  border-radius: 1.4rem;
+}

@@ -2,7 +2,16 @@ import { addCargo, availableCargoCapacity, Player, removeAtMostCargo } from "../
 import { User } from "./dataModels";
 import { WebSocket } from "ws";
 import { market } from "./market";
-import { recipeMap } from "../src/recipes";
+import {
+  clearUnsatisfied,
+  computeUsedRequirementsShared,
+  markUnsatisfied,
+  naturalResources,
+  RecipeDag,
+  recipeDagMap,
+  recipeDagRoot,
+  recipeMap,
+} from "../src/recipes";
 import { inspect } from "util";
 import { isFreeArm } from "../src/defs/armaments";
 
@@ -251,6 +260,123 @@ const manufacture = (ws: WebSocket, player: Player, what: string, amount: number
   }
 };
 
+const checkRecipeKnowledge = (recipe: RecipeDag, recipesKnown: string[], missing: string[] = []) => {
+  // Misuse of the unsatisfied field to store visited nodes
+  clearUnsatisfied();
+  if (recipe.isNaturalResource) {
+    return missing;
+  }
+  recipe.unsatisfied = true;
+  if (!recipesKnown.includes(recipe.recipe.name)) {
+    missing.push(recipe.recipe.name);
+  }
+  for (const ingredient of recipe.below) {
+    if (!ingredient.unsatisfied) {
+      checkRecipeKnowledge(ingredient, recipesKnown, missing);
+    }
+  }
+  return missing;
+};
+
+const compositeManufacture = (
+  ws: WebSocket,
+  player: Player,
+  what: string,
+  amount: number,
+  flashServerMessage: (id: number, message: string) => void
+) => {
+  const recipeDag = recipeDagMap.get(what);
+  if (recipeDag) {
+    User.findOne({ id: player.id }, (err, user) => {
+      if (err) {
+        console.log(err);
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Error finding user" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+      } else {
+        try {
+          if (user) {
+            const missing = checkRecipeKnowledge(recipeDag, user.recipesKnown);
+            if (missing.length > 0) {
+              try {
+                flashServerMessage(player.id, `You don't know how to make ${missing.join(", ")}`);
+                return;
+              } catch (e) {
+                console.trace(e);
+              }
+            }
+
+            const inventory: { [key: string]: number } = {};
+            for (const entry of user.inventory) {
+              inventory[entry.what] = entry.amount;
+            }
+
+            const inventoryObject = JSON.parse(JSON.stringify(inventory));
+            const usages = computeUsedRequirementsShared(recipeDag, inventoryObject, inventory, amount);
+            clearUnsatisfied();
+            for (const resource of naturalResources) {
+              const usage = usages.get(resource);
+              if (usage) {
+                if (usage > (inventory[resource.recipe.name] || 0)) {
+                  console.log(`Not enough ${resource.recipe.name}`);
+                  markUnsatisfied(resource);
+                }
+              }
+            }
+
+            if (!!recipeDagRoot.unsatisfied) {
+              try {
+                flashServerMessage(player.id, `You don't have enough resources to make ${what}`);
+                return;
+              } catch (e) {
+                console.trace(e);
+              }
+            }
+
+            for (const [usage, amount] of usages.entries()) {
+              const inventory = user.inventory.find((inventory) => inventory.what === usage.recipe.name);
+              if (inventory && amount) {
+                inventory.amount -= amount;
+              }
+            }
+            user.inventory = user.inventory.filter((inventory) => inventory.amount > 0);
+            const newInventory = user.inventory.find((inventory) => inventory.what === what);
+            if (newInventory) {
+              newInventory.amount += amount;
+            } else {
+              user.inventory.push({
+                what,
+                amount,
+              });
+            }
+            user.save();
+            try {
+              ws.send(JSON.stringify({ type: "inventory", payload: user.inventory }));
+            } catch (e) {
+              console.trace(e);
+            }
+          }
+        } catch (e) {
+          console.log(e);
+          try {
+            ws.send(JSON.stringify({ type: "error", payload: { message: `Error manufacturing ${what}` } }));
+          } catch (e) {
+            console.trace(e);
+          }
+        }
+      }
+    });
+  } else {
+    try {
+      ws.send(JSON.stringify({ type: "error", payload: { message: `No recipe for ${what}` } }));
+    } catch (e) {
+      console.trace(e);
+    }
+  }
+};
+
 const transferToShip = (ws: WebSocket, player: Player, what: string, amount: number, flashServerMessage: (id: number, message: string) => void) => {
   if (amount <= 0) {
     return;
@@ -387,4 +513,4 @@ const depositItemsIntoInventory = (
   });
 };
 
-export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip, depositItemsIntoInventory, discoverRecipe };
+export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip, depositItemsIntoInventory, discoverRecipe, compositeManufacture };

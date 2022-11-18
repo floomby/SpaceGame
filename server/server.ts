@@ -41,7 +41,7 @@ import mongoose from "mongoose";
 
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip, discoverRecipe } from "./inventory";
+import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip, discoverRecipe, compositeManufacture } from "./inventory";
 import { market } from "./market";
 import {
   clients,
@@ -672,6 +672,15 @@ wss.on("connection", (ws) => {
           const player = state.players.get(client.id);
           if (player) {
             manufacture(ws, player, data.payload.what, Math.round(data.payload.amount), flashServerMessage);
+          }
+        }
+      } else if (data.type === "compositeManufacture") {
+        const client = clients.get(ws);
+        if (client && data.payload.id === client.id) {
+          const state = sectors.get(client.currentSector)!;
+          const player = state.players.get(client.id);
+          if (player) {
+            compositeManufacture(ws, player, data.payload.what, Math.round(data.payload.amount), flashServerMessage);
           }
         }
       } else if (data.type === "purchase") {

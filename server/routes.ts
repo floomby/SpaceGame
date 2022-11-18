@@ -284,7 +284,6 @@ app.get("/unlockEverything", (req, res) => {
       return;
     }
     user.recipesKnown = recipes.map((recipe) => recipe.name);
-    console.log(user.recipesKnown);
     user.sectorsVisited = sectorList;
     // Give the user one of each ship
     for (const [key, def] of defMap) {

@@ -274,14 +274,44 @@ kbd {
   max-width: 95vw;
   overflow-y: auto;
   overflow-x: auto;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  scrollbar-gutter: stable;
 }
 
-.manufacturing::-webkit-scrollbar {
-  display: none;
+::-webkit-scrollbar-corner {
+  background: rgba(0, 0, 0, 0);
 }
 
-#manufacturingTree {
-  border-radius: 1.4rem;
+::-webkit-scrollbar {
+  width: 20px;
+}
+
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px grey;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #738778;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #48554b;
+}
+
+.bottomButton {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.checkAsText {
+  margin: 8px;
+  font-size: 1.8em;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.checkAsTextChecked {
+  color:rgb(37, 0, 247);
+  text-shadow: 0 0 8px #5e34f6;
 }

@@ -13,6 +13,10 @@ import {
   clearUnsatisfied,
   naturalResources,
   markUnsatisfied,
+  clearShow,
+  setShowShips,
+  setShowArmaments,
+  computeLevels,
 } from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
@@ -124,6 +128,8 @@ const setupManufacturingBay = () => {
     };
   }
   drawDag();
+  setupFilterButtons("Ships");
+  setupFilterButtons("Weapons");
 };
 
 let redrawInfo = () => {};
@@ -136,37 +142,73 @@ const bindManufacturingUpdaters = () => {
   bindPostUpdater("inventory", redrawInfoWrapper);
 };
 
-const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: number, y2: number, stroke: string) => {
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`);
-  path.setAttribute("stroke", stroke);
-  path.setAttribute("stroke-width", "1");
-  path.setAttribute("fill", "none");
-  svg.appendChild(path);
+const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: number, y2: number, stroke: string, terminate = false) => {
+  if (y2 < y1 && !terminate) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${y1 + 100} ${x2} ${y2 - 100} ${x2} ${y2}`);
+    path.setAttribute("stroke", stroke);
+    path.setAttribute("stroke-width", "1");
+    path.setAttribute("fill", "none");
+    svg.appendChild(path);
+  } else {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`);
+    path.setAttribute("stroke", stroke);
+    path.setAttribute("stroke-width", "1");
+    path.setAttribute("fill", "none");
+    svg.appendChild(path);
+  }
+};
+
+const filterButton = (what: string) => {
+  return `<div id="${what}Filter" class="checkAsText checkAsTextChecked">${what}</div>`;
+};
+
+let showShips = true;
+let showWeapons = true;
+
+const setupFilterButtons = (what: string) => {
+  const filter = document.getElementById(`${what}Filter`) as HTMLInputElement;
+  if (filter) {
+    filter.onclick = () => {
+      const selected = filter.classList.contains("checkAsTextChecked");
+      if (selected) {
+        filter.classList.remove("checkAsTextChecked");
+        if (what === "Ships") {
+          showShips = false;
+        } else if (what === "Weapons") {
+          showWeapons = false;
+        }
+      } else {
+        filter.classList.add("checkAsTextChecked");
+        if (what === "Ships") {
+          showShips = true;
+        } else if (what === "Weapons") {
+          showWeapons = true;
+        }
+      }
+      clearShow();
+      if (showShips) {
+        setShowShips();
+      }
+      if (showWeapons) {
+        setShowArmaments();
+      }
+      computeLevels();
+      drawDag();
+    };
+  }
 };
 
 const manufacturingBay = () => {
   return horizontalCenter([
     "<h2>Manufacturing Bay</h2>",
-    `<div class="manufacturing"><svg id="manufacturingTree" height="2000" width="2000">
-  <style>
-    rect {
-      cursor: pointer;
-    }
-    text {
-      cursor: pointer;
-    }
-    .highlighted {
-      bounding-box: 2px solid green;
-    }
-  </style>
-  <g>
-    <rect x="0" y="0" width="2000" height="2000" fill="#cccccccc" stroke="black" stroke-width="1" />
-  </g>
-</svg></div>`,
-    "<br/>",
-    '<button id="closeManufacturingBay">Close</button>',
-    "<br/>",
+    `<div style="display: flex; flex-direction: row; justify-content: left; width: 100%; margin-left: 2rem;">
+      ${filterButton("Ships")}
+      ${filterButton("Weapons")}
+    </div>`,
+    `<div class="manufacturing"><svg id="manufacturingTree" height="2000" width="2000"></svg></div>`,
+    '<button class="bottomButton" id="closeManufacturingBay">Close</button>',
   ]);
 };
 
@@ -191,11 +233,33 @@ const computeUsedRequirements = (currentNode: RecipeDag) => {
 };
 
 const drawDag = () => {
+  const manufacturingTree = document.getElementById("manufacturingTree") as unknown as SVGSVGElement;
+  if (manufacturingTree) {
+    manufacturingTree.innerHTML = `<style>
+  rect {
+    cursor: pointer;
+  }
+  text {
+    cursor: pointer;
+  }
+  .highlighted {
+    bounding-box: 2px solid green;
+  }
+</style>
+<g>
+  <rect x="0" y="0" width="2000" height="2000" fill="#cccccccc" stroke="black" stroke-width="1" />
+</g>`;
+  }
+
+  if (!selectedRecipe?.show) {
+    selectedRecipe = undefined;
+  }
+  clickedRecipe = undefined;
+
   const horizontalSpacing = 200;
   const verticalSpacing = 160;
   const ns = "http://www.w3.org/2000/svg";
 
-  const manufacturingTree = document.getElementById("manufacturingTree") as unknown as SVGSVGElement;
   if (manufacturingTree) {
     const coordinates = new Map<RecipeDag, { x: number; y: number }>();
     const alreadyDrawn = new Set<RecipeDag>();
@@ -210,6 +274,9 @@ const drawDag = () => {
 
     // Also populates the amount texts (returns if the selected node is missing resources for manufacturing)
     const drawEdges = (recipe: RecipeDag, highlight = false) => {
+      if (!recipe.show) {
+        return;
+      }
       if (recipeDagRoot === recipe) {
         for (const child of recipe.below) {
           drawEdges(child);
@@ -222,7 +289,7 @@ const drawDag = () => {
       drawnEdges.add(recipe);
       const { x: x1, y: y1 } = coordinates.get(recipe)!;
       for (const child of recipe.below) {
-        const childOfChildIsUnsatisfied = drawEdges(child, highlight);
+        drawEdges(child, highlight);
         if (highlight) {
           const amount = inventoryUsage.get(child) ?? 0;
           const have = inventory[child.recipe.name] || 0;
@@ -268,6 +335,9 @@ const drawDag = () => {
         }
         return;
       }
+      if (!recipe.show) {
+        return;
+      }
       if (alreadyDrawn.has(recipe)) {
         return;
       }
@@ -297,7 +367,7 @@ const drawDag = () => {
       text.setAttribute("text-anchor", "middle");
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
-      text.innerHTML = recipe.recipe?.name || "Root";
+      text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") ? recipe.recipe?.name || "Root" : "???";
       container.appendChild(text);
 
       const amount = document.createElementNS(ns, "text");
@@ -318,7 +388,7 @@ const drawDag = () => {
         }
         if (selectedRecipe !== recipe) {
           selectedRecipe = recipe;
-          manufacturable = redrawEdges();
+          manufacturable = redrawEdges() && recipesKnown.has(recipe.recipe?.name);
         }
         manufacturingPopup = document.createElementNS(ns, "g");
         manufacturingPopup.setAttribute("id", "manufacturingPopup");
@@ -340,7 +410,7 @@ const drawDag = () => {
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("alignment-baseline", "middle");
         text.setAttribute("font-size", "12");
-        text.innerHTML = recipe.recipe?.name || "Root";
+        text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") ? recipe.recipe?.name || "Root" : "???";
         manufacturingPopup.appendChild(text);
         // Add a manufacturing button
         const button = document.createElementNS(ns, "rect");
@@ -388,7 +458,7 @@ const drawDag = () => {
               }
             }
             selectedRecipe = recipe;
-            manufacturable = redrawEdges();
+            manufacturable = redrawEdges() && recipesKnown.has(recipe.recipe?.name);
           }
         } catch (e) {
           console.error(e);

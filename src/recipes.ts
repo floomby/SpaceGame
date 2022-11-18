@@ -17,11 +17,13 @@ type RecipeDag = {
   drawLevel?: number;
   svgGroup?: any;
   isNaturalResource?: boolean;
+  unsatisfied?: boolean;
 };
 
 const recipeDagMap = new Map<string, RecipeDag>();
 let recipeDagRoot: RecipeDag;
 let drawsPerLevel: number[];
+const naturalResources: RecipeDag[] = [];
 
 const initRecipes = () => {
   recipes = [
@@ -162,6 +164,7 @@ const initRecipes = () => {
         };
         recipeDagMap.set(ingredient, newResource);
         recipeDag.below.push(newResource);
+        naturalResources.push(newResource);
       }
     });
   });
@@ -228,6 +231,56 @@ const maxManufacturable = (index: number, inventory: { [key: string]: number }) 
   return max;
 };
 
+const computeUsedRequirementsShared = (
+  currentNode: RecipeDag,
+  inventoryObject: { [key: string]: number },
+  existingInventory: { [key: string]: number },
+  usage = new Map<RecipeDag, number>(),
+  multiplier = 1
+) => {
+  for (const ingredient of currentNode.below) {
+    const use = usage.get(ingredient);
+    if (use === undefined) {
+      usage.set(ingredient, 0);
+    }
+    if (inventoryObject[ingredient.recipe.name] === undefined) {
+      inventoryObject[ingredient.recipe.name] = 0;
+    }
+    if (ingredient.isNaturalResource) {
+      inventoryObject[ingredient.recipe.name] -= currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier;
+    } else {
+      const amountToRemoveFromInventory = Math.min(
+        inventoryObject[ingredient.recipe.name],
+        currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier
+      );
+      inventoryObject[ingredient.recipe.name] -= amountToRemoveFromInventory;
+      computeUsedRequirementsShared(
+        ingredient,
+        inventoryObject,
+        existingInventory,
+        usage,
+        currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier
+      );
+    }
+    usage.set(ingredient, (existingInventory[ingredient.recipe.name] || 0) - inventoryObject[ingredient.recipe.name]);
+  }
+  return usage;
+};
+
+const markUnsatisfied = (currentNode: RecipeDag) => {
+  if (currentNode.unsatisfied) {
+    return;
+  }
+  currentNode.unsatisfied = true;
+  currentNode.above.forEach((above) => markUnsatisfied(above));
+};
+
+const clearUnsatisfied = () => {
+  for (const recipeDag of recipeDagMap.values()) {
+    recipeDag.unsatisfied = false;
+  }
+};
+
 export {
   RecipeDag,
   initRecipes,
@@ -238,4 +291,8 @@ export {
   drawsPerLevel as recipesPerLevel,
   computeTotalRequirements,
   recipeDagMap,
+  computeUsedRequirementsShared,
+  naturalResources,
+  markUnsatisfied,
+  clearUnsatisfied,
 };

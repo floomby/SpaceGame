@@ -2,7 +2,7 @@ import { bindPostUpdater, horizontalCenter, pop } from "../dialog";
 import { Player } from "../game";
 import { inventory, ownId, recipesKnown } from "../globals";
 import { sendManufacture } from "../net";
-import { maxManufacturable, recipes, recipeDagRoot, RecipeDag, recipesPerLevel, recipeDagMap } from "../recipes";
+import { maxManufacturable, recipes, recipeDagRoot, RecipeDag, recipesPerLevel, recipeDagMap, computeUsedRequirementsShared, clearUnsatisfied, naturalResources, markUnsatisfied } from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
   const recipe = recipes[index];
@@ -121,10 +121,10 @@ const bindManufacturingUpdaters = () => {
   bindPostUpdater("inventory", redrawInfo);
 };
 
-const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: number, y2: number, highlight: boolean) => {
+const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: number, y2: number, stroke: string) => {
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`);
-  path.setAttribute("stroke", highlight ? "green" : "black");
+  path.setAttribute("stroke", stroke);
   path.setAttribute("stroke-width", "1");
   path.setAttribute("fill", "none");
   svg.appendChild(path);
@@ -170,32 +170,9 @@ const computeTotalRequirements = (currentNode: RecipeDag, values: { [key: string
   }
 };
 
-const manufacturingUsage = (currentNode: RecipeDag, needed = 1, inventoryObject = inventory, usage = new Map<RecipeDag, number>()) => {
-  if (inventoryObject === inventory) {
-    inventoryObject = JSON.parse(JSON.stringify(inventory));
-  }
-  if (currentNode.isNaturalResource) {
-    usage.set(currentNode, needed);
-    return usage;
-  }
-  let max = Infinity;
-  for (const ingredient in currentNode.recipe.ingredients) {
-    const amount = inventoryObject[ingredient] || 0;
-    max = Math.min(max, Math.floor(amount / currentNode.recipe.ingredients[ingredient]));
-  }
-  const amountToDirectlyManufacture = Math.min(max, needed);
-  usage.set(currentNode, amountToDirectlyManufacture);
-  for (const ingredient in currentNode.recipe.ingredients) {
-    inventoryObject[ingredient] -= currentNode.recipe.ingredients[ingredient] * amountToDirectlyManufacture;
-  }
-  if (needed > amountToDirectlyManufacture) {
-    const delta = needed - amountToDirectlyManufacture;
-    for (const ingredient of currentNode.below) {
-      const amount = delta * currentNode.recipe.ingredients[ingredient.recipe.name];
-      manufacturingUsage(ingredient, amount, inventoryObject, usage);
-    }
-  }
-  return usage;
+const computeUsedRequirements = (currentNode: RecipeDag) => {
+  const inventoryObject = JSON.parse(JSON.stringify(inventory));
+  return computeUsedRequirementsShared(currentNode, inventoryObject, inventory);
 };
 
 const drawDag = () => {
@@ -218,40 +195,43 @@ const drawDag = () => {
 
     // Also populates the amount texts (returns if the selected node is missing resources for manufacturing)
     const drawEdges = (recipe: RecipeDag, highlight = false) => {
-      let ret = false;
       if (recipeDagRoot === recipe) {
         for (const child of recipe.below) {
-          ret ||= drawEdges(child);
+          drawEdges(child);
         }
-        return ret;
+        return;
       }
       if (drawnEdges.has(recipe)) {
-        return ret;
+        return;
       }
       drawnEdges.add(recipe);
       const { x: x1, y: y1 } = coordinates.get(recipe)!;
-      if (highlight) {
-        ((recipe.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("stroke", "green");
-      }
       for (const child of recipe.below) {
+        const childOfChildIsUnsatisfied = drawEdges(child, highlight);
         if (highlight) {
-          console.log((child.svgGroup as SVGElement).childNodes);
-          // const amount = totalRequirements[child.recipe.name];
-          const amount = inventoryUsage.get(child);
+          const amount = inventoryUsage.get(child) ?? 0;
           const have = inventory[child.recipe.name] || 0;
           ((child.svgGroup as SVGElement).childNodes[2] as SVGTextElement).innerHTML = `${amount}/${have}`;
-          ((child.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("stroke", amount <= have ? "green" : "red");
-          ((child.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("fill", amount <= have ? "white" : "#ffcccc");
+          ((child.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("stroke", child.unsatisfied ? "red" : "green");
+          ((child.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("fill", child.unsatisfied ? "#ffcccc" : "white");
         }
         const { x: x2, y: y2 } = coordinates.get(child)!;
-        drawConnectionSpline(edgeGroup, x1 + 50, y1 + 60, x2 + 50, y2, highlight);
-        ret ||= drawEdges(child, highlight);
+        drawConnectionSpline(edgeGroup, x1 + 50, y1 + 60, x2 + 50, y2, highlight ? child.unsatisfied ? "red" : "green" : "black");
       }
-      return ret;
+      if (highlight) {
+        ((recipe.svgGroup as SVGElement).childNodes[0] as SVGRectElement).setAttribute("stroke", recipe.unsatisfied ? "red" : "green");
+      }
     };
 
     const redrawEdges = () => {
-      inventoryUsage = manufacturingUsage(selectedRecipe);
+      inventoryUsage = computeUsedRequirements(selectedRecipe);
+      clearUnsatisfied();
+      for (const resource of naturalResources) {
+        if (inventoryUsage.get(resource) > (inventory[resource.recipe.name] || 0)) {
+          markUnsatisfied(resource);
+        }
+      }
+
       for (const dagNode of recipeDagMap.values()) {
         if (dagNode.svgGroup) {
           (dagNode.svgGroup as SVGElement).children[2].innerHTML = `0/${inventory[dagNode.recipe.name] || 0}`;
@@ -263,6 +243,7 @@ const drawDag = () => {
       drawnEdges.clear();
       drawEdges(selectedRecipe, true);
       drawEdges(recipeDagRoot);
+      return !!recipeDagRoot.unsatisfied;
     };
 
     const drawSvgElements = (recipe: RecipeDag) => {
@@ -323,7 +304,7 @@ const drawDag = () => {
         }
         if (selectedRecipe !== recipe) {
           selectedRecipe = recipe;
-          redrawEdges();
+          manufacturable = redrawEdges();
         }
         manufacturingPopup = document.createElementNS(ns, "g");
         manufacturingPopup.setAttribute("id", "manufacturingPopup");
@@ -367,7 +348,7 @@ const drawDag = () => {
         buttonText.setAttribute("font-size", "12");
         buttonText.innerHTML = "Manufacture";
         manufacturingPopup.appendChild(buttonText);
-        
+
         const click = (e) => {
           if (manufacturable) {
             console.log("Manufacture", recipe.recipe?.name);
@@ -383,15 +364,19 @@ const drawDag = () => {
       text.addEventListener("click", clickHandler);
 
       const highlightHandler = (e) => {
-        if (selectedRecipe !== recipe) {
-          if (selectedRecipe !== clickedRecipe) {
-            if (manufacturingPopup) {
-              manufacturingTree.removeChild(manufacturingPopup);
-              manufacturingPopup = null;
+        try {
+          if (selectedRecipe !== recipe) {
+            if (selectedRecipe !== clickedRecipe) {
+              if (manufacturingPopup) {
+                manufacturingTree.removeChild(manufacturingPopup);
+                manufacturingPopup = null;
+              }
             }
+            selectedRecipe = recipe;
+            manufacturable = redrawEdges();
           }
-          selectedRecipe = recipe;
-          redrawEdges();
+        } catch (e) {
+          console.error(e);
         }
       };
       rect.addEventListener("mouseover", highlightHandler);
@@ -412,7 +397,7 @@ const drawDag = () => {
     manufacturingTree.appendChild(edgeGroup);
     manufacturingTree.appendChild(nodeGroup);
 
-    // Just change the binding to the closure we just created
+    // Change the dom update binding to the closure we just created
     redrawInfo = redrawEdges;
   }
 };

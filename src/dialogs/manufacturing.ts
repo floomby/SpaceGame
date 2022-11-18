@@ -13,6 +13,9 @@ import {
   clearUnsatisfied,
   naturalResources,
   markUnsatisfied,
+  clearShow,
+  setShowShips,
+  setShowArmaments,
 } from "../recipes";
 
 const manufacturingToolTipText = (index: number, amount: number) => {
@@ -124,6 +127,8 @@ const setupManufacturingBay = () => {
     };
   }
   drawDag();
+  setupFilterButtons("Ships");
+  setupFilterButtons("Weapons");
 };
 
 let redrawInfo = () => {};
@@ -145,28 +150,54 @@ const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: numbe
   svg.appendChild(path);
 };
 
+const filterButton = (what: string) => {
+  return `<div id="${what}Filter" class="checkAsText checkAsTextChecked">${what}</div>`;
+};
+
+let showShips = true;
+let showWeapons = true;
+
+const setupFilterButtons = (what: string) => {
+  const filter = document.getElementById(`${what}Filter`) as HTMLInputElement;
+  if (filter) {
+    filter.onclick = () => {
+      const selected = filter.classList.contains("checkAsTextChecked");
+      if (selected) {
+        filter.classList.remove("checkAsTextChecked");
+        if (what === "Ships") {
+          showShips = false;
+        } else if (what === "Weapons") {
+          showWeapons = false;
+        }
+      } else {
+        filter.classList.add("checkAsTextChecked");
+        if (what === "Ships") {
+          showShips = true;
+        } else if (what === "Weapons") {
+          showWeapons = true;
+        }
+      }
+      clearShow();
+      if (showShips) {
+        setShowShips();
+      }
+      if (showWeapons) {
+        setShowArmaments();
+      }
+      drawDag();
+    };
+  }
+};
+
 const manufacturingBay = () => {
   return horizontalCenter([
     "<h2>Manufacturing Bay</h2>",
-    `<div id="manufacturingContainer"><div class="manufacturing"><svg id="manufacturingTree" height="2000" width="2000">
-  <style>
-    rect {
-      cursor: pointer;
-    }
-    text {
-      cursor: pointer;
-    }
-    .highlighted {
-      bounding-box: 2px solid green;
-    }
-  </style>
-  <g>
-    <rect x="0" y="0" width="2000" height="2000" fill="#cccccccc" stroke="black" stroke-width="1" />
-  </g>
-</svg></div></div>`,
-    "<br/>",
-    '<button id="closeManufacturingBay">Close</button>',
-    "<br/>",
+    `<div style="display: flex; flex-direction: row; justify-content: left; width: 100%; margin-left: 2rem;">
+      ${filterButton("Ships")}
+      ${filterButton("Weapons")}
+    </div>`,
+    `<div class="manufacturing"><svg id="manufacturingTree" height="2000" width="2000"></svg></div>`,
+    '<button class="bottomButton" id="closeManufacturingBay">Close</button>',
   ]);
 };
 
@@ -191,11 +222,33 @@ const computeUsedRequirements = (currentNode: RecipeDag) => {
 };
 
 const drawDag = () => {
+  const manufacturingTree = document.getElementById("manufacturingTree") as unknown as SVGSVGElement;
+  if (manufacturingTree) {
+    manufacturingTree.innerHTML = `<style>
+  rect {
+    cursor: pointer;
+  }
+  text {
+    cursor: pointer;
+  }
+  .highlighted {
+    bounding-box: 2px solid green;
+  }
+</style>
+<g>
+  <rect x="0" y="0" width="2000" height="2000" fill="#cccccccc" stroke="black" stroke-width="1" />
+</g>`;
+  }
+
+  if (!selectedRecipe?.show) {
+    selectedRecipe = undefined;
+  }
+  clickedRecipe = undefined;
+
   const horizontalSpacing = 200;
   const verticalSpacing = 160;
   const ns = "http://www.w3.org/2000/svg";
 
-  const manufacturingTree = document.getElementById("manufacturingTree") as unknown as SVGSVGElement;
   if (manufacturingTree) {
     const coordinates = new Map<RecipeDag, { x: number; y: number }>();
     const alreadyDrawn = new Set<RecipeDag>();
@@ -210,6 +263,9 @@ const drawDag = () => {
 
     // Also populates the amount texts (returns if the selected node is missing resources for manufacturing)
     const drawEdges = (recipe: RecipeDag, highlight = false) => {
+      if (!recipe.show) {
+        return;
+      }
       if (recipeDagRoot === recipe) {
         for (const child of recipe.below) {
           drawEdges(child);

@@ -352,4 +352,8 @@ export {
   naturalResources,
   markUnsatisfied,
   clearUnsatisfied,
+  clearShow,
+  setShowShips,
+  setShowArmaments,
+  computeLevels,
 };

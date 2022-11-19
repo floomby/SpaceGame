@@ -178,6 +178,23 @@ const initRecipes = () => {
         "Reinforced Plating": 1,
         "Cargo Pod": 2,
       },
+      isShip: true,
+    },
+    {
+      name: "Strafer",
+      ingredients: {
+        "Forward Fuselage": 1,
+        "Thrust Vectoring Manifold": 1,
+      },
+      isShip: true,
+    },
+    {
+      name: "Thrust Vectoring Manifold",
+      ingredients: {
+        "Flux Modulator": 1,
+        "Ferrecium Alloy": 1,
+        "Refined Zirathium": 1,
+      },
     },
   ];
 

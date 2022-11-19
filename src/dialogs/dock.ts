@@ -190,7 +190,7 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
     }
   }
   html += "</table>";
-  return horizontalCenter([html, '<br/><button id="back">Back</button>', "<br/>"]);
+  return horizontalCenter([html, '<button class="bottomButton" id="back">Back</button>']);
 };
 
 const shipViewer = () => {
@@ -219,7 +219,7 @@ const shipPreviewer = (definitionIndex: number) => {
 
 const shipShop = () => {
   const self = state.players.get(ownId);
-  return horizontalCenter([shipPreviewer(self.defIndex), `<div id="shipList"></div>`, `<button id="back">Back</button>`, "<br/>"]);
+  return horizontalCenter([shipPreviewer(self.defIndex), `<div id="shipList"></div>`, `<button class="bottomButton" id="back">Back</button>`]);
 };
 
 const populateShipList = (availableShips: { def: UnitDefinition; index: number; atStation: boolean }[], self: Player) => {
@@ -390,8 +390,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
   </div>
   <div style="clear: both;"></div>
 </div>`,
-    `<br/><button id="undock">Undock</button>`,
-    "<br/>",
+    `<button class="bottomButton" id="undock">Undock</button>`,
   ]);
 };
 

@@ -97,9 +97,7 @@ const inventoryDialog = () => {
     `Credits: <span id='inventoryCredits'>${lastSelf.credits}</span>`,
     "<br/>",
     "<div id='inventoryTable'></div>",
-    "<br/>",
-    '<button id="closeInventory">Close</button>',
-    "<br/>",
+    '<button class="bottomButton" id="closeInventory">Close</button>',
   ]);
 };
 

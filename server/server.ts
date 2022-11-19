@@ -501,7 +501,7 @@ wss.on("connection", (ws) => {
             if (state) {
               const playerState = tutorialRespawnPoints.get(client.id);
               if (playerState) {
-                state.players.set(client.id, playerState);
+                state.players.set(client.id, copyPlayer(playerState));
               } else {
                 ws.send(JSON.stringify({ type: "error", payload: { message: "Missing tutorial respawn checkpoint" } }));
               }

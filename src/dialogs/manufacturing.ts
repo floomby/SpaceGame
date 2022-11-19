@@ -144,6 +144,13 @@ const drawDag = () => {
   text {
     cursor: pointer;
   }
+  /* Firefox renders text differently than Chrome */
+  @-moz-document url-prefix(){
+    text {
+      /* If we start having multiple font sizes this fix will not work */
+      transform: translate(0, 3px);
+    }
+  }
   .highlighted {
     bounding-box: 2px solid green;
   }
@@ -341,6 +348,37 @@ const drawDag = () => {
         buttonText.setAttribute("font-size", "12");
         buttonText.innerHTML = "Manufacture";
         manufacturingPopup.appendChild(buttonText);
+
+        // Add a close button
+        const closeButton = document.createElementNS(ns, "rect");
+        closeButton.setAttribute("x", "180");
+        closeButton.setAttribute("y", "0");
+        closeButton.setAttribute("width", "20");
+        closeButton.setAttribute("height", "20");
+        closeButton.setAttribute("rx", "5");
+        closeButton.setAttribute("ry", "5");
+        closeButton.setAttribute("fill", "red");
+        closeButton.setAttribute("stroke", "black");
+        closeButton.setAttribute("stroke-width", "1");
+        manufacturingPopup.appendChild(closeButton);
+        const closeButtonText = document.createElementNS(ns, "text");
+        closeButtonText.setAttribute("x", "190");
+        closeButtonText.setAttribute("y", "10");
+        closeButtonText.setAttribute("text-anchor", "middle");
+        closeButtonText.setAttribute("alignment-baseline", "middle");
+        closeButtonText.setAttribute("font-size", "12");
+        closeButtonText.innerHTML = "X";
+        manufacturingPopup.appendChild(closeButtonText);
+
+        const closeHandler = (e) => {
+          if (manufacturingPopup) {
+            manufacturingTree.removeChild(manufacturingPopup);
+            manufacturingPopup = null;
+          }
+        };
+
+        closeButton.addEventListener("click", closeHandler);
+        manufacturingPopup.addEventListener("click", closeHandler);
 
         const click = (e) => {
           // if (manufacturable) {

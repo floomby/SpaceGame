@@ -71,8 +71,7 @@ const showControls = () => {
   const help = horizontalCenter([
     "<h2>Controls</h2>",
     controlsText(keybind),
-    `<br/><button id="closeControls" class="secondary">Close</button>`,
-    "<br/>",
+    `<button id="closeControls" class='bottomButton' class="secondary">Close</button>`,
   ]);
 
   push(

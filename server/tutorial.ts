@@ -92,7 +92,6 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
             if (player && !tutorialRespawnPoints.has(client.id)) {
               const equippedPlayer = equip(player, 2, "Laser Beam", true);
               state.players.set(client.id, equippedPlayer);
-              const respawnPoint = copyPlayer(equippedPlayer);
               tutorialRespawnPoints.set(client.id, copyPlayer(equippedPlayer));
             }
           }

@@ -64,10 +64,14 @@ const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
       amount.style.backgroundColor = "#aaffaa";
       button.onclick = dumper;
     }
-  }
+  } 
 };
 
-const dumpCargoDialog = horizontalCenter(["<h2>Cargo</h2>", "<br/><div id='dumpCargo'></div>", "<br/><button id='dumpCargoClose'>Close</button>"]);
+const dumpCargoDialog = horizontalCenter([
+  "<h2>Cargo</h2>",
+  "<br/><div id='dumpCargo'></div>",
+  "<button class='bottomButton' id='dumpCargoClose'>Close</button>",
+]);
 
 const setupDumpCargoDialog = () => {
   dumpCargoPostUpdate(lastSelf?.cargo);

@@ -260,22 +260,23 @@ const manufacture = (ws: WebSocket, player: Player, what: string, amount: number
   }
 };
 
-const checkRecipeKnowledge = (recipe: RecipeDag, recipesKnown: string[], missing: string[] = []) => {
-  // Misuse of the unsatisfied field to store visited nodes
-  clearUnsatisfied();
+// TODO This is probably not what we want
+const checkRecipeKnowledge = (recipe: RecipeDag, recipesKnown: string[]) => {
   if (recipe.isNaturalResource) {
-    return missing;
+    return false;
   }
   recipe.unsatisfied = true;
   if (!recipesKnown.includes(recipe.recipe.name)) {
-    missing.push(recipe.recipe.name);
+    return true
   }
   for (const ingredient of recipe.below) {
     if (!ingredient.unsatisfied) {
-      checkRecipeKnowledge(ingredient, recipesKnown, missing);
+      if(checkRecipeKnowledge(ingredient, recipesKnown)) {
+        return true;
+      }
     }
   }
-  return missing;
+  return false;
 };
 
 const compositeManufacture = (
@@ -299,7 +300,7 @@ const compositeManufacture = (
         try {
           if (user) {
             const missing = checkRecipeKnowledge(recipeDag, user.recipesKnown);
-            if (missing.length > 0) {
+            if (missing) {
               try {
                 // flashServerMessage(player.id, `You don't know how to make ${missing.join(", ")}`);
                 flashServerMessage(player.id, `Requisite knowledge missing`);
@@ -316,18 +317,18 @@ const compositeManufacture = (
 
             const inventoryObject = JSON.parse(JSON.stringify(inventory));
             const usages = computeUsedRequirementsShared(recipeDag, inventoryObject, inventory, amount);
-            clearUnsatisfied();
+            let unsatisfied = false;
             for (const resource of naturalResources) {
               const usage = usages.get(resource);
               if (usage) {
                 if (usage > (inventory[resource.recipe.name] || 0)) {
-                  console.log(`Not enough ${resource.recipe.name}`);
-                  markUnsatisfied(resource);
+                  unsatisfied = true;
+                  break;
                 }
               }
             }
 
-            if (!!recipeDagRoot.unsatisfied) {
+            if (unsatisfied) {
               try {
                 flashServerMessage(player.id, `You don't have enough resources to make ${what}`);
                 return;
@@ -352,9 +353,13 @@ const compositeManufacture = (
                 amount,
               });
             }
-            user.save();
             try {
-              ws.send(JSON.stringify({ type: "inventory", payload: user.inventory }));
+              user.save();
+              try {
+                ws.send(JSON.stringify({ type: "inventory", payload: user.inventory }));
+              } catch (e) {
+                console.trace(e);
+              }
             } catch (e) {
               console.trace(e);
             }

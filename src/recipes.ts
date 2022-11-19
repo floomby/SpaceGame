@@ -320,7 +320,7 @@ const computeUsedRequirementsShared = (
         ingredient,
         inventoryObject,
         existingInventory,
-        currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier,
+        currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier - amountToRemoveFromInventory,
         usage
       );
     }

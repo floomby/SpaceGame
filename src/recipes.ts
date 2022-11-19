@@ -163,6 +163,22 @@ const initRecipes = () => {
       },
       isArmament: true,
     },
+    {
+      name: "Cargo Pod",
+      ingredients: {
+        "Ferrecium Alloy": 1,
+        "Refined Prifetium": 1,
+      },
+    },
+    {
+      name: "Venture",
+      ingredients: {
+        "Forward Fuselage": 1,
+        "Aft Fuselage": 1,
+        "Reinforced Plating": 1,
+        "Cargo Pod": 2,
+      },
+    },
   ];
 
   recipeDagRoot = {

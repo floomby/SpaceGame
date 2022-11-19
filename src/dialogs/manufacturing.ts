@@ -174,9 +174,17 @@ const drawDag = () => {
     const alreadyDrawn = new Set<RecipeDag>();
     const drawnPerLevel = new Array(recipeDagRoot.minLevel + 1).fill(0);
     const nodeGroup = document.createElementNS(ns, "g");
+    const edgeGroup = document.createElementNS(ns, "g");
+
+    manufacturingTree.appendChild(edgeGroup);
+    manufacturingTree.appendChild(nodeGroup);
+
+    nodeGroup.setAttribute("z-index", "1");
+    edgeGroup.setAttribute("z-index", "0");
 
     const marginX = 100;
     const marginY = 0;
+    const nodeWidth = 100;
     const centerX = manufacturingTree.clientWidth / 2;
 
     let manufacturingPopup: SVGElement = undefined;
@@ -214,21 +222,38 @@ const drawDag = () => {
       }
     };
 
-    const redrawEdges = () => {
-      const { usage, recipesUsed } = computeUsedRequirements(selectedRecipe);
+    const computeManufacturable = (dagNode: RecipeDag, pure = false) => {
+      const { usage, recipesUsed } = computeUsedRequirements(dagNode);
       inventoryUsage = usage;
-      clearUnsatisfied();
+
+      if (!pure) {
+        clearUnsatisfied();
+      }
       for (const resource of naturalResources) {
         if (inventoryUsage.get(resource) > (inventory[resource.recipe.name] || 0)) {
-          markUnsatisfied(resource);
+          if (!pure) {
+            markUnsatisfied(resource);
+          } else {
+            return false;
+          }
         }
       }
 
       for (const recipe of recipesUsed) {
         if (!recipesKnown.has(recipe.recipe.name)) {
-          markUnsatisfied(recipe);
+          if (!pure) {
+            markUnsatisfied(recipe);
+          } else {
+            return false;
+          }
         }
       }
+
+      return true;
+    };
+
+    const redrawEdges = () => {
+      computeManufacturable(selectedRecipe);
 
       for (const dagNode of recipeDagMap.values()) {
         if (dagNode.svgGroup) {
@@ -266,17 +291,7 @@ const drawDag = () => {
       const y = (recipeDagRoot.minLevel + 1 - level) * verticalSpacing + marginY;
       coordinates.set(recipe, { x, y });
       drawnPerLevel[level] += 1;
-      const rect = document.createElementNS(ns, "rect");
-      rect.setAttribute("x", x.toString());
-      rect.setAttribute("y", y.toString());
-      rect.setAttribute("width", "100");
-      rect.setAttribute("height", "60");
-      rect.setAttribute("rx", "10");
-      rect.setAttribute("ry", "10");
-      rect.setAttribute("fill", "white");
-      rect.setAttribute("stroke", "black");
-      rect.setAttribute("stroke-width", "1");
-      container.appendChild(rect);
+
       const text = document.createElementNS(ns, "text");
       text.setAttribute("x", (x + 50).toString());
       text.setAttribute("y", (y + 20).toString());
@@ -284,6 +299,7 @@ const drawDag = () => {
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
       text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") || recipe.isNaturalResource ? recipe.recipe?.name || "Root" : "???";
+      // text.setAttribute("z-index", "2");
       container.appendChild(text);
 
       const amount = document.createElementNS(ns, "text");
@@ -292,10 +308,25 @@ const drawDag = () => {
       amount.setAttribute("text-anchor", "middle");
       amount.setAttribute("alignment-baseline", "middle");
       amount.setAttribute("font-size", "12");
+      // amount.setAttribute("z-index", "2");
       amount.innerHTML = "";
       container.appendChild(amount);
 
       nodeGroup.appendChild(container);
+
+      const width = Math.max(text.getComputedTextLength() + 10, nodeWidth);
+
+      const rect = document.createElementNS(ns, "rect");
+      rect.setAttribute("x", (x + Math.min(0, nodeWidth / 2 - width / 2)).toString());
+      rect.setAttribute("y", y.toString());
+      rect.setAttribute("width", width.toString());
+      rect.setAttribute("height", "60");
+      rect.setAttribute("rx", "10");
+      rect.setAttribute("ry", "10");
+      rect.setAttribute("fill", "white");
+      rect.setAttribute("stroke", "black");
+      rect.setAttribute("stroke-width", "1");
+      container.prepend(rect);
 
       const clickHandler = (e) => {
         if (manufacturingPopup) {
@@ -304,11 +335,11 @@ const drawDag = () => {
         }
         if (selectedRecipe !== recipe) {
           selectedRecipe = recipe;
-          manufacturable = redrawEdges() && recipesKnown.has(recipe.recipe?.name);
+          manufacturable = redrawEdges();
         }
         manufacturingPopup = document.createElementNS(ns, "g");
         manufacturingPopup.setAttribute("id", "manufacturingPopup");
-        manufacturingPopup.setAttribute("transform", `translate(${x + 100}, ${y})`);
+        manufacturingPopup.setAttribute("transform", `translate(${x + width + Math.min(0, nodeWidth / 2 - width / 2)}, ${y})`);
         const rect = document.createElementNS(ns, "rect");
         rect.setAttribute("x", "0");
         rect.setAttribute("y", "0");
@@ -336,7 +367,7 @@ const drawDag = () => {
         button.setAttribute("height", "20");
         button.setAttribute("rx", "5");
         button.setAttribute("ry", "5");
-        button.setAttribute("fill", manufacturable ? "green" : "red");
+        button.setAttribute("fill", computeManufacturable(recipe, true) ? "green" : "red");
         button.setAttribute("stroke", "black");
         button.setAttribute("stroke-width", "1");
         manufacturingPopup.appendChild(button);
@@ -407,7 +438,7 @@ const drawDag = () => {
               }
             }
             selectedRecipe = recipe;
-            manufacturable = redrawEdges() && recipesKnown.has(recipe.recipe?.name);
+            manufacturable = redrawEdges();
           }
         } catch (e) {
           console.error(e);
@@ -423,13 +454,9 @@ const drawDag = () => {
 
     drawSvgElements(recipeDagRoot);
 
-    const edgeGroup = document.createElementNS(ns, "g");
     const drawnEdges = new Set<RecipeDag>();
 
     drawEdges(recipeDagRoot);
-
-    manufacturingTree.appendChild(edgeGroup);
-    manufacturingTree.appendChild(nodeGroup);
 
     // Change the dom update binding to the closure we just created
     redrawInfo = () => {

@@ -3,13 +3,9 @@ import { User } from "./dataModels";
 import { WebSocket } from "ws";
 import { market } from "./market";
 import {
-  clearUnsatisfied,
   computeUsedRequirementsShared,
-  markUnsatisfied,
   naturalResources,
-  RecipeDag,
   recipeDagMap,
-  recipeDagRoot,
   recipeMap,
 } from "../src/recipes";
 import { inspect } from "util";
@@ -260,25 +256,6 @@ const manufacture = (ws: WebSocket, player: Player, what: string, amount: number
   }
 };
 
-// TODO This is probably not what we want
-const checkRecipeKnowledge = (recipe: RecipeDag, recipesKnown: string[]) => {
-  if (recipe.isNaturalResource) {
-    return false;
-  }
-  recipe.unsatisfied = true;
-  if (!recipesKnown.includes(recipe.recipe.name)) {
-    return true
-  }
-  for (const ingredient of recipe.below) {
-    if (!ingredient.unsatisfied) {
-      if(checkRecipeKnowledge(ingredient, recipesKnown)) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
 const compositeManufacture = (
   ws: WebSocket,
   player: Player,
@@ -299,32 +276,29 @@ const compositeManufacture = (
       } else {
         try {
           if (user) {
-            const missing = checkRecipeKnowledge(recipeDag, user.recipesKnown);
-            if (missing) {
-              try {
-                // flashServerMessage(player.id, `You don't know how to make ${missing.join(", ")}`);
-                flashServerMessage(player.id, `Requisite knowledge missing`);
-                return;
-              } catch (e) {
-                console.trace(e);
-              }
-            }
-
             const inventory: { [key: string]: number } = {};
             for (const entry of user.inventory) {
               inventory[entry.what] = entry.amount;
             }
-
             const inventoryObject = JSON.parse(JSON.stringify(inventory));
-            const usages = computeUsedRequirementsShared(recipeDag, inventoryObject, inventory, amount);
+            const { usage, recipesUsed } = computeUsedRequirementsShared(recipeDag, inventoryObject, inventory, amount);
+            
             let unsatisfied = false;
             for (const resource of naturalResources) {
-              const usage = usages.get(resource);
-              if (usage) {
-                if (usage > (inventory[resource.recipe.name] || 0)) {
+              const use = usage.get(resource);
+              if (use) {
+                if (use > (inventory[resource.recipe.name] || 0)) {
                   unsatisfied = true;
                   break;
                 }
+              }
+            }
+
+            let unknowledgeable = false;
+            for (const recipe of recipesUsed) {
+              if (!user.recipesKnown.includes(recipe.recipe.name)) {
+                unknowledgeable = true;
+                break;
               }
             }
 
@@ -337,8 +311,17 @@ const compositeManufacture = (
               }
             }
 
-            for (const [usage, amount] of usages.entries()) {
-              const inventory = user.inventory.find((inventory) => inventory.what === usage.recipe.name);
+            if (unknowledgeable) {
+              try {
+                flashServerMessage(player.id, `Requisite knowledge missing`);
+                return;
+              } catch (e) {
+                console.trace(e);
+              }
+            }
+
+            for (const [use, amount] of usage.entries()) {
+              const inventory = user.inventory.find((inventory) => inventory.what === use.recipe.name);
               if (inventory && amount) {
                 inventory.amount -= amount;
               }

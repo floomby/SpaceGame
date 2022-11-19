@@ -298,8 +298,13 @@ const computeUsedRequirementsShared = (
   inventoryObject: { [key: string]: number },
   existingInventory: { [key: string]: number },
   multiplier = 1,
-  usage = new Map<RecipeDag, number>()
+  usage = new Map<RecipeDag, number>(),
+  recipesUsed = new Set<RecipeDag>()
 ) => {
+  if (recipesUsed.size === 0) {
+    recipesUsed.add(currentNode);
+  }
+
   for (const ingredient of currentNode.below) {
     const use = usage.get(ingredient);
     if (use === undefined) {
@@ -315,6 +320,9 @@ const computeUsedRequirementsShared = (
         inventoryObject[ingredient.recipe.name],
         currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier
       );
+      if (currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier > inventoryObject[ingredient.recipe.name]) {
+        recipesUsed.add(ingredient);
+      }
       inventoryObject[ingredient.recipe.name] -= amountToRemoveFromInventory;
       computeUsedRequirementsShared(
         ingredient,
@@ -326,7 +334,7 @@ const computeUsedRequirementsShared = (
     }
     usage.set(ingredient, (existingInventory[ingredient.recipe.name] || 0) - inventoryObject[ingredient.recipe.name]);
   }
-  return usage;
+  return { usage, recipesUsed };
 };
 
 const markUnsatisfied = (currentNode: RecipeDag) => {

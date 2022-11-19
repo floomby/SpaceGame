@@ -1,10 +1,7 @@
 import { bindPostUpdater, horizontalCenter, peekTag, pop } from "../dialog";
-import { Player } from "../game";
 import { inventory, ownId, recipesKnown } from "../globals";
-import { sendCompositeManufacture, sendManufacture } from "../net";
+import { sendCompositeManufacture } from "../net";
 import {
-  maxManufacturable,
-  recipes,
   recipeDagRoot,
   RecipeDag,
   recipesPerLevel,
@@ -177,7 +174,7 @@ const drawDag = () => {
 
     let manufacturingPopup: SVGElement = undefined;
 
-    // Also populates the amount texts (returns if the selected node is missing resources for manufacturing)
+    // Also populates the amount texts
     const drawEdges = (recipe: RecipeDag, highlight = false) => {
       if (!recipe.show) {
         return;
@@ -211,11 +208,18 @@ const drawDag = () => {
     };
 
     const redrawEdges = () => {
-      inventoryUsage = computeUsedRequirements(selectedRecipe);
+      const { usage, recipesUsed } = computeUsedRequirements(selectedRecipe);
+      inventoryUsage = usage;
       clearUnsatisfied();
       for (const resource of naturalResources) {
         if (inventoryUsage.get(resource) > (inventory[resource.recipe.name] || 0)) {
           markUnsatisfied(resource);
+        }
+      }
+
+      for (const recipe of recipesUsed) {
+        if (!recipesKnown.has(recipe.recipe.name)) {
+          markUnsatisfied(recipe);
         }
       }
 

@@ -180,6 +180,10 @@ const sellInventory = (ws: WebSocket, player: Player, what: string, amount: numb
 const manufacture = (ws: WebSocket, player: Player, what: string, amount: number, flashServerMessage: (id: number, message: string) => void) => {
   const recipe = recipeMap.get(what);
   if (recipe) {
+    amount = Math.round(amount);
+    if (amount <= 0) {
+      return;
+    }
     User.findOne({ id: player.id }, (err, user) => {
       if (err) {
         console.log(err);

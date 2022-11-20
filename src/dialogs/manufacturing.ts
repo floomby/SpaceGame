@@ -118,6 +118,7 @@ let selectedRecipe: RecipeDag = undefined;
 let clickedRecipe: RecipeDag = undefined;
 let inventoryUsage: Map<RecipeDag, number>;
 let manufacturable = false;
+let manufactureQuantity = 1;
 
 const computeTotalRequirements = (currentNode: RecipeDag, values: { [key: string]: number }, multiplier = 1) => {
   for (const ingredient of currentNode.below) {
@@ -129,9 +130,9 @@ const computeTotalRequirements = (currentNode: RecipeDag, values: { [key: string
   }
 };
 
-const computeUsedRequirements = (currentNode: RecipeDag) => {
+const computeUsedRequirements = (currentNode: RecipeDag, count: number) => {
   const inventoryObject = JSON.parse(JSON.stringify(inventory));
-  return computeUsedRequirementsShared(currentNode, inventoryObject, inventory);
+  return computeUsedRequirementsShared(currentNode, inventoryObject, inventory, count);
 };
 
 const drawDag = () => {
@@ -222,8 +223,8 @@ const drawDag = () => {
       }
     };
 
-    const computeManufacturable = (dagNode: RecipeDag, pure = false) => {
-      const { usage, recipesUsed } = computeUsedRequirements(dagNode);
+    const computeManufacturable = (dagNode: RecipeDag, pure = false, count = 1) => {
+      const { usage, recipesUsed } = computeUsedRequirements(dagNode, count);
       inventoryUsage = usage;
 
       if (!pure) {
@@ -253,7 +254,7 @@ const drawDag = () => {
     };
 
     const redrawEdges = () => {
-      computeManufacturable(selectedRecipe);
+      computeManufacturable(selectedRecipe, false, manufactureQuantity);
 
       for (const dagNode of recipeDagMap.values()) {
         if (dagNode.svgGroup) {
@@ -299,7 +300,6 @@ const drawDag = () => {
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
       text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") || recipe.isNaturalResource ? recipe.recipe?.name || "Root" : "???";
-      // text.setAttribute("z-index", "2");
       container.appendChild(text);
 
       const amount = document.createElementNS(ns, "text");
@@ -308,7 +308,6 @@ const drawDag = () => {
       amount.setAttribute("text-anchor", "middle");
       amount.setAttribute("alignment-baseline", "middle");
       amount.setAttribute("font-size", "12");
-      // amount.setAttribute("z-index", "2");
       amount.innerHTML = "";
       container.appendChild(amount);
 
@@ -362,7 +361,7 @@ const drawDag = () => {
         // Add a manufacturing button
         const button = document.createElementNS(ns, "rect");
         button.setAttribute("x", "50");
-        button.setAttribute("y", "40");
+        button.setAttribute("y", "70");
         button.setAttribute("width", "100");
         button.setAttribute("height", "20");
         button.setAttribute("rx", "5");
@@ -373,12 +372,41 @@ const drawDag = () => {
         manufacturingPopup.appendChild(button);
         const buttonText = document.createElementNS(ns, "text");
         buttonText.setAttribute("x", "100");
-        buttonText.setAttribute("y", "50");
+        buttonText.setAttribute("y", "80");
         buttonText.setAttribute("text-anchor", "middle");
         buttonText.setAttribute("alignment-baseline", "middle");
         buttonText.setAttribute("font-size", "12");
         buttonText.innerHTML = "Manufacture";
         manufacturingPopup.appendChild(buttonText);
+
+        // Add an input field for the amount
+        const input = document.createElementNS(ns, "foreignObject");
+        input.setAttribute("x", "40");
+        input.setAttribute("y", "40");
+        input.setAttribute("width", "120");
+        input.setAttribute("height", "28");
+        const inputField = document.createElement("input");
+        inputField.setAttribute("type", "number");
+        inputField.setAttribute("value", "1");
+        inputField.setAttribute("min", "1");
+        inputField.setAttribute("max", "1000000");
+        inputField.setAttribute("step", "1");
+        // inputField.setAttribute("style", "width: 100%; height: 100%;");
+        inputField.classList.add("manufacturingInput");
+        input.appendChild(inputField);
+        manufacturingPopup.appendChild(input);
+
+        inputField.onchange = () => {
+          const amount = parseInt(inputField.value);
+          if (amount > 1) {
+            button.setAttribute("fill", computeManufacturable(recipe, true, amount) ? "green" : "red");
+            manufactureQuantity = amount;
+            manufacturable = redrawEdges();
+          } else {
+            inputField.value = "1";
+            button.setAttribute("fill", "red");
+          }
+        };
 
         // Add a close button
         const closeButton = document.createElementNS(ns, "rect");
@@ -409,11 +437,11 @@ const drawDag = () => {
         };
 
         closeButton.addEventListener("click", closeHandler);
-        manufacturingPopup.addEventListener("click", closeHandler);
+        closeButtonText.addEventListener("click", closeHandler);
 
         const click = (e) => {
           // if (manufacturable) {
-          sendCompositeManufacture(ownId, recipe.recipe.name, 1);
+          sendCompositeManufacture(ownId, recipe.recipe.name, manufactureQuantity);
           // }
         };
         button.addEventListener("click", click);

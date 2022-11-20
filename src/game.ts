@@ -652,7 +652,7 @@ const update = (
       const wasCloaked = !!player.cloak;
       const primaryDef = projectileDefs[def.primaryDefIndex];
       if (player.disabled) {
-        player.warping = 0;
+        player.warping = -player.warping;
         player.cloak = 0;
         player.disabled -= 1;
         player.position.x += player.v.x;
@@ -872,15 +872,15 @@ const update = (
       player.energy = Math.min(player.energy + def.energyRegen, def.energy);
     }
     // If a warp is in progress, update the warp progress, then trigger the warp once time has elapsed
-    if (player.warping) {
+    if (player.warping > 0) {
       if (player.energy < 10) {
-        player.warping = 0;
+        player.warping = -player.warping;
       } else {
         player.warping += 1;
         // Energy use while cloaked is tripled
         player.energy -= player.cloak ? 60 / def.warpTime : 20 / def.warpTime;
         if (player.warping > def.warpTime) {
-          player.warping = 0;
+          player.warping = -player.warping;
           state.players.delete(id);
           serverWarpList.push({ player, to: player.warpTo });
           applyEffect({
@@ -889,6 +889,8 @@ const update = (
           });
         }
       }
+    } else if (player.warping < 0) {
+      player.warping += 1;
     }
   }
   // Collectable loop
@@ -943,7 +945,7 @@ const findSectorTransitions = (state: GlobalState, sector: number, transitions: 
       }
 
       transitions.push(transition);
-      player.warping = 0;
+      player.warping = -player.warping;
       state.players.delete(player.id);
     }
   }

@@ -381,27 +381,29 @@ const drawDag = () => {
 
         // Add an input field for the amount
         const input = document.createElementNS(ns, "foreignObject");
-        input.setAttribute("x", "50");
+        input.setAttribute("x", "40");
         input.setAttribute("y", "40");
-        input.setAttribute("width", "100");
-        input.setAttribute("height", "20");
+        input.setAttribute("width", "120");
+        input.setAttribute("height", "28");
         const inputField = document.createElement("input");
         inputField.setAttribute("type", "number");
         inputField.setAttribute("value", "1");
         inputField.setAttribute("min", "1");
         inputField.setAttribute("max", "1000000");
         inputField.setAttribute("step", "1");
-        inputField.setAttribute("style", "width: 100%; height: 100%;");
+        // inputField.setAttribute("style", "width: 100%; height: 100%;");
+        inputField.classList.add("manufacturingInput");
         input.appendChild(inputField);
         manufacturingPopup.appendChild(input);
 
         inputField.onchange = () => {
           const amount = parseInt(inputField.value);
-          if (amount > 0) {
+          if (amount > 1) {
             button.setAttribute("fill", computeManufacturable(recipe, true, amount) ? "green" : "red");
             manufactureQuantity = amount;
             manufacturable = redrawEdges();
           } else {
+            inputField.value = "1";
             button.setAttribute("fill", "red");
           }
         };
@@ -435,7 +437,7 @@ const drawDag = () => {
         };
 
         closeButton.addEventListener("click", closeHandler);
-        manufacturingPopup.addEventListener("click", closeHandler);
+        closeButtonText.addEventListener("click", closeHandler);
 
         const click = (e) => {
           // if (manufacturable) {

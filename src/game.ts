@@ -653,7 +653,7 @@ const update = (
       const wasCloaked = !!player.cloak;
       const primaryDef = projectileDefs[def.primaryDefIndex];
       if (player.disabled) {
-        player.warping = -player.warping;
+        player.warping = 0;
         player.cloak = 0;
         player.disabled -= 1;
         player.position.x += player.v.x;

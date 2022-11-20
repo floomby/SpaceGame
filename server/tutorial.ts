@@ -16,21 +16,24 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
         if (client) {
           const state = sectors.get(client.currentSector);
           if (state) {
-            const npc = addTutorialRoamingVenture(state, uid());
-            (npc as NPC).killed = () => {
-              const client = clients.get(ws);
-              if (client) {
-                client.inTutorial = TutorialStage.SwitchSecondary;
-                sendTutorialStage(ws, TutorialStage.SwitchSecondary);
-                const state = sectors.get(client.currentSector);
-                if (state) {
-                  const player = state.players.get(client.id);
-                  if (player) {
-                    state.players.set(client.id, equip(player, 1, "Javelin Missile", true));
+            const player = state.players.get(id);
+            if (player) {
+              const npc = addTutorialRoamingVenture(state, uid(), player.position);
+              (npc as NPC).killed = () => {
+                const client = clients.get(ws);
+                if (client) {
+                  client.inTutorial = TutorialStage.SwitchSecondary;
+                  sendTutorialStage(ws, TutorialStage.SwitchSecondary);
+                  const state = sectors.get(client.currentSector);
+                  if (state) {
+                    const player = state.players.get(client.id);
+                    if (player) {
+                      state.players.set(client.id, equip(player, 1, "Javelin Missile", true));
+                    }
                   }
                 }
-              }
-            };
+              };
+            }
           }
         }
       }
@@ -73,26 +76,28 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
         if (client) {
           const state = sectors.get(client.currentSector);
           if (state) {
-            const npc = addTutorialStrafer(state, uid());
-            (npc as NPC).killed = () => {
-              {
-                const client = clients.get(ws);
-                if (client) {
-                  client.inTutorial = TutorialStage.Map;
-                  sendTutorialStage(ws, TutorialStage.Map);
-                  const player = sectors.get(client.currentSector)?.players.get(id);
-                  if (player) {
-                    client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+            const player = state.players.get(client.id);
+            if (player) {
+              const npc = addTutorialStrafer(state, uid(), player.position);
+              (npc as NPC).killed = () => {
+                {
+                  const client = clients.get(ws);
+                  if (client) {
+                    client.inTutorial = TutorialStage.Map;
+                    sendTutorialStage(ws, TutorialStage.Map);
+                    const player = sectors.get(client.currentSector)?.players.get(id);
+                    if (player) {
+                      client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+                    }
                   }
                 }
+              };
+              client.tutorialNpc = npc;
+              if (!tutorialRespawnPoints.has(client.id)) {
+                const equippedPlayer = equip(player, 2, "Laser Beam", true);
+                state.players.set(client.id, equippedPlayer);
+                tutorialRespawnPoints.set(client.id, copyPlayer(equippedPlayer));
               }
-            };
-            client.tutorialNpc = npc;
-            const player = state.players.get(client.id);
-            if (player && !tutorialRespawnPoints.has(client.id)) {
-              const equippedPlayer = equip(player, 2, "Laser Beam", true);
-              state.players.set(client.id, equippedPlayer);
-              tutorialRespawnPoints.set(client.id, copyPlayer(equippedPlayer));
             }
           }
         }

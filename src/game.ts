@@ -36,6 +36,7 @@ import {
   isAngleBetween,
   CardinalDirection,
   pointOutsideRectangle,
+  pointInRectangle,
 } from "./geometry";
 import { NPC, processLootTable } from "./npc";
 import { seek } from "./pathing";
@@ -1314,6 +1315,14 @@ const mapSize = 4;
 const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20000 };
 const sectorDelta = 20500;
 
+const randomNearbyPointInSector = (point: Position, distance: number) => {
+  let ret = { x: Math.random() * distance * 2 - distance, y: Math.random() * distance * 2 - distance };
+  while (l2Norm(ret, point) > distance || !pointInRectangle(ret, sectorBounds)) {
+    ret = { x: Math.random() * distance * 2 - distance, y: Math.random() * distance * 2 - distance };
+  }
+  return ret;
+};
+
 const isValidSectorInDirection = (sector: number, direction: CardinalDirection) => {
   if (direction === CardinalDirection.Up) {
     return sector >= mapSize;
@@ -1406,4 +1415,5 @@ export {
   sectorBounds,
   sectorDelta,
   mapSize,
+  randomNearbyPointInSector,
 };

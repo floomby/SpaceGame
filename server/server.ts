@@ -61,7 +61,7 @@ import {
   uid,
   warpList,
 } from "./state";
-import { CardinalDirection, headingFromCardinalDirection } from "../src/geometry";
+import { CardinalDirection, headingFromCardinalDirection, mirrorAngleHorizontally, mirrorAngleVertically } from "../src/geometry";
 import { credentials, hash, wsPort } from "./settings";
 import Routes from "./routes";
 import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
@@ -1000,15 +1000,19 @@ setInterval(() => {
       if (transition.direction === CardinalDirection.Up) {
         transition.player.position.y = sectorBounds.y + 200;
         transition.direction = CardinalDirection.Down;
+        transition.player.heading = mirrorAngleHorizontally(transition.player.heading);
       } else if (transition.direction === CardinalDirection.Down) {
         transition.player.position.y = sectorBounds.y + sectorBounds.height - 200;
         transition.direction = CardinalDirection.Up;
+        transition.player.heading = mirrorAngleHorizontally(transition.player.heading);
       } else if (transition.direction === CardinalDirection.Left) {
         transition.player.position.x = sectorBounds.x + 200;
         transition.direction = CardinalDirection.Right;
+        transition.player.heading = mirrorAngleVertically(transition.player.heading);
       } else if (transition.direction === CardinalDirection.Right) {
         transition.player.position.x = sectorBounds.x + sectorBounds.width - 200;
         transition.direction = CardinalDirection.Left;
+        transition.player.heading = mirrorAngleVertically(transition.player.heading);
       }
     }
 
@@ -1039,7 +1043,7 @@ setInterval(() => {
         );
       }
       transition.player.position = transition.coords;
-      transition.player.heading = headingFromCardinalDirection(transition.direction);
+      // transition.player.heading = headingFromCardinalDirection(transition.direction);
       state.players.set(transition.player.id, transition.player);
     }
   }

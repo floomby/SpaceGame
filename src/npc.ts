@@ -10,6 +10,7 @@ import {
   Input,
   isValidSectorInDirection,
   Player,
+  randomNearbyPointInSector,
   sectorBounds,
   sectorDelta,
 } from "./game";
@@ -885,13 +886,13 @@ class TutorialRoamingVenture implements NPC {
 
   public targetId: number;
 
-  constructor(id: number) {
+  constructor(id: number, where: Position) {
     const { def, index } = defMap.get("Venture");
 
     const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
     this.player = {
-      position: { x: Math.random() * bounds.width + bounds.x, y: Math.random() * bounds.height + bounds.y },
+      position: randomNearbyPointInSector(where, 1500),
       radius: def.radius,
       speed: 0,
       heading: Math.random() * 2 * Math.PI,
@@ -924,8 +925,8 @@ class TutorialRoamingVenture implements NPC {
   }
 };
 
-const addTutorialRoamingVenture = (state: GlobalState, id: number) => {
-  const npc = new TutorialRoamingVenture(id);
+const addTutorialRoamingVenture = (state: GlobalState, id: number, where: Position) => {
+  const npc = new TutorialRoamingVenture(id, where);
   state.players.set(npc.player.id, npc.player);
   return npc;
 };
@@ -954,13 +955,13 @@ class TutorialStrafer implements NPC {
 
   public doNotShootYet: boolean = true;
 
-  constructor(id: number) {
+  constructor(id: number, where: Position) {
     const { def, index } = defMap.get("Strafer");
 
     const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
     this.player = {
-      position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
+      position: randomNearbyPointInSector(where, 8000),
       radius: def.radius,
       speed: 0,
       heading: Math.random() * 2 * Math.PI,
@@ -1079,8 +1080,8 @@ class TutorialStrafer implements NPC {
   }
 }
 
-const addTutorialStrafer = (state: GlobalState, id: number) => {
-  const npc = new TutorialStrafer(id);
+const addTutorialStrafer = (state: GlobalState, id: number, where: Position) => {
+  const npc = new TutorialStrafer(id, where);
   state.players.set(npc.player.id, npc.player);
   return npc;
 };

@@ -158,6 +158,14 @@ const headingFromCardinalDirection = (direction: CardinalDirection) => {
   }
 };
 
+const mirrorAngleHorizontally = (angle: number) => {
+  return -angle;
+};
+
+const mirrorAngleVertically = (angle: number) => {
+  return Math.PI - angle;
+};
+
 export {
   Position,
   Circle,

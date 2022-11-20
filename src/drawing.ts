@@ -473,8 +473,8 @@ const drawPlayer = (player: Player, self: Player) => {
   // This effect is pretty bad, but I want something visual to indicate a warp is in progress
   ctx.rotate(player.heading);
   if (player.warping) {
-    const warpAmount = player.warping / def.warpTime;
-    const warpFramesLeft = def.warpTime - player.warping;
+    const warpAmount = Math.abs(player.warping / def.warpTime);
+    const warpFramesLeft = def.warpTime - Math.abs(player.warping);
     ctx.filter = `drop-shadow(0 0 ${warpAmount * 10}px #FFFFFF) ${cloakFilterString}`;
     ctx.transform(Math.max(1, 10 / (warpFramesLeft + 3)), 0, 0, Math.min(1, warpFramesLeft / 10), 0, 0);
   }

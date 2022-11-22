@@ -196,6 +196,13 @@ const initRecipes = () => {
         "Refined Zirathium": 1,
       },
     },
+    {
+      name: "Cloaking Generator",
+      ingredients: {
+        "Refractive Plating": 1,
+        "Boson Incabulator": 1,
+      },
+    }
   ];
 
   recipeDagRoot = {

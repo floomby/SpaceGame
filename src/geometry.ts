@@ -188,4 +188,6 @@ export {
   findInterceptAimingHeading,
   pointOutsideRectangle,
   headingFromCardinalDirection,
+  mirrorAngleHorizontally,
+  mirrorAngleVertically,
 };

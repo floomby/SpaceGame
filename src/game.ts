@@ -1316,9 +1316,9 @@ const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20
 const sectorDelta = 20500;
 
 const randomNearbyPointInSector = (point: Position, distance: number) => {
-  let ret = { x: Math.random() * distance * 2 - distance, y: Math.random() * distance * 2 - distance };
+  let ret = { x: Math.random() * distance * 2 - distance + point.x, y: Math.random() * distance * 2 - distance + point.y };
   while (l2Norm(ret, point) > distance || !pointInRectangle(ret, sectorBounds)) {
-    ret = { x: Math.random() * distance * 2 - distance, y: Math.random() * distance * 2 - distance };
+    ret = { x: Math.random() * distance * 2 - distance + point.x, y: Math.random() * distance * 2 - distance + point.y };
   }
   return ret;
 };
@@ -1353,7 +1353,7 @@ enum TutorialStage {
   CollectResources,
   LaserBeam,
   TargetEnemy,
-  Map
+  Map,
 }
 
 export {

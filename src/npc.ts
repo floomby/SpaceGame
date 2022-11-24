@@ -336,6 +336,7 @@ const makeBasicStateGraph = (
   idle.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoTo });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoToSector });
+  idle.transitions.push({ trigger: () => Math.random() < 0.02, state: randomWarp });
   passiveGoTo.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   passiveGoTo.transitions.push({ trigger: (_, __, memory) => memory.completed, state: idle });
   passiveGoToSector.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
@@ -353,7 +354,7 @@ const makeBasicStateGraph = (
     state: run,
   });
   run.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
-  run.transitions.push({ trigger: () => Math.random() < 0.02, state: warpAway });
+  run.transitions.push({ trigger: (_, npc) => !npc.player.warping && Math.random() < 0.02, state: warpAway });
   run.transitions.push({
     trigger: (_, npc) => {
       const def = defs[npc.player.defIndex];

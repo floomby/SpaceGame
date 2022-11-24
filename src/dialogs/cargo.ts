@@ -1,6 +1,6 @@
 import { addOnHide, addOnPush, addOnShow, bindPostUpdater, bindUpdater, horizontalCenter, peekTag, pop, push, shown } from "../dialog";
 import { CargoEntry } from "../game";
-import { lastSelf, ownId } from "../globals";
+import { lastSelf } from "../globals";
 import { sendDumpCargo } from "../net";
 
 const dumpCargoHtml = (cargo?: CargoEntry[]) => {
@@ -44,7 +44,7 @@ const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
         if (amount) {
           const value = parseInt(amount.value);
           if (!isNaN(value)) {
-            sendDumpCargo(ownId, cargo[i].what, value);
+            sendDumpCargo(cargo[i].what, value);
           }
         }
       };

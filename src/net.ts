@@ -58,7 +58,7 @@ const unbindAllActions = () => {
   serverSocket.onmessage = null;
 };
 
-const sendInput = (input: Input, id: number) => {
+const sendInput = (input: Input) => {
   const inputToSend = {
     up: input.up,
     down: input.down,
@@ -70,195 +70,195 @@ const sendInput = (input: Input, id: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "input",
-      payload: { input: inputToSend, id },
+      payload: { input: inputToSend },
     })
   );
 };
 
-const sendAngle = (id: number, angle: number) => {
+const sendAngle = (angle: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "angle",
-      payload: { id, angle },
+      payload: { angle },
     })
   );
 };
 
-const sendDock = (id: number, stationId: number) => {
+const sendDock = (stationId: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "dock",
-      payload: { id, stationId },
+      payload: { stationId },
     })
   );
 };
 
-const sendUndock = (id: number) => {
+const sendUndock = () => {
   serverSocket.send(
     JSON.stringify({
       type: "undock",
-      payload: { id },
+      payload: {},
     })
   );
 };
 
-const sendRespawn = (id: number) => {
+const sendRespawn = () => {
   serverSocket.send(
     JSON.stringify({
       type: "respawn",
-      payload: { id },
+      payload: {},
     })
   );
 };
 
-const sendTarget = (id: number, target: [TargetKind, number]) => {
+const sendTarget = (target: [TargetKind, number]) => {
   serverSocket.send(
     JSON.stringify({
       type: "target",
-      payload: { id, target },
+      payload: { target },
     })
   );
 };
 
-const sendSecondary = (id: number, secondary: number) => {
+const sendSecondary = (secondary: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "secondary",
-      payload: { id, secondary },
+      payload: { secondary },
     })
   );
 };
 
-const sendSellCargo = (id: number, what: string, amount: number) => {
+const sendSellCargo = (what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "sellCargo",
-      payload: { id, what, amount },
+      payload: { what, amount },
     })
   );
 };
 
-const sendDepositCargo = (id: number, what: string, amount: number) => {
+const sendDepositCargo = (what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "depositCargo",
-      payload: { id, what, amount },
+      payload: { what, amount },
     })
   );
 };
 
-const sendEquip = (id: number, slotIndex: number, what: number, fromInventory = false) => {
+const sendEquip = (slotIndex: number, what: number, fromInventory = false) => {
   serverSocket.send(
     JSON.stringify({
       type: "equip",
-      payload: { id, slotIndex, what, fromInventory },
+      payload: { slotIndex, what, fromInventory },
     })
   );
 };
 
-const sendChat = (id: number, message: string) => {
+const sendChat = (message: string) => {
   serverSocket.send(
     JSON.stringify({
       type: "chat",
-      payload: { id, message },
+      payload: { message },
     })
   );
 };
 
-const sendPurchase = (id: number, index: number, fromInventory = false) => {
+const sendPurchase = (index: number, fromInventory = false) => {
   serverSocket.send(
     JSON.stringify({
       type: "purchase",
-      payload: { id, index, fromInventory },
+      payload: { index, fromInventory },
     })
   );
 };
 
-const sendWarp = (id: number, warpTo: number) => {
+const sendWarp = (warpTo: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "warp",
-      payload: { id, warpTo },
+      payload: { warpTo },
     })
   );
 };
 
 let lastSentRepair = Date.now();
 
-const sendRepair = (id: number, station: number) => {
+const sendRepair = (station: number) => {
   if (Date.now() - lastSentRepair > 1000) {
     serverSocket.send(
       JSON.stringify({
         type: "repair",
-        payload: { id, station },
+        payload: { station },
       })
     );
     lastSentRepair = Date.now();
   }
 };
 
-const sendDumpCargo = (id: number, what: string, amount: number) => {
+const sendDumpCargo = (what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "dumpCargo",
-      payload: { id, what, amount },
+      payload: { what, amount },
     })
   );
 };
 
-const sendSellInventory = (id: number, what: string, amount: number) => {
+const sendSellInventory = (what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "sellInventory",
-      payload: { id, what, amount },
+      payload: { what, amount },
     })
   );
 };
 
-const sendManufacture = (id: number, what: string, amount: number) => {
+const sendManufacture = (what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "manufacture",
-      payload: { id, what, amount },
+      payload: { what, amount },
     })
   );
 };
 
-const sendCompositeManufacture = (id: number, what: string, amount: number) => {
+const sendCompositeManufacture = (what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "compositeManufacture",
-      payload: { id, what, amount },
+      payload: { what, amount },
     })
   );
 };
 
-const sendTransferToShip = (id: number, what: string, amount: number) => {
+const sendTransferToShip = (what: string, amount: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "transferToShip",
-      payload: { id, what, amount },
+      payload: { what, amount },
     })
   );
 };
 
-const sendSecondaryActivation = (id: number, secondary: number) => {
+const sendSecondaryActivation = (secondary: number) => {
   serverSocket.send(
     JSON.stringify({
       type: "secondaryActivation",
-      payload: { id, secondary },
+      payload: { secondary },
     })
   );
 };
 
 const tutorialStagesCompleted = new Set<TutorialStage>();
 
-const sendTutorialStageComplete = (id: number, stage: TutorialStage) => {
+const sendTutorialStageComplete = (stage: TutorialStage) => {
   if (!tutorialStagesCompleted.has(stage)) {
     serverSocket.send(
       JSON.stringify({
         type: "tutorialStageComplete",
-        payload: { id, stage },
+        payload: { stage },
       })
     );
     tutorialStagesCompleted.add(stage);

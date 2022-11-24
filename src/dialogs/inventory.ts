@@ -1,6 +1,6 @@
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop } from "../dialog";
 import { availableCargoCapacity } from "../game";
-import { inventory, lastSelf, ownId } from "../globals";
+import { inventory, lastSelf } from "../globals";
 import { sendSellInventory, sendTransferToShip } from "../net";
 import { domFromRest } from "../rest";
 
@@ -45,7 +45,7 @@ const populateInventoryTable = () => {
         if (amount) {
           const value = parseInt(amount.value);
           if (!isNaN(value)) {
-            sendSellInventory(ownId, key, value);
+            sendSellInventory(key, value);
           }
         }
       };
@@ -54,7 +54,7 @@ const populateInventoryTable = () => {
         if (amount) {
           const value = parseInt(amount.value);
           if (!isNaN(value)) {
-            sendTransferToShip(ownId, key, value);
+            sendTransferToShip(key, value);
           }
         }
       };

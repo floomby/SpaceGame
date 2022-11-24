@@ -1,5 +1,5 @@
 import { bindPostUpdater, horizontalCenter, peekTag, pop } from "../dialog";
-import { inventory, ownId, recipesKnown } from "../globals";
+import { inventory, recipesKnown } from "../globals";
 import { sendCompositeManufacture } from "../net";
 import {
   recipeDagRoot,
@@ -442,7 +442,7 @@ const drawDag = () => {
 
         const click = (e) => {
           // Just let the server tell us if we cannot manufacture this
-          sendCompositeManufacture(ownId, recipe.recipe.name, manufactureQuantity);
+          sendCompositeManufacture(recipe.recipe.name, manufactureQuantity);
         };
         button.addEventListener("click", click);
         buttonText.addEventListener("click", click);

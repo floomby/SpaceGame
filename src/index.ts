@@ -115,7 +115,7 @@ const loop = () => {
       const checker = tutorialCheckers.get(tutorialStage);
       if (checker) {
         if (checker()) {
-          sendTutorialStageComplete(ownId, tutorialStage);
+          sendTutorialStageComplete(tutorialStage);
         }
       } else {
         console.log("No tutorial checker for stage", tutorialStage);
@@ -144,9 +144,9 @@ const loop = () => {
       oldAngle = targetAngle;
       const delta = findSmallAngleBetween(self.heading, targetAngle);
       if (delta > 0.01) {
-        sendAngle(ownId, targetAngle);
+        sendAngle(targetAngle);
       } else if (delta < -0.01) {
-        sendAngle(ownId, targetAngle);
+        sendAngle(targetAngle);
       }
     }
   }
@@ -201,7 +201,7 @@ const loop = () => {
 
   if (unifiedTargetId !== serverTarget[1] || unifiedTargetKind !== serverTarget[0]) {
     serverTarget = [unifiedTargetKind, unifiedTargetId];
-    sendTarget(ownId, serverTarget);
+    sendTarget(serverTarget);
   }
 
   if (target?.docked) {
@@ -233,7 +233,7 @@ const loop = () => {
       lastValidSecondary = selectedSecondary;
       const armamentDef = armDefs[self.arms[selectedSecondary]];
       pushMessage(`${selectedSecondary} - ${armamentDef.name}`);
-      sendSecondary(ownId, selectedSecondary);
+      sendSecondary(selectedSecondary);
     } else {
       setSelectedSecondary(lastValidSecondary);
     }
@@ -254,12 +254,12 @@ const loop = () => {
 
     if (self.canDock) {
       setDocker(() => {
-        sendDock(ownId, self.canDock);
+        sendDock(self.canDock);
       });
     }
     if (self.canRepair) {
       setDocker(() => {
-        sendRepair(ownId, self.canRepair);
+        sendRepair(self.canRepair);
       });
     }
   } else {

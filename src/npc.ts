@@ -428,6 +428,7 @@ class ActiveSwarmer implements NPC {
       cargo: [],
       credits: 500,
       npc: this,
+      warping: -defs[defIndex].warpTime,
       team,
       v: { x: 0, y: 0 },
       iv: { x: 0, y: 0 },
@@ -676,6 +677,7 @@ class Swarmer implements NPC {
 }
 
 // Special ai for the strafer unit
+// TODO Rewrite this to use the new AI system
 class Strafer implements NPC {
   public player: Player;
 
@@ -728,6 +730,7 @@ class Strafer implements NPC {
       cargo: [],
       credits: 500,
       npc: this,
+      warping: -defs[defIndex].warpTime,
       team,
       side: 0,
       v: { x: 0, y: 0 },

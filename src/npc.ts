@@ -1,4 +1,5 @@
 import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition, UnitKind } from "./defs";
+import { defaultLootTable, LootTable } from "./defs/collectables";
 import { projectileDefs } from "./defs/projectiles";
 import {
   applyInputs,
@@ -18,22 +19,6 @@ import {
 import { findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "./geometry";
 import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
 import { recipeMap } from "./recipes";
-
-// TODO Consider reimplementing this to not be a cascading probability table
-type LootTable = { index: number; probability: number }[];
-
-const processLootTable = (lootTable: LootTable) => {
-  for (const entry of lootTable) {
-    if (Math.random() < entry.probability) {
-      return entry.index;
-    }
-  }
-  return undefined;
-};
-
-const loot = (name: string, probability: number) => {
-  return { index: collectableDefMap.get(name)!.index, probability };
-};
 
 interface NPC {
   player: Player;
@@ -386,7 +371,7 @@ class ActiveSwarmer implements NPC {
 
   public selectedSecondary = 1;
 
-  public lootTable: LootTable = [];
+  public lootTable = defaultLootTable;
 
   public secondariesToFire: number[] = [];
 
@@ -479,17 +464,6 @@ class ActiveSwarmer implements NPC {
         break;
     }
 
-    for (const recipe of recipeMap.keys()) {
-      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.1));
-    }
-    this.lootTable = this.lootTable.concat([
-      loot("Bounty", 0.2),
-      loot("Health", 0.5),
-      loot("Energy", 0.2),
-      loot("Ammo", 0.3),
-      loot("Spare Parts", 0.8),
-    ]);
-
     this.stateGraphMemory.set(this.currentState, this.currentState.onEnter(this));
   }
 
@@ -525,7 +499,7 @@ class Swarmer implements NPC {
 
   public angle: number = undefined;
 
-  public lootTable: LootTable = [];
+  public lootTable = defaultLootTable;
 
   public secondariesToFire: number[] = [];
 
@@ -589,17 +563,6 @@ class Swarmer implements NPC {
         this.guidedSecondary = true;
         break;
     }
-
-    for (const recipe of recipeMap.keys()) {
-      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.1));
-    }
-    this.lootTable = this.lootTable.concat([
-      loot("Bounty", 0.2),
-      loot("Health", 0.5),
-      loot("Energy", 0.2),
-      loot("Ammo", 0.3),
-      loot("Spare Parts", 0.8),
-    ]);
   }
 
   public targetId = 0;
@@ -694,7 +657,7 @@ class Strafer implements NPC {
 
   public selectedSecondary = 1;
 
-  public lootTable: LootTable = [];
+  public lootTable = defaultLootTable;
 
   public secondariesToFire: number[] = [];
 
@@ -763,17 +726,6 @@ class Strafer implements NPC {
         this.guidedSecondary = true;
         break;
     }
-
-    for (const recipe of recipeMap.keys()) {
-      this.lootTable.push(loot(`Recipe - ${recipe}`, 0.1));
-    }
-    this.lootTable = this.lootTable.concat([
-      loot("Bounty", 0.2),
-      loot("Health", 0.5),
-      loot("Energy", 0.2),
-      loot("Ammo", 0.3),
-      loot("Spare Parts", 0.8),
-    ]);
   }
 
   public targetId = 0;
@@ -907,7 +859,7 @@ class TutorialRoamingVenture implements NPC {
 
   public selectedSecondary = 1;
 
-  public lootTable: LootTable = [];
+  public lootTable: LootTable;
 
   public secondariesToFire: number[] = [];
 
@@ -916,6 +868,8 @@ class TutorialRoamingVenture implements NPC {
   public targetId: number;
 
   constructor(id: number, where: Position) {
+    this.lootTable = new LootTable();
+
     const { def, index } = defMap.get("Venture");
 
     const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
@@ -975,7 +929,7 @@ class TutorialStrafer implements NPC {
 
   public selectedSecondary = 1;
 
-  public lootTable: LootTable = [];
+  public lootTable: LootTable;
 
   public secondariesToFire: number[] = [];
 
@@ -985,9 +939,9 @@ class TutorialStrafer implements NPC {
   public doNotShootYet: boolean = true;
 
   constructor(id: number, where: Position) {
-    const { def, index } = defMap.get("Strafer");
+    this.lootTable = new LootTable();
 
-    const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
+    const { def, index } = defMap.get("Strafer");
 
     this.player = {
       position: randomNearbyPointInSector(where, 8000),
@@ -1115,4 +1069,4 @@ const addTutorialStrafer = (state: GlobalState, id: number, where: Position) => 
   return npc;
 };
 
-export { NPC, LootTable, addNpc, processLootTable, addTutorialRoamingVenture, addTutorialStrafer };
+export { NPC, LootTable, addNpc, addTutorialRoamingVenture, addTutorialStrafer };

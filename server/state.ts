@@ -82,25 +82,25 @@ const friendlySectors = (faction: Faction) => {
 
 const sectorGuardianCount = sectorList.map(_ => 0);
 
-sectorGuardianCount[0] = 2;
-sectorGuardianCount[3] = 2;
+sectorGuardianCount[0] = 6;
+sectorGuardianCount[3] = 6;
 
-sectorGuardianCount[1] = 2;
-sectorGuardianCount[2] = 2;
-sectorGuardianCount[5] = 5;
-sectorGuardianCount[6] = 5;
+sectorGuardianCount[1] = 6;
+sectorGuardianCount[2] = 6;
+sectorGuardianCount[5] = 15;
+sectorGuardianCount[6] = 15;
 
-sectorGuardianCount[12] = 8;
-sectorGuardianCount[13] = 5;
-sectorGuardianCount[8] = 5;
-sectorGuardianCount[4] = 2;
-sectorGuardianCount[9] = 2;
+sectorGuardianCount[12] = 24;
+sectorGuardianCount[13] = 15;
+sectorGuardianCount[8] = 15;
+sectorGuardianCount[4] = 6;
+sectorGuardianCount[9] = 6;
 
-sectorGuardianCount[14] = 5;
-sectorGuardianCount[15] = 8;
-sectorGuardianCount[11] = 5;
-sectorGuardianCount[7] = 2;
-sectorGuardianCount[10] = 2;
+sectorGuardianCount[14] = 15;
+sectorGuardianCount[15] = 24;
+sectorGuardianCount[11] = 15;
+sectorGuardianCount[7] = 6;
+sectorGuardianCount[10] = 6;
 
 const sectorHasStarbase = sectorList.map(_ => false);
 sectorHasStarbase[5] = true;

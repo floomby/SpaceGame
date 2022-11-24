@@ -17,6 +17,33 @@ type CollectableDef = {
 const collectableDefs: CollectableDef[] = [];
 const collectableDefMap = new Map<string, { index: number; def: CollectableDef }>();
 
+type LootEntry = { index: number; density: number };
+
+class LootTable {
+  private totalDensity = 0;
+  private entries: LootEntry[] = [];
+
+  addEntry(name: string, density: number) {
+    this.entries.push({ index: collectableDefMap.get(name)!.index, density });
+    this.totalDensity += density;
+  }
+
+  process() {
+    let roll = Math.random() * this.totalDensity;
+    let index = 0;
+    while (index < this.entries.length && roll > this.entries[index].density) {
+      roll -= this.entries[index].density;
+      index++;
+    }
+    if (index < this.entries.length) {
+      return this.entries[index].index;
+    }
+    return null;
+  }
+}
+
+const defaultLootTable = new LootTable();
+
 const initCollectables = () => {
   collectableDefs.push({
     sprite: { x: 320, y: 64, width: 64, height: 64 },
@@ -60,7 +87,7 @@ const initCollectables = () => {
       }
     },
   });
-  
+
   collectableDefs.push({
     sprite: { x: 320, y: 512, width: 64, height: 64 },
     radius: 26,
@@ -124,6 +151,16 @@ const initCollectables = () => {
     const def = collectableDefs[i];
     collectableDefMap.set(def.name, { index: i, def });
   }
+
+  for (const recipe of recipeMap.keys()) {
+    defaultLootTable.addEntry(`Recipe - ${recipe}`, 1);
+  }
+
+  defaultLootTable.addEntry("Bounty", 2);
+  defaultLootTable.addEntry("Health", 6);
+  defaultLootTable.addEntry("Energy", 3);
+  defaultLootTable.addEntry("Ammo", 4);
+  defaultLootTable.addEntry("Spare Parts", 2);
 };
 
 const createCollectableFromDef = (index: number, where: Position) => {
@@ -139,4 +176,4 @@ const createCollectableFromDef = (index: number, where: Position) => {
   };
 };
 
-export { collectableDefs, collectableDefMap, initCollectables, createCollectableFromDef };
+export { LootTable, defaultLootTable, collectableDefs, collectableDefMap, initCollectables, createCollectableFromDef };

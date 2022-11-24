@@ -94,7 +94,7 @@ const initFromDatabase = async () => {
       sinceLastShot: [effectiveInfinity, effectiveInfinity, effectiveInfinity, effectiveInfinity],
       energy: def.energy,
       defIndex: station.definitionIndex,
-      armIndices: [],
+      arms: [],
       slotData: [],
       team: station.team,
       side: 0,
@@ -163,7 +163,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     sinceLastShot: [effectiveInfinity],
     energy: defs[defIndex].energy,
     defIndex: defIndex,
-    armIndices: emptyLoadout(defIndex),
+    arms: emptyLoadout(defIndex),
     slotData: new Array(defs[defIndex].slots.length).fill({}),
     cargo: [],
     credits: 500,
@@ -287,7 +287,7 @@ wss.on("connection", (ws) => {
               const state = sectors.get(checkpoint.sector);
               if (!state) {
                 ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
-                console.log("Warning: Checkpoint sector not found (programming error)");
+                console.log("Warning: Checkpoint sector not found");
                 setupPlayer(user.id, ws, name, user.faction);
                 return;
               }
@@ -314,7 +314,7 @@ wss.on("connection", (ws) => {
               // fix the slot data
               const def = defs[playerState.defIndex];
               while (playerState.slotData.length < def.slots.length) {
-                playerState.armIndices.push(def.slots[playerState.slotData.length]);
+                playerState.arms.push(def.slots[playerState.slotData.length]);
                 playerState.slotData.push({});
               }
               // fix the impulse
@@ -332,6 +332,11 @@ wss.on("connection", (ws) => {
                 playerState.energy = def.energy;
               }
               (playerState as any).projectileId = undefined;
+              // fix the arms
+              if (playerState.arms === undefined) {
+                playerState.arms = (playerState as any).armIndices;
+                (playerState as any).armIndices = undefined;
+              }
 
               playerState.v = { x: 0, y: 0 };
               state.players.set(user.id, playerState);
@@ -440,8 +445,8 @@ wss.on("connection", (ws) => {
               player.iv.y = 0;
               player.cloak = CloakedState.Uncloaked;
               player.position = { x: station!.position.x, y: station!.position.y };
-              for (let i = 0; i < player.armIndices.length; i++) {
-                const armDef = armDefs[player.armIndices[i]];
+              for (let i = 0; i < player.arms.length; i++) {
+                const armDef = armDefs[player.arms[i]];
                 if (armDef && armDef.usage === ArmUsage.Ammo) {
                   player.slotData[i].ammo = armDef.maxAmmo;
                 }
@@ -453,6 +458,8 @@ wss.on("connection", (ws) => {
 
               if (!client.inTutorial) {
                 saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+              } else {
+                tutorialRespawnPoints.set(client.id, copyPlayer(player));
               }
             }
           }
@@ -471,6 +478,8 @@ wss.on("connection", (ws) => {
 
             if (!client.inTutorial) {
               saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+            } else {
+              tutorialRespawnPoints.set(client.id, copyPlayer(player));
             }
           }
         }
@@ -574,7 +583,7 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
-            if (typeof data.payload.secondary === "number" && data.payload.secondary < player.armIndices.length && data.payload.secondary >= 0) {
+            if (typeof data.payload.secondary === "number" && data.payload.secondary < player.arms.length && data.payload.secondary >= 0) {
               secondariesToActivate.get(client.id)?.push(data.payload.secondary);
             }
           }
@@ -639,11 +648,11 @@ wss.on("connection", (ws) => {
             let newPlayer = equip(player, data.payload.slotIndex, data.payload.what, data.payload.fromInventory);
             if (newPlayer !== player) {
               state.players.set(client.id, newPlayer);
-              const toTake = data.payload.fromInventory ? [armDefs[newPlayer.armIndices[data.payload.slotIndex]].name] : [];
+              const toTake = data.payload.fromInventory ? [armDefs[newPlayer.arms[data.payload.slotIndex]].name] : [];
               // There is technically a bug here, if the player equips and then logs off, but the database has an error after they log off then
               // they what is deposited will be lost. I don't want to deal with it though (the correct thing is to pull their save from the database
               // and deal with it that way, but if we just had a database error this is unlikely to work anyways)
-              depositItemsIntoInventory(ws, player, [armDefs[player.armIndices[data.payload.slotIndex]].name], toTake, flashServerMessage, () => {
+              depositItemsIntoInventory(ws, player, [armDefs[player.arms[data.payload.slotIndex]].name], toTake, flashServerMessage, () => {
                 console.log("Error depositing armament into inventory, reverting player");
                 try {
                   const otherState = sectors.get(clients.get(idToWebsocket.get(player.id)!)!.currentSector)!;
@@ -704,8 +713,8 @@ wss.on("connection", (ws) => {
               if (newPlayer !== player) {
                 state.players.set(client.id, newPlayer);
                 const items = [defs[player.defIndex].name];
-                if (player.armIndices) {
-                  for (const armIndex of player.armIndices) {
+                if (player.arms) {
+                  for (const armIndex of player.arms) {
                     items.push(armDefs[armIndex].name);
                   }
                 }

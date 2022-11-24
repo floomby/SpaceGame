@@ -395,6 +395,7 @@ const drawDag = () => {
         inputField.classList.add("manufacturingInput");
         input.appendChild(inputField);
         manufacturingPopup.appendChild(input);
+        manufactureQuantity = 1;
 
         inputField.onchange = () => {
           const amount = parseInt(inputField.value);
@@ -440,9 +441,8 @@ const drawDag = () => {
         closeButtonText.addEventListener("click", closeHandler);
 
         const click = (e) => {
-          // if (manufacturable) {
+          // Just let the server tell us if we cannot manufacture this
           sendCompositeManufacture(ownId, recipe.recipe.name, manufactureQuantity);
-          // }
         };
         button.addEventListener("click", click);
         buttonText.addEventListener("click", click);

@@ -40,9 +40,9 @@ const nextValidWeapon = (reverse: boolean) => {
   if (!lastSelf) {
     return null;
   }
-  let ret = positiveMod(selectedSecondary + (reverse ? -1 : 1), lastSelf.armIndices.length);
-  while (isEmptySlot(lastSelf.armIndices[ret])) {
-    ret = positiveMod(ret + (reverse ? -1 : 1), lastSelf.armIndices.length);
+  let ret = positiveMod(selectedSecondary + (reverse ? -1 : 1), lastSelf.arms.length);
+  while (isEmptySlot(lastSelf.arms[ret])) {
+    ret = positiveMod(ret + (reverse ? -1 : 1), lastSelf.arms.length);
     if (ret === selectedSecondary) {
       return null;
     }

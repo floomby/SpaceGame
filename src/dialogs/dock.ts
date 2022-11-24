@@ -386,7 +386,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
   </div>
   <div style="width: 45%; float: right;">
     <h3>Armaments</h3>
-    <div id="arms">${armsHtml(self.armIndices)}</div>
+    <div id="arms">${armsHtml(self.arms)}</div>
   </div>
   <div style="clear: both;"></div>
 </div>`,
@@ -406,7 +406,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
     sendUndock(ownId);
   });
   cargoPostUpdate(self.cargo);
-  armsPostUpdate(self.armIndices);
+  armsPostUpdate(self.arms);
   shipPostUpdate(self.defIndex);
   document.getElementById("changeShip")?.addEventListener("click", () => {
     push(shipShop(), () => setupShipShop(station));

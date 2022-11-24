@@ -51,8 +51,8 @@ const initCollectables = () => {
       return true;
     },
     collectMutator: (player) => {
-      for (let i = 0; i < player.armIndices.length; i++) {
-        const armDef = armDefs[player.armIndices[i]];
+      for (let i = 0; i < player.arms.length; i++) {
+        const armDef = armDefs[player.arms[i]];
         if (armDef.usage === ArmUsage.Ammo) {
           const slotData = player.slotData[i];
           slotData.ammo = armDef.maxAmmo;

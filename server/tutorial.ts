@@ -1,8 +1,42 @@
-import { copyPlayer, equip, mapSize, randomAsteroids, sectorBounds, TutorialStage } from "../src/game";
+import { copyPlayer, effectiveInfinity, equip, mapSize, Player, randomAsteroids, sectorBounds, TutorialStage } from "../src/game";
 import { WebSocket } from "ws";
 import { clients, saveCheckpoint, sectors, tutorialRespawnPoints, uid } from "./state";
-import { Faction } from "../src/defs";
+import { defMap, Faction } from "../src/defs";
 import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
+import { discoverRecipe } from "./inventory";
+
+const spawnTutorialStation = (ws: WebSocket) => {
+  const client = clients.get(ws);
+  if (client) {
+    const sector = sectors.get(client.currentSector);
+    if (sector) {
+      const player = tutorialRespawnPoints.get(client.id);
+      if (player) {
+        const def = (player.team === Faction.Alliance ? defMap.get("Alliance Starbase") : defMap.get("Confederacy Starbase"))!;
+        const station: Player = {
+          position: { x: 0, y: 0 },
+          radius: def?.def.radius,
+          speed: 0,
+          heading: 0,
+          health: def.def.health,
+          id: uid(),
+          sinceLastShot: [effectiveInfinity, effectiveInfinity, effectiveInfinity, effectiveInfinity],
+          energy: def.def.energy,
+          defIndex: def.index,
+          arms: [],
+          slotData: [],
+          team: player.team,
+          side: 0,
+          isPC: true,
+          v: { x: 0, y: 0 },
+          iv: { x: 0, y: 0 },
+          ir: 0,
+        };
+        sector.players.set(station.id, station);
+      }
+    }
+  }
+};
 
 const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) => {
   switch (stage) {
@@ -83,21 +117,16 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
                 {
                   const client = clients.get(ws);
                   if (client) {
-                    client.inTutorial = TutorialStage.Map;
-                    sendTutorialStage(ws, TutorialStage.Map);
-                    const player = sectors.get(client.currentSector)?.players.get(id);
-                    if (player) {
-                      client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
-                    }
+                    client.inTutorial = TutorialStage.Dock;
+                    sendTutorialStage(ws, TutorialStage.Dock);
+                    spawnTutorialStation(ws);
                   }
                 }
               };
               client.tutorialNpc = npc;
-              if (!tutorialRespawnPoints.has(client.id)) {
-                const equippedPlayer = equip(player, 2, "Laser Beam", true);
-                state.players.set(client.id, equippedPlayer);
-                tutorialRespawnPoints.set(client.id, copyPlayer(equippedPlayer));
-              }
+              const equippedPlayer = equip(player, 2, "Laser Beam", true);
+              state.players.set(client.id, equippedPlayer);
+              tutorialRespawnPoints.set(client.id, copyPlayer(equippedPlayer));
             }
           }
         }
@@ -111,6 +140,39 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
         }
       }
       return TutorialStage.LaserBeam;
+    case TutorialStage.Dock:
+      {
+        const client = clients.get(ws);
+        if (client) {
+          const player = tutorialRespawnPoints.get(id);
+          discoverRecipe(ws, client.id, "Refined Prifetium");
+          if (player) {
+            client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+          }
+        }
+      }
+      return TutorialStage.Deposit;
+    case TutorialStage.Deposit:
+      return TutorialStage.Manufacture1;
+    case TutorialStage.Manufacture1:
+      return TutorialStage.Manufacture2;
+    case TutorialStage.Manufacture2:
+      return TutorialStage.BuyMines;
+    case TutorialStage.BuyMines:
+      return TutorialStage.Undock;
+    case TutorialStage.Undock:
+      return TutorialStage.UseMines;
+    case TutorialStage.UseMines:
+      {
+        const client = clients.get(ws);
+        if (client) {
+          const player = tutorialRespawnPoints.get(id);
+          if (player) {
+            client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+          }
+        }
+      }
+      return TutorialStage.Map;
     case TutorialStage.Map:
       {
         const client = clients.get(ws);

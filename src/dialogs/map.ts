@@ -1,5 +1,5 @@
 import { horizontalCenter, pop } from "../dialog";
-import { currentSector, ownId, sectorData } from "../globals";
+import { currentSector, sectorData } from "../globals";
 import { sendWarp } from "../net";
 import { mapSize } from "../game";
 
@@ -22,7 +22,7 @@ const populateSectorInfo = (sector: number) => {
   const warpButton = document.getElementById(`warp-${sector}`) as HTMLButtonElement;
   if (warpButton) {
     warpButton.addEventListener("click", () => {
-      sendWarp(ownId, sector);
+      sendWarp(sector);
       pop();
     });
   }

@@ -413,21 +413,21 @@ wss.on("connection", (ws) => {
         });
       } else if (data.type === "input") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           client.input = data.payload.input;
         } else {
           console.log("Warning: Input data from unknown client");
         }
       } else if (data.type === "angle") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           client.angle = data.payload.angle;
         } else {
           console.log("Warning: Angle data from unknown client");
         }
       } else if (data.type === "dock") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -467,7 +467,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "undock") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -486,7 +486,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "repair") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -505,7 +505,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "respawn") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           if (client.inTutorial) {
             const state = sectors.get(client.currentSector);
             if (state) {
@@ -520,7 +520,7 @@ wss.on("connection", (ws) => {
             }
             return;
           }
-          Checkpoint.findOne({ id: data.payload.id }, (err, checkpoint) => {
+          Checkpoint.findOne({ id: client.id }, (err, checkpoint) => {
             if (err) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading checkpoint" } }));
               console.log("Error loading checkpoint: " + err);
@@ -568,19 +568,19 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "target") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           targets.set(client.id, data.payload.target);
         }
       } else if (data.type === "secondary") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           if (typeof data.payload.secondary === "number" && data.payload.secondary >= 0) {
             secondaries.set(client.id, data.payload.secondary);
           }
         }
       } else if (data.type === "secondaryActivation") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -591,7 +591,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "sellCargo") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player && player.cargo) {
@@ -606,7 +606,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "transferToShip") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -615,7 +615,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "sellInventory") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const player = sectors.get(client.currentSector)!.players.get(client.id);
           if (player) {
             sellInventory(ws, player, data.payload.what, Math.round(data.payload.amount));
@@ -623,7 +623,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "depositCargo") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player && player.cargo) {
@@ -632,7 +632,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "dumpCargo") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player && player.cargo) {
@@ -641,7 +641,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "equip") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -667,17 +667,17 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "chat") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           data.payload.message = data.payload.message.trim().substring(0, 200);
           for (const [otherClient, otherClientData] of clients) {
             if (otherClientData.currentSector === client.currentSector) {
-              otherClient.send(JSON.stringify({ type: "chat", payload: { id: data.payload.id, message: data.payload.message } }));
+              otherClient.send(JSON.stringify({ type: "chat", payload: { id: client.id, message: data.payload.message } }));
             }
           }
         }
       } else if (data.type === "manufacture") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -686,7 +686,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "compositeManufacture") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -695,7 +695,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "purchase") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
@@ -738,7 +738,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "warp") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           if (client.currentSector !== data.payload.warpTo && sectorList.includes(data.payload.warpTo)) {
             if (!client.sectorsVisited.has(data.payload.warpTo)) {
               flashServerMessage(client.id, "You must visit a sector before you can warp to it");
@@ -754,7 +754,7 @@ wss.on("connection", (ws) => {
         }
       } else if (data.type === "tutorialStageComplete") {
         const client = clients.get(ws);
-        if (client && data.payload.id === client.id) {
+        if (client) {
           if (client.inTutorial === data.payload.stage) {
             if (client.inTutorial !== data.payload.stage) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Tutorial stage mismatch" } }));

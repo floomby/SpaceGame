@@ -77,7 +77,7 @@ const initStars = (sector: number) => {
   for (let i = 0; i < 1000; i++) {
     stars.push({
       position: { x: prng() * starTilingSize.x, y: prng() * starTilingSize.y },
-      radius: prng() * 2 + 1,
+      radius: prng() + 0.5,
     });
   }
 };

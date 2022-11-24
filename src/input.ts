@@ -1,7 +1,7 @@
 import { peekTag, pop, push } from "./dialog";
 import { mapDialog, setupMapDialog } from "./dialogs/map";
 import { Input } from "./game";
-import { keybind, lastSelf, ownId, selectedSecondary, setSelectedSecondary } from "./globals";
+import { keybind, lastSelf, selectedSecondary, setSelectedSecondary } from "./globals";
 import { sendChat, sendInput, sendSecondaryActivation } from "./net";
 import { shown as isDialogShown } from "./dialog";
 import { canvas, canvasCoordsToGameCoords } from "./drawing";
@@ -64,7 +64,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
   document.addEventListener("keydown", (e) => {
     if (chatInput === document.activeElement) {
       if (e.key === "Enter" && chatInput.value !== "") {
-        sendChat(ownId, chatInput.value);
+        sendChat(chatInput.value);
         chatInput.value = "";
         chatInput.blur();
         chatInput.style.display = "none";
@@ -141,7 +141,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary0:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 0);
+          sendSecondaryActivation(0);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -150,7 +150,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary1:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 1);
+          sendSecondaryActivation(1);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -159,7 +159,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary2:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 2);
+          sendSecondaryActivation(2);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -168,7 +168,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary3:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 3);
+          sendSecondaryActivation(3);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -177,7 +177,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary4:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 4);
+          sendSecondaryActivation(4);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -186,7 +186,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary5:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 5);
+          sendSecondaryActivation(5);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -195,7 +195,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary6:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 6);
+          sendSecondaryActivation(6);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -204,7 +204,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary7:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 7);
+          sendSecondaryActivation(7);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -213,7 +213,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary8:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 8);
+          sendSecondaryActivation(8);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -222,7 +222,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
       case keybind.selectSecondary9:
         if (e.ctrlKey) {
-          sendSecondaryActivation(ownId, 9);
+          sendSecondaryActivation(9);
           e.preventDefault();
           e.stopPropagation();
         } else {
@@ -260,7 +260,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
     }
     if (changed) {
-      sendInput(input, ownId);
+      sendInput(input);
     }
     if (oldSecondary !== selectedSecondary) {
       selectedSecondaryChanged = true;
@@ -310,7 +310,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         break;
     }
     if (changed) {
-      sendInput(input, ownId);
+      sendInput(input);
     }
   });
 
@@ -318,7 +318,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
     if (isDialogShown) {
       if (input.primary) {
         input.primary = false;
-        sendInput(input, ownId);
+        sendInput(input);
       }
       return;
     }
@@ -336,7 +336,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
         const oldPrimary = input.primary;
         input.primary = true;
         if (oldPrimary !== input.primary) {
-          sendInput(input, ownId);
+          sendInput(input);
         }
       }
     }
@@ -355,7 +355,7 @@ const initInputHandlers = (targetAtCoords: (coords: Position) => void) => {
   document.onmouseup = (e) => {
     if (e.button === 0) {
       input.primary = false;
-      sendInput(input, ownId);
+      sendInput(input);
     }
   };
 

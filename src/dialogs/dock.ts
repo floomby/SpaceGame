@@ -81,7 +81,7 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
             lastActionSell = true;
             const value = parseFloat(amount.value);
             if (!isNaN(value)) {
-              sendSellCargo(ownId, cargo[i].what, value);
+              sendSellCargo(cargo[i].what, value);
             }
           }
         };
@@ -90,7 +90,7 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
           if (amount) {
             const value = parseFloat(amount.value);
             if (!isNaN(value)) {
-              sendDepositCargo(ownId, cargo[i].what, value);
+              sendDepositCargo(cargo[i].what, value);
             }
           }
         };
@@ -338,7 +338,7 @@ const setupShipShop = (station: Player) => {
       const button = document.getElementById(`purchase${index}`);
       if (button) {
         button.addEventListener("click", () => {
-          sendPurchase(ownId, index);
+          sendPurchase(index);
           pop();
         });
       } else {
@@ -355,7 +355,7 @@ const setupShipShop = (station: Player) => {
       const equip = document.getElementById(`equipShipFromInventory${index}`);
       if (equip) {
         equip.addEventListener("click", () => {
-          sendPurchase(ownId, index, true);
+          sendPurchase(index, true);
           pop();
         });
       }
@@ -403,7 +403,7 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
     return;
   }
   document.getElementById("undock")?.addEventListener("click", () => {
-    sendUndock(ownId);
+    sendUndock();
   });
   cargoPostUpdate(self.cargo);
   armsPostUpdate(self.arms);
@@ -428,7 +428,7 @@ const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
       if (button) {
         button.addEventListener("click", () => {
           const idx = armDefs.indexOf(armDef);
-          sendEquip(ownId, slotIndex, idx);
+          sendEquip(slotIndex, idx);
           const self = state.players.get(ownId);
           const station = state.players.get(self?.docked);
           showDialog(dockDialog(station, self));
@@ -441,7 +441,7 @@ const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
       if (equipFromInventory) {
         equipFromInventory.addEventListener("click", () => {
           const idx = armDefs.indexOf(armDef);
-          sendEquip(ownId, slotIndex, idx, true);
+          sendEquip(slotIndex, idx, true);
           const self = state.players.get(ownId);
           const station = state.players.get(self?.docked);
           showDialog(dockDialog(station, self));

@@ -38,7 +38,7 @@ import {
   pointOutsideRectangle,
   pointInRectangle,
 } from "./geometry";
-import { NPC, processLootTable } from "./npc";
+import { NPC } from "./npc";
 import { seek } from "./pathing";
 import { sfc32 } from "./prng";
 
@@ -440,8 +440,8 @@ const kill = (
     });
     onDeath(player);
     if (player.npc) {
-      const toDrop = processLootTable(player.npc.lootTable);
-      if (toDrop !== undefined) {
+      const toDrop = player.npc.lootTable.process();
+      if (toDrop !== null) {
         collectables.push(createCollectableFromDef(toDrop, player.position));
       }
       if (player.npc.killed) {

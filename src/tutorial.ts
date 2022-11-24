@@ -1,8 +1,9 @@
 import { armDefMap, defs, Faction } from "./defs";
+import { peekTag } from "./dialog";
 import { sectorNumberToXY } from "./dialogs/map";
 import { pushMessage } from "./drawing";
 import { availableCargoCapacity, mapSize, TutorialStage } from "./game";
-import { currentSector, faction, keybind, lastSelf, selectedSecondary, state } from "./globals";
+import { currentSector, faction, inventory, keybind, lastSelf, selectedSecondary, state } from "./globals";
 import { targetAsteroidId, targetId } from "./index";
 
 let promptInterval: number;
@@ -58,6 +59,19 @@ tutorialCheckers.set(TutorialStage.LaserBeam, () => {
 tutorialCheckers.set(TutorialStage.Map, () => {
   return currentSector < mapSize * mapSize;
 });
+
+tutorialCheckers.set(TutorialStage.Dock, () => {
+  return !!lastSelf?.docked;
+});
+
+tutorialCheckers.set(TutorialStage.Deposit, () => {
+  return inventory["Prifecite"] > 50;
+});
+
+tutorialCheckers.set(TutorialStage.Manufacture1, () => {
+  return peekTag() === "manufacturing";
+});
+
 
 const tutorialPrompters = new Map<TutorialStage, () => void>();
 
@@ -161,6 +175,46 @@ tutorialPrompters.set(TutorialStage.LaserBeam, () => {
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
   fx();
+});
+
+tutorialPrompters.set(TutorialStage.Dock, () => {
+  const fx = () => pushMessage(`Approach the station and dock`, 600, "green");
+  clearTimeout(promptTimeout);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 13);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.Deposit, () => {
+  const fx = () => pushMessage(`Deposit the Prifecite mined earlier into you inventory`, 600, "green");
+  clearTimeout(promptTimeout);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 13);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.Manufacture1, () => {
+  const fx = () => pushMessage(`Open the manufacturing bay menu`, 600, "green");
+  clearTimeout(promptTimeout);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 13);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.Manufacture2, () => {
+  const fx = () => pushMessage(`Manufacture 5 Refined Prifetium`, 600, "green");
+  clearTimeout(promptTimeout);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 13);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.BuyMines, () => {
+
+});
+
+tutorialPrompters.set(TutorialStage.UseMines, () => {
+
 });
 
 tutorialPrompters.set(TutorialStage.Map, () => {

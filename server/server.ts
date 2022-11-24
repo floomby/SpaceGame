@@ -453,6 +453,8 @@ wss.on("connection", (ws) => {
 
               if (!client.inTutorial) {
                 saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+              } else {
+                tutorialRespawnPoints.set(client.id, copyPlayer(player));
               }
             }
           }
@@ -471,6 +473,8 @@ wss.on("connection", (ws) => {
 
             if (!client.inTutorial) {
               saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+            } else {
+              tutorialRespawnPoints.set(client.id, copyPlayer(player));
             }
           }
         }

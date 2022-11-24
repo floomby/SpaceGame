@@ -477,7 +477,7 @@ type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: M
 
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
-const update = (
+const   update = (
   state: GlobalState,
   frameNumber: number,
   serverTargets: Map<number, [TargetKind, number]>,
@@ -1353,6 +1353,12 @@ enum TutorialStage {
   CollectResources,
   LaserBeam,
   TargetEnemy,
+  Dock,
+  Deposit,
+  Manufacture1,
+  Manufacture2,
+  BuyMines,
+  UseMines,
   Map,
 }
 

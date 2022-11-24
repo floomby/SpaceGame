@@ -70,6 +70,16 @@ sectorFactions[11] = Faction.Confederation;
 sectorFactions[7] = Faction.Confederation;
 sectorFactions[10] = Faction.Confederation;
 
+const friendlySectors = (faction: Faction) => {
+  const ret: number[] = [];
+  for (let i = 0; i < sectorFactions.length; i++) {
+    if (sectorFactions[i] === faction) {
+      ret.push(i);
+    }
+  }
+  return ret;
+};
+
 const sectorGuardianCount = sectorList.map(_ => 0);
 
 sectorGuardianCount[0] = 2;
@@ -218,4 +228,5 @@ export {
   uid,
   sectorInDirection,
   saveCheckpoint,
+  friendlySectors,
 };

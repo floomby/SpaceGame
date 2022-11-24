@@ -10,7 +10,7 @@ import { User, Station } from "./dataModels";
 
 import { addNpc } from "../src/npc";
 import { market } from "./market";
-import { clients, idToWebsocket, sectorFactions, sectorHasStarbase, sectorList, sectors, uid } from "./state";
+import { clients, friendlySectors, idToWebsocket, sectorFactions, sectorHasStarbase, sectorList, sectors, uid } from "./state";
 import { adminHash, credentials, hash, httpPort } from "./settings";
 import { recipeMap, recipes } from "../src/recipes";
 import { isFreeArm } from "../src/defs/armaments";
@@ -384,7 +384,7 @@ app.get("/addNPC", (req, res) => {
     return;
   }
   try {
-    addNpc(sectors.get(sectorIndex)!, what, parseInt(team), uid());
+    addNpc(sectors.get(sectorIndex)!, what, parseInt(team), uid(), friendlySectors(parseInt(team)));
   } catch (e) {
     res.send("Error: " + e);
     return;

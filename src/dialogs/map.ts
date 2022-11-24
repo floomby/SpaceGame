@@ -68,7 +68,6 @@ const setupMapDialog = () => {
   });
   for (let i = 0; i < mapSize * mapSize; i++) {
     document.getElementById(`sector-${i}`)?.addEventListener("click", () => {
-      console.log(`Clicked on sector ${i}`);
       populateSectorInfo(i);
     });
   }

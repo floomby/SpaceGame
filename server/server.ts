@@ -45,6 +45,7 @@ import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, se
 import { market } from "./market";
 import {
   clients,
+  friendlySectors,
   idToWebsocket,
   knownRecipes,
   saveCheckpoint,
@@ -1127,22 +1128,22 @@ const spawnSectorGuardians = (sector: number) => {
   switch (faction) {
     case Faction.Alliance:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
+        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid(), friendlySectors(faction));
       }
       break;
     case Faction.Confederation:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
+        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid(), friendlySectors(faction));
       }
       break;
     case Faction.Rogue:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid(), friendlySectors(faction));
       }
       break;
     case Faction.Scourge:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid());
+        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid(), friendlySectors(faction));
       }
   }
 };

@@ -9,6 +9,7 @@ import {
   GlobalState,
   Input,
   isValidSectorInDirection,
+  mapSize,
   Player,
   randomNearbyPointInSector,
   sectorBounds,
@@ -301,12 +302,28 @@ const randomCombatManeuver = (
   })();
 };
 
+const warpTo = (friendlySectors: number[]) => {
+  return new (class extends State {
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
+      if (newState) {
+        return newState;
+      }
+    };
+    onEnter = (npc: NPC) => {
+      npc.player.warping = 1;
+      npc.player.warpTo = friendlySectors[Math.floor(Math.random() * friendlySectors.length)];
+    };
+  })();
+};
+
 const makeBasicStateGraph = (
   primaryRange: number,
   secondaryGuided: boolean,
   secondaryRange: number,
   energyThreshold: number,
-  mineSlot: null | number
+  mineSlot: null | number,
+  friendlySectors: number[]
 ) => {
   const idle = idleState();
   const passiveGoTo = passiveGoToRandomPointInSector();
@@ -314,6 +331,8 @@ const makeBasicStateGraph = (
   const swarm = stupidSwarmCombat(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
   const randomManeuver = randomCombatManeuver(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
   const run = runAway(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
+  const warpAway = warpTo(friendlySectors);
+  const randomWarp = warpTo(new Array(mapSize * mapSize).fill(0).map((_, i) => i));
   idle.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoTo });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoToSector });
@@ -334,6 +353,7 @@ const makeBasicStateGraph = (
     state: run,
   });
   run.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
+  run.transitions.push({ trigger: () => Math.random() < 0.02, state: warpAway });
   run.transitions.push({
     trigger: (_, npc) => {
       const def = defs[npc.player.defIndex];
@@ -345,6 +365,8 @@ const makeBasicStateGraph = (
   randomManeuver.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
   randomManeuver.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
   randomManeuver.transitions.push({ trigger: () => Math.random() < 0.005, state: swarm });
+  warpAway.transitions.push({ trigger: () => true, state: run });
+  randomWarp.transitions.push({ trigger: () => true, state: idle });
   return idle;
 };
 
@@ -371,7 +393,12 @@ class ActiveSwarmer implements NPC {
 
   public targetId: number;
 
-  constructor(what: string | number, team: number | Faction, id: number) {
+  public friendlySectors: number[] = [];
+
+  constructor(what: string | number, team: number | Faction, id: number, friendlySectors: number[]) {
+    if (friendlySectors.length === 0) {
+      throw new Error("Friendly sectors must be non-empty");
+    }
     let defIndex: number;
     let def: UnitDefinition;
     if (typeof what === "string") {
@@ -419,34 +446,34 @@ class ActiveSwarmer implements NPC {
       case 1:
       case 2:
         this.player = equip(this.player, 1, "Javelin Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors);
         break;
       case 3:
       case 4:
         this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3, mineSlot);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3, mineSlot, friendlySectors);
         break;
       case 5:
         this.player = equip(this.player, 1, "Laser Beam", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38, mineSlot);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38, mineSlot, friendlySectors);
         break;
       case 6:
         this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3, mineSlot);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3, mineSlot, friendlySectors);
         break;
       case 7:
       case 8:
         this.player = equip(this.player, 1, "Disruptor Cannon", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3, mineSlot);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3, mineSlot, friendlySectors);
         break;
       case 9:
       case 10:
         this.player = equip(this.player, 1, "Plasma Cannon", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot, friendlySectors);
         break;
       case 11:
         this.player = equip(this.player, 1, "EMP Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors);
         break;
     }
 
@@ -471,11 +498,9 @@ class ActiveSwarmer implements NPC {
   public process(state: GlobalState, sector: number) {
     let target: Player | undefined = undefined;
     const def = defs[this.player.defIndex];
-    if (this.frame++ % 60 === 0) {
-      const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
-      this.targetId = newTarget?.id ?? 0;
-      target = newTarget;
-    }
+    const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
+    this.targetId = newTarget?.id ?? 0;
+    target = newTarget;
     if (!target && this.targetId) {
       target = state.players.get(this.targetId);
     }
@@ -834,7 +859,7 @@ class Strafer implements NPC {
   }
 }
 
-const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number) => {
+const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number, friendlySectors: number[]) => {
   let npc: NPC;
   switch (what) {
     // case "Striker":
@@ -847,7 +872,7 @@ const addNpc = (state: GlobalState, what: string | number, team: Faction, id: nu
       npc = new Strafer(what, team, id);
       break;
     default:
-      npc = new ActiveSwarmer(what, team, id);
+      npc = new ActiveSwarmer(what, team, id, friendlySectors);
       break;
   }
   // console.log(npc);
@@ -861,7 +886,7 @@ const aimlessPassiveRoaming = (bounds: Rectangle) => {
   roam.transitions.push({ trigger: () => Math.random() < 0.05, state: roam });
   roam.transitions.push({ trigger: (_, __, memory) => memory.completed, state: roam });
   return roam;
-}
+};
 
 class TutorialRoamingVenture implements NPC {
   public player: Player;
@@ -912,7 +937,7 @@ class TutorialRoamingVenture implements NPC {
       iv: { x: 0, y: 0 },
       ir: 0,
     };
-  
+
     this.currentState = aimlessPassiveRoaming(bounds);
 
     this.stateGraphMemory.set(this.currentState, this.currentState.onEnter(this));
@@ -923,7 +948,7 @@ class TutorialRoamingVenture implements NPC {
   public process(state: GlobalState, sector: number) {
     this.currentState = this.currentState.process(state, this, sector, undefined);
   }
-};
+}
 
 const addTutorialRoamingVenture = (state: GlobalState, id: number, where: Position) => {
   const npc = new TutorialRoamingVenture(id, where);

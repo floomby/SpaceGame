@@ -89,10 +89,10 @@ let oldAngle = 0;
 const selectFirstSecondary = (self: Player) => {
   let index = 1;
   // All the low arm defs are for empty slots
-  while (index < self.armIndices.length && self.armIndices[index] < SlotKind.Mining) {
+  while (index < self.arms.length && self.arms[index] < SlotKind.Mining) {
     index++;
   }
-  if (index < self.armIndices.length) {
+  if (index < self.arms.length) {
     setSelectedSecondary(index);
     setSelectedSecondaryChanged(true);
   }
@@ -219,8 +219,8 @@ const loop = () => {
     self &&
     selectedSecondary !== 0 &&
     targetAsteroid &&
-    self.armIndices.length > 0 &&
-    self.armIndices[0] !== EmptySlot.Mining
+    self.arms.length > 0 &&
+    self.arms[0] !== EmptySlot.Mining
   ) {
     setSelectedSecondary(0);
     setSelectedSecondaryChanged(true);
@@ -231,7 +231,7 @@ const loop = () => {
   if (self && selectedSecondaryChanged) {
     if (selectedSecondary < def.slots.length) {
       lastValidSecondary = selectedSecondary;
-      const armamentDef = armDefs[self.armIndices[selectedSecondary]];
+      const armamentDef = armDefs[self.arms[selectedSecondary]];
       pushMessage(`${selectedSecondary} - ${armamentDef.name}`);
       sendSecondary(ownId, selectedSecondary);
     } else {
@@ -437,7 +437,7 @@ const run = () => {
       updateDom("dumpCargo", self.cargo);
       updateDom("credits", self.credits);
       updateDom("inventoryCredits", self.credits);
-      updateDom("arms", self.armIndices);
+      updateDom("arms", self.arms);
       runPostUpdaterOnly("ship", self.defIndex);
       if (self.docked) {
         targetId = 0;

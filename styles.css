@@ -133,6 +133,11 @@ body {
   top: 1vh;
   z-index: 8;
   color: white;
+  background-color: #1e1e1e;
+  background-color: rgba(45, 54, 76, 0.95);
+  border: 1px solid #686868;
+  padding: 0.3rem 0.9rem;
+  border-radius: 1.4rem;
 }
 
 .dockedMessageDisplayStyle.fadeOut {

@@ -1,4 +1,5 @@
 import { armDefMap, defs, Faction } from "./defs";
+import { hasArm } from "./defs/armaments";
 import { peekTag } from "./dialog";
 import { sectorNumberToXY } from "./dialogs/map";
 import { pushMessage } from "./drawing";
@@ -72,6 +73,21 @@ tutorialCheckers.set(TutorialStage.Manufacture1, () => {
   return peekTag() === "manufacturing";
 });
 
+tutorialCheckers.set(TutorialStage.Manufacture2, () => {
+  return inventory["Refined Prifetium"] >= 5;
+});
+
+tutorialCheckers.set(TutorialStage.BuyMines, () => {
+  return lastSelf && hasArm(lastSelf, "Proximity Mine");
+});
+
+tutorialCheckers.set(TutorialStage.Undock, () => {
+  return !lastSelf?.docked;
+});
+
+tutorialCheckers.set(TutorialStage.UseMines, () => {
+  return state.mines.size > 0;
+});
 
 const tutorialPrompters = new Map<TutorialStage, () => void>();
 
@@ -86,12 +102,6 @@ tutorialPrompters.set(TutorialStage.Strafe, () => {
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
   fx();
-});
-
-tutorialPrompters.set(TutorialStage.Done, () => {
-  clearInterval(promptInterval);
-  clearTimeout(promptTimeout);
-  pushMessage("Tutorial complete!", 600, "green");
 });
 
 tutorialPrompters.set(TutorialStage.Shoot, () => {
@@ -110,7 +120,7 @@ tutorialPrompters.set(TutorialStage.Kill, () => {
 
 tutorialPrompters.set(TutorialStage.SwitchSecondary, () => {
   const fx = () => {
-    pushMessage(`Javelin missiles have been equipped in secondary slot 1`, 600, "green");
+    pushMessage(`Javelin Missiles have been equipped in secondary slot 1`, 600, "green");
     promptTimeout = window.setTimeout(() => {
       pushMessage(`Press ${keybind.selectSecondary1} to select the Javelins`, 600, "green");
     }, 1000 * 1.5);
@@ -122,7 +132,7 @@ tutorialPrompters.set(TutorialStage.SwitchSecondary, () => {
 
 tutorialPrompters.set(TutorialStage.FireJavelin, () => {
   const fx = () => {
-    pushMessage(`Now use the Space Key to fire some Javelin missiles`, 600, "green");
+    pushMessage(`Now use the Space Key to fire some Javelin Missiles`, 600, "green");
   };
   clearTimeout(promptTimeout);
   clearInterval(promptInterval);
@@ -132,7 +142,7 @@ tutorialPrompters.set(TutorialStage.FireJavelin, () => {
 
 tutorialPrompters.set(TutorialStage.SelectAsteroid, () => {
   const fx = () => {
-    pushMessage(`A mining laser has been equipped in slot 0`, 600, "green");
+    pushMessage(`A Mining Laser has been equipped in slot 0`, 600, "green");
     promptTimeout = window.setTimeout(() => {
       pushMessage(`Select an asteroid with the right mouse button`, 600, "green");
     }, 2000);
@@ -168,7 +178,7 @@ tutorialPrompters.set(TutorialStage.LaserBeam, () => {
   const fx = () => {
     pushMessage(`Targeted weapons can be powerful against evasive enemies`, 600, "green");
     promptTimeout = window.setTimeout(() => {
-      pushMessage(`A Laser Beam has been equipped in slot 2`, 600, "green");
+      pushMessage(`With the enemy targeted, use the Laser Beam in slot 2`, 600, "green");
     }, 2000);
   };
   clearTimeout(promptTimeout);
@@ -210,19 +220,42 @@ tutorialPrompters.set(TutorialStage.Manufacture2, () => {
 });
 
 tutorialPrompters.set(TutorialStage.BuyMines, () => {
-
-});
-
-tutorialPrompters.set(TutorialStage.UseMines, () => {
-
-});
-
-tutorialPrompters.set(TutorialStage.Map, () => {
-  const fx = () => pushMessage(`Press ${keybind.map} to open the map and warp to sector ${sectorNumberToXY(faction === Faction.Alliance ? 12 : 15)}`, 600, "green");
+  const fx = () => pushMessage(`Return to the main docking ui and equip your ship with Proximity Mines`, 600, "green");
   clearTimeout(promptTimeout);
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
   fx();
+});
+
+tutorialPrompters.set(TutorialStage.Undock, () => {
+  const fx = () => pushMessage(`Undock from the station`, 600, "green");
+  clearTimeout(promptTimeout);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 13);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.UseMines, () => {
+  const fx = () => pushMessage(`Now switch to slot 3 and place some mines`, 600, "green");
+  clearTimeout(promptTimeout);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 13);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.Map, () => {
+  const fx = () =>
+    pushMessage(`Press ${keybind.map} to open the map and warp to sector ${sectorNumberToXY(faction === Faction.Alliance ? 12 : 15)}`, 600, "green");
+  clearTimeout(promptTimeout);
+  clearInterval(promptInterval);
+  promptInterval = window.setInterval(fx, 1000 * 13);
+  fx();
+});
+
+tutorialPrompters.set(TutorialStage.Done, () => {
+  clearInterval(promptInterval);
+  clearTimeout(promptTimeout);
+  pushMessage("Tutorial complete!", 600, "green");
 });
 
 export { tutorialCheckers, tutorialPrompters };

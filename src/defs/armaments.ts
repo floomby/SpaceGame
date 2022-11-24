@@ -925,4 +925,30 @@ const isEmptySlot = (armIndex: number) => {
   return armIndex < 5;
 };
 
-export { ArmUsage, TargetedKind, ArmamentDef, armDefs, armDefMap, missileDefs, mineDefs, maxMissileLifetime, initArmaments, isFreeArm, isEmptySlot };
+const hasArm = (player: Player, name: string) => {
+  const armDef = armDefMap.get(name);
+  if (!armDef) {
+    return false;
+  }
+  for (let i = 0; i < player.arms.length; i++) {
+    if (player.arms[i] === armDef.index) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export {
+  ArmUsage,
+  TargetedKind,
+  ArmamentDef,
+  armDefs,
+  armDefMap,
+  missileDefs,
+  mineDefs,
+  maxMissileLifetime,
+  initArmaments,
+  isFreeArm,
+  isEmptySlot,
+  hasArm,
+};

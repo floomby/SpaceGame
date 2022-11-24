@@ -3,6 +3,7 @@ import { WebSocket } from "ws";
 import { clients, saveCheckpoint, sectors, tutorialRespawnPoints, uid } from "./state";
 import { defMap, Faction } from "../src/defs";
 import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
+import { discoverRecipe } from "./inventory";
 
 const spawnTutorialStation = (ws: WebSocket) => {
   const client = clients.get(ws);
@@ -22,7 +23,7 @@ const spawnTutorialStation = (ws: WebSocket) => {
           sinceLastShot: [effectiveInfinity, effectiveInfinity, effectiveInfinity, effectiveInfinity],
           energy: def.def.energy,
           defIndex: def.index,
-          armIndices: [],
+          arms: [],
           slotData: [],
           team: player.team,
           side: 0,
@@ -140,11 +141,14 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
       }
       return TutorialStage.LaserBeam;
     case TutorialStage.Dock:
-      const client = clients.get(ws);
-      if (client) {
-        const player = tutorialRespawnPoints.get(id);
-        if (player) {
-          client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+      {
+        const client = clients.get(ws);
+        if (client) {
+          const player = tutorialRespawnPoints.get(id);
+          discoverRecipe(ws, client.id, "Refined Prifetium");
+          if (player) {
+            client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+          }
         }
       }
       return TutorialStage.Deposit;
@@ -155,8 +159,19 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
     case TutorialStage.Manufacture2:
       return TutorialStage.BuyMines;
     case TutorialStage.BuyMines:
+      return TutorialStage.Undock;
+    case TutorialStage.Undock:
       return TutorialStage.UseMines;
     case TutorialStage.UseMines:
+      {
+        const client = clients.get(ws);
+        if (client) {
+          const player = tutorialRespawnPoints.get(id);
+          if (player) {
+            client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+          }
+        }
+      }
       return TutorialStage.Map;
     case TutorialStage.Map:
       {

@@ -267,14 +267,14 @@ const drawHUD = (player: Player, selectedSecondary: number) => {
   const def = defs[player.defIndex];
   const totalCargo = def.cargoCapacity - availableCargoCapacity(player);
   drawBar({ x: 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, "#774422CC", "#333333CC", totalCargo / defs[player.defIndex].cargoCapacity);
-  for (let i = 1; i <= player.armIndices.length; i++) {
-    let armDef = armDefs[player.armIndices[i % player.armIndices.length]];
-    let slotData = player.slotData[i % player.armIndices.length];
-    ctx.fillStyle = (i % player.armIndices.length) === selectedSecondary ? (slotData?.active ? "#9ACD32" : "yellow") : slotData?.active ? "green" : "white";
+  for (let i = 1; i <= player.arms.length; i++) {
+    let armDef = armDefs[player.arms[i % player.arms.length]];
+    let slotData = player.slotData[i % player.arms.length];
+    ctx.fillStyle = (i % player.arms.length) === selectedSecondary ? (slotData?.active ? "#9ACD32" : "yellow") : slotData?.active ? "green" : "white";
     ctx.font = "14px Arial";
     ctx.textAlign = "left";
-    ctx.fillText(`${i % player.armIndices.length}: ${armDef.name}`, 10, canvas.height - 10 - (player.armIndices.length - i + 1) * 20);
-    if (i % player.armIndices.length === selectedSecondary) {
+    ctx.fillText(`${i % player.arms.length}: ${armDef.name}`, 10, canvas.height - 10 - (player.arms.length - i + 1) * 20);
+    if (i % player.arms.length === selectedSecondary) {
       if (armDef.usage === ArmUsage.Energy && armDef.energyCost !== undefined) {
         const color = armDef.energyCost > player.energy ? "#EE2200CC" : "#0022FFCC";
         drawBar({ x: canvas.width / 2 + 10, y: canvas.height - 20 }, canvas.width / 2 - 20, 10, color, "#333333CC", player.energy / def.energy);
@@ -542,18 +542,6 @@ const drawRepairText = (repairKey: string) => {
   ctx.textAlign = "center";
   ctx.fillText(`Press ${repairKey} to repair`, canvas.width / 2, canvas.height / 2 + 200);
 };
-
-// let secondaryFlashTimeRemaining = 0;
-
-// const drawSecondaryText = (self: Player, selectedSecondary: number) => {
-//   ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, secondaryFlashTimeRemaining / 50)})`;
-//   ctx.font = "18px Arial";
-//   ctx.textAlign = "center";
-//   const armamentDef = armDefs[self.armIndices[selectedSecondary]];
-//   ctx.fillText(`${selectedSecondary} - ${armamentDef.name}`, canvas.width / 2, 20);
-// };
-
-// This is only for drawing purposes (if we die we need to keep the last position)
 
 let highlightPhase = 0;
 

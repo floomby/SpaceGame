@@ -68,7 +68,7 @@ enum CloakedState {
 //   canDock
 //   docked
 //   canRepair
-//   armIndices
+//   arms
 //   slotData
 //   cargo
 //   credits
@@ -90,7 +90,7 @@ type Player = Entity & {
   canDock?: number;
   docked?: number;
   canRepair?: number;
-  armIndices: number[];
+  arms: number[];
   // Limited to flat objects (change player copy code to augment this behavior if needed)
   slotData: any[];
   cargo?: CargoEntry[];
@@ -707,7 +707,7 @@ const   update = (
         }
       }
       // Run the secondary frameMutators
-      player.armIndices.forEach((armament, index) => {
+      player.arms.forEach((armament, index) => {
         const armDef = armDefs[armament];
         if (armDef.frameMutator) {
           const gain = armDef.frameMutator(player, index, state, flashServerMessage);
@@ -724,12 +724,12 @@ const   update = (
         } else {
           slotId = serverSecondaries.get(id);
         }
-        if (slotId < player.armIndices.length) {
-          const armDef = armDefs[player.armIndices[slotId]];
+        if (slotId < player.arms.length) {
+          const armDef = armDefs[player.arms[slotId]];
           // Targeted weapons
           if (armDef.targeted === TargetedKind.Targeted) {
             const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
-            if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
+            if (slotId !== undefined && targetKind && slotId < player.arms.length) {
               if (armDef.stateMutator) {
                 let target: Player | Asteroid | undefined;
                 if (targetKind === TargetKind.Player) {
@@ -744,7 +744,7 @@ const   update = (
             }
             // Untargeted weapons
           } else if (armDef.targeted === TargetedKind.Untargeted) {
-            if (slotId !== undefined && slotId < player.armIndices.length) {
+            if (slotId !== undefined && slotId < player.arms.length) {
               if (armDef.stateMutator) {
                 armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
               }
@@ -756,12 +756,12 @@ const   update = (
       if (playerSecondaryActivation) {
         while (playerSecondaryActivation.length > 0) {
           const slotId = playerSecondaryActivation.pop();
-          if (slotId !== undefined && slotId < player.armIndices.length) {
-            const armDef = armDefs[player.armIndices[slotId]];
+          if (slotId !== undefined && slotId < player.arms.length) {
+            const armDef = armDefs[player.arms[slotId]];
             // Targeted weapons
             if (armDef.targeted === TargetedKind.Targeted) {
               const [targetKind, targetId] = player.npc ? [TargetKind.Player, player.npc.targetId] : serverTargets.get(id) || [TargetKind.None, 0];
-              if (slotId !== undefined && targetKind && slotId < player.armIndices.length) {
+              if (slotId !== undefined && targetKind && slotId < player.arms.length) {
                 if (armDef.stateMutator) {
                   let target: Player | Asteroid | undefined;
                   if (targetKind === TargetKind.Player) {
@@ -776,7 +776,7 @@ const   update = (
               }
               // Untargeted weapons
             } else if (armDef.targeted === TargetedKind.Untargeted) {
-              if (slotId !== undefined && slotId < player.armIndices.length) {
+              if (slotId !== undefined && slotId < player.arms.length) {
                 if (armDef.stateMutator) {
                   armDef.stateMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
                 }
@@ -1193,7 +1193,7 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
     console.log("Warning: wrong kind of armament", slotKind, armDef.kind);
     return player;
   }
-  if (slotIndex >= player.armIndices.length) {
+  if (slotIndex >= player.arms.length) {
     console.log("Warning: player armaments not initialized correctly");
     return player;
   }
@@ -1208,7 +1208,7 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
     if (!noCost) {
       ret.credits -= armDef.cost;
     }
-    ret.armIndices[slotIndex] = defIndex;
+    ret.arms[slotIndex] = defIndex;
     if (armDef.equipMutator) {
       armDef.equipMutator(ret, slotIndex);
     }
@@ -1242,7 +1242,7 @@ const purchaseShip = (player: Player, index: number, shipOptions: string[], bypa
     }
     ret.defIndex = index;
     ret.slotData = new Array(def.slots.length).map(() => ({}));
-    ret.armIndices = emptyLoadout(index);
+    ret.arms = emptyLoadout(index);
     ret.health = def.health;
     ret.energy = def.energy;
     return ret;
@@ -1358,6 +1358,7 @@ enum TutorialStage {
   Manufacture1,
   Manufacture2,
   BuyMines,
+  Undock,
   UseMines,
   Map,
 }

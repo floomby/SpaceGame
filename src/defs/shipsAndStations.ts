@@ -234,7 +234,7 @@ const initShipsAndStations = () => {
     primaryDamage: 10,
     radius: 22,
     kind: UnitKind.Ship,
-    slots: [SlotKind.Mining, SlotKind.Normal],
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Mine, SlotKind.Utility],
     cargoCapacity: 100,
     deathEffect: 3,
     turnRate: 0.1,

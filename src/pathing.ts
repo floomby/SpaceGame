@@ -151,14 +151,14 @@ const arrivePositionUsingAngle = (player: Player, position: Position, input: Inp
   return heading;
 };  
 
-const stopPlayer = (player: Player, input: Input, stopRotation = true) => {
+const stopPlayer = (player: Player, input: Input, stopStrafing = true) => {
   input.up = false;
   if (player.speed > 0) {
     input.down = true;
   } else {
     input.down = false;
   }
-  if (stopRotation) {
+  if (stopStrafing) {
     input.left = false;
     input.right = false;
   }

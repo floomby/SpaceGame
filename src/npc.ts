@@ -72,9 +72,7 @@ const idleState = () => {
       applyInputs(npc.input, npc.player);
       return this;
     };
-    onEnter = (npc: NPC) => {
-      console.log("Idle");
-    };
+    onEnter = (npc: NPC) => {};
   })();
 };
 
@@ -211,10 +209,8 @@ const strafingSwarmCombat = (
         return newState;
       }
       if (target) {
-        // const angle = findInterceptAimingHeading(npc.player.position, target, projectileSpeedToUse, projectileRangeToUse);
-        const angle = findHeadingBetween(npc.player.position, target.position);
+        const angle = findInterceptAimingHeading(npc.player.position, target, projectileSpeedToUse, projectileRangeToUse);
         if (angle === undefined) {
-          console.log("exiting strafing combat because no intercept");
           this.memory.completed = true;
           return this;
         }
@@ -235,11 +231,11 @@ const strafingSwarmCombat = (
         }
         npc.input.right = !this.memory.strafe;
         npc.input.left = this.memory.strafe;
-        npc.input.down = true;
-        // if (npc.player.speed > 0) {
-        // } else {
-        //   npc.input.down = false;
-        // }
+        if (npc.player.speed > 0) {
+          npc.input.down = true;
+        } else {
+          npc.input.down = false;
+        }
         npc.input.up = false;
         applyInputs(npc.input, npc.player, angle);
         if (mineSlot !== null) {
@@ -255,7 +251,6 @@ const strafingSwarmCombat = (
       return this;
     };
     onEnter = (npc: NPC) => {
-      console.log("entering strafing combat");
       this.memory.completed = false;
       this.memory.strafe = Math.random() > 0.5 ? true : false;
       npc.selectedSecondary = 1;
@@ -479,8 +474,8 @@ const makeBasicStateGraph = (
       secondaryRange,
       energyThreshold,
       mineSlot,
-      projectileDefs[0].range,
-      projectileDefs[0].speed
+      projectileDefs[0].speed,
+      projectileDefs[0].range
     );
     strafeSwarm.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
     strafeSwarm.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
@@ -571,6 +566,7 @@ class ActiveSwarmer implements NPC {
       v: { x: 0, y: 0 },
       iv: { x: 0, y: 0 },
       ir: 0,
+      side: 0,
     };
 
     let mineSlot = def.slots.indexOf(SlotKind.Mine);

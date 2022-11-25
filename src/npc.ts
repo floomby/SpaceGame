@@ -16,7 +16,7 @@ import {
   sectorBounds,
   sectorDelta,
 } from "./game";
-import { findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "./geometry";
+import { findInterceptAimingHeading, findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "./geometry";
 import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
 import { recipeMap } from "./recipes";
 
@@ -72,7 +72,9 @@ const idleState = () => {
       applyInputs(npc.input, npc.player);
       return this;
     };
-    onEnter = (npc: NPC) => {};
+    onEnter = (npc: NPC) => {
+      console.log("Idle");
+    };
   })();
 };
 
@@ -137,9 +139,9 @@ const useMines = (npc: NPC, target: Player, slot: number, distance: number) => {
   const targetDef = defs[target.defIndex];
   if (
     targetDef.kind === UnitKind.Ship &&
-    distance > 300 &&
+    distance > 100 &&
     distance < 600 &&
-    findSmallAngleBetween(target.heading, findHeadingBetween(npc.player.position, target.position)) < Math.PI / 4
+    Math.abs(findSmallAngleBetween(target.heading, findHeadingBetween(target.position, npc.player.position))) < Math.PI / 4
   ) {
     npc.secondariesToFire.push(slot);
   }
@@ -193,6 +195,74 @@ const stupidSwarmCombat = (
   })();
 };
 
+const strafingSwarmCombat = (
+  primaryRange: number,
+  secondaryGuided: boolean,
+  secondaryRange: number,
+  energyThreshold: number,
+  mineSlot: null | number,
+  projectileSpeedToUse: number,
+  projectileRangeToUse: number
+) => {
+  return new (class extends State {
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
+      if (newState) {
+        return newState;
+      }
+      if (target) {
+        // const angle = findInterceptAimingHeading(npc.player.position, target, projectileSpeedToUse, projectileRangeToUse);
+        const angle = findHeadingBetween(npc.player.position, target.position);
+        if (angle === undefined) {
+          console.log("exiting strafing combat because no intercept");
+          this.memory.completed = true;
+          return this;
+        }
+        const distance = l2Norm(npc.player.position, target.position);
+        const facing = currentlyFacing(npc.player, target);
+        const likelyToHit = Math.abs(findSmallAngleBetween(npc.player.heading, angle)) < Math.PI / 6 || (facing && distance < 400);
+        npc.input.primary = npc.player.energy > energyThreshold && likelyToHit;
+        if (distance < secondaryRange) {
+          if (secondaryGuided) {
+            npc.input.secondary = true;
+          } else if (likelyToHit) {
+            npc.input.secondary = true;
+          } else {
+            npc.input.secondary = false;
+          }
+        } else {
+          npc.input.secondary = false;
+        }
+        npc.input.right = !this.memory.strafe;
+        npc.input.left = this.memory.strafe;
+        npc.input.down = true;
+        // if (npc.player.speed > 0) {
+        // } else {
+        //   npc.input.down = false;
+        // }
+        npc.input.up = false;
+        applyInputs(npc.input, npc.player, angle);
+        if (mineSlot !== null) {
+          useMines(npc, target, mineSlot, distance);
+        }
+        if (distance < 500 && Math.random() < 0.01) {
+          this.memory.strafe = !this.memory.strafe;
+        }
+      } else {
+        stopPlayer(npc.player, npc.input, true);
+        applyInputs(npc.input, npc.player);
+      }
+      return this;
+    };
+    onEnter = (npc: NPC) => {
+      console.log("entering strafing combat");
+      this.memory.completed = false;
+      this.memory.strafe = Math.random() > 0.5 ? true : false;
+      npc.selectedSecondary = 1;
+    };
+  })();
+};
+
 const runAway = (primaryRange: number, secondaryGuided: boolean, secondaryRange: number, energyThreshold: number, mineSlot: null | number) => {
   return new (class extends State {
     process = (state: GlobalState, npc: NPC, sector, target) => {
@@ -231,6 +301,61 @@ const runAway = (primaryRange: number, secondaryGuided: boolean, secondaryRange:
     };
     onEnter = (npc: NPC) => {
       this.memory.to = { x: npc.player.position.x + Math.random() * 4000 - 2000, y: npc.player.position.y + Math.random() * 4000 - 2000 };
+      npc.selectedSecondary = 1;
+    };
+  })();
+};
+
+const runAwayWithStrafing = (
+  primaryRange: number,
+  secondaryGuided: boolean,
+  secondaryRange: number,
+  energyThreshold: number,
+  mineSlot: null | number
+) => {
+  return new (class extends State {
+    process = (state: GlobalState, npc: NPC, sector, target) => {
+      const newState = this.checkTransitions(state, npc, target);
+      if (newState) {
+        return newState;
+      }
+      if (target) {
+        const distance = l2Norm(npc.player.position, target.position);
+        const facing = currentlyFacing(npc.player, target);
+        if (distance < primaryRange && facing && npc.player.energy > energyThreshold) {
+          npc.input.primary = true;
+        } else {
+          npc.input.primary = false;
+        }
+        if (distance < secondaryRange) {
+          if (secondaryGuided) {
+            npc.input.secondary = true;
+          } else if (facing) {
+            npc.input.secondary = true;
+          } else {
+            npc.input.secondary = false;
+          }
+        } else {
+          npc.input.secondary = false;
+        }
+        npc.input.right = !this.memory.strafe;
+        npc.input.left = this.memory.strafe;
+        applyInputs(npc.input, npc.player, seekPositionUsingAngle(npc.player, this.memory.to, npc.input));
+        if (mineSlot !== null) {
+          useMines(npc, target, mineSlot, distance);
+        }
+        if (Math.random() < 0.05) {
+          this.memory.strafe = !this.memory.strafe;
+        }
+      } else {
+        stopPlayer(npc.player, npc.input, true);
+        applyInputs(npc.input, npc.player);
+      }
+      return this;
+    };
+    onEnter = (npc: NPC) => {
+      this.memory.to = { x: npc.player.position.x + Math.random() * 4000 - 2000, y: npc.player.position.y + Math.random() * 4000 - 2000 };
+      this.memory.strafe = Math.random() > 0.5 ? true : false;
       npc.selectedSecondary = 1;
     };
   })();
@@ -287,17 +412,26 @@ const randomCombatManeuver = (
   })();
 };
 
-const warpTo = (friendlySectors: number[]) => {
+const warpTo = (sectorList: number[]) => {
+  if (sectorList.length < 2) {
+    throw new Error("Sector list must have at least 2 sectors");
+  }
   return new (class extends State {
-    process = (state: GlobalState, npc: NPC, sector, target) => {
+    process = (state: GlobalState, npc: NPC, sector: number, target) => {
+      if (this.memory.needWarp) {
+        const sectors = sectorList.filter((sector) => sector !== sector);
+        if (npc.player.warping < 1) {
+          npc.player.warping = 1;
+        }
+        npc.player.warpTo = sectors[Math.floor(Math.random() * sectors.length)];
+      }
       const newState = this.checkTransitions(state, npc, target);
       if (newState) {
         return newState;
       }
     };
     onEnter = (npc: NPC) => {
-      npc.player.warping = 1;
-      npc.player.warpTo = friendlySectors[Math.floor(Math.random() * friendlySectors.length)];
+      this.memory.needWarp = true;
     };
   })();
 };
@@ -308,14 +442,16 @@ const makeBasicStateGraph = (
   secondaryRange: number,
   energyThreshold: number,
   mineSlot: null | number,
-  friendlySectors: number[]
+  friendlySectors: number[],
+  isStrafer: boolean
 ) => {
   const idle = idleState();
   const passiveGoTo = passiveGoToRandomPointInSector();
   const passiveGoToSector = passiveGoToRandomValidNeighboringSector();
   const swarm = stupidSwarmCombat(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
-  const randomManeuver = randomCombatManeuver(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
-  const run = runAway(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
+  const run = isStrafer
+    ? runAwayWithStrafing(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot)
+    : runAway(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
   const warpAway = warpTo(friendlySectors);
   const randomWarp = warpTo(new Array(mapSize * mapSize).fill(0).map((_, i) => i));
   idle.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
@@ -327,10 +463,32 @@ const makeBasicStateGraph = (
   passiveGoToSector.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   passiveGoToSector.transitions.push({ trigger: (_, __, memory) => memory.completed, state: passiveGoTo });
   swarm.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
-  swarm.transitions.push({
-    trigger: (_, npc, ___, target) => Math.random() < 0.01 && l2Norm(npc.player.position, target.position) < 500,
-    state: randomManeuver,
-  });
+  if (!isStrafer) {
+    const randomManeuver = randomCombatManeuver(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
+    swarm.transitions.push({
+      trigger: (_, npc, ___, target) => Math.random() < 0.008 && l2Norm(npc.player.position, target.position) < 500,
+      state: randomManeuver,
+    });
+    randomManeuver.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
+    randomManeuver.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
+    randomManeuver.transitions.push({ trigger: () => Math.random() < 0.005, state: swarm });
+  } else {
+    const strafeSwarm = strafingSwarmCombat(
+      primaryRange,
+      secondaryGuided,
+      secondaryRange,
+      energyThreshold,
+      mineSlot,
+      projectileDefs[0].range,
+      projectileDefs[0].speed
+    );
+    strafeSwarm.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
+    strafeSwarm.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
+    swarm.transitions.push({
+      trigger: (_, npc, ___, target) => Math.random() < 0.05 && !!target && l2Norm(target.position, npc.player.position) < primaryRange,
+      state: strafeSwarm,
+    });
+  }
   swarm.transitions.push({
     trigger: (_, npc) => {
       const def = defs[npc.player.defIndex];
@@ -348,9 +506,6 @@ const makeBasicStateGraph = (
     state: run,
   });
   run.transitions.push({ trigger: () => Math.random() < 0.002, state: run });
-  randomManeuver.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
-  randomManeuver.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
-  randomManeuver.transitions.push({ trigger: () => Math.random() < 0.005, state: swarm });
   warpAway.transitions.push({ trigger: () => true, state: run });
   randomWarp.transitions.push({ trigger: () => true, state: idle });
   return idle;
@@ -382,9 +537,6 @@ class ActiveSwarmer implements NPC {
   public friendlySectors: number[] = [];
 
   constructor(what: string | number, team: number | Faction, id: number, friendlySectors: number[]) {
-    if (friendlySectors.length === 0) {
-      throw new Error("Friendly sectors must be non-empty");
-    }
     let defIndex: number;
     let def: UnitDefinition;
     if (typeof what === "string") {
@@ -428,39 +580,46 @@ class ActiveSwarmer implements NPC {
       this.player = equip(this.player, mineSlot, "Proximity Mine", true);
     }
 
+    const isStrafer = def.name === "Strafer";
+
     switch (Math.floor(Math.random() * 12)) {
       case 0:
       case 1:
       case 2:
         this.player = equip(this.player, 1, "Javelin Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 3:
       case 4:
         this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3, mineSlot, friendlySectors);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 5:
         this.player = equip(this.player, 1, "Laser Beam", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38, mineSlot, friendlySectors);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38, mineSlot, friendlySectors, isStrafer);
         break;
       case 6:
         this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3, mineSlot, friendlySectors);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 7:
       case 8:
-        this.player = equip(this.player, 1, "Disruptor Cannon", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3, mineSlot, friendlySectors);
+        if (isStrafer) {
+          this.player = equip(this.player, 1, "Plasma Cannon", true);
+          this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot, friendlySectors, isStrafer);
+        } else {
+          this.player = equip(this.player, 1, "Disruptor Cannon", true);
+          this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3, mineSlot, friendlySectors, isStrafer);
+        }
         break;
       case 9:
       case 10:
         this.player = equip(this.player, 1, "Plasma Cannon", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot, friendlySectors);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 11:
         this.player = equip(this.player, 1, "EMP Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors);
+        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors, isStrafer);
         break;
     }
 
@@ -481,162 +640,6 @@ class ActiveSwarmer implements NPC {
       target = state.players.get(this.targetId);
     }
     this.currentState = this.currentState.process(state, this, sector, target);
-  }
-}
-
-class Swarmer implements NPC {
-  public player: Player;
-
-  public input: Input = {
-    left: false,
-    right: false,
-    up: false,
-    down: false,
-    primary: false,
-    secondary: false,
-  };
-  public selectedSecondary = 1;
-
-  public angle: number = undefined;
-
-  public lootTable = defaultLootTable;
-
-  public secondariesToFire: number[] = [];
-
-  private guidedSecondary: boolean;
-
-  constructor(what: string | number, team: number | Faction, id: number) {
-    let defIndex: number;
-    let def: UnitDefinition;
-    if (typeof what === "string") {
-      const value = defMap.get(what);
-      if (value) {
-        defIndex = value.index;
-        def = value.def;
-      } else {
-        throw new Error(`Unknown NPC type: ${what}`);
-      }
-    } else {
-      defIndex = what;
-      def = defs[defIndex];
-    }
-    this.player = {
-      position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
-      radius: defs[defIndex].radius,
-      speed: 0,
-      heading: Math.random() * 2 * Math.PI,
-      health: defs[defIndex].health,
-      id: id,
-      sinceLastShot: [effectiveInfinity],
-      energy: defs[defIndex].energy,
-      defIndex: defIndex,
-      arms: emptyLoadout(defIndex),
-      slotData: emptySlotData(def),
-      cargo: [],
-      credits: 500,
-      npc: this,
-      team,
-      v: { x: 0, y: 0 },
-      iv: { x: 0, y: 0 },
-      ir: 0,
-    };
-
-    switch (Math.floor(Math.random() * 5)) {
-      case 0:
-        this.player = equip(this.player, 1, "Javelin Missile", true);
-        this.guidedSecondary = false;
-        break;
-      case 1:
-        this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        this.guidedSecondary = true;
-        break;
-      case 2:
-        this.player = equip(this.player, 1, "Laser Beam", true);
-        this.guidedSecondary = true;
-        break;
-      case 3:
-        this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
-        this.guidedSecondary = false;
-        break;
-      case 4:
-        this.player = equip(this.player, 1, "EMP Missile", true);
-        this.guidedSecondary = true;
-        break;
-    }
-  }
-
-  public targetId = 0;
-
-  private doRadomManeuver = 0;
-  private randomManeuverPosition = { x: 0, y: 0 };
-
-  private frame = Math.floor(Math.random() * 60);
-
-  public process(state: GlobalState) {
-    let target: Player | undefined = undefined;
-    const def = defs[this.player.defIndex];
-    if (this.frame % 60 === 0) {
-      const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
-      this.targetId = newTarget?.id ?? 0;
-      target = newTarget;
-    }
-
-    if (this.targetId !== 0) {
-      if (!target) {
-        target = state.players.get(this.targetId);
-      }
-      if (target) {
-        if (this.doRadomManeuver > 0) {
-          seekPosition(this.player, this.randomManeuverPosition, this.input);
-          if (l2Norm(this.player.position, this.randomManeuverPosition) < 50) {
-            this.doRadomManeuver = 0;
-          }
-          this.doRadomManeuver--;
-        } else {
-          seekPosition(this.player, target.position, this.input);
-        }
-        const targetDist = l2Norm(this.player.position, target.position);
-        const facing = currentlyFacing(this.player, target);
-        if (targetDist < 500 && facing) {
-          this.input.primary = true;
-        } else {
-          this.input.primary = false;
-        }
-        if (targetDist < 700) {
-          if (this.frame % 400 === 0 && Math.random() < 0.5) {
-            this.doRadomManeuver = 180;
-            this.randomManeuverPosition = {
-              x: this.player.position.x + Math.random() * 600 - 300,
-              y: this.player.position.y + Math.random() * 600 - 300,
-            };
-          }
-        }
-        this.input.secondary = (!this.guidedSecondary && targetDist < 1500 && facing) || (this.guidedSecondary && targetDist < 1500);
-      } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 3000) {
-        this.input.primary = false;
-        this.input.secondary = false;
-        this.doRadomManeuver = 0;
-        seekPosition(this.player, { x: 0, y: 0 }, this.input);
-      } else {
-        this.doRadomManeuver = 0;
-        this.input.primary = false;
-        this.input.secondary = false;
-        stopPlayer(this.player, this.input);
-      }
-    } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 3000) {
-      this.input.primary = false;
-      this.input.secondary = false;
-      this.doRadomManeuver = 0;
-      seekPosition(this.player, { x: 0, y: 0 }, this.input);
-    } else {
-      this.doRadomManeuver = 0;
-      this.input.primary = false;
-      this.input.secondary = false;
-      stopPlayer(this.player, this.input);
-    }
-    applyInputs(this.input, this.player);
-
-    this.frame++;
   }
 }
 
@@ -816,22 +819,7 @@ class Strafer implements NPC {
 }
 
 const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number, friendlySectors: number[]) => {
-  let npc: NPC;
-  switch (what) {
-    // case "Striker":
-    //   npc = new ActiveSwarmer(what, team, id);
-    //   break;
-    case "Strafer":
-    case 6:
-      // case 0:
-      // case "Fighter":
-      npc = new Strafer(what, team, id);
-      break;
-    default:
-      npc = new ActiveSwarmer(what, team, id, friendlySectors);
-      break;
-  }
-  // console.log(npc);
+  const npc = new ActiveSwarmer(what, team, id, friendlySectors);
   state.players.set(npc.player.id, npc.player);
 };
 
@@ -944,7 +932,7 @@ class TutorialStrafer implements NPC {
     const { def, index } = defMap.get("Strafer");
 
     this.player = {
-      position: randomNearbyPointInSector(where, 8000),
+      position: randomNearbyPointInSector(where, 4000),
       radius: def.radius,
       speed: 0,
       heading: Math.random() * 2 * Math.PI,

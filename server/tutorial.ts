@@ -181,8 +181,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
           if (state) {
             const player = state.players.get(client.id);
             if (player) {
-              const playerData = JSON.stringify(player);
-              saveCheckpoint(client.id, client.currentSector, playerData, client.sectorsVisited);
+              saveCheckpoint(client.id, client.currentSector, player, client.sectorsVisited);
             }
           }
         }

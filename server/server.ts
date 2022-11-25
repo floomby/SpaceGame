@@ -454,11 +454,9 @@ wss.on("connection", (ws) => {
               }
 
               state.players.set(client.id, player);
-              const playerCopy = copyPlayer(player);
-              const checkpointData = JSON.stringify(playerCopy);
 
               if (!client.inTutorial) {
-                saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+                saveCheckpoint(client.id, client.currentSector, player, client.sectorsVisited);
               } else {
                 tutorialRespawnPoints.set(client.id, copyPlayer(player));
               }
@@ -474,11 +472,8 @@ wss.on("connection", (ws) => {
             player.docked = undefined;
             state.players.set(client.id, player);
 
-            state.players.set(client.id, player);
-            const checkpointData = JSON.stringify(player);
-
             if (!client.inTutorial) {
-              saveCheckpoint(client.id, client.currentSector, checkpointData, client.sectorsVisited);
+              saveCheckpoint(client.id, client.currentSector, player, client.sectorsVisited);
             } else {
               tutorialRespawnPoints.set(client.id, copyPlayer(player));
             }
@@ -792,7 +787,7 @@ wss.on("connection", (ws) => {
       if (player) {
         if (player.docked) {
           if (!removedClient.inTutorial) {
-            saveCheckpoint(removedClient.id, removedClient.currentSector, JSON.stringify(player), removedClient.sectorsVisited);
+            saveCheckpoint(removedClient.id, removedClient.currentSector, player, removedClient.sectorsVisited);
           }
         } else {
           User.findOneAndUpdate(

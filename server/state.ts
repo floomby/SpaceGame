@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage } from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage, copyPlayer } from "../src/game";
 import { WebSocket } from "ws";
 import { armDefs, defs, Faction, initDefs } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
@@ -194,7 +194,12 @@ for (let i = 0; i < sectorList.length; i++) {
 
 const tutorialRespawnPoints = new Map<number, Player>();
 
-const saveCheckpoint = (id: number, sector: number, data: string, sectorsVisited: Set<number>) => {
+const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisited: Set<number>) => {
+  if (player.health <= 0) {
+    console.log("Warning: attempt to save checkpoint of dead player");
+    return;
+  }
+  const data = JSON.stringify(player);
   Checkpoint.findOneAndUpdate({ id }, { id, sector, data }, { upsert: true }, (err) => {
     if (err) {
       console.log("Error saving checkpoint: " + err);

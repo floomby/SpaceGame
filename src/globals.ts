@@ -46,6 +46,14 @@ const getVolumePref = () => {
   return null;
 };
 
+const getMusicVolumePref = () => {
+  const volume = localStorage.getItem("musicVolume");
+  if (volume) {
+    return JSON.parse(volume);
+  }
+  return null;
+};
+
 let keybind = useKeybindings(getKeybindPref() ?? defaultKeyLayout);
 
 const setKeybind = (newKeybind: KeyBindings) => {
@@ -155,6 +163,7 @@ export {
   lastSelf,
   setLastSelf,
   getVolumePref,
+  getMusicVolumePref,
   inventory,
   clearInventory,
   recipesKnown,

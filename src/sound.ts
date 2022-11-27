@@ -1,7 +1,8 @@
-import { addLoadingText, getVolumePref } from "./globals";
+import { addLoadingText, getMusicVolumePref, getVolumePref } from "./globals";
 
 let ctx: AudioContext;
-let volume: GainNode;
+let effectVolume: GainNode;
+let musicVolume: GainNode;
 
 const soundBuffers: AudioBuffer[] = [];
 
@@ -21,6 +22,8 @@ const sounds = [
   "wigglyThud0.wav",
   "resonantPew0.wav",
   "tractor0.wav",
+  "music/combat.mp3",
+  "music/peace.mp3",
 ];
 
 const soundMap: Map<string, number> = new Map<string, number>();
@@ -49,25 +52,41 @@ const initSound = () => {
   }, 100);
 
   ctx = new AudioContext();
-  volume = ctx.createGain();
-  volume.connect(ctx.destination);
+
+  effectVolume = ctx.createGain();
+  effectVolume.connect(ctx.destination);
   const volumePref = getVolumePref();
-  volume.gain.value = volumePref ?? 0.5;
+  effectVolume.gain.value = volumePref ?? 0.5;
+
+  musicVolume = ctx.createGain();
+  musicVolume.connect(ctx.destination);
+  const musicVolumePref = getMusicVolumePref();
+  musicVolume.gain.value = musicVolumePref ?? 0.5;
 
   const promises: Promise<AudioBuffer>[] = sounds.map((sound) => `resources/sounds/${sound}`).map(loadSound);
 
   Promise.all(promises).then((buffers) => {
     buffers.forEach((buffer) => soundBuffers.push(buffer));
+    initMusic();
   });
 };
 
 const setVolume = (value: number) => {
   localStorage.setItem("volume", JSON.stringify(value));
-  volume.gain.value = value;
+  effectVolume.gain.value = value;
 };
 
 const getVolume = () => {
-  return volume.gain.value;
+  return effectVolume.gain.value;
+};
+
+const setMusicVolume = (value: number) => {
+  localStorage.setItem("musicVolume", JSON.stringify(value));
+  musicVolume.gain.value = value;
+};
+
+const getMusicVolume = () => {
+  return musicVolume.gain.value;
 };
 
 const playSound = (index: number) => {
@@ -77,7 +96,7 @@ const playSound = (index: number) => {
   }
   const source = ctx.createBufferSource();
   source.buffer = soundBuffers[index];
-  source.connect(volume);
+  source.connect(effectVolume);
   source.start(0);
 };
 
@@ -105,9 +124,83 @@ const play3dSound = (index: number, x: number, y: number, gain = 0.8, important 
 
   source.connect(gainNode);
   gainNode.connect(panner);
-  panner.connect(volume);
+  panner.connect(effectVolume);
   source.start(0);
   return panner;
+};
+
+type Music = {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+};
+
+const createMusic = (index: number) => {
+  const source = ctx.createBufferSource();
+  source.buffer = soundBuffers[index];
+  source.loop = true;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.5;
+  source.connect(gain);
+  gain.connect(musicVolume);
+  return { source, gain };
+};
+
+const fadeInMusic = (music: Music, duration: number) => {
+  const start = ctx.currentTime;
+  const end = start + duration;
+  music.gain.gain.setValueAtTime(0, start);
+  music.gain.gain.linearRampToValueAtTime(0.5, end);
+};
+
+const fadeOutMusic = (music: Music, duration: number) => {
+  const start = ctx.currentTime;
+  const end = start + duration;
+  music.gain.gain.setValueAtTime(0.5, start);
+  music.gain.gain.linearRampToValueAtTime(0, end);
+  setInterval(() => {
+    music.source.stop();
+  }, duration * 1000);
+};
+
+const playMusic = (index: number) => {
+  const music = createMusic(index);
+  fadeInMusic(music, 1);
+  music.source.start(0);
+  return music;
+};  
+
+const stopMusic = (music: Music) => {
+  music.source.stop();
+};
+
+let peace: Music;
+let combat: Music;
+
+let musicPoller = () => false;
+let currentTrackState = false;
+
+const setMusicAdaptationPollFunction = (fx: () => boolean) => {
+  musicPoller = fx;
+};
+
+const initMusic = () => {
+  peace = playMusic(soundMap.get("music/peace.mp3")!);
+  setInterval(() => {
+    const desired = musicPoller();
+    if (desired === null) {
+      return;
+    }
+    if (desired !== currentTrackState) {
+      if (desired) {
+        fadeOutMusic(peace, 1);
+        combat = playMusic(soundMap.get("music/combat.mp3")!);
+      } else {
+        fadeOutMusic(combat, 1);
+        peace = playMusic(soundMap.get("music/peace.mp3")!);
+      }
+    }
+    currentTrackState = desired;
+  }, 3000);
 };
 
 const getSound = (name: string) => {
@@ -120,4 +213,16 @@ const getSound = (name: string) => {
 
 const soundScale = 100;
 
-export { initSound, playSound, play3dSound, soundScale, setVolume, getVolume, soundMap, getSound };
+export {
+  initSound,
+  playSound,
+  play3dSound,
+  soundScale,
+  setVolume,
+  getVolume,
+  setMusicVolume,
+  getMusicVolume,
+  soundMap,
+  getSound,
+  setMusicAdaptationPollFunction,
+};

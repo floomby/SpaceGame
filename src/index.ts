@@ -71,6 +71,7 @@ import { Position } from "./geometry";
 import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
 import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
+import { setMusicAdaptationPollFunction } from "./sound";
 
 let chats: ChatMessage[] = [];
 
@@ -560,6 +561,19 @@ const toRun = () => {
   addLoadingText("Initializing drawing subsystem");
   initDrawing(() => {
     connect(run);
+  });
+
+  setMusicAdaptationPollFunction(() => {
+    if (!lastSelf) {
+      return null;
+    }
+    let enemyCount = 0;
+    for (const player of state.players.values()) {
+      if (player.team !== lastSelf.team && !player.inoperable) {
+        enemyCount++;
+      }
+    }
+    return enemyCount > 0;
   });
 };
 

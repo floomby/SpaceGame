@@ -317,7 +317,7 @@ kbd {
 }
 
 .checkAsTextChecked {
-  color:rgb(37, 0, 247);
+  color: rgb(37, 0, 247);
   text-shadow: 0 0 8px #5e34f6;
 }
 
@@ -327,8 +327,18 @@ kbd {
   color: black;
   border: none !important;
   /* font-size: ; */
-  
+
   border-radius: 3px !important;
   padding: 3px !important;
   /* text-align: center; */
+}
+
+.labeledSlider {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.labeledSlider label {
+  margin-right: 10px;
 }

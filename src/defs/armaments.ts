@@ -40,7 +40,7 @@ type ArmamentDef = {
   energyCost?: number;
   maxAmmo?: number;
   cost: number;
-  stateMutator?: (
+  fireMutator?: (
     state: GlobalState,
     player: Player,
     targetKind: TargetKind,
@@ -137,7 +137,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 0.5,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.3) {
         target = target as Asteroid;
         if (l2NormSquared(player.position, target.position) < 500 * 500) {
@@ -179,7 +179,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 35,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
       const slotData = player.slotData[slotIndex];
       if (targetKind === TargetKind.Player && player.energy > 35 && slotData.sinceFired > 45) {
         if ((target as Player).inoperable) {
@@ -230,7 +230,7 @@ const initArmaments = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
     maxAmmo: 50,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 25 && slotData.ammo > 0) {
         player.energy -= 1;
@@ -280,7 +280,7 @@ const initArmaments = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
     maxAmmo: 20,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0) {
         player.energy -= 1;
@@ -331,7 +331,7 @@ const initArmaments = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Targeted,
     maxAmmo: 30,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 45 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
         if ((target as Player).inoperable) {
@@ -373,7 +373,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 0.5,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
       if (targetKind === TargetKind.Asteroid && player.energy > 0.8) {
         target = target as Asteroid;
         if (l2NormSquared(player.position, target.position) < 800 * 800) {
@@ -429,7 +429,7 @@ const initArmaments = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Targeted,
     maxAmmo: 4,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 300 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
         if ((target as Player).inoperable) {
@@ -484,7 +484,7 @@ const initArmaments = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
     maxAmmo: 50,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 33 && slotData.ammo > 0) {
         player.energy -= 1;
@@ -525,7 +525,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Untargeted,
     energyCost: 15,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 15 && slotData.sinceFired > 10) {
         player.energy -= 15;
@@ -575,7 +575,7 @@ const initArmaments = () => {
     targeted: TargetedKind.Untargeted,
     // Thirty cloaking energy plus the 10 for cloaking energy margin
     energyCost: 40,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (slotData.sinceFired > 60) {
         if (player.cloak === 0) {
@@ -653,7 +653,7 @@ const initArmaments = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Targeted,
     maxAmmo: 30,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (player.energy > 1 && slotData.sinceFired > 30 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
         if ((target as Player).inoperable) {
@@ -696,7 +696,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Untargeted,
     energyCost: 0.3,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (slotData.sinceFired > 60) {
         slotData.active = !slotData.active;
@@ -727,7 +727,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Untargeted,
     energyCost: 8,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
       const slotData = player.slotData[slotId];
       if (slotData.sinceFired > disruptorTimes[disruptorTimes.length - 1]) {
         slotData.idx = 0;
@@ -779,7 +779,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     energyCost: 11,
     targeted: TargetedKind.Untargeted,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotIndex) => {
       const slotData = player.slotData[slotIndex];
       const projectileDef = projectileDefs[0];
 
@@ -824,7 +824,7 @@ const initArmaments = () => {
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
     energyCost: 15,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
       const slotData = player.slotData[slotIndex];
 
       if (targetKind === TargetKind.Player && player.energy > 15 && slotData.sinceFired > 10 && l2Norm(player.position, target.position) < 1200) {
@@ -876,7 +876,7 @@ const initArmaments = () => {
     usage: ArmUsage.Ammo,
     targeted: TargetedKind.Untargeted,
     maxAmmo: 3,
-    stateMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
+    fireMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
       const slotData = player.slotData[slotIndex];
       if (slotData.active) {
         return;

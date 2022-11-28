@@ -68,6 +68,8 @@ const initSound = () => {
   Promise.all(promises).then((buffers) => {
     buffers.forEach((buffer) => soundBuffers.push(buffer));
     initMusic();
+  }).catch((e) => {
+    console.error(e);
   });
 };
 

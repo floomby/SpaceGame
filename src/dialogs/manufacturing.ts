@@ -223,6 +223,7 @@ const drawDag = () => {
       }
     };
 
+    // Checks if there are sufficient resources to manufacture the recipe and if the required recipes are discovered
     const computeManufacturable = (dagNode: RecipeDag, pure = false, count = 1) => {
       const { usage, recipesUsed } = computeUsedRequirements(dagNode, count);
       inventoryUsage = usage;
@@ -253,6 +254,7 @@ const drawDag = () => {
       return true;
     };
 
+    // Draws the edges and handles the highlighting returning if the current quantity of the selected recipe is manufacturable
     const redrawEdges = () => {
       computeManufacturable(selectedRecipe, false, manufactureQuantity);
 
@@ -267,6 +269,7 @@ const drawDag = () => {
       drawnEdges.clear();
       drawEdges(selectedRecipe, true);
       drawEdges(recipeDagRoot);
+
       return !recipeDagRoot.unsatisfied;
     };
 
@@ -334,6 +337,7 @@ const drawDag = () => {
         }
         if (selectedRecipe !== recipe) {
           selectedRecipe = recipe;
+          manufactureQuantity = 1;
           manufacturable = redrawEdges();
         }
         manufacturingPopup = document.createElementNS(ns, "g");
@@ -366,7 +370,7 @@ const drawDag = () => {
         button.setAttribute("height", "20");
         button.setAttribute("rx", "5");
         button.setAttribute("ry", "5");
-        button.setAttribute("fill", computeManufacturable(recipe, true) ? "green" : "red");
+        button.setAttribute("fill", manufacturable ? "green" : "red");
         button.setAttribute("stroke", "black");
         button.setAttribute("stroke-width", "1");
         manufacturingPopup.appendChild(button);
@@ -391,23 +395,27 @@ const drawDag = () => {
         inputField.setAttribute("min", "1");
         inputField.setAttribute("max", "1000000");
         inputField.setAttribute("step", "1");
-        // inputField.setAttribute("style", "width: 100%; height: 100%;");
         inputField.classList.add("manufacturingInput");
         input.appendChild(inputField);
         manufacturingPopup.appendChild(input);
         manufactureQuantity = 1;
 
-        inputField.onchange = () => {
+        const inputChangeHandler = () => {
           const amount = parseInt(inputField.value);
-          if (amount > 1) {
-            button.setAttribute("fill", computeManufacturable(recipe, true, amount) ? "green" : "red");
+          if (amount > 0) {
             manufactureQuantity = amount;
             manufacturable = redrawEdges();
+            button.setAttribute("fill", manufacturable ? "green" : "red");
           } else {
             inputField.value = "1";
-            button.setAttribute("fill", "red");
+            manufactureQuantity = 1;
+            manufacturable = redrawEdges();
+            button.setAttribute("fill", manufacturable ? "green" : "red");
           }
         };
+
+        inputField.onchange = inputChangeHandler;
+        inputField.onkeyup = inputChangeHandler;
 
         // Add a close button
         const closeButton = document.createElementNS(ns, "rect");
@@ -463,6 +471,7 @@ const drawDag = () => {
               if (manufacturingPopup) {
                 manufacturingTree.removeChild(manufacturingPopup);
                 manufacturingPopup = null;
+                manufactureQuantity = 1;
               }
             }
             selectedRecipe = recipe;

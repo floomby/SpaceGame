@@ -382,6 +382,7 @@ const clearUnsatisfied = () => {
   for (const recipeDag of recipeDagMap.values()) {
     recipeDag.unsatisfied = false;
   }
+  recipeDagRoot.unsatisfied = false;
 };
 
 const propagateShowDown = (currentNode: RecipeDag) => {

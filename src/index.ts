@@ -72,6 +72,7 @@ import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
 import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
+import { init3dDrawing, drawEverything as drawEverything3 } from "./3dDrawing";
 
 let chats: ChatMessage[] = [];
 
@@ -297,7 +298,9 @@ const loop = () => {
   }
   chats = newChats;
 
-  drawEverything(state, self, target, targetAsteroid, ownId, selectedSecondary, keybind, sixtieths, lastChats);
+  // drawEverything(state, self, target, targetAsteroid, ownId, selectedSecondary, keybind, sixtieths, lastChats);
+
+  drawEverything3();
 
   requestAnimationFrame(loop);
 };
@@ -559,7 +562,11 @@ const toRun = () => {
   addLoadingText("Initializing game data");
   initDefs();
   addLoadingText("Initializing drawing subsystem");
-  initDrawing(() => {
+  // initDrawing(() => {
+  //   connect(run);
+  // });
+
+  init3dDrawing(() => {
     connect(run);
   });
 

@@ -195,6 +195,11 @@ const loadStencilSprites = (stencilSheet: HTMLImageElement, callback: () => void
 let dockedMessage: HTMLDivElement;
 let dockedMessageText: HTMLHeadingElement;
 
+const adapter = () => {
+  dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
+  dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
+}
+
 const initDrawing = (callback: () => void) => {
   dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
   dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
@@ -1232,4 +1237,5 @@ export {
   fadeOutCollectable,
   fadeOutMine,
   canvasCoordsToGameCoords,
+  adapter,
 };

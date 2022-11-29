@@ -4,7 +4,7 @@ import { Input } from "./game";
 import { keybind, lastSelf, selectedSecondary, setSelectedSecondary } from "./globals";
 import { sendChat, sendInput, sendSecondaryActivation } from "./net";
 import { shown as isDialogShown } from "./dialog";
-import { canvas, canvasCoordsToGameCoords } from "./drawing";
+import { canvas, canvasCoordsToGameCoords } from "./3dDrawing";
 import { Position, positiveMod } from "./geometry";
 import { dumpCargoDialog, setupDumpCargoDialog } from "./dialogs/cargo";
 import { armDefs, defs } from "./defs";

@@ -32,6 +32,10 @@ app.get("/dist/require.min.js.map", (req, res) => {
   res.sendFile("dist/require.min.js.map", { root });
 });
 
+app.get("/dist/gl-matrix.js", (req, res) => {
+  res.sendFile("node_modules/gl-matrix/gl-matrix.js", { root });
+});
+
 app.get("/", (req, res) => {
   res.sendFile("index.html", { root });
 });

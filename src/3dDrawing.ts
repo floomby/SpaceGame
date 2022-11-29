@@ -2,38 +2,44 @@ import { initEffects } from "./effects";
 import { addLoadingText, lastSelf, state } from "./globals";
 import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3 } from "gl-matrix";
-import { loadObj, modelMap } from "./modelLoader";
+import { loadObj, Model, modelMap } from "./modelLoader";
 
 let canvas: HTMLCanvasElement;
 let gl: WebGLRenderingContext;
-let bufferData: any;
+let bufferData: ReturnType<typeof Model.prototype.bindResources>;
 let programInfo: any;
 
-const vsSource = `
-  attribute vec4 aVertexPosition;
-  attribute vec2 aTextureCoord;
+// prettier-ignore
+const vsSource = 
+`attribute vec4 aVertexPosition;
+attribute vec2 aTextureCoord;
 
-  uniform mat4 uModelViewMatrix;
-  uniform mat4 uProjectionMatrix;
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
 
-  varying highp vec2 vTextureCoord;
+varying highp vec2 vTextureCoord;
 
-  void main() {
-    gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-    vTextureCoord = aTextureCoord;
-  }
-`;
+void main() {
+  gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+  vTextureCoord = aTextureCoord;
+}`;
 
-const fsSource = `
-  varying highp vec2 vTextureCoord;
+// prettier-ignore
+const fsSource = 
+`varying highp vec2 vTextureCoord;
 
-  uniform sampler2D uSampler;
+uniform sampler2D uSampler;
 
-  void main(void) {
-    // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-    gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-  }
-`;
+precision highp float;
+
+void main(void) {
+  vec4 blue = vec4(0.0, 0.0, 1.0, 1.0);
+  vec4 sample = texture2D(uSampler, vTextureCoord);
+  vec4 c = mix(blue, sample, sample.a);
+  gl_FragColor = vec4(c.rgb, 1.0);
+  // gl_FragColor = blue;
+  // gl_FragColor = sample;
+}`;
 
 const initShaders = () => {
   const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
@@ -134,6 +140,9 @@ const drawEverything = () => {
     return;
   }
   for (const player of state.players.values()) {
+    // if (player.id !== lastSelf.id) {
+    //   continue;
+    // }
     gl.useProgram(programInfo.program);
 
     {
@@ -159,7 +168,7 @@ const drawEverything = () => {
     }
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
-    
+
     // Uniforms
     gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
 
@@ -168,11 +177,12 @@ const drawEverything = () => {
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
     const modelViewMatrix = mat4.create();
-    mat4.translate(modelViewMatrix, modelViewMatrix, [player.position.x - lastSelf.position.x, -(player.position.y - lastSelf.position.y), -20.0]);
+    mat4.translate(modelViewMatrix, modelViewMatrix, [player.position.x - lastSelf.position.x, -(player.position.y - lastSelf.position.y), -10.0]);
+    mat4.rotateX(modelViewMatrix, modelViewMatrix, -player.heading);
     mat4.rotateZ(modelViewMatrix, modelViewMatrix, -player.heading);
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
 
-    const vertexCount = modelMap.get("spaceship")?.vertexIndices.length || 0;
+    const vertexCount = modelMap.get("spaceship")?.indices.length || 0;
     const type = gl.UNSIGNED_SHORT;
     const offset = 0;
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);

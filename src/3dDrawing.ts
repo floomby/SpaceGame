@@ -1,7 +1,8 @@
 import { initEffects } from "./effects";
-import { lastSelf, state } from "./globals";
+import { addLoadingText, lastSelf, state } from "./globals";
 import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3 } from "gl-matrix";
+import { loadObj, modelMap } from "./modelLoader";
 
 let canvas: HTMLCanvasElement;
 let gl: WebGLRenderingContext;
@@ -10,18 +11,27 @@ let programInfo: any;
 
 const vsSource = `
   attribute vec4 aVertexPosition;
+  attribute vec2 aTextureCoord;
 
   uniform mat4 uModelViewMatrix;
   uniform mat4 uProjectionMatrix;
 
+  varying highp vec2 vTextureCoord;
+
   void main() {
     gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+    vTextureCoord = aTextureCoord;
   }
 `;
 
 const fsSource = `
-  void main() {
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+  varying highp vec2 vTextureCoord;
+
+  uniform sampler2D uSampler;
+
+  void main(void) {
+    // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
   }
 `;
 
@@ -79,8 +89,7 @@ const init3dDrawing = (callback: () => void) => {
     console.error("Your browser does not support WebGL");
   }
 
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   const program = initShaders();
 
@@ -88,49 +97,22 @@ const init3dDrawing = (callback: () => void) => {
     program,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(program, "aVertexPosition"),
+      textureCoord: gl.getAttribLocation(program, "aTextureCoord"),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(program, "uProjectionMatrix"),
       modelViewMatrix: gl.getUniformLocation(program, "uModelViewMatrix"),
+      uSampler: gl.getUniformLocation(program, "uSampler"),
     },
   };
 
-  bufferData = initBuffers();
-
-  callback();
-};
-
-const initBuffers = () => {
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  const positions = [
-    // Front face
-    -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0,
-    // Back face
-    -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0,
-    // Top face
-    -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
-    // Bottom face
-    -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0,
-    // Right face
-    1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
-    // Left face
-    -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0,
-  ];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-  const indexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-  // prettier-ignore
-  const indices = [
-    0,  1,  2,      0,  2,  3,    // front
-    4,  5,  6,      4,  6,  7,    // back
-    8,  9,  10,     8,  10, 11,   // top
-    12, 13, 14,     12, 14, 15,   // bottom
-    16, 17, 18,     16, 18, 19,   // right
-    20, 21, 22,     20, 22, 23,   // left
-  ];
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-  return { position: positionBuffer, indices: indexBuffer };
+  addLoadingText("Loading models...");
+  Promise.all(["spaceship.obj"].map((url) => loadObj(url)))
+    .then(() => {
+      bufferData = modelMap.get("spaceship")!.bindResources(gl);
+      callback();
+    })
+    .catch(console.error);
 };
 
 const drawEverything = () => {
@@ -148,36 +130,49 @@ const drawEverything = () => {
 
   mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 
-  const numComponents = 3;
-  const type = gl.FLOAT;
-  const normalize = false;
-  const stride = 0;
-  const offset = 0;
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.position);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indices);
-
-  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-
-  gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-
-  gl.useProgram(programInfo.program);
-
-  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-
   if (!lastSelf) {
     return;
   }
   for (const player of state.players.values()) {
-    // if (player !== lastSelf) {
-    //   continue;
-    // }
+    gl.useProgram(programInfo.program);
+
+    {
+      const numComponents = 3;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    }
+
+    {
+      const numComponents = 2;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+    
+    // Uniforms
+    gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
+    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
     const modelViewMatrix = mat4.create();
-    mat4.translate(modelViewMatrix, modelViewMatrix, [(player.position.x - lastSelf.position.x), -(player.position.y - lastSelf.position.y), -30.0]);
+    mat4.translate(modelViewMatrix, modelViewMatrix, [player.position.x - lastSelf.position.x, -(player.position.y - lastSelf.position.y), -20.0]);
     mat4.rotateZ(modelViewMatrix, modelViewMatrix, -player.heading);
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
 
-    const vertexCount = 36;
+    const vertexCount = modelMap.get("spaceship")?.vertexIndices.length || 0;
     const type = gl.UNSIGNED_SHORT;
     const offset = 0;
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);

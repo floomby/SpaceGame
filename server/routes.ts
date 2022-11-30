@@ -561,6 +561,7 @@ app.get("/changePassword", (req, res) => {
 export default () => {
   if (useSsl) {
     app.use(express.static("resources"));
+    app.use(express.static("shaders"));
 
     const httpsServer = createSecureServer(credentials, app);
     httpsServer.listen(httpPort, () => {

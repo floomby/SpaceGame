@@ -4,6 +4,8 @@ import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
+import { Ballistic } from "./game";
+import { l2Norm, l2NormSquared } from "./geometry";
 
 let canvas: HTMLCanvasElement;
 let gl: WebGLRenderingContext;
@@ -14,111 +16,23 @@ enum DrawType {
   Projectile = 1,
 }
 
-// prettier-ignore
-const vsSource =
-`#version 300 es
-in vec4 aVertexPosition;
-in vec2 aTextureCoord;
-in vec3 aVertexNormal;
+const initShaders = (callback: (program: any) => void) => {
+  addLoadingText("Loading and compiling shaders...");
+  Promise.all(["shaders/vertex.glsl", "shaders/fragment.glsl"].map((file) => fetch(file).then((res) => res.text()))).then(([vsSource, fsSource]) => {
+    const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
+    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
 
-uniform mat4 uModelMatrix;
-uniform mat4 uViewMatrix;
-uniform mat4 uProjectionMatrix;
-uniform mat4 uNormalMatrix;
-uniform vec4 uPointLights[4];
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
 
-uniform int uDrawType;
-
-out highp vec2 vTextureCoord;
-out highp vec3 vVertexNormal;
-out highp vec3 vPointLights[4];
-out highp vec3 vVertexPosition;
-flat out int vDrawType;
-
-void main() {
-  gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
-
-  // The vertex position in relative world space
-  vVertexPosition = (uViewMatrix * uModelMatrix * aVertexPosition).xyz;
-
-  if (uDrawType == 0) {
-    for (int i = 0; i < 4; i++) {
-      vPointLights[i] = (uViewMatrix * uPointLights[i]).xyz;
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+      console.error(`Unable to initialize the shader program: ${gl.getProgramInfoLog(shaderProgram)}`);
+      return null;
     }
-  }
-
-  vDrawType = uDrawType;
-
-  vTextureCoord = aTextureCoord;
-  vVertexNormal = normalize((uNormalMatrix * vec4(aVertexNormal, 1.0)).xyz);
-}`;
-
-// prettier-ignore
-const fsSource =
-`#version 300 es
-in highp vec2 vTextureCoord;
-in highp vec3 vVertexNormal;
-in highp vec3 vPointLights[4];
-in highp vec3 vVertexPosition;
-flat in int vDrawType;
-
-precision mediump float;
-
-
-uniform vec3 uBaseColor;
-uniform sampler2D uSampler;
-
-layout(location = 0) out vec4 outColor;
-
-void main(void) {
-  if (vDrawType == 1) {
-    outColor = vec4(uBaseColor, 1.0);
-    return;
-  }
-
-  vec4 sampled = texture(uSampler, vTextureCoord);
-  vec3 materialColor = mix(uBaseColor, sampled.rgb, sampled.a);
-
-  vec3 pointLightSum = vec3(0.0, 0.0, 0.0);
-
-  vec3 viewDir = normalize(vec3(0.0, 0.0, -1.0));
-  
-  for (int i = 0; i < 1; i++) {
-    vec3 lightDirection = normalize(vPointLights[i] - vVertexPosition);
-    vec3 halfVector = normalize(lightDirection + viewDir);
-    float lightDistance = length(vPointLights[i] - vVertexPosition);
-    
-    float diffuse = max(dot(vVertexNormal, lightDirection), 0.0) * 0.3;
-    float specular = pow(max(dot(vVertexNormal, halfVector), 0.0), 20.0);
-
-    pointLightSum += (vec3(1.0, 1.0, 1.0) * diffuse + specular) * 40.0 / max(lightDistance * lightDistance, 2.0);
-  }
-  
-  // blinn-phong
-  vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
-  vec3 halfDir = normalize(lightDir + viewDir);
-  float diffuse = max(dot(vVertexNormal, lightDir), 0.0);
-  float specular = pow(max(dot(vVertexNormal, halfDir), 0.0), 20.0);
-  float ambient = 0.1;
-
-  outColor = vec4(materialColor * (ambient + diffuse) + specular + pointLightSum, 1.0);
-}`;
-
-const initShaders = () => {
-  const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
-
-  const shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
-
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    console.error(`Unable to initialize the shader program: ${gl.getProgramInfoLog(shaderProgram)}`);
-    return null;
-  }
-
-  return shaderProgram;
+    callback(shaderProgram);
+  }).catch(console.error);
 };
 
 const loadShader = (type: number, source: string) => {
@@ -157,42 +71,48 @@ const init3dDrawing = (callback: () => void) => {
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  const program = initShaders();
+  const program = initShaders((program) => {
+    programInfo = {
+      program,
+      attribLocations: {
+        vertexPosition: gl.getAttribLocation(program, "aVertexPosition"),
+        textureCoord: gl.getAttribLocation(program, "aTextureCoord"),
+        vertexNormal: gl.getAttribLocation(program, "aVertexNormal"),
+      },
+      uniformLocations: {
+        projectionMatrix: gl.getUniformLocation(program, "uProjectionMatrix"),
+        modelMatrix: gl.getUniformLocation(program, "uModelMatrix"),
+        viewMatrix: gl.getUniformLocation(program, "uViewMatrix"),
+        normalMatrix: gl.getUniformLocation(program, "uNormalMatrix"),
+        uSampler: gl.getUniformLocation(program, "uSampler"),
+        baseColor: gl.getUniformLocation(program, "uBaseColor"),
+        pointLights: [
+          gl.getUniformLocation(program, "uPointLights[0]"),
+          gl.getUniformLocation(program, "uPointLights[1]"),
+          gl.getUniformLocation(program, "uPointLights[2]"),
+          gl.getUniformLocation(program, "uPointLights[3]"),
+        ],
+        pointLightLighting: [
+          gl.getUniformLocation(program, "uPointLightLighting[0]"),
+          gl.getUniformLocation(program, "uPointLightLighting[1]"),
+          gl.getUniformLocation(program, "uPointLightLighting[2]"),
+          gl.getUniformLocation(program, "uPointLightLighting[3]"),
+        ],
+        drawType: gl.getUniformLocation(program, "uDrawType"),
+      },
+    };
 
-  programInfo = {
-    program,
-    attribLocations: {
-      vertexPosition: gl.getAttribLocation(program, "aVertexPosition"),
-      textureCoord: gl.getAttribLocation(program, "aTextureCoord"),
-      vertexNormal: gl.getAttribLocation(program, "aVertexNormal"),
-    },
-    uniformLocations: {
-      projectionMatrix: gl.getUniformLocation(program, "uProjectionMatrix"),
-      modelMatrix: gl.getUniformLocation(program, "uModelMatrix"),
-      viewMatrix: gl.getUniformLocation(program, "uViewMatrix"),
-      normalMatrix: gl.getUniformLocation(program, "uNormalMatrix"),
-      uSampler: gl.getUniformLocation(program, "uSampler"),
-      baseColor: gl.getUniformLocation(program, "uBaseColor"),
-      pointLights: [
-        gl.getUniformLocation(program, "uPointLights[0]"),
-        gl.getUniformLocation(program, "uPointLights[1]"),
-        gl.getUniformLocation(program, "uPointLights[2]"),
-        gl.getUniformLocation(program, "uPointLights[3]"),
-      ],
-      drawType: gl.getUniformLocation(program, "uDrawType"),
-    },
-  };
+    addLoadingText("Loading models...");
+    Promise.all(["spaceship.obj", "projectile.obj"].map((url) => loadObj(url)))
+      .then(() => {
+        defs.forEach((def) => {
+          def.modelIndex = modelMap.get(def.model)[1];
+        });
 
-  addLoadingText("Loading models...");
-  Promise.all(["spaceship.obj", "projectile.obj"].map((url) => loadObj(url)))
-    .then(() => {
-      defs.forEach((def) => {
-        def.modelIndex = modelMap.get(def.model)[1];
-      });
-
-      callback();
-    })
-    .catch(console.error);
+        callback();
+      })
+      .catch(console.error);
+  });
 };
 
 const drawEverything = () => {
@@ -211,9 +131,9 @@ const drawEverything = () => {
   mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 
   gl.useProgram(programInfo.program);
-  
+
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-  
+
   if (!lastSelf) {
     return;
   }
@@ -268,22 +188,32 @@ const drawEverything = () => {
 
     gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
 
-    let pointLights = [
-      [mapX(1650), mapY(1600), -10, 0],
-      [mapX(1650), mapY(1600), -10, 0],
-      [mapX(1650), mapY(1600), -10, 0],
-      [mapX(1650), mapY(1600), -10, 0],
-    ];
-    if (state.projectiles.size > 0) {
-      const projectile = state.projectiles.values().next().value;
-      pointLights[0] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
-      pointLights[1] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
-      pointLights[2] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
-      pointLights[3] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
+    // find the closest 4 projectiles to use as point lights
+    let projectiles: [number, Ballistic][] = [];
+    for (let i = 0; i < 4; i++) {
+      projectiles.push([Infinity, null]);
+    }
+    for (const projectile of state.projectiles.values()) {
+      const dist2 = l2NormSquared(projectile.position, player.position);
+      let insertionIndex = 0;
+      while (insertionIndex < 4 && dist2 > projectiles[insertionIndex][0]) {
+        insertionIndex++;
+      }
+      if (insertionIndex < 4) {
+        projectiles.splice(insertionIndex, 0, [dist2, projectile]);
+        projectiles.pop();
+      }
     }
 
     for (let i = 0; i < 4; i++) {
-      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLights[i]);
+      if (projectiles[i][1]) {
+        const pointLight = [mapX(projectiles[i][1].position.x), mapY(projectiles[i][1].position.y), -10.0, 0];
+        gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLight);
+        gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], [4.0, 4.0, 4.0]);
+      } else {
+        gl.uniform4fv(programInfo.uniformLocations.pointLights[i], [mapX(-1600), mapY(-1600), -10.0, 0.0]);
+        gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], [0.0, 0.0, 0.0]);
+      }
     }
 
     const modelMatrix = mat4.create();

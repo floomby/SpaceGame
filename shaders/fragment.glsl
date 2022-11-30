@@ -1,9 +1,10 @@
 #version 300 es
 in highp vec2 vTextureCoord;
-in highp vec3 vVertexNormal;
+in highp vec3 vNormal;
 in highp vec3 vPointLights[4];
-in highp vec3 vVertexPosition;
+in highp vec3 vPosition;
 flat in int vDrawType;
+in highp vec4 vColor;
 
 precision mediump float;
 
@@ -19,6 +20,11 @@ void main(void) {
     return;
   }
 
+  if (vDrawType == 2) {
+    outColor = vColor;
+    return;
+  }
+
   vec4 sampled = texture(uSampler, vTextureCoord);
   vec3 materialColor = mix(uBaseColor, sampled.rgb, sampled.a);
 
@@ -27,12 +33,12 @@ void main(void) {
   vec3 viewDir = normalize(vec3(0.0, 0.0, -1.0));
   
   for (int i = 0; i < 1; i++) {
-    vec3 lightDirection = normalize(vPointLights[i] - vVertexPosition);
+    vec3 lightDirection = normalize(vPointLights[i] - vPosition);
     vec3 halfVector = normalize(lightDirection + viewDir);
-    float lightDistance = length(vPointLights[i] - vVertexPosition);
+    float lightDistance = length(vPointLights[i] - vPosition);
     
-    float diffuse = max(dot(vVertexNormal, lightDirection), 0.0) * 0.3;
-    float specular = pow(max(dot(vVertexNormal, halfVector), 0.0), 20.0);
+    float diffuse = max(dot(vNormal, lightDirection), 0.0) * 0.3;
+    float specular = pow(max(dot(vNormal, halfVector), 0.0), 20.0);
 
     pointLightSum += (uPointLightLighting[i] * diffuse + specular) / max(lightDistance * lightDistance, 2.0);
   }
@@ -40,8 +46,8 @@ void main(void) {
   // blinn-phong
   vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
   vec3 halfDir = normalize(lightDir + viewDir);
-  float diffuse = max(dot(vVertexNormal, lightDir), 0.0);
-  float specular = pow(max(dot(vVertexNormal, halfDir), 0.0), 20.0);
+  float diffuse = max(dot(vNormal, lightDir), 0.0);
+  float specular = pow(max(dot(vNormal, halfDir), 0.0), 20.0);
   float ambient = 0.1;
 
   outColor = vec4(materialColor * (ambient + diffuse) + specular + pointLightSum, 1.0);

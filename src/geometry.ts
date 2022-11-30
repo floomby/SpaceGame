@@ -12,6 +12,15 @@ enum CardinalDirection {
   Left,
 }
 
+const sumPositions = (...positions: Position[]) => {
+  return positions.reduce(
+    (sum, position) => {
+      return { x: sum.x + position.x, y: sum.y + position.y };
+    },
+    { x: 0, y: 0 }
+  );
+};
+
 const maxDecimals = (num: number, decimals: number) => {
   const factor = Math.pow(10, decimals);
   return Math.round((num + Number.EPSILON) * factor) / factor;
@@ -190,4 +199,5 @@ export {
   headingFromCardinalDirection,
   mirrorAngleHorizontally,
   mirrorAngleVertically,
+  sumPositions,
 };

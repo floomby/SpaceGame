@@ -300,6 +300,7 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
 const drawEverything = () => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  // I may be able to move this to the initialization code since I am probably just sticking with monolithic shaders
   gl.useProgram(programInfo.program);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);

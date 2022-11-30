@@ -31,7 +31,12 @@ const rgbaToFloatRGB = (rgba: string) => {
 const teamColorsLight = [allianceColor, confederationColor, rogueColor, scourgeColor];
 const teamColorsDark = [allianceColorDark, confederationColorDark, rogueColorDark, scourgeColorDark];
 const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque, rogueColorOpaque, scourgeColorOpaque];
-const teamColorsFloat = teamColorsLight.map(rgbaToFloatRGB);
+const teamColorsFloat = [
+  [0 / 255, 255 / 255, 255 / 255],
+  [255 / 255, 0 / 255, 0 / 255],
+  [255 / 255, 140 / 255, 0 / 255],
+  [60 / 255, 255 / 255, 5 / 255,]
+];
 
 const setFaction = (newFaction: Faction) => {
   faction = newFaction;

@@ -6,7 +6,7 @@ import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
 import { Ballistic, Player } from "./game";
 import { l2NormSquared } from "./geometry";
-import { draw2d } from "./2dDrawing";
+import { appendMinimap, clear2d, draw2d } from "./2dDrawing";
 
 let canvas: HTMLCanvasElement;
 let gl: WebGLRenderingContext;
@@ -307,6 +307,10 @@ const drawEverything = () => {
   if (!lastSelf) {
     return;
   }
+
+  // Minimap
+  clear2d();
+  appendMinimap({ x: canvas.width - 200, y: canvas.height - 200, height: 200, width: 200 }, 0.03);
 
   // From game space to world space
   const mapX = (x: number) => (x - lastSelf.position.x) / 10;

@@ -1,5 +1,5 @@
 import { gl, canvas, projectionMatrix, DrawType } from "./3dDrawing";
-import { Rectangle } from "./geometry";
+import { Position, Rectangle } from "./geometry";
 
 type Vertex2D = {
   x: number;
@@ -13,8 +13,25 @@ type Vertex2D = {
 
 const canvasCoordsToNDC = (x: number, y: number) => {
   return {
-    x: 1 - (x / canvas.width) * 2,
-    y: (y / canvas.height) * 2 - 1,
+    x: (x / canvas.width) * 2 - 1,
+    y: 1 - (y / canvas.height) * 2,
+  };
+};
+
+const canvasPosToNDC = (position: Position) => {
+  return {
+    x: 1 - (position.x / canvas.width) * 2,
+    y: (position.y / canvas.height) * 2 - 1,
+  };
+};
+
+const canvasRectToNDC = (rect: Rectangle) => {
+  const { x, y } = canvasCoordsToNDC(rect.x, rect.y);
+  return {
+    x,
+    y,
+    width: rect.width / canvas.width * 2,
+    height: rect.height / canvas.height * 2,
   };
 };
 
@@ -37,16 +54,16 @@ const appendRect = (rectangle: Rectangle, zIndex: number, color: [number, number
     rectangle.y,
     zIndex * zIndexMultiplier - 1,
     rectangle.x + rectangle.width,
-    rectangle.y + rectangle.height,
+    rectangle.y - rectangle.height,
     zIndex * zIndexMultiplier - 1,
     rectangle.x,
     rectangle.y,
     zIndex * zIndexMultiplier - 1,
     rectangle.x + rectangle.width,
-    rectangle.y + rectangle.height,
+    rectangle.y - rectangle.height,
     zIndex * zIndexMultiplier - 1,
     rectangle.x,
-    rectangle.y + rectangle.height,
+    rectangle.y - rectangle.height,
     zIndex * zIndexMultiplier - 1
   );
 
@@ -78,6 +95,11 @@ const appendRect = (rectangle: Rectangle, zIndex: number, color: [number, number
   );
 };
 
+const clear = () => {
+  hudVertexBuffer.length = 0;
+  hudColorBuffer.length = 0;
+};
+
 // This is not efficient, but I am just trying to get it working right now
 const buildBuffers = () => {
   const vertexBuffer = gl.createBuffer();
@@ -93,6 +115,42 @@ const buildBuffers = () => {
     colorBuffer,
     count: hudVertexBuffer.length / 3,
   };
+};
+
+const appendMinimap = (where: Rectangle, miniMapScaleFactor: number) => {
+  const margin = 5;
+  where.x -= margin;
+  where.y -= margin;
+  where.width -= 2 * margin;
+  where.height -= 2 * margin;
+
+  const center = { x: where.x + where.width / 2, y: where.y + where.height / 2 };
+
+  const minimapRect = canvasRectToNDC(where);
+
+  appendRect(minimapRect, -1, [0.3, 0.3, 0.3, 0.5]);
+
+  // for (const [id, asteroid] of state.asteroids) {
+  //   if (
+  //     Math.abs(asteroid.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
+  //     Math.abs(asteroid.position.y - self.position.y) * miniMapScaleFactor < height / 2
+  //   ) {
+  //     drawMiniMapAsteroid(center, asteroid, self, miniMapScaleFactor);
+  //   }
+  // }
+  // for (const [id, player] of state.players) {
+  //   if (player.docked) {
+  //     continue;
+  //   }
+  //   if (
+  //     Math.abs(player.position.x - self.position.x) * miniMapScaleFactor < width / 2 &&
+  //     Math.abs(player.position.y - self.position.y) * miniMapScaleFactor < height / 2
+  //   ) {
+  //     if (player.team === self.team || player.cloak !== CloakedState.Cloaked) {
+  //       drawMiniMapPlayer(center, player, self, miniMapScaleFactor);
+  //     }
+  //   }
+  // }
 };
 
 const draw = (programInfo: any) => {
@@ -125,4 +183,4 @@ const draw = (programInfo: any) => {
   gl.drawArrays(gl.TRIANGLES, 0, bufferData.count);
 };
 
-export { draw as draw2d, appendRect };
+export { draw as draw2d, appendRect, appendMinimap, clear as clear2d };

@@ -16,6 +16,8 @@ enum DrawType {
   Player = 0,
   Projectile = 1,
   Hud = 2,
+  HealthBar = 3,
+  EnergyBar = 4,
 }
 
 const initShaders = (callback: (program: any) => void) => {
@@ -57,6 +59,8 @@ const loadShader = (type: number, source: string) => {
 
 let projectionMatrix: mat4;
 
+let barBuffer: WebGLBuffer;
+
 const init3dDrawing = (callback: () => void) => {
   adapter();
 
@@ -82,6 +86,37 @@ const init3dDrawing = (callback: () => void) => {
   if (!gl) {
     console.error("Your browser does not support WebGL 2.0");
   }
+
+  const barData = new Float32Array([
+    // top right
+    -1,
+    1,
+    1,
+    // top left
+    1,
+    1,
+    1,
+    // bottom left
+    1,
+    0.9,
+    1,
+    // top right
+    -1,
+    1,
+    1,
+    // bottom left
+    1,
+    0.9,
+    1,
+    // bottom right
+    -1,
+    0.9,
+    1,
+  ]);
+
+  barBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, barData, gl.STATIC_DRAW);
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clearDepth(1.0);
@@ -124,6 +159,7 @@ const init3dDrawing = (callback: () => void) => {
           gl.getUniformLocation(program, "uPointLightLighting[3]"),
         ],
         drawType: gl.getUniformLocation(program, "uDrawType"),
+        healthAndEnergy: gl.getUniformLocation(program, "uHealthAndEnergy"),
       },
     };
 
@@ -234,7 +270,31 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 
-  
+  // Draw the players status bars
+  const health = Math.max(player.health, 0) / def.health;
+  const energy = player.energy / def.energy;
+  gl.uniform2fv(programInfo.uniformLocations.healthAndEnergy, [health, energy]);
+
+  // Draw the health bar
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+  // Draw the energy bar
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
 const drawEverything = () => {

@@ -15,6 +15,7 @@ uniform int uDrawType;
 out highp vec2 vTextureCoord;
 out highp vec3 vNormal;
 out highp vec3 vPointLights[4];
+// The vPosition is also use for passing the bar realative fragment position to the fragment shader
 out highp vec3 vPosition;
 flat out int vDrawType;
 out highp vec4 vColor;
@@ -23,8 +24,23 @@ void main() {
   vDrawType = uDrawType;
   vColor = aVertexColor;
 
+  // Hud polygon
   if (uDrawType == 2) {
     gl_Position = vec4(aVertexPosition.xyz, 1.0);
+    return;
+  }
+
+  // In world health bar
+  if (uDrawType == 3) {
+    gl_Position = uProjectionMatrix * uViewMatrix * aVertexPosition;
+    vPosition = vec3(aVertexPosition.x / 2.0 + 0.5, 0.0, 0.0);
+    return;
+  }
+
+  // In world energy bar
+  if (uDrawType == 4) {
+    gl_Position = uProjectionMatrix  * uViewMatrix * vec4(aVertexPosition.x, aVertexPosition.y - 0.1, aVertexPosition.z, 1.0);
+    vPosition = vec3(aVertexPosition.x / 2.0 + 0.5, 0.0, 0.0);
     return;
   }
 

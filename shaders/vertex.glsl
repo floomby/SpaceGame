@@ -44,6 +44,13 @@ void main() {
     return;
   }
 
+  // Background
+  if (uDrawType == 5) {
+    gl_Position = aVertexPosition.xyzz;
+    vTextureCoord = (uViewMatrix * aVertexPosition).xy / 2.0 + 0.5;
+    return;
+  }
+
   gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
 
   // The vertex position in relative world space

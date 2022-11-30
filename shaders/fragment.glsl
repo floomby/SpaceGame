@@ -46,6 +46,12 @@ void main(void) {
     return;
   }
 
+  // Background
+  if (vDrawType == 5) {
+    outColor = texture(uSampler, vTextureCoord);
+    return;
+  }
+
   vec4 sampled = texture(uSampler, vTextureCoord);
   vec3 materialColor = mix(uBaseColor, sampled.rgb, sampled.a);
 

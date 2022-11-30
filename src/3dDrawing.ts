@@ -5,12 +5,14 @@ import { glMatrix, mat4, vec3 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
 import { Ballistic, Player } from "./game";
-import { l2NormSquared } from "./geometry";
+import { l2NormSquared, Position } from "./geometry";
 import { appendMinimap, clear2d, draw2d } from "./2dDrawing";
+import { loadBackground } from "./background";
 
 let canvas: HTMLCanvasElement;
 let gl: WebGLRenderingContext;
 let programInfo: any;
+let backgroundTexture: WebGLTexture;
 
 enum DrawType {
   Player = 0,
@@ -18,6 +20,7 @@ enum DrawType {
   Hud = 2,
   HealthBar = 3,
   EnergyBar = 4,
+  Background = 5,
 }
 
 const initShaders = (callback: (program: any) => void) => {
@@ -60,6 +63,7 @@ const loadShader = (type: number, source: string) => {
 let projectionMatrix: mat4;
 
 let barBuffer: WebGLBuffer;
+let backgroundBuffer: WebGLBuffer;
 
 const init3dDrawing = (callback: () => void) => {
   adapter();
@@ -118,7 +122,38 @@ const init3dDrawing = (callback: () => void) => {
   gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, barData, gl.STATIC_DRAW);
 
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  const backgroundData = new Float32Array([
+    // top right
+    -1,
+    1,
+    1,
+    // top left
+    1,
+    1,
+    1,
+    // bottom left
+    1,
+    -1,
+    1,
+    // top right
+    -1,
+    1,
+    1,
+    // bottom left
+    1,
+    -1,
+    1,
+    // bottom right
+    -1,
+    -1,
+    1,
+  ]);
+
+  backgroundBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, backgroundBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, backgroundData, gl.STATIC_DRAW);
+
+  gl.clearColor(0.0, 0.0, 0.0, 0.0);
   gl.clearDepth(1.0);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
@@ -165,11 +200,12 @@ const init3dDrawing = (callback: () => void) => {
 
     addLoadingText("Loading models...");
     Promise.all(["spaceship.obj", "projectile.obj"].map((url) => loadObj(url)))
-      .then(() => {
+      .then(async () => {
         defs.forEach((def) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
 
+        backgroundTexture = await loadBackground(gl);
         callback();
       })
       .catch(console.error);
@@ -297,17 +333,46 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+const drawBackground = (where: Position) => {
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Background);
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, backgroundBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+  const viewMatrix = mat4.create();
+  mat4.translate(viewMatrix, viewMatrix, [lastSelf.position.x / 200, lastSelf.position.y / -200, 0]);
+  mat4.scale(viewMatrix, viewMatrix, [canvas.width / 1000, canvas.height / 1000, 1.0]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+};
+
 const drawEverything = () => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // I may be able to move this to the initialization code since I am probably just sticking with monolithic shaders
   gl.useProgram(programInfo.program);
 
+  
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-
+  
   if (!lastSelf) {
     return;
   }
+
+  drawBackground(lastSelf.position);
 
   // Minimap
   clear2d();

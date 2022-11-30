@@ -22,9 +22,9 @@ const sounds = [
   "wigglyThud0.wav",
   "resonantPew0.wav",
   "tractor0.wav",
-  "music/combat.wav",
+  "music/combat.mp3",
   "music/peace.mp3",
-  "music/peaceAlt.wav",
+  "music/peaceAlt.mp3",
 ];
 
 const soundMap: Map<string, number> = new Map<string, number>();
@@ -196,13 +196,13 @@ const initMusic = () => {
     if (desired !== currentTrackState) {
       if (desired) {
         fadeOutMusic(peace, 1);
-        combat = playMusic(soundMap.get("music/combat.wav")!);
+        combat = playMusic(soundMap.get("music/combat.mp3")!);
       } else {
         fadeOutMusic(combat, 1);
         if (Math.random() < 0.5) {
           peace = playMusic(soundMap.get("music/peace.mp3")!);
         } else {
-          peace = playMusic(soundMap.get("music/peaceAlt.wav")!);
+          peace = playMusic(soundMap.get("music/peaceAlt.mp3")!);
         }
       }
     }

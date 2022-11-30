@@ -15,16 +15,29 @@ const vsSource =
 attribute vec2 aTextureCoord;
 attribute vec3 aVertexNormal;
 
-uniform mat4 uModelViewMatrix;
+uniform mat4 uModelMatrix;
+uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
+uniform mat4 uNormalMatrix;
+uniform vec4 uPointLights[4];
 
 varying highp vec2 vTextureCoord;
 varying highp vec3 vVertexNormal;
+varying highp vec3 vPointLights[4];
+varying highp vec3 vVertexPosition;
 
 void main() {
-  gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+  gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
+
+  // The vertex position in relative world space
+  vVertexPosition = (uViewMatrix * uModelMatrix * aVertexPosition).xyz;
+
+  for (int i = 0; i < 4; i++) {
+    vPointLights[i] = (uViewMatrix * uPointLights[i]).xyz;
+  }
+
   vTextureCoord = aTextureCoord;
-  vVertexNormal = aVertexNormal;
+  vVertexNormal = normalize((uNormalMatrix * vec4(aVertexNormal, 1.0)).xyz);
 }`;
 
 // prettier-ignore
@@ -35,14 +48,38 @@ varying highp vec3 vVertexNormal;
 precision highp float;
 
 uniform vec3 uBaseColor;
+varying vec3 vPointLights[4];
+varying vec3 vVertexPosition;
 
 uniform sampler2D uSampler;
 
 void main(void) {
   vec4 sample = texture2D(uSampler, vTextureCoord);
-  vec3 light = vec3(0.5, 0.5, 0.5);
-  vec3 c = mix(uBaseColor, sample.rgb, sample.a);
-  gl_FragColor = vec4(c, 1.0);
+  vec3 materialColor = mix(uBaseColor, sample.rgb, sample.a);
+
+  vec3 pointLightSum = vec3(0.0, 0.0, 0.0);
+
+  vec3 viewDir = normalize(vec3(0.0, 0.0, -1.0));
+  
+  for (int i = 0; i < 1; i++) {
+    vec3 lightDirection = normalize(vPointLights[i] - vVertexPosition);
+    vec3 halfVector = normalize(lightDirection + viewDir);
+    float lightDistance = length(vPointLights[i] - vVertexPosition);
+    
+    float diffuse = max(dot(vVertexNormal, lightDirection), 0.0) * 0.3;
+    float specular = pow(max(dot(vVertexNormal, halfVector), 0.0), 20.0);
+
+    pointLightSum += (vec3(1.0, 1.0, 1.0) * diffuse + specular) * 40.0 / max(lightDistance * lightDistance, 2.0);
+  }
+  
+  // blinn-phong
+  vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
+  vec3 halfDir = normalize(lightDir + viewDir);
+  float diffuse = max(dot(vVertexNormal, lightDir), 0.0);
+  float specular = pow(max(dot(vVertexNormal, halfDir), 0.0), 20.0);
+  float ambient = 0.1;
+
+  gl_FragColor = vec4(materialColor * (ambient + diffuse) + specular + pointLightSum, 1.0);
 }`;
 
 const initShaders = () => {
@@ -112,9 +149,17 @@ const init3dDrawing = (callback: () => void) => {
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(program, "uProjectionMatrix"),
-      modelViewMatrix: gl.getUniformLocation(program, "uModelViewMatrix"),
+      modelMatrix: gl.getUniformLocation(program, "uModelMatrix"),
+      viewMatrix: gl.getUniformLocation(program, "uViewMatrix"),
+      normalMatrix: gl.getUniformLocation(program, "uNormalMatrix"),
       uSampler: gl.getUniformLocation(program, "uSampler"),
       baseColor: gl.getUniformLocation(program, "uBaseColor"),
+      pointLights: [
+        gl.getUniformLocation(program, "uPointLights[0]"),
+        gl.getUniformLocation(program, "uPointLights[1]"),
+        gl.getUniformLocation(program, "uPointLights[2]"),
+        gl.getUniformLocation(program, "uPointLights[3]"),
+      ],
     },
   };
 
@@ -195,11 +240,40 @@ const drawEverything = () => {
 
     gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
 
-    const modelViewMatrix = mat4.create();
-    mat4.translate(modelViewMatrix, modelViewMatrix, [player.position.x - lastSelf.position.x, -(player.position.y - lastSelf.position.y), -10.0]);
-    // mat4.rotateX(modelViewMatrix, modelViewMatrix, -player.heading);
-    mat4.rotateZ(modelViewMatrix, modelViewMatrix, -player.heading);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+    // From game space to world space
+    const mapX = (x: number) => (x - lastSelf.position.x) / 10;
+    const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
+
+    let pointLights = [
+      [mapX(1650), mapY(1600), -10, 0],
+      [mapX(1650), mapY(1600), -10, 0],
+      [mapX(1650), mapY(1600), -10, 0],
+      [mapX(1650), mapY(1600), -10, 0],
+    ];
+    if (state.projectiles.size > 0) {
+      const projectile = state.projectiles.values().next().value;
+      pointLights[0] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
+      pointLights[1] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
+      pointLights[2] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
+      pointLights[3] = [mapX(projectile.position.x), mapY(projectile.position.y), -10.0, 0];
+    }
+
+    for (let i = 0; i < 4; i++) {
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLights[i]);
+    }
+
+    const modelMatrix = mat4.create();
+    mat4.rotateZ(modelMatrix, modelMatrix, -player.heading);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+
+    const viewMatrix = mat4.create();
+    mat4.translate(viewMatrix, viewMatrix, [mapX(player.position.x), mapY(player.position.y), -10.0]);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+    const normalMatrix = mat4.create();
+    mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+    mat4.transpose(normalMatrix, normalMatrix);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
     const vertexCount = modelMap.get("spaceship")?.indices.length || 0;
     const type = gl.UNSIGNED_SHORT;

@@ -2,18 +2,24 @@ import { initEffects } from "./effects";
 import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
 import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3 } from "gl-matrix";
-import { loadObj, Model, modelMap } from "./modelLoader";
+import { loadObj, Model, modelMap, models } from "./modelLoader";
+import { defs } from "./defs";
 
 let canvas: HTMLCanvasElement;
 let gl: WebGLRenderingContext;
-let bufferData: ReturnType<typeof Model.prototype.bindResources>;
 let programInfo: any;
 
+enum DrawType {
+  Player = 0,
+  Projectile = 1,
+}
+
 // prettier-ignore
-const vsSource = 
-`attribute vec4 aVertexPosition;
-attribute vec2 aTextureCoord;
-attribute vec3 aVertexNormal;
+const vsSource =
+`#version 300 es
+in vec4 aVertexPosition;
+in vec2 aTextureCoord;
+in vec3 aVertexNormal;
 
 uniform mat4 uModelMatrix;
 uniform mat4 uViewMatrix;
@@ -21,10 +27,13 @@ uniform mat4 uProjectionMatrix;
 uniform mat4 uNormalMatrix;
 uniform vec4 uPointLights[4];
 
-varying highp vec2 vTextureCoord;
-varying highp vec3 vVertexNormal;
-varying highp vec3 vPointLights[4];
-varying highp vec3 vVertexPosition;
+uniform int uDrawType;
+
+out highp vec2 vTextureCoord;
+out highp vec3 vVertexNormal;
+out highp vec3 vPointLights[4];
+out highp vec3 vVertexPosition;
+flat out int vDrawType;
 
 void main() {
   gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
@@ -32,30 +41,43 @@ void main() {
   // The vertex position in relative world space
   vVertexPosition = (uViewMatrix * uModelMatrix * aVertexPosition).xyz;
 
-  for (int i = 0; i < 4; i++) {
-    vPointLights[i] = (uViewMatrix * uPointLights[i]).xyz;
+  if (uDrawType == 0) {
+    for (int i = 0; i < 4; i++) {
+      vPointLights[i] = (uViewMatrix * uPointLights[i]).xyz;
+    }
   }
+
+  vDrawType = uDrawType;
 
   vTextureCoord = aTextureCoord;
   vVertexNormal = normalize((uNormalMatrix * vec4(aVertexNormal, 1.0)).xyz);
 }`;
 
 // prettier-ignore
-const fsSource = 
-`varying highp vec2 vTextureCoord;
-varying highp vec3 vVertexNormal;
+const fsSource =
+`#version 300 es
+in highp vec2 vTextureCoord;
+in highp vec3 vVertexNormal;
+in highp vec3 vPointLights[4];
+in highp vec3 vVertexPosition;
+flat in int vDrawType;
 
-precision highp float;
+precision mediump float;
+
 
 uniform vec3 uBaseColor;
-varying vec3 vPointLights[4];
-varying vec3 vVertexPosition;
-
 uniform sampler2D uSampler;
 
+layout(location = 0) out vec4 outColor;
+
 void main(void) {
-  vec4 sample = texture2D(uSampler, vTextureCoord);
-  vec3 materialColor = mix(uBaseColor, sample.rgb, sample.a);
+  if (vDrawType == 1) {
+    outColor = vec4(uBaseColor, 1.0);
+    return;
+  }
+
+  vec4 sampled = texture(uSampler, vTextureCoord);
+  vec3 materialColor = mix(uBaseColor, sampled.rgb, sampled.a);
 
   vec3 pointLightSum = vec3(0.0, 0.0, 0.0);
 
@@ -79,7 +101,7 @@ void main(void) {
   float specular = pow(max(dot(vVertexNormal, halfDir), 0.0), 20.0);
   float ambient = 0.1;
 
-  gl_FragColor = vec4(materialColor * (ambient + diffuse) + specular + pointLightSum, 1.0);
+  outColor = vec4(materialColor * (ambient + diffuse) + specular + pointLightSum, 1.0);
 }`;
 
 const initShaders = () => {
@@ -128,12 +150,9 @@ const init3dDrawing = (callback: () => void) => {
     canvas.height = window.innerHeight;
   });
 
-  gl = canvas.getContext("webgl");
+  gl = canvas.getContext("webgl2");
   if (!gl) {
-    gl = canvas.getContext("experimental-webgl") as WebGLRenderingContext;
-  }
-  if (!gl) {
-    console.error("Your browser does not support WebGL");
+    console.error("Your browser does not support WebGL 2.0");
   }
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -160,13 +179,17 @@ const init3dDrawing = (callback: () => void) => {
         gl.getUniformLocation(program, "uPointLights[2]"),
         gl.getUniformLocation(program, "uPointLights[3]"),
       ],
+      drawType: gl.getUniformLocation(program, "uDrawType"),
     },
   };
 
   addLoadingText("Loading models...");
-  Promise.all(["spaceship.obj"].map((url) => loadObj(url)))
+  Promise.all(["spaceship.obj", "projectile.obj"].map((url) => loadObj(url)))
     .then(() => {
-      bufferData = modelMap.get("spaceship")!.bindResources(gl);
+      defs.forEach((def) => {
+        def.modelIndex = modelMap.get(def.model)[1];
+      });
+
       callback();
     })
     .catch(console.error);
@@ -187,14 +210,21 @@ const drawEverything = () => {
 
   mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 
+  gl.useProgram(programInfo.program);
+  
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+  
   if (!lastSelf) {
     return;
   }
+
+  // From game space to world space
+  const mapX = (x: number) => (x - lastSelf.position.x) / 10;
+  const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
+
   for (const player of state.players.values()) {
-    // if (player.id !== lastSelf.id) {
-    //   continue;
-    // }
-    gl.useProgram(programInfo.program);
+    const def = defs[player.defIndex];
+    let bufferData = models[def.modelIndex].bindResources(gl);
 
     {
       const numComponents = 3;
@@ -232,17 +262,11 @@ const drawEverything = () => {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
 
     // Uniforms
-    gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
     gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
-
-    // From game space to world space
-    const mapX = (x: number) => (x - lastSelf.position.x) / 10;
-    const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
 
     let pointLights = [
       [mapX(1650), mapY(1600), -10, 0],
@@ -275,7 +299,70 @@ const drawEverything = () => {
     mat4.transpose(normalMatrix, normalMatrix);
     gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
-    const vertexCount = modelMap.get("spaceship")?.indices.length || 0;
+    gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+    const vertexCount = models[def.modelIndex].indices.length || 0;
+    const type = gl.UNSIGNED_SHORT;
+    const offset = 0;
+    gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+  }
+
+  for (const projectile of state.projectiles.values()) {
+    let bufferData = modelMap.get("projectile")[0].bindResources(gl);
+
+    {
+      const numComponents = 3;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    }
+
+    {
+      const numComponents = 2;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+    }
+
+    {
+      const numComponents = 3;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+    const modelMatrix = mat4.create();
+    mat4.rotateZ(modelMatrix, modelMatrix, -projectile.heading);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+
+    const viewMatrix = mat4.create();
+    mat4.translate(viewMatrix, viewMatrix, [mapX(projectile.position.x), mapY(projectile.position.y), -10.0]);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+    const normalMatrix = mat4.create();
+    mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+    mat4.transpose(normalMatrix, normalMatrix);
+    gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+    gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Projectile);
+
+    gl.uniform3fv(programInfo.uniformLocations.baseColor, [1.0, 1.0, 1.0]);
+
+    const vertexCount = modelMap.get("projectile")[0].indices.length || 0;
     const type = gl.UNSIGNED_SHORT;
     const offset = 0;
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);

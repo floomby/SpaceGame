@@ -1,6 +1,7 @@
 // Wavefront importer
 
-const modelMap = new Map<string, Model>();
+const models: Model[] = [];
+const modelMap = new Map<string, [Model, number]>();
 
 type Vertex = {
   x: number;
@@ -121,7 +122,8 @@ class Model {
 
     this.loadTexture(resolve, reject);
 
-    modelMap.set(this.name, this);
+    models.push(this);
+    modelMap.set(this.name, [this, models.length - 1]);
   }
 
   private nonce = 0;
@@ -207,6 +209,8 @@ class Model {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
       delete this.texture;
+
+      this.buffersUninitialized = false;
     }
 
     return {
@@ -234,4 +238,4 @@ const loadObj = (file: string) => {
   });
 };
 
-export { Model, loadObj, modelMap };
+export { Model, loadObj, modelMap, models };

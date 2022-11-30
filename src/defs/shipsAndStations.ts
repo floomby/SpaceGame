@@ -49,6 +49,8 @@ type UnitDefinition = {
   primaryDefIndex: number;
   mass: number;
   isCloaky?: boolean;
+  model: string;
+  modelIndex?: number;
 };
 
 const defs: UnitDefinition[] = [];
@@ -82,6 +84,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
+    model: "spaceship"
   });
   // Drone - 1
   defs.push({
@@ -110,6 +113,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
+    model: "spaceship"
   });
   // Alliance Starbase - 2
   defs.push({
@@ -137,6 +141,7 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
+    model: "spaceship"
   });
   // Confederacy Starbase - 3
   defs.push({
@@ -164,6 +169,7 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
+    model: "spaceship"
   });
   // Advanced Fighter - 4
   defs.push({
@@ -192,6 +198,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 20,
+    model: "spaceship"
   });
   // Seeker - 5
   defs.push({
@@ -220,6 +227,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 20,
+    model: "spaceship"
   });
   // Strafer - 6
   defs.push({
@@ -248,6 +256,7 @@ const initShipsAndStations = () => {
     scanRange: 3000,
     primaryDefIndex: 0,
     mass: 8,
+    model: "spaceship"
   });
   // Rogue Starbase - 7
   defs.push({
@@ -270,6 +279,7 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
+    model: "spaceship"
   });
   // Venture - 8
   defs.push({
@@ -298,6 +308,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 50,
+    model: "spaceship"
   });
   // Spartan - 9
   defs.push({
@@ -326,6 +337,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 50,
+    model: "spaceship"
   });
   // Striker - 10
   defs.push({
@@ -355,6 +367,7 @@ const initShipsAndStations = () => {
     primaryDefIndex: 2,
     mass: 8,
     isCloaky: true,
+    model: "spaceship"
   });
 
   for (let i = 0; i < defs.length; i++) {

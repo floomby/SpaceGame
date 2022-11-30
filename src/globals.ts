@@ -22,9 +22,16 @@ const scourgeColor = "rgba(60, 255, 5, 0.431)";
 const scourgeColorDark = "rgba(60, 255, 5, 0.8)";
 const scourgeColorOpaque = "rgba(60, 255, 5, 1)";
 
+const rgbaToFloatRGB = (rgba: string) => {
+  let stripped = rgba.replace("rgba(", "").replace(")", "");
+  let [r, g, b] = stripped.split(",").map((x) => parseFloat(x));
+  return new Float32Array([r / 255, g / 255, b / 255]);
+};
+
 const teamColorsLight = [allianceColor, confederationColor, rogueColor, scourgeColor];
 const teamColorsDark = [allianceColorDark, confederationColorDark, rogueColorDark, scourgeColorDark];
 const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque, rogueColorOpaque, scourgeColorOpaque];
+const teamColorsFloat = teamColorsLight.map(rgbaToFloatRGB);
 
 const setFaction = (newFaction: Faction) => {
   faction = newFaction;
@@ -150,6 +157,7 @@ export {
   scourgeColor,
   scourgeColorDark,
   scourgeColorOpaque,
+  teamColorsFloat,
   keybind,
   setKeybind,
   ownId,

@@ -1,5 +1,5 @@
 import { initEffects } from "./effects";
-import { addLoadingText, lastSelf, state } from "./globals";
+import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
 import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3 } from "gl-matrix";
 import { loadObj, Model, modelMap } from "./modelLoader";
@@ -13,32 +13,36 @@ let programInfo: any;
 const vsSource = 
 `attribute vec4 aVertexPosition;
 attribute vec2 aTextureCoord;
+attribute vec3 aVertexNormal;
 
 uniform mat4 uModelViewMatrix;
 uniform mat4 uProjectionMatrix;
 
 varying highp vec2 vTextureCoord;
+varying highp vec3 vVertexNormal;
 
 void main() {
   gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
   vTextureCoord = aTextureCoord;
+  vVertexNormal = aVertexNormal;
 }`;
 
 // prettier-ignore
 const fsSource = 
 `varying highp vec2 vTextureCoord;
-
-uniform sampler2D uSampler;
+varying highp vec3 vVertexNormal;
 
 precision highp float;
 
+uniform vec3 uBaseColor;
+
+uniform sampler2D uSampler;
+
 void main(void) {
-  vec4 blue = vec4(0.0, 0.0, 1.0, 1.0);
   vec4 sample = texture2D(uSampler, vTextureCoord);
-  vec4 c = mix(blue, sample, sample.a);
-  gl_FragColor = vec4(c.rgb, 1.0);
-  // gl_FragColor = blue;
-  // gl_FragColor = sample;
+  vec3 light = vec3(0.5, 0.5, 0.5);
+  vec3 c = mix(uBaseColor, sample.rgb, sample.a);
+  gl_FragColor = vec4(c, 1.0);
 }`;
 
 const initShaders = () => {
@@ -104,11 +108,13 @@ const init3dDrawing = (callback: () => void) => {
     attribLocations: {
       vertexPosition: gl.getAttribLocation(program, "aVertexPosition"),
       textureCoord: gl.getAttribLocation(program, "aTextureCoord"),
+      vertexNormal: gl.getAttribLocation(program, "aVertexNormal"),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(program, "uProjectionMatrix"),
       modelViewMatrix: gl.getUniformLocation(program, "uModelViewMatrix"),
       uSampler: gl.getUniformLocation(program, "uSampler"),
+      baseColor: gl.getUniformLocation(program, "uBaseColor"),
     },
   };
 
@@ -167,6 +173,17 @@ const drawEverything = () => {
       gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
     }
 
+    {
+      const numComponents = 3;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+    }
+
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
 
     // Uniforms
@@ -176,9 +193,11 @@ const drawEverything = () => {
     gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
+    gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
+
     const modelViewMatrix = mat4.create();
     mat4.translate(modelViewMatrix, modelViewMatrix, [player.position.x - lastSelf.position.x, -(player.position.y - lastSelf.position.y), -10.0]);
-    mat4.rotateX(modelViewMatrix, modelViewMatrix, -player.heading);
+    // mat4.rotateX(modelViewMatrix, modelViewMatrix, -player.heading);
     mat4.rotateZ(modelViewMatrix, modelViewMatrix, -player.heading);
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
 

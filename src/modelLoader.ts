@@ -108,19 +108,16 @@ class Model {
     for (const [index, vertex] of this.uniqueVertices.values()) {
       this.vertices.push(vertex.x, vertex.y, vertex.z);
       this.vertexTextureCoords.push(vertex.u, vertex.v);
-      console.log(vertex.u, vertex.v);
       this.vertexNormals.push(vertex.nx, vertex.ny, vertex.nz);
       console.assert(this.vertices.length === (index + 1) * 3);
       console.assert(this.vertexTextureCoords.length === (index + 1) * 2);
       console.assert(this.vertexNormals.length === (index + 1) * 3);
     }
 
-    console.log(this);
-
-    // delete this.uniqueVertices;
-    // delete this.verticesMisordered;
-    // delete this.vertexTextureCoordsMisordered;
-    // delete this.vertexNormalsMisordered;
+    delete this.uniqueVertices;
+    delete this.verticesMisordered;
+    delete this.vertexTextureCoordsMisordered;
+    delete this.vertexNormalsMisordered;
 
     this.loadTexture(resolve, reject);
 

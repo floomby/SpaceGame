@@ -22,6 +22,8 @@ import {
   classDataCache,
   nameDataFont,
   classDataFont,
+  computeArrows,
+  drawArrows,
 } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
@@ -83,6 +85,8 @@ const loadShader = (type: number, source: string) => {
 
 let projectionMatrix: mat4;
 let inverseProjectionMatrix: mat4;
+let canvasGameTopLeft: Position;
+let canvasGameBottomRight: Position;
 
 let barBuffer: WebGLBuffer;
 let backgroundBuffer: WebGLBuffer;
@@ -116,7 +120,7 @@ const init3dDrawing = (callback: () => void) => {
     const zFar = 100.0;
     projectionMatrix = mat4.create();
     inverseProjectionMatrix = mat4.create();
-
+    
     mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
     mat4.invert(inverseProjectionMatrix, projectionMatrix);
   };
@@ -524,6 +528,9 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     return;
   }
 
+  canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
+  canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
+
   drawBackground(lastSelf.position);
 
   const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };
@@ -540,6 +547,9 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   drawChats(chats.values());
+
+  const arrows = computeArrows(target, targetAsteroid);
+  drawArrows(arrows);
 
   // Compute all point lights in the scene
   const lightSources: PointLightData[] = [];
@@ -650,7 +660,7 @@ const canvasCoordsToGameCoords = (x: number, y: number) => {
   let ndcX = (x / canvas.width) * 2 - 1;
   let ndcY = (y / canvas.height) * 2 - 1;
   let coords = vec4.create();
-  vec4.set(coords, ndcX, ndcY, -1, 1);
+  vec4.set(coords, ndcX, -ndcY, -1, 1);
   vec4.transformMat4(coords, coords, inverseProjectionMatrix);
   // solve for the intersection with the game plane to get the world coordinates
   let t = gamePlaneZ / coords[2];
@@ -672,4 +682,6 @@ export {
   gamePlaneZ,
   mapGameXToWorld,
   mapGameYToWorld,
+  canvasGameTopLeft,
+  canvasGameBottomRight,
 };

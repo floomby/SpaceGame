@@ -16,7 +16,7 @@ import {
   sectorBounds,
   CloakedState,
 } from "./game";
-import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection } from "./geometry";
+import { Circle, Position, Rectangle, positiveMod, Line, infinityNorm, l2Norm, CardinalDirection, projectRayFromCenterOfRect } from "./geometry";
 import {
   addLoadingText,
   allianceColorOpaque,
@@ -245,21 +245,6 @@ const initDrawing = (callback: () => void) => {
 const clearCanvas = () => {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-};
-
-const projectRayFromCenterOfRect = (rect: Rectangle, angle: number) => {
-  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  if (rect.width * Math.abs(sin) < rect.height * Math.abs(cos)) {
-    const x = (rect.width / 2) * Math.sign(cos);
-    const y = x * Math.tan(angle);
-    return { x: center.x + x, y: center.y + y };
-  } else {
-    const y = (rect.height / 2) * Math.sign(sin);
-    const x = y / Math.tan(angle);
-    return { x: center.x + x, y: center.y + y };
-  }
 };
 
 const drawBar = (position: Position, width: number, height: number, primary: string, secondary: string, amount: number) => {

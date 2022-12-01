@@ -1,9 +1,21 @@
 import { vec4 } from "gl-matrix";
-import { gl, canvas, projectionMatrix, DrawType, gamePlaneZ, ctx, overlayCanvas, mapGameYToWorld, mapGameXToWorld } from "./3dDrawing";
+import {
+  gl,
+  canvas,
+  projectionMatrix,
+  DrawType,
+  gamePlaneZ,
+  ctx,
+  overlayCanvas,
+  mapGameYToWorld,
+  mapGameXToWorld,
+  canvasGameTopLeft,
+  canvasGameBottomRight,
+} from "./3dDrawing";
 import { armDefs, ArmUsage, defs, Faction, UnitKind } from "./defs";
-import { availableCargoCapacity, ChatMessage, CloakedState, Player, TargetKind } from "./game";
-import { Position, Position3, Rectangle } from "./geometry";
-import { lastSelf, selectedSecondary, state, teamColorsFloat } from "./globals";
+import { Asteroid, availableCargoCapacity, ChatMessage, CloakedState, Player, TargetKind } from "./game";
+import { findHeadingBetween, l2Norm, Position, Position3, projectRayFromCenterOfRect, Rectangle } from "./geometry";
+import { lastSelf, selectedSecondary, state, teamColorsFloat, teamColorsOpaque } from "./globals";
 
 const canvasCoordsToNDC = (x: number, y: number) => {
   return {
@@ -301,11 +313,7 @@ const blitImageDataCentered = (image: ImageData, x: number, y: number) => {
   ctx.putImageData(image, x, y, 0, 0, image.width, image.width);
 };
 
-const blitImageDataToOverlayCenteredFromGame = (
-  image: ImageData,
-  gameCoords: Position,
-  offset: Position3
-) => {
+const blitImageDataToOverlayCenteredFromGame = (image: ImageData, gameCoords: Position, offset: Position3) => {
   const pos = vec4.create();
   vec4.set(pos, mapGameXToWorld(gameCoords.x) + offset.x, -mapGameYToWorld(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
   vec4.transformMat4(pos, pos, projectionMatrix);
@@ -403,9 +411,93 @@ type ArrowData = {
   inoperable?: boolean;
 };
 
-const computeArrows = () => {
+const computeArrows = (target: Player, targetAsteroid: Asteroid) => {
   const arrows: ArrowData[] = [];
+
+  const def = defs[lastSelf.defIndex];
+  if (selectedSecondary === 0 || targetAsteroid) {
+    for (const asteroid of state.asteroids.values()) {
+      const distance = l2Norm(asteroid.position, lastSelf.position);
+      if (
+        distance < def.scanRange &&
+        (asteroid.position.x < canvasGameTopLeft.x ||
+          asteroid.position.x > canvasGameBottomRight.x ||
+          asteroid.position.y > canvasGameTopLeft.y ||
+          asteroid.position.y < canvasGameBottomRight.y)
+      ) {
+        arrows.push({
+          kind: TargetKind.Asteroid,
+          position: asteroid.position,
+          target: targetAsteroid === asteroid,
+          distance,
+          depleted: asteroid.resources === 0,
+        });
+      }
+    }
+  }
+
+  for (const player of state.players.values()) {
+    const distance = l2Norm(player.position, lastSelf.position);
+    const playerDef = defs[player.defIndex];
+    if (
+      player.id !== lastSelf.id &&
+      (distance < def.scanRange || playerDef.kind === UnitKind.Station) &&
+      (player.team === lastSelf.team || !player.cloak) &&
+      !player.docked &&
+      (player.position.x < canvasGameTopLeft.x ||
+        player.position.x > canvasGameBottomRight.x ||
+        player.position.y > canvasGameTopLeft.y ||
+        player.position.y < canvasGameBottomRight.y)
+    ) {
+      arrows.push({
+        kind: TargetKind.Player,
+        position: player.position,
+        team: player.team,
+        target: target === player,
+        distance,
+        inoperable: player.inoperable,
+      });
+    }
+  }
+
   return arrows;
+};
+
+const drawArrow = (targetPosition: Position, fillStyle: string, highlight: boolean, distance: number) => {
+  const margin = 25;
+  const heading = findHeadingBetween(lastSelf.position, targetPosition);
+  const intersection = projectRayFromCenterOfRect({ x: 0, y: 0, width: canvas.width, height: canvas.height }, heading);
+  const position = { x: intersection.x - Math.cos(heading) * margin, y: intersection.y - Math.sin(heading) * margin };
+  ctx.save();
+  ctx.translate(position.x, position.y);
+  ctx.rotate(heading);
+  if (highlight) {
+    ctx.filter = "drop-shadow(0 0 10px #FFFFFF)";
+  }
+  ctx.fillStyle = fillStyle;
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(-14, -8);
+  ctx.lineTo(-14, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.rotate(-heading);
+  // draw the distance text
+  ctx.fillStyle = "white";
+  ctx.font = "16px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(`${Math.round(distance)}`, 0, 0);
+  ctx.restore();
+};
+
+const drawArrows = (arrows: ArrowData[]) => {
+  for (const arrow of arrows) {
+    if (arrow.team !== undefined) {
+      drawArrow(arrow.position, arrow.inoperable ? "grey" : teamColorsOpaque[arrow.team], arrow.target, arrow.distance);
+    } else {
+      drawArrow(arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
+    }
+  }
 };
 
 export {
@@ -426,4 +518,6 @@ export {
   nameDataFont,
   classDataCache,
   classDataFont,
+  computeArrows,
+  drawArrows,
 };

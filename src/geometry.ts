@@ -176,6 +176,22 @@ const mirrorAngleVertically = (angle: number) => {
   return Math.PI - angle;
 };
 
+const projectRayFromCenterOfRect = (rect: Rectangle, angle: number) => {
+  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  if (rect.width * Math.abs(sin) < rect.height * Math.abs(cos)) {
+    const x = (rect.width / 2) * Math.sign(cos);
+    const y = x * Math.tan(angle);
+    return { x: center.x + x, y: center.y + y };
+  } else {
+    const y = (rect.height / 2) * Math.sign(sin);
+    const x = y / Math.tan(angle);
+    return { x: center.x + x, y: center.y + y };
+  }
+};
+
+
 export {
   Position,
   Position3,
@@ -202,4 +218,5 @@ export {
   mirrorAngleHorizontally,
   mirrorAngleVertically,
   sumPositions,
+  projectRayFromCenterOfRect,
 };

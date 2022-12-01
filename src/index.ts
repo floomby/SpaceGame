@@ -73,6 +73,7 @@ import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
 import { init3dDrawing, drawEverything as drawEverything3 } from "./3dDrawing";
+import { rasterizeText } from "./2dDrawing";
 
 let chats: ChatMessage[] = [];
 
@@ -300,7 +301,7 @@ const loop = () => {
 
   // drawEverything(state, self, target, targetAsteroid, ownId, selectedSecondary, keybind, sixtieths, lastChats);
 
-  drawEverything3(target, targetAsteroid);
+  drawEverything3(target, targetAsteroid, lastChats);
 
   requestAnimationFrame(loop);
 };
@@ -496,6 +497,7 @@ const run = () => {
       id: data.id,
       message: data.message,
       showUntil: Date.now() + 8000,
+      rasterizationData: rasterizeText(data.message, "18px Arial", [1.0, 1.0, 1.0, 1.0]),
     });
   });
 

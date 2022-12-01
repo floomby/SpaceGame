@@ -12,7 +12,10 @@
 ### Refactoring stuff
 
 - Make mine drawing not this ad-hoc thing it is right now (probably model after the projectile drawing)
-- Investigate drawing performance (Missile trails are still bad)
+
+### Server stuff
+
+- Anti chat spam needed
 
 ### 3d Things I have bypassed fixing
 

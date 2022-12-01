@@ -4,7 +4,7 @@ import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
-import { Asteroid, Ballistic, Player } from "./game";
+import { Asteroid, Ballistic, ChatMessage, Player } from "./game";
 import { l2NormSquared, Position, Rectangle } from "./geometry";
 import {
   appendBottomBars,
@@ -15,7 +15,13 @@ import {
   draw2d,
   initRasterizer,
   rasterizeText,
-  blitImageDataToOverlayCenteredFromWorld,
+  blitImageDataToOverlayCenteredFromGame,
+  drawChats,
+  nameDataCache,
+  blitImageDataCentered,
+  classDataCache,
+  nameDataFont,
+  classDataFont,
 } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
@@ -84,8 +90,6 @@ let backgroundBuffer: WebGLBuffer;
 const pointLightCount = 10;
 const gamePlaneZ = -50.0;
 
-let testText: ImageData;
-
 const init3dDrawing = (callback: () => void) => {
   adapter();
 
@@ -93,6 +97,12 @@ const init3dDrawing = (callback: () => void) => {
 
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
   overlayCanvas = document.getElementById("overlayCanvas") as HTMLCanvasElement;
+  // overlayCanvas.onmousedown = (e) => {
+  //   // prevent right click menu
+  //   if (e.button === 2) {
+  //     e.preventDefault();
+  //   }
+  // };
 
   // TODO Handle device pixel ratio
   const handleSizeChange = () => {
@@ -114,10 +124,6 @@ const init3dDrawing = (callback: () => void) => {
   }
 
   ctx = overlayCanvas.getContext("2d");
-
-  initRasterizer({ x: canvas.width, y: 400 });
-
-  testText = rasterizeText("Hello world!", "30px Arial", [1.0, 1.0, 1.0, 1.0]);
 
   const barData = new Float32Array([
     // top right
@@ -167,6 +173,8 @@ const init3dDrawing = (callback: () => void) => {
   window.addEventListener("resize", handleSizeChange);
   handleSizeChange();
 
+  initRasterizer({ x: Math.min(canvas.width, 2048), y: 400 });
+
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   initShaders((program) => {
@@ -210,6 +218,19 @@ const init3dDrawing = (callback: () => void) => {
 const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: number) => number, lightSources: PointLightData[]) => {
   const def = defs[player.defIndex];
   let bufferData = models[def.modelIndex].bindResources(gl);
+
+  if (player.isPC || def.kind === UnitKind.Station) {
+    const name = getNameOfPlayer(player);
+    if (player.id === 153215179667385) {
+      console.log(name, player.id);
+    }
+    let nameData = nameDataCache.get(name);
+    if (!nameData) {
+      nameData = rasterizeText(name, nameDataFont, [1.0, 1.0, 1.0, 0.8]);
+      nameDataCache.set(name, nameData);
+    }
+    blitImageDataToOverlayCenteredFromGame(nameData, player.position, mapX, mapY, { x: 0, y: -def.radius / 10 - 1, z: 5 });
+  }
 
   {
     const numComponents = 3;
@@ -328,20 +349,31 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
-let lastName = "";
-
 const drawTarget = (target: Player, where: Rectangle) => {
   const targetDisplayRectNDC = canvasRectToNDC(where);
 
   const def = defs[target.defIndex];
   let bufferData = models[def.modelIndex].bindResources(gl);
 
-  if (!target.isPC || def.kind === UnitKind.Station) {
-    const name = getNameOfPlayer(target);
-    if (name !== lastName) {
-      lastName = name;
-      // TODO Draw this
+  const centerX = where.x + where.width / 2;
+
+  let classData = classDataCache.get(def.name);
+  if (!classData) {
+    classData = rasterizeText(def.name, classDataFont, [1.0, 1.0, 1.0, 0.9]);
+    classDataCache.set(def.name, classData);
+  }
+  const yPosition = where.y + where.height + 10 + classData.height / 2;
+  blitImageDataCentered(classData, centerX, yPosition);
+
+  const name = getNameOfPlayer(target);
+  if (name) {
+    let nameData = nameDataCache.get(name);
+    if (!nameData) {
+      nameData = rasterizeText(name, nameDataFont, [1.0, 1.0, 1.0, 0.9]);
+      nameDataCache.set(name, nameData);
     }
+    const yPosition = where.y + where.height + 10 + nameData.height / 2 + classData.height;
+    blitImageDataCentered(nameData, centerX, yPosition);
   }
 
   const targetDisplayProjectionMatrix = mat4.create();
@@ -475,7 +507,7 @@ const drawBackground = (where: Position) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
-const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined) => {
+const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // I may be able to move this to the initialization code since I am probably just sticking with monolithic shaders
@@ -488,6 +520,10 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   drawBackground(lastSelf.position);
+
+  // From game space to world space
+  const mapX = (x: number) => (x - lastSelf.position.x) / 10;
+  const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
 
   const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };
 
@@ -502,11 +538,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
-  // From game space to world space
-  const mapX = (x: number) => (x - lastSelf.position.x) / 10;
-  const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
-
-  blitImageDataToOverlayCenteredFromWorld(testText, lastSelf.position, 1.0, mapX, mapY, { x: 0, y: -3, z: 5 });
+  drawChats(chats.values(), mapX, mapY);
 
   // Compute all point lights in the scene
   const lightSources: PointLightData[] = [];

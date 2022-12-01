@@ -177,6 +177,7 @@ type ChatMessage = {
   id: number;
   message: string;
   showUntil: number;
+  rasterizationData?: any;
 };
 
 const copyPlayer = (player: Player) => {

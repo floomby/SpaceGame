@@ -1,7 +1,7 @@
 import { vec4 } from "gl-matrix";
 import { gl, canvas, projectionMatrix, DrawType, gamePlaneZ, ctx, overlayCanvas } from "./3dDrawing";
 import { armDefs, ArmUsage, defs, UnitKind } from "./defs";
-import { availableCargoCapacity, CloakedState } from "./game";
+import { availableCargoCapacity, ChatMessage, CloakedState, Player } from "./game";
 import { Position, Position3, Rectangle } from "./geometry";
 import { lastSelf, selectedSecondary, state, teamColorsFloat } from "./globals";
 
@@ -290,30 +290,37 @@ const appendBottomBars = () => {
   }
 };
 
-const blitImageDataToOverlayCenteredFromWorld = (
+const nameDataFont = "24px Arial";
+const nameDataCache = new Map<string, ImageData>();
+const classDataFont = "20px Arial";
+const classDataCache = new Map<string, ImageData>();
+
+const blitImageDataCentered = (image: ImageData, x: number, y: number) => {
+  x -= image.width / 2;
+  y -= image.height / 2;
+  ctx.putImageData(image, x, y, 0, 0, image.width, image.width);
+};
+
+const blitImageDataToOverlayCenteredFromGame = (
   image: ImageData,
   gameCoords: Position,
-  scale: number,
   mapX: (x: number) => number,
   mapY: (y: number) => number,
   offset: Position3
 ) => {
   const pos = vec4.create();
-  vec4.set(pos, mapX(gameCoords.x) + offset.x, mapY(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
+  vec4.set(pos, mapX(gameCoords.x) + offset.x, -mapY(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
   vec4.transformMat4(pos, pos, projectionMatrix);
 
-  const scaledWidth = image.width * scale;
-  const scaledHeight = image.height * scale;
-
-  const x = ((pos[0] / pos[3] + 1) * canvas.width) / 2 - scaledWidth / 2;
-  const y = ((pos[1] / pos[3] + 1) * canvas.height) / 2 - scaledHeight / 2;
+  const x = ((pos[0] / pos[3] + 1) * canvas.width) / 2 - image.width / 2;
+  const y = ((pos[1] / pos[3] + 1) * canvas.height) / 2 - image.height / 2;
 
   // Check if the image is on screen
-  if (x > canvas.width || y > canvas.height || x + scaledWidth < 0 || y + scaledHeight < 0) {
+  if (x > canvas.width || y > canvas.height || x + image.width < 0 || y + image.height < 0) {
     return;
   }
-  
-  ctx.putImageData(image, x, y, 0, 0, scaledWidth, scaledHeight);
+
+  ctx.putImageData(image, x, y, 0, 0, image.width, image.height);
 };
 
 const draw = (programInfo: any) => {
@@ -351,7 +358,7 @@ let rasterizerCanvas: OffscreenCanvas | null = null;
 
 const initRasterizer = (size: Position) => {
   rasterizerCanvas = new OffscreenCanvas(size.x, size.y);
-  rasterizerContext = rasterizerCanvas.getContext("2d");
+  rasterizerContext = rasterizerCanvas.getContext("2d", { willReadFrequently: true });
   rasterizerContext.textAlign = "left";
   rasterizerContext.textBaseline = "top";
 };
@@ -369,8 +376,23 @@ const rasterizeText = (text: string, font: string, color: [number, number, numbe
     0,
     0,
     Math.min(metric.width, rasterizerCanvas.width),
-    Math.min(metric.actualBoundingBoxAscent + metric.actualBoundingBoxDescent + 1, rasterizerCanvas.height)
+    Math.min(metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent, rasterizerCanvas.height)
   );
+};
+
+const drawChats = (chats: IterableIterator<ChatMessage>, mapX: (x: number) => number, mapY: (y: number) => number) => {
+  for (const chat of chats) {
+    const player = state.players.get(chat.id);
+    if (player && !player.docked) {
+      if (chat.rasterizationData) {
+        drawChat(player, chat.rasterizationData, mapX, mapY);
+      }
+    }
+  }
+};
+
+const drawChat = (player: Player, data: ImageData, mapX: (x: number) => number, mapY: (y: number) => number) => {
+  blitImageDataToOverlayCenteredFromGame(data, player.position, mapX, mapY, { x: 0, y: -2, z: 2 });
 };
 
 export {
@@ -381,7 +403,13 @@ export {
   appendBottomBars,
   appendCanvasRect,
   canvasRectToNDC,
-  blitImageDataToOverlayCenteredFromWorld,
+  blitImageDataToOverlayCenteredFromGame,
   initRasterizer,
   rasterizeText,
+  drawChats,
+  blitImageDataCentered,
+  nameDataCache,
+  nameDataFont,
+  classDataCache,
+  classDataFont,
 };

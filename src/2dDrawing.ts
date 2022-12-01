@@ -13,8 +13,8 @@ import {
   canvasGameBottomRight,
 } from "./3dDrawing";
 import { armDefs, ArmUsage, defs, Faction, UnitKind } from "./defs";
-import { Asteroid, availableCargoCapacity, ChatMessage, CloakedState, Player, TargetKind } from "./game";
-import { findHeadingBetween, l2Norm, Position, Position3, projectRayFromCenterOfRect, Rectangle } from "./geometry";
+import { Asteroid, availableCargoCapacity, ChatMessage, CloakedState, Player, sectorBounds, TargetKind } from "./game";
+import { CardinalDirection, findHeadingBetween, l2Norm, Position, Position3, projectRayFromCenterOfRect, Rectangle } from "./geometry";
 import { lastSelf, selectedSecondary, state, teamColorsFloat, teamColorsOpaque } from "./globals";
 
 const canvasCoordsToNDC = (x: number, y: number) => {
@@ -500,6 +500,110 @@ const drawArrows = (arrows: ArrowData[]) => {
   }
 };
 
+const drawSectorArrow = () => {
+  let closestEdgeDirection: CardinalDirection | null = null;
+
+  const distanceToLeft = lastSelf.position.x - sectorBounds.x;
+  const distanceToRight = sectorBounds.x + sectorBounds.width - lastSelf.position.x;
+  const distanceToTop = lastSelf.position.y - sectorBounds.y;
+  const distanceToBottom = sectorBounds.y + sectorBounds.height - lastSelf.position.y;
+
+  const distances = [distanceToLeft, distanceToRight, distanceToTop, distanceToBottom];
+  let closestEdgeDistance = Math.min(...distances);
+  if (closestEdgeDistance === distanceToLeft) {
+    closestEdgeDirection = CardinalDirection.Left;
+  } else if (closestEdgeDistance === distanceToRight) {
+    closestEdgeDirection = CardinalDirection.Right;
+  } else if (closestEdgeDistance === distanceToTop) {
+    closestEdgeDirection = CardinalDirection.Up;
+  } else if (closestEdgeDistance === distanceToBottom) {
+    closestEdgeDirection = CardinalDirection.Down;
+  }
+
+  if (closestEdgeDistance > 3500) {
+    return;
+  }
+
+  switch (closestEdgeDirection) {
+    case CardinalDirection.Up:
+      if (closestEdgeDistance < canvas.height / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(canvas.width / 2, 0);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(0, 10);
+      ctx.lineTo(8, 38);
+      ctx.lineTo(-8, 38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, 0, 60);
+      ctx.restore();
+      break;
+    case CardinalDirection.Down:
+      if (closestEdgeDistance < canvas.height / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(0, -10);
+      ctx.lineTo(8, -38);
+      ctx.lineTo(-8, -38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, 0, -40);
+      ctx.restore();
+      break;
+    case CardinalDirection.Left:
+      if (closestEdgeDistance < canvas.width / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(0, canvas.height / 2);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(10, 0);
+      ctx.lineTo(38, 8);
+      ctx.lineTo(38, -8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, 50, 0);
+      ctx.restore();
+      break;
+    case CardinalDirection.Right:
+      if (closestEdgeDistance < canvas.width / 2) {
+        return;
+      }
+      ctx.save();
+      ctx.translate(canvas.width, canvas.height / 2);
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.moveTo(-10, 0);
+      ctx.lineTo(-38, 8);
+      ctx.lineTo(-38, -8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(closestEdgeDistance)}`, -50, 0);
+      ctx.restore();
+      break;
+  }
+};
+
 export {
   ArrowData,
   draw as draw2d,
@@ -520,4 +624,5 @@ export {
   classDataFont,
   computeArrows,
   drawArrows,
+  drawSectorArrow,
 };

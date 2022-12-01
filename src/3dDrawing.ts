@@ -24,6 +24,7 @@ import {
   classDataFont,
   computeArrows,
   drawArrows,
+  drawSectorArrow,
 } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
@@ -550,6 +551,8 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   const arrows = computeArrows(target, targetAsteroid);
   drawArrows(arrows);
+
+  drawSectorArrow();
 
   // Compute all point lights in the scene
   const lightSources: PointLightData[] = [];

@@ -131,12 +131,7 @@ const findInterceptAimingHeading = (from: Position, target: Player, projectileSp
 };
 
 const pointInRectangle = (point: Position, rectangle: Rectangle) => {
-  return (
-    point.x >= rectangle.x &&
-    point.x <= rectangle.x + rectangle.width &&
-    point.y >= rectangle.y &&
-    point.y <= rectangle.y + rectangle.height
-  );
+  return point.x >= rectangle.x && point.x <= rectangle.x + rectangle.width && point.y >= rectangle.y && point.y <= rectangle.y + rectangle.height;
 };
 
 const pointOutsideRectangle = (point: Position, rectangle: Rectangle) => {
@@ -158,7 +153,7 @@ const pointOutsideRectangle = (point: Position, rectangle: Rectangle) => {
 const headingFromCardinalDirection = (direction: CardinalDirection) => {
   switch (direction) {
     case CardinalDirection.Up:
-      return 3 * Math.PI / 2;
+      return (3 * Math.PI) / 2;
     case CardinalDirection.Right:
       return 0;
     case CardinalDirection.Down:
@@ -190,7 +185,6 @@ const projectRayFromCenterOfRect = (rect: Rectangle, angle: number) => {
     return { x: center.x + x, y: center.y + y };
   }
 };
-
 
 export {
   Position,

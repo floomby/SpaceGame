@@ -26,12 +26,13 @@
 - target asteroid drawing
 - target asteroid mineral text
 - sector lines
-- sector arrows
-- sector arrow distance text
-- asteroid arrows
-- asteroid arrow distance text
-- player arrows
-- player arrow distance text
 - docking and repair text
 - weapon text
 - message text
+
+### World Checklist
+
+- draw asteroids
+- draw mines
+- fix projectile drawing
+- draw collectables

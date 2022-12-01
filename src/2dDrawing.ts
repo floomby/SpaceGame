@@ -328,4 +328,4 @@ const draw = (programInfo: any) => {
   gl.drawArrays(gl.TRIANGLES, 0, bufferData.count);
 };
 
-export { draw as draw2d, appendRect, appendMinimap, clear as clear2d, appendBottomBars };
+export { draw as draw2d, appendRect, appendMinimap, clear as clear2d, appendBottomBars, appendCanvasRect, canvasRectToNDC };

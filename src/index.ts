@@ -300,7 +300,7 @@ const loop = () => {
 
   // drawEverything(state, self, target, targetAsteroid, ownId, selectedSecondary, keybind, sixtieths, lastChats);
 
-  drawEverything3();
+  drawEverything3(target, targetAsteroid);
 
   requestAnimationFrame(loop);
 };

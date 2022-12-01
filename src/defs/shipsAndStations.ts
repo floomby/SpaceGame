@@ -90,7 +90,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
-    model: "spaceship",
+    model: "fighter",
   });
   // Drone - 1
   defs.push({

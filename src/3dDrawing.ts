@@ -4,9 +4,9 @@ import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
-import { Ballistic, Player } from "./game";
-import { l2NormSquared, Position } from "./geometry";
-import { appendBottomBars, appendMinimap, clear2d, draw2d } from "./2dDrawing";
+import { Asteroid, Ballistic, Player } from "./game";
+import { l2NormSquared, Position, Rectangle } from "./geometry";
+import { appendBottomBars, appendCanvasRect, appendMinimap, canvasRectToNDC, clear2d, draw2d } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 
@@ -22,6 +22,7 @@ enum DrawType {
   HealthBar = 3,
   EnergyBar = 4,
   Background = 5,
+  TargetPlayer = 6,
 }
 
 const initShaders = (callback: (program: any) => void) => {
@@ -171,7 +172,7 @@ const init3dDrawing = (callback: () => void) => {
     };
 
     addLoadingText("Loading models...");
-    Promise.all(["spaceship.obj", "projectile.obj", "advanced_fighter.obj", "alliance_starbase.obj"].map((url) => loadObj(url)))
+    Promise.all(["spaceship.obj", "projectile.obj", "advanced_fighter.obj", "alliance_starbase.obj", "fighter.obj"].map((url) => loadObj(url)))
       .then(async () => {
         defs.forEach((def) => {
           def.modelIndex = modelMap.get(def.model)[1];
@@ -229,23 +230,6 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
   gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
-
-  // find the closest 4 projectiles to use as point lights
-  // let projectiles: [number, Ballistic][] = [];
-  // for (let i = 0; i < pointLightCount; i++) {
-  //   projectiles.push([Infinity, null]);
-  // }
-  // for (const projectile of state.projectiles.values()) {
-  //   const dist2 = l2NormSquared(projectile.position, player.position);
-  //   let insertionIndex = 0;
-  //   while (insertionIndex < pointLightCount && dist2 > projectiles[insertionIndex][0]) {
-  //     insertionIndex++;
-  //   }
-  //   if (insertionIndex < pointLightCount) {
-  //     projectiles.splice(insertionIndex, 0, [dist2, projectile]);
-  //     projectiles.pop();
-  //   }
-  // }
 
   // find the closest lights
   let lights: [number, PointLightData][] = [];
@@ -322,6 +306,117 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+const drawTarget = (target: Player, where: Rectangle) => {
+  const targetDisplayRectNDC = canvasRectToNDC(where);
+
+  const def = defs[target.defIndex];
+  let bufferData = models[def.modelIndex].bindResources(gl);
+
+  const targetDisplayProjectionMatrix = mat4.create();
+  mat4.ortho(targetDisplayProjectionMatrix, -def.radius / 7, def.radius / 7, -def.radius / 7, def.radius / 7, -10, 10);
+
+  const scaleX = targetDisplayRectNDC.width / 2;
+  const scaleY = targetDisplayRectNDC.height / 2;
+  const scaleZ = (scaleX + scaleY) / 2;
+
+  mat4.translate(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [
+    (targetDisplayRectNDC.x + targetDisplayRectNDC.width / 2) * def.radius / 7,
+    (targetDisplayRectNDC.y - targetDisplayRectNDC.height / 2) * def.radius / 7,
+    0,
+  ]);
+  mat4.scale(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [scaleX, scaleY, scaleZ]);
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, targetDisplayProjectionMatrix);
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  // Uniforms
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+  gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[target.team]);
+
+  const modelMatrix = mat4.create();
+  mat4.rotateZ(modelMatrix, modelMatrix, -target.heading);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+
+  const viewMatrix = mat4.create();
+  mat4.translate(viewMatrix, viewMatrix, [0, 0, 0]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  const normalMatrix = mat4.create();
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+  mat4.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+  const vertexCount = models[def.modelIndex].indices.length || 0;
+  const type = gl.UNSIGNED_SHORT;
+  const offset = 0;
+  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  // // Draw the players status bars
+  // const health = Math.max(target.health, 0) / def.health;
+  // const energy = target.energy / def.energy;
+  // gl.uniform2fv(programInfo.uniformLocations.healthAndEnergy, [health, energy]);
+
+  // // Draw the health bar
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
+
+  // gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
+
+  // gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+  // // Draw the energy bar
+  // gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
+
+  // gl.drawArrays(gl.TRIANGLES, 0, 6);
+};
+
 const drawBackground = (where: Position) => {
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Background);
 
@@ -348,7 +443,7 @@ const drawBackground = (where: Position) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
-const drawEverything = () => {
+const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // I may be able to move this to the initialization code since I am probably just sticking with monolithic shaders
@@ -362,10 +457,18 @@ const drawEverything = () => {
 
   drawBackground(lastSelf.position);
 
+  const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };
+
   // Minimap
   clear2d();
-  appendMinimap({ x: canvas.width - 200, y: canvas.height - 220, height: 200, width: 200 }, 0.03);
-  appendBottomBars();
+  if (!lastSelf.docked) {
+    appendMinimap({ x: canvas.width - 200, y: canvas.height - 220, height: 200, width: 200 }, 0.03);
+    appendBottomBars();
+    // Backdrop for the target
+    if (target || targetAsteroid) {
+      appendCanvasRect(targetDisplayRect, -1, [0.3, 0.3, 0.3, 0.5]);
+    }
+  }
 
   // From game space to world space
   const mapX = (x: number) => (x - lastSelf.position.x) / 10;
@@ -463,6 +566,14 @@ const drawEverything = () => {
   }
 
   draw2d(programInfo);
+
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+
+  if (target) {
+    drawTarget(target, targetDisplayRect);
+  } else if (targetAsteroid) {
+    // drawTargetAsteroid();
+  }
 };
 
 // TODO replace with ray casting

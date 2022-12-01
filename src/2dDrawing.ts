@@ -1,18 +1,9 @@
-import { gl, canvas, projectionMatrix, DrawType } from "./3dDrawing";
+import { vec4 } from "gl-matrix";
+import { gl, canvas, projectionMatrix, DrawType, gamePlaneZ, ctx, overlayCanvas } from "./3dDrawing";
 import { armDefs, ArmUsage, defs, UnitKind } from "./defs";
 import { availableCargoCapacity, CloakedState } from "./game";
-import { Position, Rectangle } from "./geometry";
+import { Position, Position3, Rectangle } from "./geometry";
 import { lastSelf, selectedSecondary, state, teamColorsFloat } from "./globals";
-
-type Vertex2D = {
-  x: number;
-  y: number;
-  z: number;
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-};
 
 const canvasCoordsToNDC = (x: number, y: number) => {
   return {
@@ -153,6 +144,7 @@ const appendCanvasRect = (rect: Rectangle, zIndex: number, color: [number, numbe
 const clear = () => {
   hudVertexBuffer.length = 0;
   hudColorBuffer.length = 0;
+  ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 };
 
 // This is not efficient, but I am just trying to get it working right now
@@ -298,6 +290,32 @@ const appendBottomBars = () => {
   }
 };
 
+const blitImageDataToOverlayCenteredFromWorld = (
+  image: ImageData,
+  gameCoords: Position,
+  scale: number,
+  mapX: (x: number) => number,
+  mapY: (y: number) => number,
+  offset: Position3
+) => {
+  const pos = vec4.create();
+  vec4.set(pos, mapX(gameCoords.x) + offset.x, mapY(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
+  vec4.transformMat4(pos, pos, projectionMatrix);
+
+  const scaledWidth = image.width * scale;
+  const scaledHeight = image.height * scale;
+
+  const x = ((pos[0] / pos[3] + 1) * canvas.width) / 2 - scaledWidth / 2;
+  const y = ((pos[1] / pos[3] + 1) * canvas.height) / 2 - scaledHeight / 2;
+
+  // Check if the image is on screen
+  if (x > canvas.width || y > canvas.height || x + scaledWidth < 0 || y + scaledHeight < 0) {
+    return;
+  }
+  
+  ctx.putImageData(image, x, y, 0, 0, scaledWidth, scaledHeight);
+};
+
 const draw = (programInfo: any) => {
   let bufferData = buildBuffers();
 
@@ -328,4 +346,42 @@ const draw = (programInfo: any) => {
   gl.drawArrays(gl.TRIANGLES, 0, bufferData.count);
 };
 
-export { draw as draw2d, appendRect, appendMinimap, clear as clear2d, appendBottomBars, appendCanvasRect, canvasRectToNDC };
+let rasterizerContext: OffscreenCanvasRenderingContext2D | null = null;
+let rasterizerCanvas: OffscreenCanvas | null = null;
+
+const initRasterizer = (size: Position) => {
+  rasterizerCanvas = new OffscreenCanvas(size.x, size.y);
+  rasterizerContext = rasterizerCanvas.getContext("2d");
+  rasterizerContext.textAlign = "left";
+  rasterizerContext.textBaseline = "top";
+};
+
+const rasterizeText = (text: string, font: string, color: [number, number, number, number]) => {
+  if (rasterizerContext === null) {
+    return;
+  }
+  rasterizerContext.clearRect(0, 0, rasterizerContext.canvas.width, rasterizerContext.canvas.height);
+  rasterizerContext.font = font;
+  rasterizerContext.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
+  rasterizerContext.fillText(text, 0, 0);
+  let metric = rasterizerContext.measureText(text);
+  return rasterizerContext.getImageData(
+    0,
+    0,
+    Math.min(metric.width, rasterizerCanvas.width),
+    Math.min(metric.actualBoundingBoxAscent + metric.actualBoundingBoxDescent + 1, rasterizerCanvas.height)
+  );
+};
+
+export {
+  draw as draw2d,
+  appendRect,
+  appendMinimap,
+  clear as clear2d,
+  appendBottomBars,
+  appendCanvasRect,
+  canvasRectToNDC,
+  blitImageDataToOverlayCenteredFromWorld,
+  initRasterizer,
+  rasterizeText,
+};

@@ -13,3 +13,7 @@
 
 - Make mine drawing not this ad-hoc thing it is right now (probably model after the projectile drawing)
 - Investigate drawing performance (Missile trails are still bad)
+
+### 3d Things I have bypassed fixing
+
+- Health and energy bars in both the world and the target display are incorrect (they are almost identical to fix)

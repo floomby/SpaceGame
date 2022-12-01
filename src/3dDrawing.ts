@@ -6,11 +6,24 @@ import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
 import { Asteroid, Ballistic, Player } from "./game";
 import { l2NormSquared, Position, Rectangle } from "./geometry";
-import { appendBottomBars, appendCanvasRect, appendMinimap, canvasRectToNDC, clear2d, draw2d } from "./2dDrawing";
+import {
+  appendBottomBars,
+  appendCanvasRect,
+  appendMinimap,
+  canvasRectToNDC,
+  clear2d,
+  draw2d,
+  initRasterizer,
+  rasterizeText,
+  blitImageDataToOverlayCenteredFromWorld,
+} from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
+import { getNameOfPlayer } from "./rest";
 
 let canvas: HTMLCanvasElement;
+let overlayCanvas: HTMLCanvasElement;
+let ctx: CanvasRenderingContext2D;
 let gl: WebGLRenderingContext;
 let programInfo: any;
 let backgroundTexture: WebGLTexture;
@@ -71,17 +84,20 @@ let backgroundBuffer: WebGLBuffer;
 const pointLightCount = 10;
 const gamePlaneZ = -50.0;
 
+let testText: ImageData;
+
 const init3dDrawing = (callback: () => void) => {
   adapter();
 
   initEffects();
 
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
+  overlayCanvas = document.getElementById("overlayCanvas") as HTMLCanvasElement;
 
   // TODO Handle device pixel ratio
   const handleSizeChange = () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    overlayCanvas.width = canvas.width = window.innerWidth;
+    overlayCanvas.height = canvas.height = window.innerHeight;
     gl.viewport(0, 0, canvas.width, canvas.height);
     const fieldOfView = (45 * Math.PI) / 180;
     const aspect = canvas.width / canvas.height;
@@ -96,6 +112,12 @@ const init3dDrawing = (callback: () => void) => {
   if (!gl) {
     console.error("Your browser does not support WebGL 2.0");
   }
+
+  ctx = overlayCanvas.getContext("2d");
+
+  initRasterizer({ x: canvas.width, y: 400 });
+
+  testText = rasterizeText("Hello world!", "30px Arial", [1.0, 1.0, 1.0, 1.0]);
 
   const barData = new Float32Array([
     // top right
@@ -306,11 +328,21 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+let lastName = "";
+
 const drawTarget = (target: Player, where: Rectangle) => {
   const targetDisplayRectNDC = canvasRectToNDC(where);
 
   const def = defs[target.defIndex];
   let bufferData = models[def.modelIndex].bindResources(gl);
+
+  if (!target.isPC || def.kind === UnitKind.Station) {
+    const name = getNameOfPlayer(target);
+    if (name !== lastName) {
+      lastName = name;
+      // TODO Draw this
+    }
+  }
 
   const targetDisplayProjectionMatrix = mat4.create();
   mat4.ortho(targetDisplayProjectionMatrix, -def.radius / 7, def.radius / 7, -def.radius / 7, def.radius / 7, -10, 10);
@@ -320,8 +352,8 @@ const drawTarget = (target: Player, where: Rectangle) => {
   const scaleZ = (scaleX + scaleY) / 2;
 
   mat4.translate(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [
-    (targetDisplayRectNDC.x + targetDisplayRectNDC.width / 2) * def.radius / 7,
-    (targetDisplayRectNDC.y - targetDisplayRectNDC.height / 2) * def.radius / 7,
+    ((targetDisplayRectNDC.x + targetDisplayRectNDC.width / 2) * def.radius) / 7,
+    ((targetDisplayRectNDC.y - targetDisplayRectNDC.height / 2) * def.radius) / 7,
     0,
   ]);
   mat4.scale(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [scaleX, scaleY, scaleZ]);
@@ -390,31 +422,31 @@ const drawTarget = (target: Player, where: Rectangle) => {
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 
-  // // Draw the players status bars
-  // const health = Math.max(target.health, 0) / def.health;
-  // const energy = target.energy / def.energy;
-  // gl.uniform2fv(programInfo.uniformLocations.healthAndEnergy, [health, energy]);
+  // Draw the players status bars
+  const health = Math.max(target.health, 0) / def.health;
+  const energy = target.energy / def.energy;
+  gl.uniform2fv(programInfo.uniformLocations.healthAndEnergy, [health, energy]);
 
-  // // Draw the health bar
-  // {
-  //   const numComponents = 3;
-  //   const type = gl.FLOAT;
-  //   const normalize = false;
-  //   const stride = 0;
-  //   const offset = 0;
-  //   gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
-  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  // }
+  // Draw the health bar
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
 
-  // gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
 
-  // gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-  // // Draw the energy bar
-  // gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
+  // Draw the energy bar
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
 
-  // gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
 const drawBackground = (where: Position) => {
@@ -473,6 +505,8 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   // From game space to world space
   const mapX = (x: number) => (x - lastSelf.position.x) / 10;
   const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
+
+  blitImageDataToOverlayCenteredFromWorld(testText, lastSelf.position, 1.0, mapX, mapY, { x: 0, y: -3, z: 5 });
 
   // Compute all point lights in the scene
   const lightSources: PointLightData[] = [];
@@ -587,4 +621,4 @@ const canvasCoordsToGameCoords = (x: number, y: number) => {
   };
 };
 
-export { init3dDrawing, canvas, canvasCoordsToGameCoords, drawEverything, gl, projectionMatrix, DrawType };
+export { init3dDrawing, canvas, canvasCoordsToGameCoords, drawEverything, gl, projectionMatrix, DrawType, ctx, overlayCanvas, gamePlaneZ };

@@ -20,3 +20,18 @@
 ### 3d Things I have bypassed fixing
 
 - Health and energy bars in both the world and the target display are incorrect (they are almost identical to fix)
+
+### Hud Checklist
+
+- target asteroid drawing
+- target asteroid mineral text
+- sector lines
+- sector arrows
+- sector arrow distance text
+- asteroid arrows
+- asteroid arrow distance text
+- player arrows
+- player arrow distance text
+- docking and repair text
+- weapon text
+- message text

@@ -1,7 +1,7 @@
 import { vec4 } from "gl-matrix";
-import { gl, canvas, projectionMatrix, DrawType, gamePlaneZ, ctx, overlayCanvas } from "./3dDrawing";
-import { armDefs, ArmUsage, defs, UnitKind } from "./defs";
-import { availableCargoCapacity, ChatMessage, CloakedState, Player } from "./game";
+import { gl, canvas, projectionMatrix, DrawType, gamePlaneZ, ctx, overlayCanvas, mapGameYToWorld, mapGameXToWorld } from "./3dDrawing";
+import { armDefs, ArmUsage, defs, Faction, UnitKind } from "./defs";
+import { availableCargoCapacity, ChatMessage, CloakedState, Player, TargetKind } from "./game";
 import { Position, Position3, Rectangle } from "./geometry";
 import { lastSelf, selectedSecondary, state, teamColorsFloat } from "./globals";
 
@@ -304,12 +304,10 @@ const blitImageDataCentered = (image: ImageData, x: number, y: number) => {
 const blitImageDataToOverlayCenteredFromGame = (
   image: ImageData,
   gameCoords: Position,
-  mapX: (x: number) => number,
-  mapY: (y: number) => number,
   offset: Position3
 ) => {
   const pos = vec4.create();
-  vec4.set(pos, mapX(gameCoords.x) + offset.x, -mapY(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
+  vec4.set(pos, mapGameXToWorld(gameCoords.x) + offset.x, -mapGameYToWorld(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
   vec4.transformMat4(pos, pos, projectionMatrix);
 
   const x = ((pos[0] / pos[3] + 1) * canvas.width) / 2 - image.width / 2;
@@ -380,22 +378,38 @@ const rasterizeText = (text: string, font: string, color: [number, number, numbe
   );
 };
 
-const drawChats = (chats: IterableIterator<ChatMessage>, mapX: (x: number) => number, mapY: (y: number) => number) => {
+const drawChats = (chats: IterableIterator<ChatMessage>) => {
   for (const chat of chats) {
     const player = state.players.get(chat.id);
     if (player && !player.docked) {
       if (chat.rasterizationData) {
-        drawChat(player, chat.rasterizationData, mapX, mapY);
+        drawChat(player, chat.rasterizationData);
       }
     }
   }
 };
 
-const drawChat = (player: Player, data: ImageData, mapX: (x: number) => number, mapY: (y: number) => number) => {
-  blitImageDataToOverlayCenteredFromGame(data, player.position, mapX, mapY, { x: 0, y: -2, z: 2 });
+const drawChat = (player: Player, data: ImageData) => {
+  blitImageDataToOverlayCenteredFromGame(data, player.position, { x: 0, y: -2, z: 2 });
+};
+
+type ArrowData = {
+  kind: TargetKind;
+  position: Position;
+  team?: Faction;
+  target: boolean;
+  distance: number;
+  depleted?: boolean;
+  inoperable?: boolean;
+};
+
+const computeArrows = () => {
+  const arrows: ArrowData[] = [];
+  return arrows;
 };
 
 export {
+  ArrowData,
   draw as draw2d,
   appendRect,
   appendMinimap,

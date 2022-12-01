@@ -1,7 +1,7 @@
 import { initEffects } from "./effects";
 import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
 import { adapter } from "./drawing";
-import { glMatrix, mat4, vec3 } from "gl-matrix";
+import { glMatrix, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
 import { Asteroid, Ballistic, ChatMessage, Player } from "./game";
@@ -82,6 +82,7 @@ const loadShader = (type: number, source: string) => {
 };
 
 let projectionMatrix: mat4;
+let inverseProjectionMatrix: mat4;
 
 let barBuffer: WebGLBuffer;
 let backgroundBuffer: WebGLBuffer;
@@ -114,8 +115,10 @@ const init3dDrawing = (callback: () => void) => {
     const zNear = 0.1;
     const zFar = 100.0;
     projectionMatrix = mat4.create();
+    inverseProjectionMatrix = mat4.create();
 
     mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+    mat4.invert(inverseProjectionMatrix, projectionMatrix);
   };
 
   gl = canvas.getContext("webgl2");
@@ -215,21 +218,18 @@ const init3dDrawing = (callback: () => void) => {
   });
 };
 
-const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: number) => number, lightSources: PointLightData[]) => {
+const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
   const def = defs[player.defIndex];
   let bufferData = models[def.modelIndex].bindResources(gl);
 
   if (player.isPC || def.kind === UnitKind.Station) {
     const name = getNameOfPlayer(player);
-    if (player.id === 153215179667385) {
-      console.log(name, player.id);
-    }
     let nameData = nameDataCache.get(name);
     if (!nameData) {
       nameData = rasterizeText(name, nameDataFont, [1.0, 1.0, 1.0, 0.8]);
       nameDataCache.set(name, nameData);
     }
-    blitImageDataToOverlayCenteredFromGame(nameData, player.position, mapX, mapY, { x: 0, y: -def.radius / 10 - 1, z: 5 });
+    blitImageDataToOverlayCenteredFromGame(nameData, player.position, { x: 0, y: -def.radius / 10 - 1, z: 5 });
   }
 
   {
@@ -293,7 +293,7 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
 
   for (let i = 0; i < pointLightCount; i++) {
     if (lights[i][1]) {
-      const pointLight = [mapX(lights[i][1].position.x), mapY(lights[i][1].position.y), lights[i][1].position.z, 0];
+      const pointLight = [mapGameXToWorld(lights[i][1].position.x), mapGameYToWorld(lights[i][1].position.y), lights[i][1].position.z, 0];
       gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLight);
       gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], lights[i][1].color);
     } else {
@@ -307,7 +307,7 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
 
   const viewMatrix = mat4.create();
-  mat4.translate(viewMatrix, viewMatrix, [mapX(player.position.x), mapY(player.position.y), gamePlaneZ]);
+  mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(player.position.x), mapGameYToWorld(player.position.y), gamePlaneZ]);
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   const normalMatrix = mat4.create();
@@ -348,6 +348,11 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
 
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
+
+const mapGameXToWorld = (x: number) => (x - lastSelf.position.x) / 10;
+const mapGameYToWorld = (y: number) => -(y - lastSelf.position.y) / 10;
+const mapWorldXToGame = (x: number) => x * 10 + lastSelf.position.x;
+const mapWorldYToGame = (y: number) => -y * 10 + lastSelf.position.y;
 
 const drawTarget = (target: Player, where: Rectangle) => {
   const targetDisplayRectNDC = canvasRectToNDC(where);
@@ -521,10 +526,6 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   drawBackground(lastSelf.position);
 
-  // From game space to world space
-  const mapX = (x: number) => (x - lastSelf.position.x) / 10;
-  const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
-
   const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };
 
   // Minimap
@@ -538,7 +539,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
-  drawChats(chats.values(), mapX, mapY);
+  drawChats(chats.values());
 
   // Compute all point lights in the scene
   const lightSources: PointLightData[] = [];
@@ -567,7 +568,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   for (const player of state.players.values()) {
-    drawPlayer(player, mapX, mapY, lightSources);
+    drawPlayer(player, lightSources);
   }
 
   for (const projectile of state.projectiles.values()) {
@@ -613,7 +614,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
 
     const viewMatrix = mat4.create();
-    mat4.translate(viewMatrix, viewMatrix, [mapX(projectile.position.x), mapY(projectile.position.y), gamePlaneZ]);
+    mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(projectile.position.x), mapGameYToWorld(projectile.position.y), gamePlaneZ]);
     gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
     const normalMatrix = mat4.create();
@@ -642,15 +643,33 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 };
 
-// TODO replace with ray casting
 const canvasCoordsToGameCoords = (x: number, y: number) => {
   if (!lastSelf) {
     return undefined;
   }
-  return {
-    x: x - canvas.width / 2 + lastSelf.position.x,
-    y: y - canvas.height / 2 + lastSelf.position.y,
-  };
+  let ndcX = (x / canvas.width) * 2 - 1;
+  let ndcY = (y / canvas.height) * 2 - 1;
+  let coords = vec4.create();
+  vec4.set(coords, ndcX, ndcY, -1, 1);
+  vec4.transformMat4(coords, coords, inverseProjectionMatrix);
+  // solve for the intersection with the game plane to get the world coordinates
+  let t = gamePlaneZ / coords[2];
+  let worldX = coords[0] * t;
+  let worldY = coords[1] * t;
+  return { x: mapWorldXToGame(worldX), y: mapWorldYToGame(worldY) };
 };
 
-export { init3dDrawing, canvas, canvasCoordsToGameCoords, drawEverything, gl, projectionMatrix, DrawType, ctx, overlayCanvas, gamePlaneZ };
+export {
+  init3dDrawing,
+  canvas,
+  canvasCoordsToGameCoords,
+  drawEverything,
+  gl,
+  projectionMatrix,
+  DrawType,
+  ctx,
+  overlayCanvas,
+  gamePlaneZ,
+  mapGameXToWorld,
+  mapGameYToWorld,
+};

@@ -6,8 +6,9 @@ import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
 import { Ballistic, Player } from "./game";
 import { l2NormSquared, Position } from "./geometry";
-import { appendMinimap, clear2d, draw2d } from "./2dDrawing";
+import { appendBottomBars, appendMinimap, clear2d, draw2d } from "./2dDrawing";
 import { loadBackground } from "./background";
+import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 
 let canvas: HTMLCanvasElement;
 let gl: WebGLRenderingContext;
@@ -65,6 +66,10 @@ let projectionMatrix: mat4;
 let barBuffer: WebGLBuffer;
 let backgroundBuffer: WebGLBuffer;
 
+// Rendering constants stuff
+const pointLightCount = 10;
+const gamePlaneZ = -50.0;
+
 const init3dDrawing = (callback: () => void) => {
   adapter();
 
@@ -93,29 +98,17 @@ const init3dDrawing = (callback: () => void) => {
 
   const barData = new Float32Array([
     // top right
-    -1,
-    1,
-    1,
+    -1, 1, 1,
     // top left
-    1,
-    1,
-    1,
+    1, 1, 1,
     // bottom left
-    1,
-    0.9,
-    1,
+    1, 0.9, 1,
     // top right
-    -1,
-    1,
-    1,
+    -1, 1, 1,
     // bottom left
-    1,
-    0.9,
-    1,
+    1, 0.9, 1,
     // bottom right
-    -1,
-    0.9,
-    1,
+    -1, 0.9, 1,
   ]);
 
   barBuffer = gl.createBuffer();
@@ -124,29 +117,17 @@ const init3dDrawing = (callback: () => void) => {
 
   const backgroundData = new Float32Array([
     // top right
-    -1,
-    1,
-    1,
+    -1, 1, 1,
     // top left
-    1,
-    1,
-    1,
+    1, 1, 1,
     // bottom left
-    1,
-    -1,
-    1,
+    1, -1, 1,
     // top right
-    -1,
-    1,
-    1,
+    -1, 1, 1,
     // bottom left
-    1,
-    -1,
-    1,
+    1, -1, 1,
     // bottom right
-    -1,
-    -1,
-    1,
+    -1, -1, 1,
   ]);
 
   backgroundBuffer = gl.createBuffer();
@@ -181,25 +162,16 @@ const init3dDrawing = (callback: () => void) => {
         normalMatrix: gl.getUniformLocation(program, "uNormalMatrix"),
         uSampler: gl.getUniformLocation(program, "uSampler"),
         baseColor: gl.getUniformLocation(program, "uBaseColor"),
-        pointLights: [
-          gl.getUniformLocation(program, "uPointLights[0]"),
-          gl.getUniformLocation(program, "uPointLights[1]"),
-          gl.getUniformLocation(program, "uPointLights[2]"),
-          gl.getUniformLocation(program, "uPointLights[3]"),
-        ],
-        pointLightLighting: [
-          gl.getUniformLocation(program, "uPointLightLighting[0]"),
-          gl.getUniformLocation(program, "uPointLightLighting[1]"),
-          gl.getUniformLocation(program, "uPointLightLighting[2]"),
-          gl.getUniformLocation(program, "uPointLightLighting[3]"),
-        ],
+        pointLights: new Array(pointLightCount).fill(0).map((_, i) => gl.getUniformLocation(program, `uPointLights[${i}]`)),
+        pointLightLighting: new Array(pointLightCount).fill(0).map((_, i) => gl.getUniformLocation(program, `uPointLightLighting[${i}]`)),
+
         drawType: gl.getUniformLocation(program, "uDrawType"),
         healthAndEnergy: gl.getUniformLocation(program, "uHealthAndEnergy"),
       },
     };
 
     addLoadingText("Loading models...");
-    Promise.all(["spaceship.obj", "projectile.obj"].map((url) => loadObj(url)))
+    Promise.all(["spaceship.obj", "projectile.obj", "advanced_fighter.obj", "alliance_starbase.obj"].map((url) => loadObj(url)))
       .then(async () => {
         defs.forEach((def) => {
           def.modelIndex = modelMap.get(def.model)[1];
@@ -212,7 +184,7 @@ const init3dDrawing = (callback: () => void) => {
   });
 };
 
-const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: number) => number) => {
+const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: number) => number, lightSources: PointLightData[]) => {
   const def = defs[player.defIndex];
   let bufferData = models[def.modelIndex].bindResources(gl);
 
@@ -259,29 +231,46 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
 
   // find the closest 4 projectiles to use as point lights
-  let projectiles: [number, Ballistic][] = [];
-  for (let i = 0; i < 4; i++) {
-    projectiles.push([Infinity, null]);
+  // let projectiles: [number, Ballistic][] = [];
+  // for (let i = 0; i < pointLightCount; i++) {
+  //   projectiles.push([Infinity, null]);
+  // }
+  // for (const projectile of state.projectiles.values()) {
+  //   const dist2 = l2NormSquared(projectile.position, player.position);
+  //   let insertionIndex = 0;
+  //   while (insertionIndex < pointLightCount && dist2 > projectiles[insertionIndex][0]) {
+  //     insertionIndex++;
+  //   }
+  //   if (insertionIndex < pointLightCount) {
+  //     projectiles.splice(insertionIndex, 0, [dist2, projectile]);
+  //     projectiles.pop();
+  //   }
+  // }
+
+  // find the closest lights
+  let lights: [number, PointLightData][] = [];
+  for (let i = 0; i < pointLightCount; i++) {
+    lights.push([Infinity, null]);
   }
-  for (const projectile of state.projectiles.values()) {
-    const dist2 = l2NormSquared(projectile.position, player.position);
+  for (const light of lightSources) {
+    const dist2 = l2NormSquared(light.position, player.position);
     let insertionIndex = 0;
-    while (insertionIndex < 4 && dist2 > projectiles[insertionIndex][0]) {
+    while (insertionIndex < pointLightCount && dist2 > lights[insertionIndex][0]) {
       insertionIndex++;
     }
-    if (insertionIndex < 4) {
-      projectiles.splice(insertionIndex, 0, [dist2, projectile]);
-      projectiles.pop();
+    if (insertionIndex < pointLightCount) {
+      lights.splice(insertionIndex, 0, [dist2, light]);
+      lights.pop();
     }
   }
 
-  for (let i = 0; i < 4; i++) {
-    if (projectiles[i][1]) {
-      const pointLight = [mapX(projectiles[i][1].position.x), mapY(projectiles[i][1].position.y), -10.0, 0];
+  for (let i = 0; i < pointLightCount; i++) {
+    if (lights[i][1]) {
+      const pointLight = [mapX(lights[i][1].position.x), mapY(lights[i][1].position.y), lights[i][1].position.z, 0];
       gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLight);
-      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], [4.0, 4.0, 4.0]);
+      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], lights[i][1].color);
     } else {
-      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], [mapX(-1600), mapY(-1600), -10.0, 0.0]);
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], [0.0, 0.0, 0.0, 0.0]);
       gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], [0.0, 0.0, 0.0]);
     }
   }
@@ -291,7 +280,7 @@ const drawPlayer = (player: Player, mapX: (x: number) => number, mapY: (y: numbe
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
 
   const viewMatrix = mat4.create();
-  mat4.translate(viewMatrix, viewMatrix, [mapX(player.position.x), mapY(player.position.y), -10.0]);
+  mat4.translate(viewMatrix, viewMatrix, [mapX(player.position.x), mapY(player.position.y), gamePlaneZ]);
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   const normalMatrix = mat4.create();
@@ -365,9 +354,8 @@ const drawEverything = () => {
   // I may be able to move this to the initialization code since I am probably just sticking with monolithic shaders
   gl.useProgram(programInfo.program);
 
-  
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-  
+
   if (!lastSelf) {
     return;
   }
@@ -376,14 +364,41 @@ const drawEverything = () => {
 
   // Minimap
   clear2d();
-  appendMinimap({ x: canvas.width - 200, y: canvas.height - 200, height: 200, width: 200 }, 0.03);
+  appendMinimap({ x: canvas.width - 200, y: canvas.height - 220, height: 200, width: 200 }, 0.03);
+  appendBottomBars();
 
   // From game space to world space
   const mapX = (x: number) => (x - lastSelf.position.x) / 10;
   const mapY = (y: number) => -(y - lastSelf.position.y) / 10;
 
+  // Compute all point lights in the scene
+  const lightSources: PointLightData[] = [];
+
+  for (const projectile of state.projectiles.values()) {
+    lightSources.push({
+      position: { x: projectile.position.x, y: projectile.position.y, z: gamePlaneZ },
+      color: [4.0, 4.0, 4.0],
+    });
+  }
+
   for (const player of state.players.values()) {
-    drawPlayer(player, mapX, mapY);
+    const def = defs[player.defIndex];
+    if (def.pointLights) {
+      for (const light of def.pointLights) {
+        lightSources.push({
+          position: {
+            x: player.position.x + light.position.x * Math.cos(player.heading) - light.position.y * Math.sin(player.heading),
+            y: player.position.y + light.position.x * Math.sin(player.heading) + light.position.y * Math.cos(player.heading),
+            z: gamePlaneZ + light.position.z,
+          },
+          color: light.color,
+        });
+      }
+    }
+  }
+
+  for (const player of state.players.values()) {
+    drawPlayer(player, mapX, mapY, lightSources);
   }
 
   for (const projectile of state.projectiles.values()) {
@@ -429,7 +444,7 @@ const drawEverything = () => {
     gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
 
     const viewMatrix = mat4.create();
-    mat4.translate(viewMatrix, viewMatrix, [mapX(projectile.position.x), mapY(projectile.position.y), -10.0]);
+    mat4.translate(viewMatrix, viewMatrix, [mapX(projectile.position.x), mapY(projectile.position.y), gamePlaneZ]);
     gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
     const normalMatrix = mat4.create();

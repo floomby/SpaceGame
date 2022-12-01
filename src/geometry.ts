@@ -1,6 +1,7 @@
 import { Player } from "./game";
 
 type Position = { x: number; y: number };
+type Position3 = Position & { z: number };
 type Circle = { position: Position; radius: number };
 type Rectangle = { x: number; y: number; width: number; height: number };
 type Line = { from: Position; to: Position };
@@ -177,6 +178,7 @@ const mirrorAngleVertically = (angle: number) => {
 
 export {
   Position,
+  Position3,
   Circle,
   Rectangle,
   Line,

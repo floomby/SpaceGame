@@ -1,7 +1,7 @@
 #version 300 es
 in highp vec2 vTextureCoord;
 in highp vec3 vNormal;
-in highp vec3 vPointLights[4];
+in highp vec3 vPointLights[10];
 in highp vec3 vPosition;
 flat in int vDrawType;
 in highp vec4 vColor;
@@ -10,7 +10,7 @@ precision mediump float;
 
 uniform vec3 uBaseColor;
 uniform sampler2D uSampler;
-uniform vec3 uPointLightLighting[4];
+uniform vec3 uPointLightLighting[10];
 uniform vec2 uHealthAndEnergy;
 
 layout(location = 0) out vec4 outColor;
@@ -59,10 +59,10 @@ void main(void) {
 
   vec3 viewDir = normalize(vec3(0.0, 0.0, -1.0));
   
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 10; i++) {
     vec3 lightDirection = normalize(vPointLights[i] - vPosition);
     vec3 halfVector = normalize(lightDirection + viewDir);
-    float lightDistance = length(vPointLights[i] - vPosition);
+    float lightDistance = length(vPointLights[i] - vPosition) / 5.0;
     
     float diffuse = max(dot(vNormal, lightDirection), 0.0) * 0.3;
     float specular = pow(max(dot(vNormal, halfVector), 0.0), 20.0);

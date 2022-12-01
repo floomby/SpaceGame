@@ -195,6 +195,7 @@ const loadStencilSprites = (stencilSheet: HTMLImageElement, callback: () => void
 let dockedMessage: HTMLDivElement;
 let dockedMessageText: HTMLHeadingElement;
 
+// Temporary to allow the 3d code to function in the project
 const adapter = () => {
   dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
   dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;

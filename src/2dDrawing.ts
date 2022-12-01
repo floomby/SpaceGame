@@ -1,8 +1,8 @@
 import { gl, canvas, projectionMatrix, DrawType } from "./3dDrawing";
-import { defs, UnitKind } from "./defs";
-import { CloakedState } from "./game";
+import { armDefs, ArmUsage, defs, UnitKind } from "./defs";
+import { availableCargoCapacity, CloakedState } from "./game";
 import { Position, Rectangle } from "./geometry";
-import { lastSelf, state, teamColorsFloat } from "./globals";
+import { lastSelf, selectedSecondary, state, teamColorsFloat } from "./globals";
 
 type Vertex2D = {
   x: number;
@@ -146,6 +146,10 @@ const appendCanvasTriangle = (p1: Position, p2: Position, p3: Position, zIndex: 
   hudColorBuffer.push(color[0], color[1], color[2], color[3], color[0], color[1], color[2], color[3], color[0], color[1], color[2], color[3]);
 };
 
+const appendCanvasRect = (rect: Rectangle, zIndex: number, color: [number, number, number, number]) => {
+  appendRect(canvasRectToNDC(rect), zIndex, color);
+};
+
 const clear = () => {
   hudVertexBuffer.length = 0;
   hudColorBuffer.length = 0;
@@ -235,12 +239,61 @@ const appendMinimap = (where: Rectangle, miniMapScaleFactor: number) => {
             x: playerCenter.x - playerX.x * 7 + playerY.x * 4,
             y: playerCenter.y - playerX.y * 7 + playerY.y * 4,
           };
-          
+
           appendCanvasTriangle(p1, p2, p3, 0, [teamColor[0], teamColor[1], teamColor[2], 1]);
         } else {
           appendCanvasCircle(playerCenter, 5, 0, [teamColor[0], teamColor[1], teamColor[2], 1]);
         }
       }
+    }
+  }
+};
+
+const appendCanvasBar = (
+  where: Rectangle,
+  value: number,
+  colorRight: [number, number, number, number],
+  colorLeft: [number, number, number, number]
+) => {
+  const barWidth = where.width * value;
+  const barRect = {
+    x: where.x,
+    y: where.y,
+    width: barWidth,
+    height: where.height,
+  };
+  appendCanvasRect(barRect, 0, colorRight);
+  barRect.x += barWidth;
+  barRect.width = where.width - barWidth;
+  appendCanvasRect(barRect, 0, colorLeft);
+};
+
+const appendBottomBars = () => {
+  const def = defs[lastSelf.defIndex];
+  const totalCargo = def.cargoCapacity - availableCargoCapacity(lastSelf);
+  appendCanvasBar(
+    { x: 10, y: canvas.height - 20, width: canvas.width / 2 - 20, height: 10 },
+    totalCargo / def.cargoCapacity,
+    [0.6, 0.3, 0.15, 0.8],
+    [0.3, 0.3, 0.3, 0.8]
+  );
+  if (lastSelf.arms.length > selectedSecondary) {
+    const armDef = armDefs[lastSelf.arms[selectedSecondary]];
+    if (armDef.usage === ArmUsage.Energy && armDef.energyCost !== undefined) {
+      const color: [number, number, number, number] = armDef.energyCost > lastSelf.energy ? [1.0, 0.0, 0.0, 0.8] : [0.0, 0.15, 1.0, 0.8];
+      appendCanvasBar(
+        { x: canvas.width / 2 + 10, y: canvas.height - 20, width: canvas.width / 2 - 20, height: 10 },
+        lastSelf.energy / def.energy,
+        color,
+        [0.3, 0.3, 0.3, 0.8]
+      );
+    } else if (armDef.usage === ArmUsage.Ammo && armDef.maxAmmo !== undefined) {
+      appendCanvasBar(
+        { x: canvas.width / 2 + 10, y: canvas.height - 20, width: canvas.width / 2 - 20, height: 10 },
+        lastSelf.slotData[selectedSecondary].ammo / armDef.maxAmmo,
+        [0.7, 0.7, 0.7, 0.8],
+        [0.3, 0.3, 0.3, 0.8]
+      );
     }
   }
 };
@@ -275,4 +328,4 @@ const draw = (programInfo: any) => {
   gl.drawArrays(gl.TRIANGLES, 0, bufferData.count);
 };
 
-export { draw as draw2d, appendRect, appendMinimap, clear as clear2d };
+export { draw as draw2d, appendRect, appendMinimap, clear as clear2d, appendBottomBars };

@@ -1,5 +1,5 @@
 import { effectiveInfinity } from "../game";
-import { Position, Rectangle } from "../geometry";
+import { Position, Position3, Rectangle } from "../geometry";
 
 const computeBrakeDistance = (acceleration: number, speed: number) => {
   return (speed * speed) / (2 * acceleration);
@@ -17,6 +17,11 @@ enum SlotKind {
   Large,
   Mining,
 }
+
+type PointLightData = {
+  position: Position3;
+  color: [number, number, number];
+};
 
 type UnitDefinition = {
   name: string;
@@ -51,6 +56,7 @@ type UnitDefinition = {
   isCloaky?: boolean;
   model: string;
   modelIndex?: number;
+  pointLights?: PointLightData[];
 };
 
 const defs: UnitDefinition[] = [];
@@ -84,7 +90,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Drone - 1
   defs.push({
@@ -113,7 +119,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Alliance Starbase - 2
   defs.push({
@@ -141,7 +147,11 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
-    model: "spaceship"
+    model: "alliance_starbase",
+    pointLights: [
+      { position: { x: 31, y: 10, z: 3.3 }, color: [0.0, 5.0, 0] },
+      { position: { x: 31, y: -10, z: 3.3 }, color: [0.0, 5.0, 0] },
+    ],
   });
   // Confederacy Starbase - 3
   defs.push({
@@ -169,7 +179,7 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Advanced Fighter - 4
   defs.push({
@@ -198,7 +208,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 20,
-    model: "spaceship"
+    model: "advanced_fighter",
   });
   // Seeker - 5
   defs.push({
@@ -227,7 +237,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 20,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Strafer - 6
   defs.push({
@@ -256,7 +266,7 @@ const initShipsAndStations = () => {
     scanRange: 3000,
     primaryDefIndex: 0,
     mass: 8,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Rogue Starbase - 7
   defs.push({
@@ -279,7 +289,7 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Venture - 8
   defs.push({
@@ -308,7 +318,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 50,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Spartan - 9
   defs.push({
@@ -337,7 +347,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 50,
-    model: "spaceship"
+    model: "spaceship",
   });
   // Striker - 10
   defs.push({
@@ -367,7 +377,7 @@ const initShipsAndStations = () => {
     primaryDefIndex: 2,
     mass: 8,
     isCloaky: true,
-    model: "spaceship"
+    model: "spaceship",
   });
 
   for (let i = 0; i < defs.length; i++) {
@@ -396,4 +406,16 @@ const emptyLoadout = (index: number) => {
   return [...def.slots] as unknown as EmptySlot[];
 };
 
-export { UnitKind, SlotKind, UnitDefinition, EmptySlot, defs, defMap, initShipsAndStations, computeBrakeDistance, emptySlotData, emptyLoadout };
+export {
+  UnitKind,
+  SlotKind,
+  UnitDefinition,
+  EmptySlot,
+  PointLightData,
+  defs,
+  defMap,
+  initShipsAndStations,
+  computeBrakeDistance,
+  emptySlotData,
+  emptyLoadout,
+};

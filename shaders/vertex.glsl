@@ -8,13 +8,13 @@ uniform mat4 uModelMatrix;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform mat4 uNormalMatrix;
-uniform vec4 uPointLights[4];
+uniform vec4 uPointLights[10];
 
 uniform int uDrawType;
 
 out highp vec2 vTextureCoord;
 out highp vec3 vNormal;
-out highp vec3 vPointLights[4];
+out highp vec3 vPointLights[10];
 // The vPosition is also use for passing the bar realative fragment position to the fragment shader
 out highp vec3 vPosition;
 flat out int vDrawType;
@@ -57,7 +57,7 @@ void main() {
   vPosition = (uViewMatrix * uModelMatrix * aVertexPosition).xyz;
 
   if (uDrawType == 0) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 10; i++) {
       vPointLights[i] = (uViewMatrix * uPointLights[i]).xyz;
     }
   }

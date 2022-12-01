@@ -386,6 +386,24 @@ const rasterizeText = (text: string, font: string, color: [number, number, numbe
   );
 };
 
+const rasterizeTextBitmap = (text: string, font: string, color: [number, number, number, number]) => {
+  if (rasterizerContext === null) {
+    return;
+  }
+  rasterizerContext.clearRect(0, 0, rasterizerContext.canvas.width, rasterizerContext.canvas.height);
+  rasterizerContext.font = font;
+  rasterizerContext.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
+  rasterizerContext.fillText(text, 0, 0);
+  let metric = rasterizerContext.measureText(text);
+  return createImageBitmap(
+    rasterizerCanvas,
+    0,
+    0,
+    Math.min(metric.width, rasterizerCanvas.width),
+    Math.min(metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent, rasterizerCanvas.height)
+  );
+};
+
 const drawChats = (chats: IterableIterator<ChatMessage>) => {
   for (const chat of chats) {
     const player = state.players.get(chat.id);
@@ -422,8 +440,8 @@ const computeArrows = (target: Player, targetAsteroid: Asteroid) => {
         distance < def.scanRange &&
         (asteroid.position.x < canvasGameTopLeft.x ||
           asteroid.position.x > canvasGameBottomRight.x ||
-          asteroid.position.y > canvasGameTopLeft.y ||
-          asteroid.position.y < canvasGameBottomRight.y)
+          asteroid.position.y < canvasGameTopLeft.y ||
+          asteroid.position.y > canvasGameBottomRight.y)
       ) {
         arrows.push({
           kind: TargetKind.Asteroid,
@@ -446,8 +464,8 @@ const computeArrows = (target: Player, targetAsteroid: Asteroid) => {
       !player.docked &&
       (player.position.x < canvasGameTopLeft.x ||
         player.position.x > canvasGameBottomRight.x ||
-        player.position.y > canvasGameTopLeft.y ||
-        player.position.y < canvasGameBottomRight.y)
+        player.position.y < canvasGameTopLeft.y ||
+        player.position.y > canvasGameBottomRight.y)
     ) {
       arrows.push({
         kind: TargetKind.Player,
@@ -604,6 +622,87 @@ const drawSectorArrow = () => {
   }
 };
 
+type Message = {
+  framesRemaining: number;
+  whileDocked: boolean;
+  textData: ImageBitmap;
+  what: string;
+};
+
+let messages: Message[] = [];
+
+const pushMessage = async (what: string, framesRemaining: number = 240, color: [number, number, number, number] = [1.0, 1.0, 1.0, 1.0]) => {
+  console.log(`pushing message: ${what}`);
+  messages.push({ framesRemaining, whileDocked: !!lastSelf?.docked, textData: await rasterizeTextBitmap(what, "22px Arial", color), what });
+};
+
+const drawMessages = (sixtieths: number) => {
+  // draw all the messages at the top of the screen
+  let y = 30;
+  for (let i = 0; i < messages.length; i++) {
+    messages[i].framesRemaining -= sixtieths;
+    if (messages[i].framesRemaining <= 0) {
+      messages.splice(i, 1);
+      i--;
+      continue;
+    }
+    const savedAlpha = ctx.globalAlpha;
+    const alpha = Math.min(messages[i].framesRemaining / 60, 1);
+    ctx.globalAlpha = alpha;
+    // ctx.fillStyle = message.color;
+    // ctx.fillText(message.what, canvas.width / 2, y);
+    ctx.drawImage(messages[i].textData, canvas.width / 2 - messages[i].textData.width / 2, y);
+    y += 30 * alpha;
+    ctx.globalAlpha = savedAlpha;
+  }
+};
+
+let dockedMessage: HTMLDivElement;
+let dockedMessageText: HTMLHeadingElement;
+
+const initDockingMessages = () => {
+  dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
+  dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
+}
+
+let lastDockedMessage: Message | undefined = undefined;
+let dockingTextNotificationTimeout: number | undefined = undefined;
+
+const displayDockedMessages = (sixtieths) => {
+  const filteredMessages = messages.filter((message) => {
+    message.framesRemaining -= sixtieths;
+    return message.whileDocked;
+  });
+
+  // No messages to display
+  if (filteredMessages.length === 0 && lastDockedMessage) {
+    dockedMessage.classList.remove("fadeIn");
+    dockedMessage.classList.add("fadeOut");
+    lastDockedMessage = undefined;
+    return;
+  }
+  const messageToDisplay = filteredMessages[filteredMessages.length - 1];
+
+  if (filteredMessages.length && (!lastDockedMessage || lastDockedMessage !== messageToDisplay)) {
+    dockedMessageText.innerText = messageToDisplay.what;
+    if (!lastDockedMessage) {
+      // New message to show
+      dockedMessage.classList.add("fadeIn");
+      dockedMessage.style.display = "block";
+    } else {
+      // New message to show, but we're already showing a message
+      dockedMessageText.classList.add("notifyChanged");
+      if (dockingTextNotificationTimeout) {
+        clearTimeout(dockingTextNotificationTimeout);
+      }
+      dockingTextNotificationTimeout = window.setTimeout(() => {
+        dockedMessageText.classList.remove("notifyChanged");
+      }, 500);
+    }
+    lastDockedMessage = messageToDisplay;
+  }
+};
+
 export {
   ArrowData,
   draw as draw2d,
@@ -625,4 +724,9 @@ export {
   computeArrows,
   drawArrows,
   drawSectorArrow,
+  pushMessage,
+  drawMessages,
+  initDockingMessages,
+  displayDockedMessages,
+  dockedMessage,
 };

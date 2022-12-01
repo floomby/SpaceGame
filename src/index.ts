@@ -37,7 +37,7 @@ import {
   clearStack,
 } from "./dialog";
 import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
-import { drawEverything, fadeOutCollectable, fadeOutMine, initDrawing, initStars, pushMessage } from "./drawing";
+import { drawEverything, fadeOutCollectable, fadeOutMine, initDrawing, initStars } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
   addLoadingText,
@@ -74,6 +74,7 @@ import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
 import { init3dDrawing, drawEverything as drawEverything3 } from "./3dDrawing";
 import { rasterizeText } from "./2dDrawing";
+import { pushMessage } from "./2dDrawing";
 
 let chats: ChatMessage[] = [];
 
@@ -301,7 +302,7 @@ const loop = () => {
 
   // drawEverything(state, self, target, targetAsteroid, ownId, selectedSecondary, keybind, sixtieths, lastChats);
 
-  drawEverything3(target, targetAsteroid, lastChats);
+  drawEverything3(target, targetAsteroid, lastChats, sixtieths);
 
   requestAnimationFrame(loop);
 };

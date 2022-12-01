@@ -1,6 +1,5 @@
 import { initEffects } from "./effects";
 import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
-import { adapter } from "./drawing";
 import { glMatrix, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { defs } from "./defs";
@@ -25,6 +24,9 @@ import {
   computeArrows,
   drawArrows,
   drawSectorArrow,
+  drawMessages,
+  initDockingMessages,
+  displayDockedMessages,
 } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
@@ -97,18 +99,12 @@ const pointLightCount = 10;
 const gamePlaneZ = -50.0;
 
 const init3dDrawing = (callback: () => void) => {
-  adapter();
+  initDockingMessages();
 
   initEffects();
 
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
   overlayCanvas = document.getElementById("overlayCanvas") as HTMLCanvasElement;
-  // overlayCanvas.onmousedown = (e) => {
-  //   // prevent right click menu
-  //   if (e.button === 2) {
-  //     e.preventDefault();
-  //   }
-  // };
 
   // TODO Handle device pixel ratio
   const handleSizeChange = () => {
@@ -517,7 +513,7 @@ const drawBackground = (where: Position) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
-const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>) => {
+const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // I may be able to move this to the initialization code since I am probably just sticking with monolithic shaders
@@ -548,11 +544,13 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   drawChats(chats.values());
-
-  const arrows = computeArrows(target, targetAsteroid);
-  drawArrows(arrows);
-
-  drawSectorArrow();
+  
+  if (!lastSelf.docked) {
+    const arrows = computeArrows(target, targetAsteroid);
+    drawArrows(arrows);
+    drawSectorArrow();
+    drawMessages(sixtieths);
+  }
 
   // Compute all point lights in the scene
   const lightSources: PointLightData[] = [];
@@ -649,10 +647,14 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
-  if (target) {
-    drawTarget(target, targetDisplayRect);
-  } else if (targetAsteroid) {
-    // drawTargetAsteroid();
+  if (!lastSelf.docked) {
+    if (target) {
+      drawTarget(target, targetDisplayRect);
+    } else if (targetAsteroid) {
+      // drawTargetAsteroid();
+    }
+  } else {
+    displayDockedMessages(sixtieths);
   }
 };
 

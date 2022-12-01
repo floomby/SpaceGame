@@ -192,18 +192,18 @@ const loadStencilSprites = (stencilSheet: HTMLImageElement, callback: () => void
   });
 };
 
-let dockedMessage: HTMLDivElement;
-let dockedMessageText: HTMLHeadingElement;
+// let dockedMessage: HTMLDivElement;
+// let dockedMessageText: HTMLHeadingElement;
 
 // Temporary to allow the 3d code to function in the project
 const adapter = () => {
-  dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
-  dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
+  // dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
+  // dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
 }
 
 const initDrawing = (callback: () => void) => {
-  dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
-  dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
+  // dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
+  // dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
   // Defs need to be initialized before effects
   initEffects();
   canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -690,9 +690,9 @@ type Message = {
 
 let messages: Message[] = [];
 
-const pushMessage = (what: string, framesRemaining: number = 240, color = "white") => {
-  messages.push({ what, framesRemaining, whileDocked: !!lastSelf?.docked, color });
-};
+// const pushMessage = (what: string, framesRemaining: number = 240, color = "white") => {
+//   messages.push({ what, framesRemaining, whileDocked: !!lastSelf?.docked, color });
+// };
 
 const reduceMessageTimeRemaining = (sixtieths: number) => {
   messages = messages.filter((message) => {
@@ -717,41 +717,41 @@ const drawMessages = () => {
   }
 };
 
-let lastDockedMessage: Message | undefined = undefined;
+// let lastDockedMessage: Message | undefined = undefined;
 
-let dockingTextNotificationTimeout: number | undefined = undefined;
+// let dockingTextNotificationTimeout: number | undefined = undefined;
 
-const displayDockedMessages = () => {
-  const filteredMessages = messages.filter((message) => message.whileDocked);
+// const displayDockedMessages = () => {
+//   const filteredMessages = messages.filter((message) => message.whileDocked);
 
-  // No messages to display
-  if (filteredMessages.length === 0 && lastDockedMessage) {
-    dockedMessage.classList.remove("fadeIn");
-    dockedMessage.classList.add("fadeOut");
-    lastDockedMessage = undefined;
-    return;
-  }
-  const messageToDisplay = filteredMessages[filteredMessages.length - 1];
+//   // No messages to display
+//   if (filteredMessages.length === 0 && lastDockedMessage) {
+//     dockedMessage.classList.remove("fadeIn");
+//     dockedMessage.classList.add("fadeOut");
+//     lastDockedMessage = undefined;
+//     return;
+//   }
+//   const messageToDisplay = filteredMessages[filteredMessages.length - 1];
 
-  if (filteredMessages.length && (!lastDockedMessage || lastDockedMessage !== messageToDisplay)) {
-    dockedMessageText.innerText = messageToDisplay.what;
-    if (!lastDockedMessage) {
-      // New message to show
-      dockedMessage.classList.add("fadeIn");
-      dockedMessage.style.display = "block";
-    } else {
-      // New message to show, but we're already showing a message
-      dockedMessageText.classList.add("notifyChanged");
-      if (dockingTextNotificationTimeout) {
-        clearTimeout(dockingTextNotificationTimeout);
-      }
-      dockingTextNotificationTimeout = window.setTimeout(() => {
-        dockedMessageText.classList.remove("notifyChanged");
-      }, 500);
-    }
-    lastDockedMessage = messageToDisplay;
-  }
-};
+//   if (filteredMessages.length && (!lastDockedMessage || lastDockedMessage !== messageToDisplay)) {
+//     dockedMessageText.innerText = messageToDisplay.what;
+//     if (!lastDockedMessage) {
+//       // New message to show
+//       dockedMessage.classList.add("fadeIn");
+//       dockedMessage.style.display = "block";
+//     } else {
+//       // New message to show, but we're already showing a message
+//       dockedMessageText.classList.add("notifyChanged");
+//       if (dockingTextNotificationTimeout) {
+//         clearTimeout(dockingTextNotificationTimeout);
+//       }
+//       dockingTextNotificationTimeout = window.setTimeout(() => {
+//         dockedMessageText.classList.remove("notifyChanged");
+//       }, 500);
+//     }
+//     lastDockedMessage = messageToDisplay;
+//   }
+// };
 
 const drawLine = (self: Player, line: Line) => {
   const to = { x: line.to.x - self.position.x + canvas.width / 2, y: line.to.y - self.position.y + canvas.height / 2 };
@@ -1191,7 +1191,7 @@ const drawEverything = (
       }
       drawMessages();
     } else if (self) {
-      displayDockedMessages();
+      // displayDockedMessages();
     }
   } catch (e) {
     console.error(e);
@@ -1216,10 +1216,10 @@ export {
   effectSprites,
   sprites,
   composited,
-  dockedMessage,
+  // dockedMessage,
   ChatMessage,
   initStars,
-  pushMessage,
+  // pushMessage,
   fadeOutCollectable,
   fadeOutMine,
   canvasCoordsToGameCoords,

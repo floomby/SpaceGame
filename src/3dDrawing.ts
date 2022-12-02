@@ -33,6 +33,7 @@ import {
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 import { getNameOfPlayer } from "./rest";
+import { createParticleBuffers, drawParticles } from "./particle";
 
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
@@ -40,6 +41,7 @@ let ctx: CanvasRenderingContext2D;
 let gl: WebGL2RenderingContext;
 let programInfo: any;
 let particleProgramInfo: any;
+let particleRenderingProgramInfo: any;
 let backgroundTexture: WebGLTexture;
 
 enum DrawType {
@@ -56,18 +58,25 @@ enum DrawType {
   TargetResourceBar = 10,
 }
 
-const initShaders = (callback: (program: any, particleProgram: any) => void) => {
+const initShaders = (callback: (program: any, particleProgram: any, particleRenderingProgram: any) => void) => {
   addLoadingText("Loading and compiling shaders...");
   Promise.all(
-    ["shaders/vertex.glsl", "shaders/fragment.glsl", "shaders/particleVertex.glsl", "shaders/particleFragment.glsl"].map((file) =>
-      fetch(file).then((res) => res.text())
-    )
+    [
+      "shaders/vertex.glsl",
+      "shaders/fragment.glsl",
+      "shaders/particleVertex.glsl",
+      "shaders/particleFragment.glsl",
+      "shaders/particleRenderingVertex.glsl",
+      "shaders/particleRenderingFragment.glsl",
+    ].map((file) => fetch(file).then((res) => res.text()))
   )
-    .then(([vsSource, fsSource, pvsSource, pfsSource]) => {
+    .then(([vsSource, fsSource, pvsSource, pfsSource, prvsSource, prfsSource]) => {
       const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
       const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
       const particleVertexShader = loadShader(gl.VERTEX_SHADER, pvsSource);
       const particleFragmentShader = loadShader(gl.FRAGMENT_SHADER, pfsSource);
+      const particleRenderingVertexShader = loadShader(gl.VERTEX_SHADER, prvsSource);
+      const particleRenderingFragmentShader = loadShader(gl.FRAGMENT_SHADER, prfsSource);
 
       const shaderProgram = gl.createProgram();
       gl.attachShader(shaderProgram, vertexShader);
@@ -90,7 +99,17 @@ const initShaders = (callback: (program: any, particleProgram: any) => void) => 
         return null;
       }
 
-      callback(shaderProgram, particleShaderProgram);
+      const particleRenderingShaderProgram = gl.createProgram();
+      gl.attachShader(particleRenderingShaderProgram, particleRenderingVertexShader);
+      gl.attachShader(particleRenderingShaderProgram, particleRenderingFragmentShader);
+      gl.linkProgram(particleRenderingShaderProgram);
+
+      if (!gl.getProgramParameter(particleRenderingShaderProgram, gl.LINK_STATUS)) {
+        console.error(`Unable to initialize the shader program: ${gl.getProgramInfoLog(particleRenderingShaderProgram)}`);
+        return null;
+      }
+
+      callback(shaderProgram, particleShaderProgram, particleRenderingShaderProgram);
     })
     .catch(console.error);
 };
@@ -207,7 +226,9 @@ const init3dDrawing = (callback: () => void) => {
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  initShaders((program, particleProgram) => {
+  createParticleBuffers();
+
+  initShaders((program, particleProgram, particleRenderingProgram) => {
     programInfo = {
       program,
       attribLocations: {
@@ -236,18 +257,32 @@ const init3dDrawing = (callback: () => void) => {
       attribLocations: {
         position: gl.getAttribLocation(particleProgram, "aPosition"),
         age: gl.getAttribLocation(particleProgram, "aAge"),
-        life: gl.getAttribLocation(particleProgram, "aLife"),
         velocity: gl.getAttribLocation(particleProgram, "aVelocity"),
+        life: gl.getAttribLocation(particleProgram, "aLife"),
       },
       uniformLocations: {
-        uTimeDelta: gl.getUniformLocation(particleProgram, "uTimeDelta"),
-        uNoise: gl.getUniformLocation(particleProgram, "uNoise"),
-        uGravity: gl.getUniformLocation(particleProgram, "uGravity"),
-        uOrigin: gl.getUniformLocation(particleProgram, "uOrigin"),
-        uMinTheta: gl.getUniformLocation(particleProgram, "uMinTheta"),
-        uMaxTheta: gl.getUniformLocation(particleProgram, "uMaxTheta"),
-        uMinSpeed: gl.getUniformLocation(particleProgram, "uMinSpeed"),
-        uMaxSpeed: gl.getUniformLocation(particleProgram, "uMaxSpeed"),
+        timeDelta: gl.getUniformLocation(particleProgram, "uTimeDelta"),
+        noise: gl.getUniformLocation(particleProgram, "uNoise"),
+        gravity: gl.getUniformLocation(particleProgram, "uGravity"),
+        origin: gl.getUniformLocation(particleProgram, "uOrigin"),
+        minTheta: gl.getUniformLocation(particleProgram, "uMinTheta"),
+        maxTheta: gl.getUniformLocation(particleProgram, "uMaxTheta"),
+        minSpeed: gl.getUniformLocation(particleProgram, "uMinSpeed"),
+        maxSpeed: gl.getUniformLocation(particleProgram, "uMaxSpeed"),
+      },
+    };
+
+    particleRenderingProgramInfo = {
+      program: particleRenderingProgram,
+      attribLocations: {
+        position: gl.getAttribLocation(particleRenderingProgram, "aPosition"),
+        age: gl.getAttribLocation(particleRenderingProgram, "aAge"),
+        velocity: gl.getAttribLocation(particleRenderingProgram, "aVelocity"),
+        life: gl.getAttribLocation(particleRenderingProgram, "aLife"),
+      },
+      uniformLocations: {
+        projectionMatrix: gl.getUniformLocation(particleRenderingProgram, "uProjectionMatrix"),
+        viewMatrix: gl.getUniformLocation(particleRenderingProgram, "uViewMatrix"),
       },
     };
 
@@ -826,7 +861,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
 
-  drawBackground(lastSelf.position);
+  // drawBackground(lastSelf.position);
 
   const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };
 
@@ -878,12 +913,12 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   for (const player of state.players.values()) {
-    drawPlayer(player, lightSources);
+    // drawPlayer(player, lightSources);
   }
 
   for (const asteroid of state.asteroids.values()) {
     asteroid.roll += asteroid.rotationRate * sixtieths;
-    drawAsteroid(asteroid, lightSources);
+    // drawAsteroid(asteroid, lightSources);
   }
 
   for (const projectile of state.projectiles.values()) {
@@ -949,6 +984,9 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   draw2d(programInfo);
 
+  drawParticles(sixtieths);
+  gl.useProgram(programInfo.program);
+
   // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
@@ -994,4 +1032,6 @@ export {
   mapGameYToWorld,
   canvasGameTopLeft,
   canvasGameBottomRight,
+  particleProgramInfo,
+  particleRenderingProgramInfo,
 };

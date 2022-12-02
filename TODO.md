@@ -17,22 +17,16 @@
 
 - Anti chat spam needed
 
-### 3d Things I have bypassed fixing
-
-- Health and energy bars in both the world and the target display are incorrect (they are almost identical to fix)
-
 ### Hud Checklist
 
-- target asteroid drawing
-- target asteroid mineral text
-- sector lines
+- target asteroid drawing (1)
+- target asteroid mineral text (1)
+- sector lines (2)
 - docking and repair text
 - weapon text
-- message text
 
 ### World Checklist
 
-- draw asteroids
 - draw mines
 - fix projectile drawing
 - draw collectables

@@ -9,6 +9,8 @@ uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform mat4 uNormalMatrix;
 uniform vec4 uPointLights[10];
+// When drawing asteroids the "health" is the resources left
+uniform mediump vec3 uHealthAndEnergyAndScale;
 
 uniform int uDrawType;
 
@@ -30,17 +32,18 @@ void main() {
     return;
   }
 
-  // In world health bar
-  if (uDrawType == 3) {
-    gl_Position = uProjectionMatrix * uViewMatrix * aVertexPosition;
-    vPosition = vec3(aVertexPosition.x / 2.0 + 0.5, 0.0, 0.0);
+  // In world health bar or resource bare
+  if (uDrawType == 3 || uDrawType == 7) {
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aVertexPosition.x * uHealthAndEnergyAndScale.z, aVertexPosition.y + uHealthAndEnergyAndScale.z, aVertexPosition.z, 1.0);
+    vPosition = vec3(aVertexPosition.x / uHealthAndEnergyAndScale.z / 2.0 + 0.5, 0.0, 0.0);
     return;
   }
 
   // In world energy bar
   if (uDrawType == 4) {
-    gl_Position = uProjectionMatrix  * uViewMatrix * vec4(aVertexPosition.x, aVertexPosition.y - 0.1, aVertexPosition.z, 1.0);
-    vPosition = vec3(aVertexPosition.x / 2.0 + 0.5, 0.0, 0.0);
+    gl_Position = uProjectionMatrix  * uViewMatrix * 
+      vec4(aVertexPosition.x * uHealthAndEnergyAndScale.z, aVertexPosition.y - 0.5 + uHealthAndEnergyAndScale.z, aVertexPosition.z, 1.0);
+    vPosition = vec3(aVertexPosition.x / uHealthAndEnergyAndScale.z / 2.0 /  + 0.5, 0.0, 0.0);
     return;
   }
 

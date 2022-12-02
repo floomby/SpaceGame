@@ -11,7 +11,7 @@ precision mediump float;
 uniform vec3 uBaseColor;
 uniform sampler2D uSampler;
 uniform vec3 uPointLightLighting[10];
-uniform vec2 uHealthAndEnergy;
+uniform mediump vec3 uHealthAndEnergyAndScale;
 
 layout(location = 0) out vec4 outColor;
 
@@ -28,7 +28,7 @@ void main(void) {
 
   // In world health bar
   if (vDrawType == 3) {
-    if (vPosition.x > uHealthAndEnergy.x) {
+    if (vPosition.x > uHealthAndEnergyAndScale.x) {
       outColor = vec4(1.0, 0.0, 0.0, 0.8);
     } else {
       outColor = vec4(0.0, 1.0, 0.0, 0.8);
@@ -38,7 +38,7 @@ void main(void) {
 
   // In world energy bar
   if (vDrawType == 4) {
-    if (vPosition.x > uHealthAndEnergy.y) {
+    if (vPosition.x > uHealthAndEnergyAndScale.y) {
       outColor = vec4(0.3, 0.3, 0.3, 0.8);
     } else {
       outColor = vec4(0.0, 0.0, 1.0, 0.8);
@@ -49,6 +49,16 @@ void main(void) {
   // Background
   if (vDrawType == 5) {
     outColor = texture(uSampler, vTextureCoord);
+    return;
+  }
+
+  // In world resource bar
+  if (vDrawType == 7) {
+    if (vPosition.x > uHealthAndEnergyAndScale.x) {
+      outColor = vec4(0.3, 0.3, 0.3, 0.8);
+    } else {
+      outColor = vec4(0.5, 0.15, 0.15, 0.8);
+    }
     return;
   }
 

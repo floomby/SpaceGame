@@ -632,7 +632,6 @@ type Message = {
 let messages: Message[] = [];
 
 const pushMessage = async (what: string, framesRemaining: number = 240, color: [number, number, number, number] = [1.0, 1.0, 1.0, 1.0]) => {
-  console.log(`pushing message: ${what}`);
   messages.push({ framesRemaining, whileDocked: !!lastSelf?.docked, textData: await rasterizeTextBitmap(what, "22px Arial", color), what });
 };
 

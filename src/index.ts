@@ -336,6 +336,12 @@ const targetAtCoords = (coords: Position) => {
   }
 };
 
+const initAsteroid = (asteroid: Asteroid) => {
+  asteroid.pitch = Math.random() * Math.PI * 2;
+  asteroid.roll = Math.random() * Math.PI * 2;
+  asteroid.rotationRate = Math.random() * 0.01 - 0.005;
+}
+
 const run = () => {
   addLoadingText("Initializing client game state");
   initBlankState();
@@ -356,7 +362,7 @@ const run = () => {
     }) => {
       setOwnId(data.id);
       setCurrentSector(data.sector);
-      initStars(data.sector);
+      // initStars(data.sector);
       initSettings();
       initCargo();
       clearDialogStack();
@@ -365,6 +371,7 @@ const run = () => {
       initInputHandlers(targetAtCoords);
       setFaction(data.faction);
       for (const asteroid of data.asteroids) {
+        initAsteroid(asteroid);
         state.asteroids.set(asteroid.id, asteroid);
       }
       for (const collectable of data.collectables) {
@@ -469,6 +476,7 @@ const run = () => {
     if (data.to !== currentSector) {
       state.asteroids.clear();
       for (const asteroid of data.asteroids) {
+        initAsteroid(asteroid);
         state.asteroids.set(asteroid.id, asteroid);
       }
       state.collectables.clear();
@@ -481,7 +489,7 @@ const run = () => {
         mine.phase = Math.random() * Math.PI * 2;
         state.mines.set(mine.id, mine);
       }
-      initStars(data.to);
+      // initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);
     }

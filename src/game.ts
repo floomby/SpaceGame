@@ -115,6 +115,9 @@ type Asteroid = Circle & {
   resources: number;
   heading: number;
   defIndex: number;
+  roll?: number;
+  pitch?: number;
+  rotationRate?: number;
 };
 
 type Missile = Entity & {

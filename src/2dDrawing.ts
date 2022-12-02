@@ -15,7 +15,7 @@ import {
 import { armDefs, ArmUsage, defs, Faction, UnitKind } from "./defs";
 import { Asteroid, availableCargoCapacity, ChatMessage, CloakedState, Player, sectorBounds, TargetKind } from "./game";
 import { CardinalDirection, findHeadingBetween, l2Norm, Position, Position3, projectRayFromCenterOfRect, Rectangle } from "./geometry";
-import { lastSelf, selectedSecondary, state, teamColorsFloat, teamColorsOpaque } from "./globals";
+import { keybind, lastSelf, selectedSecondary, state, teamColorsFloat, teamColorsOpaque } from "./globals";
 
 const canvasCoordsToNDC = (x: number, y: number) => {
   return {
@@ -313,6 +313,10 @@ const blitImageDataCentered = (image: ImageData, x: number, y: number) => {
   ctx.putImageData(image, x, y, 0, 0, image.width, image.width);
 };
 
+const blitImageDataTopLeft = (image: ImageData, x: number, y: number) => {
+  ctx.putImageData(image, x, y, 0, 0, image.width, image.width);
+};
+
 const blitImageDataToOverlayCenteredFromGame = (image: ImageData, gameCoords: Position, offset: Position3) => {
   const pos = vec4.create();
   vec4.set(pos, mapGameXToWorld(gameCoords.x) + offset.x, -mapGameYToWorld(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
@@ -369,38 +373,64 @@ const initRasterizer = (size: Position) => {
   rasterizerContext.textBaseline = "top";
 };
 
-const rasterizeText = (text: string, font: string, color: [number, number, number, number]) => {
+const rasterizeText = (text: string, font: string, color: [number, number, number, number], filter = "none", padding = 0) => {
   if (rasterizerContext === null) {
     return;
   }
   rasterizerContext.clearRect(0, 0, rasterizerContext.canvas.width, rasterizerContext.canvas.height);
   rasterizerContext.font = font;
   rasterizerContext.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
-  rasterizerContext.fillText(text, 0, 0);
+  rasterizerContext.filter = filter;
+  rasterizerContext.fillText(text, padding, padding);
   let metric = rasterizerContext.measureText(text);
   return rasterizerContext.getImageData(
     0,
     0,
-    Math.min(metric.width, rasterizerCanvas.width),
-    Math.min(metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent, rasterizerCanvas.height)
+    Math.min(metric.width + padding * 2, rasterizerCanvas.width),
+    Math.min(metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent + padding * 2, rasterizerCanvas.height)
   );
 };
 
-const rasterizeTextBitmap = (text: string, font: string, color: [number, number, number, number]) => {
+const rasterizeTextMultiline = (text: string[], font: string, color: [number, number, number, number], filter = "none", padding = 0) => {
   if (rasterizerContext === null) {
     return;
   }
   rasterizerContext.clearRect(0, 0, rasterizerContext.canvas.width, rasterizerContext.canvas.height);
   rasterizerContext.font = font;
   rasterizerContext.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
-  rasterizerContext.fillText(text, 0, 0);
+  rasterizerContext.filter = filter;
+  let height = padding;
+  let maxLineWidth = 0;
+  for (let i = 0; i < text.length; i++) {
+    rasterizerContext.fillText(text[i], padding, height);
+    let metric = rasterizerContext.measureText(text[i]);
+    height += metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent;
+    maxLineWidth = Math.max(maxLineWidth, metric.width);
+  }
+  return rasterizerContext.getImageData(
+    0,
+    0,
+    Math.min(maxLineWidth + padding * 2, rasterizerCanvas.width),
+    Math.min(height + padding * 2, rasterizerCanvas.height)
+  );
+};
+
+const rasterizeTextBitmap = (text: string, font: string, color: [number, number, number, number], filter = "none", padding = 0) => {
+  if (rasterizerContext === null) {
+    return;
+  }
+  rasterizerContext.clearRect(0, 0, rasterizerContext.canvas.width, rasterizerContext.canvas.height);
+  rasterizerContext.font = font;
+  rasterizerContext.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
+  rasterizerContext.filter = filter;
+  rasterizerContext.fillText(text, padding, padding);
   let metric = rasterizerContext.measureText(text);
   return createImageBitmap(
     rasterizerCanvas,
     0,
     0,
-    Math.min(metric.width, rasterizerCanvas.width),
-    Math.min(metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent, rasterizerCanvas.height)
+    Math.min(metric.width + padding * 2, rasterizerCanvas.width),
+    Math.min(metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent + padding * 2, rasterizerCanvas.height)
   );
 };
 
@@ -662,7 +692,7 @@ let dockedMessageText: HTMLHeadingElement;
 const initDockingMessages = () => {
   dockedMessage = document.getElementById("dockedMessage") as HTMLHeadingElement;
   dockedMessageText = document.getElementById("dockedMessageText") as HTMLHeadingElement;
-}
+};
 
 let lastDockedMessage: Message | undefined = undefined;
 let dockingTextNotificationTimeout: number | undefined = undefined;
@@ -702,6 +732,25 @@ const displayDockedMessages = (sixtieths) => {
   }
 };
 
+const promptTexts = {
+  docking: (ImageData = null),
+  repair: (ImageData = null),
+};
+
+const rasterizePrompts = () => {
+  promptTexts.docking = rasterizeTextMultiline([`Press ${keybind.dock}`, "to dock."], "22px Arial", [1.0, 1.0, 1.0, 1.0]);
+  promptTexts.repair = rasterizeTextMultiline([`Press ${keybind.dock}`, "to repair."], "22px Arial", [1.0, 1.0, 1.0, 1.0]);
+};
+
+const drawPrompts = () => {
+  if (lastSelf.canDock) {
+    blitImageDataTopLeft(promptTexts.docking, canvas.width / 2, canvas.height / 2);
+  }
+  if (lastSelf.canRepair) {
+    blitImageDataTopLeft(promptTexts.repair, canvas.width / 2, canvas.height / 2);
+  }
+};
+
 export {
   ArrowData,
   draw as draw2d,
@@ -728,4 +777,6 @@ export {
   initDockingMessages,
   displayDockedMessages,
   dockedMessage,
+  rasterizePrompts,
+  drawPrompts,
 };

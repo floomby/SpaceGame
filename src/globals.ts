@@ -1,3 +1,4 @@
+import { rasterizePrompts } from "./2dDrawing";
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
@@ -77,6 +78,7 @@ const setKeybind = (newKeybind: KeyBindings) => {
     localStorage.setItem("layout", JSON.stringify(KeyLayouts.Azerty));
   }
   keybind = newKeybind;
+  rasterizePrompts();
 };
 
 // The id that the players ship is

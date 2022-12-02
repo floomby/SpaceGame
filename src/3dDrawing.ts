@@ -27,6 +27,8 @@ import {
   drawMessages,
   initDockingMessages,
   displayDockedMessages,
+  drawPrompts,
+  rasterizePrompts,
 } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
@@ -100,7 +102,7 @@ let backgroundBuffer: WebGLBuffer;
 
 // Rendering constants stuff
 const pointLightCount = 10;
-const gamePlaneZ = -50.0;
+const gamePlaneZ = -100.0;
 
 const init3dDrawing = (callback: () => void) => {
   initDockingMessages();
@@ -182,6 +184,7 @@ const init3dDrawing = (callback: () => void) => {
   handleSizeChange();
 
   initRasterizer({ x: Math.min(canvas.width, 2048), y: 400 });
+  rasterizePrompts();
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
@@ -527,7 +530,7 @@ const drawBackground = (where: Position) => {
   gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
   const viewMatrix = mat4.create();
-  mat4.translate(viewMatrix, viewMatrix, [lastSelf.position.x / 200, lastSelf.position.y / -200, 0]);
+  mat4.translate(viewMatrix, viewMatrix, [lastSelf.position.x / 1000, lastSelf.position.y / -1000, 0]);
   mat4.scale(viewMatrix, viewMatrix, [canvas.width / 1000, canvas.height / 1000, 1.0]);
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
@@ -769,7 +772,6 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
-
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -807,6 +809,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     drawArrows(arrows);
     drawSectorArrow();
     drawMessages(sixtieths);
+    drawPrompts();
   }
 
   // Compute all point lights in the scene

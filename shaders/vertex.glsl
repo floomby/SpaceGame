@@ -32,9 +32,10 @@ void main() {
     return;
   }
 
-  // In world health bar or resource bare
+  // In world health bar or resource
   if (uDrawType == 3 || uDrawType == 7) {
-    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aVertexPosition.x * uHealthAndEnergyAndScale.z, aVertexPosition.y + uHealthAndEnergyAndScale.z, aVertexPosition.z, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix *
+      vec4(aVertexPosition.x * uHealthAndEnergyAndScale.z, aVertexPosition.y + uHealthAndEnergyAndScale.z, aVertexPosition.z, 1.0);
     vPosition = vec3(aVertexPosition.x / uHealthAndEnergyAndScale.z / 2.0 + 0.5, 0.0, 0.0);
     return;
   }
@@ -43,6 +44,22 @@ void main() {
   if (uDrawType == 4) {
     gl_Position = uProjectionMatrix  * uViewMatrix * 
       vec4(aVertexPosition.x * uHealthAndEnergyAndScale.z, aVertexPosition.y - 0.5 + uHealthAndEnergyAndScale.z, aVertexPosition.z, 1.0);
+    vPosition = vec3(aVertexPosition.x / uHealthAndEnergyAndScale.z / 2.0 /  + 0.5, 0.0, 0.0);
+    return;
+  }
+
+  // In target display health bar or resource
+  if (uDrawType == 8 || uDrawType == 10) {
+    gl_Position = uProjectionMatrix * uViewMatrix *
+      vec4(aVertexPosition.x * uHealthAndEnergyAndScale.z, (aVertexPosition.y + 1.0) * uHealthAndEnergyAndScale.z / 2.0, aVertexPosition.z, 1.0);
+    vPosition = vec3(aVertexPosition.x / uHealthAndEnergyAndScale.z / 2.0 + 0.5, 0.0, 0.0);
+    return;
+  }
+
+  // In target display energy bar
+  if (uDrawType == 9) {
+    gl_Position = uProjectionMatrix  * uViewMatrix * 
+      vec4(aVertexPosition.x * uHealthAndEnergyAndScale.z, (aVertexPosition.y - 0.5 + 1.0) * uHealthAndEnergyAndScale.z / 2.0, aVertexPosition.z, 1.0);
     vPosition = vec3(aVertexPosition.x / uHealthAndEnergyAndScale.z / 2.0 /  + 0.5, 0.0, 0.0);
     return;
   }

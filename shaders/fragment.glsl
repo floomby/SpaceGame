@@ -26,8 +26,8 @@ void main(void) {
     return;
   }
 
-  // In world health bar
-  if (vDrawType == 3) {
+  // In world and in target health bar
+  if (vDrawType == 3 || vDrawType == 8) {
     if (vPosition.x > uHealthAndEnergyAndScale.x) {
       outColor = vec4(1.0, 0.0, 0.0, 0.8);
     } else {
@@ -36,8 +36,8 @@ void main(void) {
     return;
   }
 
-  // In world energy bar
-  if (vDrawType == 4) {
+  // In world and in target energy bar
+  if (vDrawType == 4 || vDrawType == 9) {
     if (vPosition.x > uHealthAndEnergyAndScale.y) {
       outColor = vec4(0.3, 0.3, 0.3, 0.8);
     } else {
@@ -52,8 +52,8 @@ void main(void) {
     return;
   }
 
-  // In world resource bar
-  if (vDrawType == 7) {
+  // In world and in target resource bar
+  if (vDrawType == 7 || vDrawType == 10) {
     if (vPosition.x > uHealthAndEnergyAndScale.x) {
       outColor = vec4(0.3, 0.3, 0.3, 0.8);
     } else {

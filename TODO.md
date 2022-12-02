@@ -19,8 +19,6 @@
 
 ### Hud Checklist
 
-- target asteroid drawing (1)
-- target asteroid mineral text (1)
 - sector lines (2)
 - docking and repair text
 - weapon text

@@ -47,7 +47,10 @@ enum DrawType {
   EnergyBar = 4,
   Background = 5,
   TargetPlayer = 6,
-  ResourceBare = 7,
+  ResourceBar = 7,
+  TargetHealthBar = 8,
+  TargetEnergyBar = 9,
+  TargetResourceBar = 10,
 }
 
 const initShaders = (callback: (program: any) => void) => {
@@ -477,6 +480,8 @@ const drawTarget = (target: Player, where: Rectangle) => {
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 
   // Draw the players status bars
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+
   const health = Math.max(target.health, 0) / def.health;
   const energy = target.energy / def.energy;
   gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [health, energy, def.radius / 10]);
@@ -493,12 +498,12 @@ const drawTarget = (target: Player, where: Rectangle) => {
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
   }
 
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.TargetHealthBar);
 
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 
   // Draw the energy bar
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.TargetEnergyBar);
 
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
@@ -642,10 +647,128 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
   }
 
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.ResourceBar);
 
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
+
+const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
+  const targetDisplayRectNDC = canvasRectToNDC(where);
+
+  const def = asteroidDefs[asteroid.defIndex];
+  let bufferData = models[def.modelIndex].bindResources(gl);
+
+  const centerX = where.x + where.width / 2;
+
+  // Just call the mineral the "class" and be done with it
+  let classData = classDataCache.get(def.mineral);
+  if (!classData) {
+    classData = rasterizeText(def.mineral, classDataFont, [1.0, 1.0, 1.0, 0.9]);
+    classDataCache.set(def.mineral, classData);
+  }
+  const yPosition = where.y + where.height + 10 + classData.height / 2;
+  blitImageDataCentered(classData, centerX, yPosition);
+
+  const targetDisplayProjectionMatrix = mat4.create();
+  mat4.ortho(targetDisplayProjectionMatrix, -def.radius / 7, def.radius / 7, -def.radius / 7, def.radius / 7, -10, 10);
+
+  const scaleX = targetDisplayRectNDC.width / 2;
+  const scaleY = targetDisplayRectNDC.height / 2;
+  const scaleZ = (scaleX + scaleY) / 2;
+
+  mat4.translate(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [
+    ((targetDisplayRectNDC.x + targetDisplayRectNDC.width / 2) * def.radius) / 7,
+    ((targetDisplayRectNDC.y - targetDisplayRectNDC.height / 2) * def.radius) / 7,
+    0,
+  ]);
+  mat4.scale(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [scaleX, scaleY, scaleZ]);
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, targetDisplayProjectionMatrix);
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  // Uniforms
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+  const modelMatrix = mat4.create();
+  mat4.rotateZ(modelMatrix, modelMatrix, -asteroid.heading);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+
+  const viewMatrix = mat4.create();
+  mat4.rotateX(modelMatrix, modelMatrix, asteroid.roll);
+  mat4.rotateY(modelMatrix, modelMatrix, asteroid.pitch);
+  mat4.translate(viewMatrix, viewMatrix, [0, 0, 0]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  const normalMatrix = mat4.create();
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+  mat4.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+  const vertexCount = models[def.modelIndex].indices.length || 0;
+  const type = gl.UNSIGNED_SHORT;
+  const offset = 0;
+  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  // Draw the resource bar
+  const resources = Math.max(asteroid.resources, 0) / def.resources;
+  gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [resources, 0, def.radius / 10]);
+
+  // Draw the health bar
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.TargetResourceBar);
+
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+};
+
 
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -784,13 +907,14 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   draw2d(programInfo);
 
+  // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
   if (!lastSelf.docked) {
     if (target) {
       drawTarget(target, targetDisplayRect);
     } else if (targetAsteroid) {
-      // drawTargetAsteroid();
+      drawTargetAsteroid(targetAsteroid, targetDisplayRect);
     }
   } else {
     displayDockedMessages(sixtieths);

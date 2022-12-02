@@ -37,8 +37,9 @@ import { getNameOfPlayer } from "./rest";
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
-let gl: WebGLRenderingContext;
+let gl: WebGL2RenderingContext;
 let programInfo: any;
+let particleProgramInfo: any;
 let backgroundTexture: WebGLTexture;
 
 enum DrawType {
@@ -55,12 +56,18 @@ enum DrawType {
   TargetResourceBar = 10,
 }
 
-const initShaders = (callback: (program: any) => void) => {
+const initShaders = (callback: (program: any, particleProgram: any) => void) => {
   addLoadingText("Loading and compiling shaders...");
-  Promise.all(["shaders/vertex.glsl", "shaders/fragment.glsl"].map((file) => fetch(file).then((res) => res.text())))
-    .then(([vsSource, fsSource]) => {
+  Promise.all(
+    ["shaders/vertex.glsl", "shaders/fragment.glsl", "shaders/particleVertex.glsl", "shaders/particleFragment.glsl"].map((file) =>
+      fetch(file).then((res) => res.text())
+    )
+  )
+    .then(([vsSource, fsSource, pvsSource, pfsSource]) => {
       const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
       const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+      const particleVertexShader = loadShader(gl.VERTEX_SHADER, pvsSource);
+      const particleFragmentShader = loadShader(gl.FRAGMENT_SHADER, pfsSource);
 
       const shaderProgram = gl.createProgram();
       gl.attachShader(shaderProgram, vertexShader);
@@ -71,7 +78,19 @@ const initShaders = (callback: (program: any) => void) => {
         console.error(`Unable to initialize the shader program: ${gl.getProgramInfoLog(shaderProgram)}`);
         return null;
       }
-      callback(shaderProgram);
+
+      const particleShaderProgram = gl.createProgram();
+      gl.attachShader(particleShaderProgram, particleVertexShader);
+      gl.attachShader(particleShaderProgram, particleFragmentShader);
+      gl.transformFeedbackVaryings(particleShaderProgram, ["vPosition", "vAge", "vLife", "vVelocity"], gl.INTERLEAVED_ATTRIBS);
+      gl.linkProgram(particleShaderProgram);
+
+      if (!gl.getProgramParameter(particleShaderProgram, gl.LINK_STATUS)) {
+        console.error(`Unable to initialize the shader program: ${gl.getProgramInfoLog(particleShaderProgram)}`);
+        return null;
+      }
+
+      callback(shaderProgram, particleShaderProgram);
     })
     .catch(console.error);
 };
@@ -188,7 +207,7 @@ const init3dDrawing = (callback: () => void) => {
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  initShaders((program) => {
+  initShaders((program, particleProgram) => {
     programInfo = {
       program,
       attribLocations: {
@@ -209,6 +228,26 @@ const init3dDrawing = (callback: () => void) => {
 
         drawType: gl.getUniformLocation(program, "uDrawType"),
         healthAndEnergyAndScale: gl.getUniformLocation(program, "uHealthAndEnergyAndScale"),
+      },
+    };
+
+    particleProgramInfo = {
+      program: particleProgram,
+      attribLocations: {
+        position: gl.getAttribLocation(particleProgram, "aPosition"),
+        age: gl.getAttribLocation(particleProgram, "aAge"),
+        life: gl.getAttribLocation(particleProgram, "aLife"),
+        velocity: gl.getAttribLocation(particleProgram, "aVelocity"),
+      },
+      uniformLocations: {
+        uTimeDelta: gl.getUniformLocation(particleProgram, "uTimeDelta"),
+        uNoise: gl.getUniformLocation(particleProgram, "uNoise"),
+        uGravity: gl.getUniformLocation(particleProgram, "uGravity"),
+        uOrigin: gl.getUniformLocation(particleProgram, "uOrigin"),
+        uMinTheta: gl.getUniformLocation(particleProgram, "uMinTheta"),
+        uMaxTheta: gl.getUniformLocation(particleProgram, "uMaxTheta"),
+        uMinSpeed: gl.getUniformLocation(particleProgram, "uMinSpeed"),
+        uMaxSpeed: gl.getUniformLocation(particleProgram, "uMaxSpeed"),
       },
     };
 

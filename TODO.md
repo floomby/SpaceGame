@@ -20,7 +20,6 @@
 ### Hud Checklist
 
 - sector lines (2)
-- docking and repair text
 - weapon text
 
 ### World Checklist
@@ -28,3 +27,10 @@
 - draw mines
 - fix projectile drawing
 - draw collectables
+
+### Effects Stuff
+
+- Particle system (1)
+- Explosion effects (1)
+- Trail effects (1)
+- Beam effects (3)

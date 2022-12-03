@@ -299,6 +299,7 @@ const init3dDrawing = (callback: () => void) => {
         "prifecite.obj",
         "russanite.obj",
         "proximity_mine.obj",
+        "strafer.obj",
       ].map((url) => loadObj(url))
     )
       .then(async () => {

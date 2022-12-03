@@ -266,7 +266,7 @@ const initShipsAndStations = () => {
     scanRange: 3000,
     primaryDefIndex: 0,
     mass: 8,
-    model: "spaceship",
+    model: "strafer",
   });
   // Rogue Starbase - 7
   defs.push({

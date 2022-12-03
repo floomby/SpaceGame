@@ -2,6 +2,7 @@
 
 import { mat4 } from "gl-matrix";
 import { gl, particleProgramInfo, particleRenderingProgramInfo, projectionMatrix } from "./3dDrawing";
+import { loadTexture } from "./modelLoader";
 
 const randomNoise = (width: number, height: number, channels: number) => {
   const data = new Uint8Array(width * height * channels);
@@ -11,15 +12,14 @@ const randomNoise = (width: number, height: number, channels: number) => {
   return data;
 };
 
-/*
-Shader layout
+let particleTextures: WebGLTexture = [];
 
-layout (location = 0) in vec3 aPosition;
-layout (location = 1) in float aAge;
-layout (location = 2) in vec3 aVelocity;
-layout (location = 3) in float aLife;
-
-*/
+const initTextures = (gl: WebGL2RenderingContext, callback: () => void) => {
+  Promise.all(["particle_test.png"].map(file => loadTexture(file, gl))).then(textures => {
+    particleTextures = textures;
+    callback();
+  }).catch(console.error);
+};
 
 const initializeParticleData = (count: number, minAge: number, maxAge: number) => {
   const data = new Float32Array(count * 8);
@@ -46,7 +46,7 @@ let particleAOs: WebGLVertexArrayObject[] = [];
 let particleRenderAOs: WebGLVertexArrayObject[] = [];
 let particleBuffers: WebGLBuffer[] = [];
 
-const count = 10;
+const count = 5000;
 
 const createBuffers = () => {
   // Create a texture with the noise
@@ -111,6 +111,7 @@ const createBuffers = () => {
       const numComponents = 3;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.position);
+      gl.vertexAttribDivisor(particleRenderingProgramInfo.attribLocations.position, 1);
     }
     if (particleRenderingProgramInfo.attribLocations.age !== -1) {
       const offset = 12;
@@ -118,6 +119,7 @@ const createBuffers = () => {
       const numComponents = 1;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.age);
+      gl.vertexAttribDivisor(particleRenderingProgramInfo.attribLocations.age, 1);
     }
     if (particleRenderingProgramInfo.attribLocations.life !== -1) {
       const offset = 16;
@@ -125,6 +127,7 @@ const createBuffers = () => {
       const numComponents = 1;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.life);
+      gl.vertexAttribDivisor(particleRenderingProgramInfo.attribLocations.life, 1);
     }
     if (particleRenderingProgramInfo.attribLocations.velocity !== -1) {
       const offset = 20;
@@ -132,6 +135,7 @@ const createBuffers = () => {
       const numComponents = 3;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.velocity);
+      gl.vertexAttribDivisor(particleRenderingProgramInfo.attribLocations.velocity, 1);
     }
     gl.bindVertexArray(null);
     particleRenderAOs.push(particleRenderAO);
@@ -152,39 +156,8 @@ const draw = (sixtieths: number) => {
   gl.uniform1f(particleProgramInfo.uniformLocations.minSpeed, 0.01);
   gl.uniform1f(particleProgramInfo.uniformLocations.maxSpeed, 0.02);
 
-  // gl.bindVertexArray(particleAOs[readIndex]);
-  gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffers[readIndex]);
-  if (particleProgramInfo.attribLocations.position !== -1) {
-    const offset = 0;
-    const stride = 32;
-    const numComponents = 3;
-    gl.vertexAttribPointer(particleProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleProgramInfo.attribLocations.position);
-  }
-  if (particleProgramInfo.attribLocations.age !== -1) {
-    const offset = 12;
-    const stride = 32;
-    const numComponents = 1;
-    gl.vertexAttribPointer(particleProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleProgramInfo.attribLocations.age);
-  }
-  if (particleProgramInfo.attribLocations.life !== -1) {
-    const offset = 16;
-    const stride = 32;
-    const numComponents = 1;
-    gl.vertexAttribPointer(particleProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleProgramInfo.attribLocations.life);
-  }
-  if (particleProgramInfo.attribLocations.velocity !== -1) {
-    const offset = 20;
-    const stride = 32;
-    const numComponents = 3;
-    gl.vertexAttribPointer(particleProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleProgramInfo.attribLocations.velocity);
-  }
+  gl.bindVertexArray(particleAOs[readIndex]);
 
-  // Binding the feedback buffer is causing errors (with no apparent affect on the result) in the draw calls in
-  // the main program if the vertex array for the draw there exceeds the size of this buffer (I have no idea why).
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, particleBuffers[readIndex ^ 1]);
   gl.enable(gl.RASTERIZER_DISCARD);
   gl.beginTransformFeedback(gl.POINTS);
@@ -192,6 +165,7 @@ const draw = (sixtieths: number) => {
   gl.endTransformFeedback();
   gl.disable(gl.RASTERIZER_DISCARD);
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
   readIndex = (readIndex + 1) % 2;
 
@@ -205,10 +179,14 @@ const draw = (sixtieths: number) => {
   gl.uniformMatrix4fv(particleRenderingProgramInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
   gl.uniformMatrix4fv(particleRenderingProgramInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
-  gl.drawArrays(gl.POINTS, 0, count);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  // bind the texture to texture unit 0
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, particleTextures[0]);
+  gl.uniform1i(particleRenderingProgramInfo.uniformLocations.particleTexture, 0);
+
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
   gl.bindVertexArray(null);
 };
 
 
-export { randomNoise, createBuffers as createParticleBuffers, draw as drawParticles };
+export { randomNoise, createBuffers as createParticleBuffers, draw as drawParticles, initTextures as initParticleTextures };

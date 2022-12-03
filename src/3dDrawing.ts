@@ -33,7 +33,7 @@ import {
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 import { getNameOfPlayer } from "./rest";
-import { createParticleBuffers, drawParticles } from "./particle";
+import { createParticleBuffers, drawParticles, initParticleTextures } from "./particle";
 
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
@@ -281,6 +281,7 @@ const init3dDrawing = (callback: () => void) => {
       uniformLocations: {
         projectionMatrix: gl.getUniformLocation(particleRenderingProgram, "uProjectionMatrix"),
         viewMatrix: gl.getUniformLocation(particleRenderingProgram, "uViewMatrix"),
+        sample: gl.getUniformLocation(particleRenderingProgram, "uSample"),
       },
     };
 
@@ -322,7 +323,7 @@ const init3dDrawing = (callback: () => void) => {
         });
 
         backgroundTexture = await loadBackground(gl);
-        callback();
+        initParticleTextures(gl, callback);
       })
       .catch(console.error);
   });
@@ -1187,12 +1188,10 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     return;
   }
   // drawn = true;
+  gl.useProgram(programInfo.program);
 
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
-
-  drawParticles(sixtieths);
-  gl.useProgram(programInfo.program);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
 
@@ -1316,6 +1315,11 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   draw2d(programInfo);
 
+  drawParticles(sixtieths);
+  gl.useProgram(programInfo.program);
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+  
   // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
   gl.clear(gl.DEPTH_BUFFER_BIT);
 

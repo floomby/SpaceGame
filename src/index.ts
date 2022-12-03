@@ -427,7 +427,6 @@ const run = () => {
   bindAction("state", (data: any) => {
     state.players.clear();
     state.projectiles.clear();
-    state.missiles.clear();
 
     const players = data.players as Player[];
 
@@ -444,8 +443,20 @@ const run = () => {
         state.asteroids.set(asteroid.id, asteroid);
       }
     }
+    for (const missile of state.missiles.values()) {
+      missile.stale = true;
+    }
     for (const missile of data.missiles as Missile[]) {
+      const existing = state.missiles.get(missile.id);
+      if (existing) {
+        missile.roll = existing.roll;
+      }
       state.missiles.set(missile.id, missile);
+    }
+    for (const [id, missile] of state.missiles) {
+      if (missile.stale) {
+        state.missiles.delete(id);
+      }
     }
     for (const mine of data.mines as Mine[]) {
       const existing = state.mines.get(mine.id);

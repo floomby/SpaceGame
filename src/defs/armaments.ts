@@ -77,6 +77,9 @@ type MissileDef = {
   deathEffect: number;
   turnRate?: number;
   hitMutator?: (player: Player, state: GlobalState, applyEffect: (effectTrigger: EffectTrigger) => void, missile: Missile) => void;
+  model: string;
+  modelIndex?: number;
+  pointLights?: PointLightData[];
 };
 
 const armDefs: ArmamentDef[] = [];
@@ -224,6 +227,8 @@ const initArmaments = () => {
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
+    model: "missile",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const javelinIndex = missileDefs.length - 1;
   // Javelin Missile - 7
@@ -274,6 +279,8 @@ const initArmaments = () => {
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
+    model: "missile",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const heavyJavelinIndex = missileDefs.length - 1;
   // Heavy Javelin Missile - 8
@@ -325,6 +332,8 @@ const initArmaments = () => {
     lifetime: 600,
     deathEffect: 2,
     turnRate: 0.1,
+    model: "missile",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const tomahawkIndex = missileDefs.length - 1;
   // Tomahawk Missile - 9
@@ -423,6 +432,8 @@ const initArmaments = () => {
     hitMutator: (player, state, applyEffect) => {
       player.disabled = 240;
     },
+    model: "missile",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const empMissileIndex = missileDefs.length - 1;
   // EMP Missile - 9
@@ -654,6 +665,8 @@ const initArmaments = () => {
         players[i].ir += Math.random() * 0.09;
       }
     },
+    model: "missile",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const impulseMissileIndex = missileDefs.length - 1;
   armDefs.push({

@@ -2,8 +2,8 @@ import { initEffects } from "./effects";
 import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
-import { asteroidDefs, defs, mineDefs } from "./defs";
-import { Asteroid, Ballistic, ChatMessage, Mine, Player } from "./game";
+import { asteroidDefs, defs, mineDefs, missileDefs } from "./defs";
+import { Asteroid, Ballistic, ChatMessage, Mine, Missile, Player } from "./game";
 import { l2NormSquared, Position, Rectangle } from "./geometry";
 import {
   appendBottomBars,
@@ -300,6 +300,7 @@ const init3dDrawing = (callback: () => void) => {
         "russanite.obj",
         "proximity_mine.obj",
         "strafer.obj",
+        "missile.obj",
       ].map((url) => loadObj(url))
     )
       .then(async () => {
@@ -310,6 +311,9 @@ const init3dDrawing = (callback: () => void) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
         mineDefs.forEach((def) => {
+          def.modelIndex = modelMap.get(def.model)[1];
+        });
+        missileDefs.forEach((def) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
 
@@ -993,6 +997,175 @@ const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) 
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 };
 
+
+const drawProjectile = (projectile: Ballistic, pointLights: PointLightData[]) => {
+  let bufferData = modelMap.get("projectile")[0].bindResources(gl);
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  const modelMatrix = mat4.create();
+  mat4.rotateZ(modelMatrix, modelMatrix, -projectile.heading);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+
+  const viewMatrix = mat4.create();
+  mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(projectile.position.x), mapGameYToWorld(projectile.position.y), gamePlaneZ]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  const normalMatrix = mat4.create();
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+  mat4.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Projectile);
+
+  gl.uniform3fv(programInfo.uniformLocations.baseColor, [1.0, 1.0, 1.0]);
+
+  const vertexCount = modelMap.get("projectile")[0].indices.length || 0;
+  const type = gl.UNSIGNED_SHORT;
+  const offset = 0;
+  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+};
+
+const clientMissileUpdate = (missile: Missile) => {
+  if (missile.roll === undefined) {
+    missile.roll = 0;
+  }
+  missile.roll += 0.01;
+  const modelMatrix = mat4.create();
+  mat4.rotateZ(modelMatrix, modelMatrix, -missile.heading);
+  mat4.rotateX(modelMatrix, modelMatrix, missile.roll);
+  missile.modelMatrix = modelMatrix;
+};
+
+const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
+  const def = missileDefs[missile.defIndex];
+  let bufferData = models[def.modelIndex].bindResources(gl);
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  // Uniforms
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+  gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[missile.team]);
+
+  // find the closest lights
+  let lights: [number, PointLightData][] = [];
+  for (let i = 0; i < pointLightCount; i++) {
+    lights.push([Infinity, null]);
+  }
+  for (const light of lightSources) {
+    const dist2 = l2NormSquared(light.position, missile.position);
+    let insertionIndex = 0;
+    while (insertionIndex < pointLightCount && dist2 > lights[insertionIndex][0]) {
+      insertionIndex++;
+    }
+    if (insertionIndex < pointLightCount) {
+      lights.splice(insertionIndex, 0, [dist2, light]);
+      lights.pop();
+    }
+  }
+
+  for (let i = 0; i < pointLightCount; i++) {
+    if (lights[i][1]) {
+      const pointLight = [mapGameXToWorld(lights[i][1].position.x), mapGameYToWorld(lights[i][1].position.y), lights[i][1].position.z, 0];
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLight);
+      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], lights[i][1].color);
+    } else {
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], [0.0, 0.0, 0.0, 0.0]);
+      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], [0.0, 0.0, 0.0]);
+    }
+  }
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, missile.modelMatrix);
+
+  const viewMatrix = mat4.create();
+  mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(missile.position.x), mapGameYToWorld(missile.position.y), gamePlaneZ]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  const normalMatrix = mat4.create();
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, missile.modelMatrix));
+  mat4.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+  gl.uniform1f(programInfo.uniformLocations.desaturate, 0.0);
+
+  const vertexCount = models[def.modelIndex].indices.length || 0;
+  const type = gl.UNSIGNED_SHORT;
+  const offset = 0;
+  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+}
+
+// Main draw function (some game things appear to be updated here, but it is just cosmetic updates and has nothing to do with game logic)
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -1033,7 +1206,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     drawPrompts();
   }
 
-  // Compute all point lights in the scene
+  // Compute all point lights in the scene (and handle some other updates to drawing data)
   const lightSources: PointLightData[] = [];
 
   for (const projectile of state.projectiles.values()) {
@@ -1083,13 +1256,31 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
+  for (const missile of state.missiles.values()) {
+    clientMissileUpdate(missile);
+
+    const def = missileDefs[missile.defIndex];
+    if (def.pointLights) {
+      for (const light of def.pointLights) {
+        const pos = vec4.create();
+        vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
+
+        vec4.transformMat4(pos, pos, missile.modelMatrix);
+
+        lightSources.push({
+          position: { x: pos[0] * 10 + missile.position.x, y: pos[1] * 10 + missile.position.y, z: gamePlaneZ + pos[2] },
+          color: light.color,
+        });
+      }
+    }
+  }
+
+  // Start drawing world objects (all light sources are aggregated above this point)
   processFadingMines(sixtieths, lightSources);
 
   for (const player of state.players.values()) {
     drawPlayer(player, lightSources);
   }
-
-
 
   for (const asteroid of state.asteroids.values()) {
     asteroid.roll += asteroid.rotationRate * sixtieths;
@@ -1101,64 +1292,11 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   for (const projectile of state.projectiles.values()) {
-    let bufferData = modelMap.get("projectile")[0].bindResources(gl);
+    drawProjectile(projectile, lightSources);
+  }
 
-    {
-      const numComponents = 3;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-    }
-
-    {
-      const numComponents = 2;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-      gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-      gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-    }
-
-    {
-      const numComponents = 3;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-      gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-      gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-    }
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
-
-    const modelMatrix = mat4.create();
-    mat4.rotateZ(modelMatrix, modelMatrix, -projectile.heading);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
-
-    const viewMatrix = mat4.create();
-    mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(projectile.position.x), mapGameYToWorld(projectile.position.y), gamePlaneZ]);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
-
-    const normalMatrix = mat4.create();
-    mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
-    mat4.transpose(normalMatrix, normalMatrix);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
-
-    gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Projectile);
-
-    gl.uniform3fv(programInfo.uniformLocations.baseColor, [1.0, 1.0, 1.0]);
-
-    const vertexCount = modelMap.get("projectile")[0].indices.length || 0;
-    const type = gl.UNSIGNED_SHORT;
-    const offset = 0;
-    gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+  for (const missile of state.missiles.values()) {
+    drawMissile(missile, lightSources);
   }
 
   draw2d(programInfo);

@@ -126,6 +126,9 @@ type Missile = Entity & {
   team: number;
   lifetime: number;
   defIndex: number;
+  modelMatrix?: any;
+  roll?: number;
+  stale?: boolean;
 };
 
 enum TargetKind {

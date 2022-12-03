@@ -30,12 +30,13 @@ class Model {
 
   public name: string = "";
 
-  private texture: HTMLImageElement | null = null;
+  private textureImage: HTMLImageElement | null = null;
 
   private loadTexture(resolve: (model: Model) => void, reject: (error: Error) => void) {
     const texture = new Image();
     texture.onload = () => {
-      this.texture = texture;
+      this.textureImage = texture;
+
       resolve(this);
     };
     texture.onerror = () => {
@@ -46,7 +47,7 @@ class Model {
 
   private uniqueVertices: Map<string, [number, Vertex]>;
 
-  constructor(data: string, resolve: (model: Model) => void, reject: (error: Error) => void) {
+  constructor(data: string, resolve: (model: Model) => void, reject: (error: Error) => void, gl: WebGL2RenderingContext, programInfo: any) {
     let vertexDimensionSet = false;
     let vertexTextureCoordDimensionSet = false;
 
@@ -126,8 +127,6 @@ class Model {
     modelMap.set(this.name, [this, models.length - 1]);
   }
 
-  private nonce = 0;
-
   private processFaceIndex(elem: string) {
     const subElems = elem.split("/");
     if (subElems.length !== 3) {
@@ -149,7 +148,7 @@ class Model {
       nz: this.vertexNormalsMisordered[vertexNormalIndex * 3 + 2],
     };
 
-    const key = `${vertex.x},${vertex.y},${vertex.z},${vertex.u},${vertex.v},${vertex.nx},${vertex.ny},${vertex.nz},${this.nonce++}`;
+    const key = `${vertex.x},${vertex.y},${vertex.z},${vertex.u},${vertex.v},${vertex.nx},${vertex.ny},${vertex.nz}`;
     if (this.uniqueVertices.has(key)) {
       return this.uniqueVertices.get(key)[0];
     } else {
@@ -174,63 +173,89 @@ class Model {
     }
   }
 
-  private indexBuffer: WebGLBuffer;
-  private vertexBuffer: WebGLBuffer;
-  private vertexTextureCoordBuffer: WebGLBuffer;
-  private vertexNormalBuffer: WebGLBuffer;
-  private textureResource: WebGLTexture;
-  private buffersUninitialized = true;
+  public indexBuffer: WebGLBuffer;
+  public vertexBuffer: WebGLBuffer;
+  public vertexArrayObject: WebGLVertexArrayObject;
+  public vertexTextureCoordBuffer: WebGLBuffer;
+  public vertexNormalBuffer: WebGLBuffer;
+  public texture: WebGLTexture;
 
-  public bindResources(gl: WebGLRenderingContext) {
-    if (this.buffersUninitialized) {
-      this.vertexBuffer = gl.createBuffer();
+  public recordVertexArrayObject(gl: WebGL2RenderingContext, programInfo: any) {
+    this.vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
+
+    this.vertexTextureCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertexTextureCoords), gl.STATIC_DRAW);
+
+    this.vertexNormalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexNormalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertexNormals), gl.STATIC_DRAW);
+
+    this.indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
+
+    this.texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.textureImage);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    delete this.textureImage;
+
+    this.vertexArrayObject = gl.createVertexArray();
+    gl.bindVertexArray(this.vertexArrayObject);
+
+    {
+      const numComponents = 3;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
       gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
-
-      this.vertexTextureCoordBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertexTextureCoords), gl.STATIC_DRAW);
-
-      this.vertexNormalBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexNormalBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertexNormals), gl.STATIC_DRAW);
-
-      this.indexBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
-
-      this.textureResource = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, this.textureResource);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.texture);
-
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-      delete this.texture;
-
-      this.buffersUninitialized = false;
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
     }
 
-    return {
-      vertexBuffer: this.vertexBuffer,
-      indexBuffer: this.indexBuffer,
-      vertexTextureCoordBuffer: this.vertexTextureCoordBuffer,
-      vertexNormalBuffer: this.vertexNormalBuffer,
-      texture: this.textureResource,
-    };
+    {
+      const numComponents = 2;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexTextureCoordBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+    }
+
+    {
+      const numComponents = 3;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexNormalBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+    }
+
+    gl.bindVertexArray(null);
   }
 }
 
-const loadObj = (file: string) => {
+const loadObj = (file: string, gl: WebGL2RenderingContext, programInfo: any) => {
   return new Promise<Model>((resolve, reject) => {
     fetch(`resources/models/${file}`)
       .then((response) => {
         response
           .text()
           .then((data) => {
-            new Model(data, resolve, reject);
+            new Model(data, resolve, reject, gl, programInfo);
           })
           .catch(reject);
       })

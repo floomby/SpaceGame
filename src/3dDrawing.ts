@@ -226,8 +226,6 @@ const init3dDrawing = (callback: () => void) => {
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  createParticleBuffers();
-
   initShaders((program, particleProgram, particleRenderingProgram) => {
     programInfo = {
       program,
@@ -286,6 +284,8 @@ const init3dDrawing = (callback: () => void) => {
       },
     };
 
+    createParticleBuffers();
+
     addLoadingText("Loading models...");
     Promise.all(
       [
@@ -301,7 +301,7 @@ const init3dDrawing = (callback: () => void) => {
         "proximity_mine.obj",
         "strafer.obj",
         "missile.obj",
-      ].map((url) => loadObj(url))
+      ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {
         defs.forEach((def) => {
@@ -317,6 +317,10 @@ const init3dDrawing = (callback: () => void) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
 
+        models.forEach((model) => {
+          model.recordVertexArrayObject(gl, programInfo);
+        });
+
         backgroundTexture = await loadBackground(gl);
         callback();
       })
@@ -326,7 +330,7 @@ const init3dDrawing = (callback: () => void) => {
 
 const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
   const def = defs[player.defIndex];
-  let bufferData = models[def.modelIndex].bindResources(gl);
+  let bufferData = models[def.modelIndex];
 
   if (player.isPC || def.kind === UnitKind.Station) {
     const name = getNameOfPlayer(player);
@@ -371,6 +375,7 @@ const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
   }
 
+  // gl.bindVertexArray(bufferData.vertexArrayObject);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
 
   // Uniforms
@@ -427,6 +432,9 @@ const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
   gl.uniform1f(programInfo.uniformLocations.desaturate, toDesaturate);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
+  // if (player.id === lastSelf.id) {
+  //   console.log("drawing player", vertexCount);
+  // }
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
@@ -467,7 +475,7 @@ const drawTarget = (target: Player, where: Rectangle) => {
   const targetDisplayRectNDC = canvasRectToNDC(where);
 
   const def = defs[target.defIndex];
-  let bufferData = models[def.modelIndex].bindResources(gl);
+  let bufferData = models[def.modelIndex];
 
   const centerX = where.x + where.width / 2;
 
@@ -628,7 +636,7 @@ const drawBackground = (where: Position) => {
 
 const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
   const def = asteroidDefs[asteroid.defIndex];
-  let bufferData = models[def.modelIndex].bindResources(gl);
+  let bufferData = models[def.modelIndex];
 
   {
     const numComponents = 3;
@@ -730,27 +738,27 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
   const resources = Math.max(asteroid.resources, 0) / def.resources;
   gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [resources, 0, def.radius / 10]);
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.ResourceBar);
+  // gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.ResourceBar);
 
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  // gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
 const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
   const targetDisplayRectNDC = canvasRectToNDC(where);
 
   const def = asteroidDefs[asteroid.defIndex];
-  let bufferData = models[def.modelIndex].bindResources(gl);
+  let bufferData = models[def.modelIndex];
 
   const centerX = where.x + where.width / 2;
 
@@ -904,7 +912,7 @@ const clientMineUpdate = (mine: Mine, sixtieths: number) => {
 
 const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) => {
   const def = mineDefs[mine.defIndex];
-  let bufferData = models[def.modelIndex].bindResources(gl);
+  let bufferData = models[def.modelIndex];
 
   {
     const numComponents = 3;
@@ -999,7 +1007,7 @@ const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) 
 
 
 const drawProjectile = (projectile: Ballistic, pointLights: PointLightData[]) => {
-  let bufferData = modelMap.get("projectile")[0].bindResources(gl);
+  let bufferData = modelMap.get("projectile")[0];
 
   {
     const numComponents = 3;
@@ -1072,7 +1080,7 @@ const clientMissileUpdate = (missile: Missile) => {
 
 const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   const def = missileDefs[missile.defIndex];
-  let bufferData = models[def.modelIndex].bindResources(gl);
+  let bufferData = models[def.modelIndex];
 
   {
     const numComponents = 3;
@@ -1165,21 +1173,28 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 }
 
+let drawn = false;
+
 // Main draw function (some game things appear to be updated here, but it is just cosmetic updates and has nothing to do with game logic)
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
+  // if (drawn) {
+  //   return;
+  // }
+  
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // The particle system is a separate program
-  gl.useProgram(programInfo.program);
-
-  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-
+  
   if (!lastSelf) {
     return;
   }
+  // drawn = true;
 
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
+
+  // drawParticles(sixtieths);
+  gl.useProgram(programInfo.program);
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
 
   drawBackground(lastSelf.position);
 
@@ -1284,7 +1299,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   for (const asteroid of state.asteroids.values()) {
     asteroid.roll += asteroid.rotationRate * sixtieths;
-    drawAsteroid(asteroid, lightSources);
+    // drawAsteroid(asteroid, lightSources);
   }
 
   for (const mine of state.mines.values()) {
@@ -1300,9 +1315,6 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   draw2d(programInfo);
-
-  // drawParticles(sixtieths);
-  gl.useProgram(programInfo.program);
 
   // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
   gl.clear(gl.DEPTH_BUFFER_BIT);

@@ -42,6 +42,8 @@ const initializeParticleData = (count: number, minAge: number, maxAge: number) =
 };
 
 let noiseTexture: WebGLTexture;
+let particleAOs: WebGLVertexArrayObject[] = [];
+let particleRenderAOs: WebGLVertexArrayObject[] = [];
 let particleBuffers: WebGLBuffer[] = [];
 
 const createBuffers = () => {
@@ -55,12 +57,82 @@ const createBuffers = () => {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
+
   const particleData = initializeParticleData(1000, 0, 20);
   for (let i = 0; i < 2; i++) {
     const particleBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, particleData, gl.STREAM_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
     particleBuffers.push(particleBuffer);
+
+    const particleAO = gl.createVertexArray();
+    gl.bindVertexArray(particleAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
+    if (particleProgramInfo.attribLocations.position !== -1) {
+      const offset = 0;
+      const stride = 32;
+      const numComponents = 3;
+      gl.vertexAttribPointer(particleProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleProgramInfo.attribLocations.position);
+    }
+    if (particleProgramInfo.attribLocations.age !== -1) {
+      const offset = 12;
+      const stride = 32;
+      const numComponents = 1;
+      gl.vertexAttribPointer(particleProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleProgramInfo.attribLocations.age);
+    }
+    if (particleProgramInfo.attribLocations.life !== -1) {
+      const offset = 16;
+      const stride = 32;
+      const numComponents = 1;
+      gl.vertexAttribPointer(particleProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleProgramInfo.attribLocations.life);
+    }
+    if (particleProgramInfo.attribLocations.velocity !== -1) {
+      const offset = 20;
+      const stride = 32;
+      const numComponents = 3;
+      gl.vertexAttribPointer(particleProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleProgramInfo.attribLocations.velocity);
+    }
+    gl.bindVertexArray(null);
+    particleAOs.push(particleAO);
+
+    const particleRenderAO = gl.createVertexArray();
+    gl.bindVertexArray(particleRenderAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
+    if (particleRenderingProgramInfo.attribLocations.position !== -1) {
+      const offset = 0;
+      const stride = 32;
+      const numComponents = 3;
+      gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.position);
+    }
+    if (particleRenderingProgramInfo.attribLocations.age !== -1) {
+      const offset = 12;
+      const stride = 32;
+      const numComponents = 1;
+      gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.age);
+    }
+    if (particleRenderingProgramInfo.attribLocations.life !== -1) {
+      const offset = 16;
+      const stride = 32;
+      const numComponents = 1;
+      gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.life);
+    }
+    if (particleRenderingProgramInfo.attribLocations.velocity !== -1) {
+      const offset = 20;
+      const stride = 32;
+      const numComponents = 3;
+      gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.velocity);
+    }
+    gl.bindVertexArray(null);
+    particleRenderAOs.push(particleRenderAO);
   }
 };
 
@@ -71,15 +143,6 @@ const draw = (sixtieths: number) => {
 
   gl.useProgram(particleProgramInfo.program);
 
-  /*
-uniform float uTimeDelta;
-uniform sampler2D uNoise;
-uniform vec3 uGravity;
-uniform vec3 uOrigin;
-uniform float uMinSpeed;
-uniform float uMaxSpeed;
-*/
-
   gl.uniform1f(particleProgramInfo.uniformLocations.timeDelta, sixtieths);
   gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
   gl.activeTexture(gl.TEXTURE0);
@@ -89,6 +152,7 @@ uniform float uMaxSpeed;
   gl.uniform1f(particleProgramInfo.uniformLocations.minSpeed, 0.01);
   gl.uniform1f(particleProgramInfo.uniformLocations.maxSpeed, 0.02);
 
+  // gl.bindVertexArray(particleAOs[readIndex]);
   gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffers[readIndex]);
   if (particleProgramInfo.attribLocations.position !== -1) {
     const offset = 0;
@@ -132,35 +196,36 @@ uniform float uMaxSpeed;
   // Rendering
   gl.useProgram(particleRenderingProgramInfo.program);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffers[readIndex]);
-  if (particleRenderingProgramInfo.attribLocations.position !== -1) {
-    const offset = 0;
-    const stride = 32;
-    const numComponents = 3;
-    gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.position);
-  }
-  if (particleRenderingProgramInfo.attribLocations.age !== -1) {
-    const offset = 12;
-    const stride = 32;
-    const numComponents = 1;
-    gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.age);
-  }
-  if (particleRenderingProgramInfo.attribLocations.life !== -1) {
-    const offset = 16;
-    const stride = 32;
-    const numComponents = 1;
-    gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.life);
-  }
-  if (particleRenderingProgramInfo.attribLocations.velocity !== -1) {
-    const offset = 20;
-    const stride = 32;
-    const numComponents = 3;
-    gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
-    gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.velocity);
-  }
+  gl.bindVertexArray(particleRenderAOs[readIndex]);
+  // gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffers[readIndex]);
+  // if (particleRenderingProgramInfo.attribLocations.position !== -1) {
+  //   const offset = 0;
+  //   const stride = 32;
+  //   const numComponents = 3;
+  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
+  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.position);
+  // }
+  // if (particleRenderingProgramInfo.attribLocations.age !== -1) {
+  //   const offset = 12;
+  //   const stride = 32;
+  //   const numComponents = 1;
+  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
+  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.age);
+  // }
+  // if (particleRenderingProgramInfo.attribLocations.life !== -1) {
+  //   const offset = 16;
+  //   const stride = 32;
+  //   const numComponents = 1;
+  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
+  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.life);
+  // }
+  // if (particleRenderingProgramInfo.attribLocations.velocity !== -1) {
+  //   const offset = 20;
+  //   const stride = 32;
+  //   const numComponents = 3;
+  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
+  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.velocity);
+  // }
 
   const viewMatrix = mat4.create();
   mat4.translate(viewMatrix, viewMatrix, [0, 0, -5]);
@@ -169,6 +234,8 @@ uniform float uMaxSpeed;
   gl.uniformMatrix4fv(particleRenderingProgramInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   gl.drawArrays(gl.POINTS, 0, count);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.bindVertexArray(null);
 };
 
 

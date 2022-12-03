@@ -180,6 +180,7 @@ class Model {
   public vertexNormalBuffer: WebGLBuffer;
   public texture: WebGLTexture;
 
+  // TODO The vao coming out of this function is broken, unsure why, am ignoring and just setting the attribute pointers each frame
   public recordVertexArrayObject(gl: WebGL2RenderingContext, programInfo: any) {
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);

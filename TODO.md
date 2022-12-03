@@ -29,15 +29,16 @@
 
 - Finish particle system (1)
 - Explosion effects (1)
-- Trail effects (1)
+- Missile trail effects (1)
+- Projectile effects (1)
+- Warp effect (1)
 - Beam effects (3)
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 
 - instanced rendering for projectiles
-- instanced rendering for other things
 - move a bunch of the vbos into vaos to avoid setting the attributes over and over
-- draw the arrows in webgl instead of the overlay canvas
+- instanced rendering for other things
 - figure out if rebinding samplers can be reduced using sampler arrays? (Do these exist in WebGL?)
 
 ### Wishlist

@@ -46,6 +46,8 @@ let particleAOs: WebGLVertexArrayObject[] = [];
 let particleRenderAOs: WebGLVertexArrayObject[] = [];
 let particleBuffers: WebGLBuffer[] = [];
 
+const count = 10;
+
 const createBuffers = () => {
   // Create a texture with the noise
   const noise = randomNoise(512, 512, 4);
@@ -58,7 +60,7 @@ const createBuffers = () => {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
 
-  const particleData = initializeParticleData(1000, 0, 20);
+  const particleData = initializeParticleData(count, 0, 20);
   for (let i = 0; i < 2; i++) {
     const particleBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
@@ -139,8 +141,6 @@ const createBuffers = () => {
 let readIndex = 0;
 
 const draw = (sixtieths: number) => {
-  const count = 1000;
-
   gl.useProgram(particleProgramInfo.program);
 
   gl.uniform1f(particleProgramInfo.uniformLocations.timeDelta, sixtieths);
@@ -183,6 +183,8 @@ const draw = (sixtieths: number) => {
     gl.enableVertexAttribArray(particleProgramInfo.attribLocations.velocity);
   }
 
+  // Binding the feedback buffer is causing errors (with no apparent affect on the result) in the draw calls in
+  // the main program if the vertex array for the draw there exceeds the size of this buffer (I have no idea why).
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, particleBuffers[readIndex ^ 1]);
   gl.enable(gl.RASTERIZER_DISCARD);
   gl.beginTransformFeedback(gl.POINTS);
@@ -197,36 +199,6 @@ const draw = (sixtieths: number) => {
   gl.useProgram(particleRenderingProgramInfo.program);
 
   gl.bindVertexArray(particleRenderAOs[readIndex]);
-  // gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffers[readIndex]);
-  // if (particleRenderingProgramInfo.attribLocations.position !== -1) {
-  //   const offset = 0;
-  //   const stride = 32;
-  //   const numComponents = 3;
-  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
-  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.position);
-  // }
-  // if (particleRenderingProgramInfo.attribLocations.age !== -1) {
-  //   const offset = 12;
-  //   const stride = 32;
-  //   const numComponents = 1;
-  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
-  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.age);
-  // }
-  // if (particleRenderingProgramInfo.attribLocations.life !== -1) {
-  //   const offset = 16;
-  //   const stride = 32;
-  //   const numComponents = 1;
-  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
-  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.life);
-  // }
-  // if (particleRenderingProgramInfo.attribLocations.velocity !== -1) {
-  //   const offset = 20;
-  //   const stride = 32;
-  //   const numComponents = 3;
-  //   gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
-  //   gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.velocity);
-  // }
-
   const viewMatrix = mat4.create();
   mat4.translate(viewMatrix, viewMatrix, [0, 0, -5]);
 

@@ -1191,7 +1191,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
 
-  // drawParticles(sixtieths);
+  drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
@@ -1299,7 +1299,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   for (const asteroid of state.asteroids.values()) {
     asteroid.roll += asteroid.rotationRate * sixtieths;
-    // drawAsteroid(asteroid, lightSources);
+    drawAsteroid(asteroid, lightSources);
   }
 
   for (const mine of state.mines.values()) {

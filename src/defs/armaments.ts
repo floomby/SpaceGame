@@ -14,7 +14,7 @@ import {
   TargetKind,
 } from "../game";
 import { findHeadingBetween, l2Norm, l2NormSquared, Position, Rectangle } from "../geometry";
-import { defs, SlotKind, UnitKind } from "./shipsAndStations";
+import { defs, PointLightData, SlotKind, UnitKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
 import { projectileDefs } from "./projectiles";
@@ -60,6 +60,10 @@ type ArmamentDef = {
 type MineDef = {
   explosionEffectIndex: number;
   explosionMutator: (mine: Mine, state: GlobalState) => void;
+  model: string;
+  modelIndex?: number;
+  pointLights?: PointLightData[];
+  deploymentTime: number;
 };
 
 type MissileDef = {
@@ -474,6 +478,12 @@ const initArmaments = () => {
         players[i].health -= 80;
       }
     },
+    model: "proximity_mine",
+    pointLights: [
+      { position: { x: 0, y: 0, z: 0.5 }, color: [3.0, 0.0, 0.0] },
+      { position: { x: 0, y: 0, z: -0.5 }, color: [3.0, 0.0, 0.0] },
+    ],
+    deploymentTime: 30,
   });
   const proximityMineIndex = mineDefs.length - 1;
   // Proximity Mine - 11

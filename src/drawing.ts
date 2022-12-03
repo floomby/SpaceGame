@@ -844,7 +844,7 @@ const drawFadingCollectables = (self: Player) => {
 
 const drawMines = (self: Player, mines: IterableIterator<Mine>, sixtieths: number) => {
   for (const mine of mines) {
-    mine.phase += sixtieths * 0.03;
+    // mine.phase += sixtieths * 0.03;
     mine.heading += sixtieths * 0.04;
     if (infinityNorm(mine.position, self.position) > Math.max(canvas.width, canvas.height) / 2 + mine.radius) {
       continue;
@@ -858,7 +858,7 @@ const drawMines = (self: Player, mines: IterableIterator<Mine>, sixtieths: numbe
     ctx.fillRect(-30 / 8, -30 / 2, 30 / 4, 30);
     ctx.closePath();
     ctx.beginPath();
-    ctx.fillStyle = `rgb(255, 0, 0, ${0.5 + 0.5 * Math.sin(mine.phase)})`;
+    // ctx.fillStyle = `rgb(255, 0, 0, ${0.5 + 0.5 * Math.sin(mine.phase)})`;
     ctx.arc(0, 0, 4, 0, 2 * Math.PI);
     ctx.closePath();
     ctx.fill();
@@ -1221,7 +1221,7 @@ export {
   initStars,
   // pushMessage,
   fadeOutCollectable,
-  fadeOutMine,
+  // fadeOutMine,
   canvasCoordsToGameCoords,
   adapter,
 };

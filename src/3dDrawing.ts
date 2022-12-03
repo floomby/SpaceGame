@@ -2,8 +2,8 @@ import { initEffects } from "./effects";
 import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
-import { asteroidDefs, defs } from "./defs";
-import { Asteroid, Ballistic, ChatMessage, Player } from "./game";
+import { asteroidDefs, defs, mineDefs } from "./defs";
+import { Asteroid, Ballistic, ChatMessage, Mine, Player } from "./game";
 import { l2NormSquared, Position, Rectangle } from "./geometry";
 import {
   appendBottomBars,
@@ -140,7 +140,7 @@ let backgroundBuffer: WebGLBuffer;
 
 // Rendering constants stuff
 const pointLightCount = 10;
-const gamePlaneZ = -100.0;
+const gamePlaneZ = -50.0;
 
 const init3dDrawing = (callback: () => void) => {
   initDockingMessages();
@@ -246,9 +246,9 @@ const init3dDrawing = (callback: () => void) => {
         baseColor: gl.getUniformLocation(program, "uBaseColor"),
         pointLights: new Array(pointLightCount).fill(0).map((_, i) => gl.getUniformLocation(program, `uPointLights[${i}]`)),
         pointLightLighting: new Array(pointLightCount).fill(0).map((_, i) => gl.getUniformLocation(program, `uPointLightLighting[${i}]`)),
-
         drawType: gl.getUniformLocation(program, "uDrawType"),
         healthAndEnergyAndScale: gl.getUniformLocation(program, "uHealthAndEnergyAndScale"),
+        desaturate: gl.getUniformLocation(program, "uDesaturate"),
       },
     };
 
@@ -298,6 +298,7 @@ const init3dDrawing = (callback: () => void) => {
         "hemacite.obj",
         "prifecite.obj",
         "russanite.obj",
+        "proximity_mine.obj",
       ].map((url) => loadObj(url))
     )
       .then(async () => {
@@ -305,6 +306,9 @@ const init3dDrawing = (callback: () => void) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
         asteroidDefs.forEach((def) => {
+          def.modelIndex = modelMap.get(def.model)[1];
+        });
+        mineDefs.forEach((def) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
 
@@ -413,6 +417,9 @@ const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
   gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+  const toDesaturate = player.inoperable ? 1 : 0;
+  gl.uniform1f(programInfo.uniformLocations.desaturate, toDesaturate);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -550,6 +557,9 @@ const drawTarget = (target: Player, where: Rectangle) => {
   gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+  const toDesaturate = target.inoperable ? 1 : 0;
+  gl.uniform1f(programInfo.uniformLocations.desaturate, toDesaturate);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -703,6 +713,9 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
 
+  const toDesaturate = asteroid.resources === 0 ? 0.5 : 0;
+  gl.uniform1f(programInfo.uniformLocations.desaturate, toDesaturate);
+
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
@@ -712,7 +725,6 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
   const resources = Math.max(asteroid.resources, 0) / def.resources;
   gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [resources, 0, def.radius / 10]);
 
-  // Draw the health bar
   {
     const numComponents = 3;
     const type = gl.FLOAT;
@@ -819,6 +831,9 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
 
+  const toDesaturate = asteroid.resources === 0 ? 0.5 : 0;
+  gl.uniform1f(programInfo.uniformLocations.desaturate, toDesaturate);
+
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
@@ -846,10 +861,141 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+type FadingMine = Mine & { framesRemaining: number };
+
+let fadingMines: FadingMine[] = [];
+
+const fadeOutMine = (mine: Mine) => {
+  fadingMines.push({ ...mine, framesRemaining: 180 });
+};
+
+const processFadingMines = (sixtieths: number, pointLights: PointLightData[]) => {
+  fadingMines = fadingMines.filter((fadingMine) => {
+    fadingMine.framesRemaining -= sixtieths;
+    if (fadingMine.framesRemaining < 0) {
+      return false;
+    }
+    fadingMine.modelMatrix = mat4.create();
+    fadingMine.heading = (fadingMine.heading + (fadingMine.id % 2 ? 0.007 : -0.007)) % (Math.PI * 2);
+    mat4.rotateZ(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.heading);
+    mat4.rotateY(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.pitch);
+    const scaleFactor = (fadingMine.framesRemaining / 180) * 1.5;
+    mat4.scale(fadingMine.modelMatrix, fadingMine.modelMatrix, [scaleFactor, scaleFactor, scaleFactor]);
+    drawMine(fadingMine, pointLights, 1 - fadingMine.framesRemaining / 180);
+    return true;
+  });
+};
+
+const clientMineUpdate = (mine: Mine, sixtieths: number) => {
+  const def = mineDefs[mine.defIndex];
+  mine.deploying = Math.max(0, mine.deploying - sixtieths);
+  mine.modelMatrix = mat4.create();
+  mine.heading = (mine.heading + (mine.id % 2 ? 0.007 : -0.007)) % (Math.PI * 2);
+  mat4.rotateZ(mine.modelMatrix, mine.modelMatrix, mine.heading);
+  mat4.rotateY(mine.modelMatrix, mine.modelMatrix, mine.pitch);
+  const scaleFactor = (1 - mine.deploying / def.deploymentTime) * 1.5;
+  mat4.scale(mine.modelMatrix, mine.modelMatrix, [scaleFactor, scaleFactor, scaleFactor]);
+};
+
+const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) => {
+  const def = mineDefs[mine.defIndex];
+  let bufferData = models[def.modelIndex].bindResources(gl);
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  // Uniforms
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+  gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[mine.team]);
+
+  // find the closest lights
+  let lights: [number, PointLightData][] = [];
+  for (let i = 0; i < pointLightCount; i++) {
+    lights.push([Infinity, null]);
+  }
+  for (const light of lightSources) {
+    const dist2 = l2NormSquared(light.position, mine.position);
+    let insertionIndex = 0;
+    while (insertionIndex < pointLightCount && dist2 > lights[insertionIndex][0]) {
+      insertionIndex++;
+    }
+    if (insertionIndex < pointLightCount) {
+      lights.splice(insertionIndex, 0, [dist2, light]);
+      lights.pop();
+    }
+  }
+
+  for (let i = 0; i < pointLightCount; i++) {
+    if (lights[i][1]) {
+      const pointLight = [mapGameXToWorld(lights[i][1].position.x), mapGameYToWorld(lights[i][1].position.y), lights[i][1].position.z, 0];
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLight);
+      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], lights[i][1].color);
+    } else {
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], [0.0, 0.0, 0.0, 0.0]);
+      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], [0.0, 0.0, 0.0]);
+    }
+  }
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, mine.modelMatrix);
+
+  const viewMatrix = mat4.create();
+  mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(mine.position.x), mapGameYToWorld(mine.position.y), gamePlaneZ]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  const normalMatrix = mat4.create();
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, mine.modelMatrix));
+  mat4.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+  gl.uniform1f(programInfo.uniformLocations.desaturate, desaturation);
+
+  const vertexCount = models[def.modelIndex].indices.length || 0;
+  const type = gl.UNSIGNED_SHORT;
+  const offset = 0;
+  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+};
+
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  // I may be able to move this to the initialization code since I am probably just sticking with monolithic shaders
+  // The particle system is a separate program
   gl.useProgram(programInfo.program);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
@@ -861,7 +1007,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
 
-  // drawBackground(lastSelf.position);
+  drawBackground(lastSelf.position);
 
   const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };
 
@@ -912,13 +1058,45 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
-  for (const player of state.players.values()) {
-    // drawPlayer(player, lightSources);
+  // Update the mines and also add the point lights
+  for (const mine of state.mines.values()) {
+    clientMineUpdate(mine, sixtieths);
+
+    if (mine.deploying) {
+      continue;
+    }
+
+    const def = mineDefs[mine.defIndex];
+    if (def.pointLights) {
+      for (const light of def.pointLights) {
+        const pos = vec4.create();
+        vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
+
+        vec4.transformMat4(pos, pos, mine.modelMatrix);
+
+        lightSources.push({
+          position: { x: pos[0] * 10 + mine.position.x, y: pos[1] * 10 + mine.position.y, z: gamePlaneZ + pos[2] },
+          color: light.color,
+        });
+      }
+    }
   }
+
+  processFadingMines(sixtieths, lightSources);
+
+  for (const player of state.players.values()) {
+    drawPlayer(player, lightSources);
+  }
+
+
 
   for (const asteroid of state.asteroids.values()) {
     asteroid.roll += asteroid.rotationRate * sixtieths;
-    // drawAsteroid(asteroid, lightSources);
+    drawAsteroid(asteroid, lightSources);
+  }
+
+  for (const mine of state.mines.values()) {
+    drawMine(mine, lightSources);
   }
 
   for (const projectile of state.projectiles.values()) {
@@ -984,7 +1162,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   draw2d(programInfo);
 
-  drawParticles(sixtieths);
+  // drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
 
   // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
@@ -1034,4 +1212,5 @@ export {
   canvasGameBottomRight,
   particleProgramInfo,
   particleRenderingProgramInfo,
+  fadeOutMine,
 };

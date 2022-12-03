@@ -224,13 +224,13 @@ const canRepair = (player: Player | undefined, station: Player | undefined, stri
 
 type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number; idx: number };
 
-type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; phase?: number };
+type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; pitch?: number; modelMatrix?: any };
 
-const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: number) => {
-  for (const mine of mines) {
-    mine.deploying = Math.max(0, mine.deploying - sixtieths);
-  }
-};
+// const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: number) => {
+//   for (const mine of mines) {
+//     mine.deploying = Math.max(0, mine.deploying - sixtieths);
+//   }
+// };
 
 type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
 
@@ -481,7 +481,7 @@ type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: M
 
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
-const   update = (
+const update = (
   state: GlobalState,
   frameNumber: number,
   serverTargets: Map<number, [TargetKind, number]>,
@@ -1421,7 +1421,7 @@ export {
   maxNameLength,
   effectiveInfinity,
   serverMessagePersistTime,
-  clientMineDeploymentUpdater,
+  // clientMineDeploymentUpdater,
   isValidSectorInDirection,
   sectorBounds,
   sectorDelta,

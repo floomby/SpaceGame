@@ -12,6 +12,7 @@ uniform vec3 uBaseColor;
 uniform sampler2D uSampler;
 uniform vec3 uPointLightLighting[10];
 uniform mediump vec3 uHealthAndEnergyAndScale;
+uniform float uDesaturate;
 
 layout(location = 0) out vec4 outColor;
 
@@ -64,6 +65,10 @@ void main(void) {
 
   vec4 sampled = texture(uSampler, vTextureCoord);
   vec3 materialColor = mix(uBaseColor, sampled.rgb, sampled.a);
+
+  // desaturate
+  float average = (materialColor.r + materialColor.g + materialColor.b) / 3.0;
+  materialColor = mix(vec3(average), materialColor, 1.0 - uDesaturate);
 
   vec3 pointLightSum = vec3(0.0, 0.0, 0.0);
 

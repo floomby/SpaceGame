@@ -37,7 +37,7 @@ import {
   clearStack,
 } from "./dialog";
 import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
-import { drawEverything, fadeOutCollectable, fadeOutMine, initDrawing, initStars } from "./drawing";
+import { drawEverything, fadeOutCollectable } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
   addLoadingText,
@@ -72,7 +72,7 @@ import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
 import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
-import { init3dDrawing, drawEverything as drawEverything3 } from "./3dDrawing";
+import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine } from "./3dDrawing";
 import { rasterizeText } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 
@@ -342,6 +342,11 @@ const initAsteroid = (asteroid: Asteroid) => {
   asteroid.rotationRate = Math.random() * 0.01 - 0.005;
 }
 
+const initMine = (mine: Mine) => {
+  mine.heading = Math.random() * Math.PI * 2;
+  mine.pitch = Math.random();
+};
+
 const run = () => {
   addLoadingText("Initializing client game state");
   initBlankState();
@@ -379,7 +384,7 @@ const run = () => {
         state.collectables.set(collectable.id, collectable);
       }
       for (const mine of data.mines) {
-        mine.phase = Math.random() * Math.PI * 2;
+        initMine(mine);
         state.mines.set(mine.id, mine);
       }
       for (const sectorInfo of data.sectorInfos) {
@@ -430,14 +435,27 @@ const run = () => {
       state.players.set(player.id, player);
     }
     for (const asteroid of data.asteroids as Asteroid[]) {
-      state.asteroids.set(asteroid.id, asteroid);
+      const existing = state.asteroids.get(asteroid.id);
+      if (existing) {
+        asteroid.pitch = existing.pitch;
+        asteroid.roll = existing.roll;
+        asteroid.rotationRate = existing.rotationRate;
+      } else {
+        state.asteroids.set(asteroid.id, asteroid);
+      }
     }
     for (const missile of data.missiles as Missile[]) {
       state.missiles.set(missile.id, missile);
     }
     for (const mine of data.mines as Mine[]) {
-      mine.phase = Math.random() * Math.PI * 2;
-      state.mines.set(mine.id, mine);
+      const existing = state.mines.get(mine.id);
+      if (existing) {
+        mine.heading = existing.heading;
+        mine.pitch = existing.pitch;
+      } else {
+        initMine(mine);
+        state.mines.set(mine.id, mine);
+      }
     }
     for (const projectile of data.projectiles as Ballistic[]) {
       state.projectiles.set(projectile.id, projectile);
@@ -486,7 +504,7 @@ const run = () => {
       }
       state.mines.clear();
       for (const mine of data.mines) {
-        mine.phase = Math.random() * Math.PI * 2;
+        initMine(mine);
         state.mines.set(mine.id, mine);
       }
       // initStars(data.to);

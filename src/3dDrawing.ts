@@ -71,12 +71,12 @@ const initShaders = (callback: (program: any, particleProgram: any, particleRend
     ].map((file) => fetch(file).then((res) => res.text()))
   )
     .then(([vsSource, fsSource, pvsSource, pfsSource, prvsSource, prfsSource]) => {
-      const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
-      const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
-      const particleVertexShader = loadShader(gl.VERTEX_SHADER, pvsSource);
-      const particleFragmentShader = loadShader(gl.FRAGMENT_SHADER, pfsSource);
-      const particleRenderingVertexShader = loadShader(gl.VERTEX_SHADER, prvsSource);
-      const particleRenderingFragmentShader = loadShader(gl.FRAGMENT_SHADER, prfsSource);
+      const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource, "vertex.glsl");
+      const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource, "fragment.glsl");
+      const particleVertexShader = loadShader(gl.VERTEX_SHADER, pvsSource, "particleVertex.glsl");
+      const particleFragmentShader = loadShader(gl.FRAGMENT_SHADER, pfsSource, "particleFragment.glsl");
+      const particleRenderingVertexShader = loadShader(gl.VERTEX_SHADER, prvsSource, "particleRenderingVertex.glsl");
+      const particleRenderingFragmentShader = loadShader(gl.FRAGMENT_SHADER, prfsSource, "particleRenderingFragment.glsl");
 
       const shaderProgram = gl.createProgram();
       gl.attachShader(shaderProgram, vertexShader);
@@ -91,7 +91,7 @@ const initShaders = (callback: (program: any, particleProgram: any, particleRend
       const particleShaderProgram = gl.createProgram();
       gl.attachShader(particleShaderProgram, particleVertexShader);
       gl.attachShader(particleShaderProgram, particleFragmentShader);
-      gl.transformFeedbackVaryings(particleShaderProgram, ["vPosition", "vAge", "vLife", "vVelocity"], gl.INTERLEAVED_ATTRIBS);
+      gl.transformFeedbackVaryings(particleShaderProgram, ["vPosition", "vAge", "vLife", "vVelocity", "vBehavior"], gl.INTERLEAVED_ATTRIBS);
       gl.linkProgram(particleShaderProgram);
 
       if (!gl.getProgramParameter(particleShaderProgram, gl.LINK_STATUS)) {
@@ -114,7 +114,7 @@ const initShaders = (callback: (program: any, particleProgram: any, particleRend
     .catch(console.error);
 };
 
-const loadShader = (type: number, source: string) => {
+const loadShader = (type: number, source: string, filename: string) => {
   const shader = gl.createShader(type);
 
   gl.shaderSource(shader, source);
@@ -122,7 +122,7 @@ const loadShader = (type: number, source: string) => {
   gl.compileShader(shader);
 
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error(`An error occurred compiling the shaders: ${gl.getShaderInfoLog(shader)}`);
+    console.error(`An error occurred compiling the shaders (${filename}): ${gl.getShaderInfoLog(shader)}`);
     gl.deleteShader(shader);
     return null;
   }
@@ -257,6 +257,7 @@ const init3dDrawing = (callback: () => void) => {
         age: gl.getAttribLocation(particleProgram, "aAge"),
         velocity: gl.getAttribLocation(particleProgram, "aVelocity"),
         life: gl.getAttribLocation(particleProgram, "aLife"),
+        behavior: gl.getAttribLocation(particleProgram, "aBehavior"),
       },
       uniformLocations: {
         timeDelta: gl.getUniformLocation(particleProgram, "uTimeDelta"),
@@ -277,6 +278,7 @@ const init3dDrawing = (callback: () => void) => {
         age: gl.getAttribLocation(particleRenderingProgram, "aAge"),
         velocity: gl.getAttribLocation(particleRenderingProgram, "aVelocity"),
         life: gl.getAttribLocation(particleRenderingProgram, "aLife"),
+        behavior: gl.getAttribLocation(particleProgram, "aBehavior"),
       },
       uniformLocations: {
         projectionMatrix: gl.getUniformLocation(particleRenderingProgram, "uProjectionMatrix"),

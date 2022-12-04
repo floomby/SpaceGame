@@ -22,7 +22,7 @@ const initTextures = (gl: WebGL2RenderingContext, callback: () => void) => {
 };
 
 const initializeParticleData = (count: number, minAge: number, maxAge: number) => {
-  const data = new Float32Array(count * 8);
+  const data = new Float32Array(count * 12);
   for (let i = 0; i < count; i++) {
     // Position
     data[i * 8 + 0] = Math.random() * 2 - 1;
@@ -37,6 +37,11 @@ const initializeParticleData = (count: number, minAge: number, maxAge: number) =
     data[i * 8 + 5] = Math.random() * 0.01 - 0.005;
     data[i * 8 + 6] = Math.random() * 0.01 - 0.005;
     data[i * 8 + 7] = Math.random() * 0.01 - 0.005;
+    // Behavior
+    data[i * 8 + 8] = 0;
+    data[i * 8 + 9] = 0;
+    data[i * 8 + 10] = 0;
+    data[i * 8 + 11] = 0;
   }
   return data;
 };
@@ -45,6 +50,7 @@ let noiseTexture: WebGLTexture;
 let particleAOs: WebGLVertexArrayObject[] = [];
 let particleRenderAOs: WebGLVertexArrayObject[] = [];
 let particleBuffers: WebGLBuffer[] = [];
+let behaviorBuffers: WebGLBuffer[] = [];
 
 const count = 5000;
 
@@ -73,31 +79,38 @@ const createBuffers = () => {
     gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
     if (particleProgramInfo.attribLocations.position !== -1) {
       const offset = 0;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 3;
       gl.vertexAttribPointer(particleProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleProgramInfo.attribLocations.position);
     }
     if (particleProgramInfo.attribLocations.age !== -1) {
       const offset = 12;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 1;
       gl.vertexAttribPointer(particleProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleProgramInfo.attribLocations.age);
     }
     if (particleProgramInfo.attribLocations.life !== -1) {
       const offset = 16;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 1;
       gl.vertexAttribPointer(particleProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleProgramInfo.attribLocations.life);
     }
     if (particleProgramInfo.attribLocations.velocity !== -1) {
       const offset = 20;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 3;
       gl.vertexAttribPointer(particleProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleProgramInfo.attribLocations.velocity);
+    }
+    if (particleProgramInfo.attribLocations.behavior !== -1) {
+      const offset = 32;
+      const stride = 48;
+      const numComponents = 1;
+      gl.vertexAttribPointer(particleProgramInfo.attribLocations.behavior, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleProgramInfo.attribLocations.behavior);
     }
     gl.bindVertexArray(null);
     particleAOs.push(particleAO);
@@ -107,7 +120,7 @@ const createBuffers = () => {
     gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
     if (particleRenderingProgramInfo.attribLocations.position !== -1) {
       const offset = 0;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 3;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.position, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.position);
@@ -115,7 +128,7 @@ const createBuffers = () => {
     }
     if (particleRenderingProgramInfo.attribLocations.age !== -1) {
       const offset = 12;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 1;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.age, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.age);
@@ -123,7 +136,7 @@ const createBuffers = () => {
     }
     if (particleRenderingProgramInfo.attribLocations.life !== -1) {
       const offset = 16;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 1;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.life, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.life);
@@ -131,7 +144,7 @@ const createBuffers = () => {
     }
     if (particleRenderingProgramInfo.attribLocations.velocity !== -1) {
       const offset = 20;
-      const stride = 32;
+      const stride = 48;
       const numComponents = 3;
       gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.velocity, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.velocity);
@@ -159,12 +172,14 @@ const draw = (sixtieths: number) => {
   gl.bindVertexArray(particleAOs[readIndex]);
 
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, particleBuffers[readIndex ^ 1]);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, behaviorBuffers[readIndex ^ 1]);
   gl.enable(gl.RASTERIZER_DISCARD);
   gl.beginTransformFeedback(gl.POINTS);
   gl.drawArrays(gl.POINTS, 0, count);
   gl.endTransformFeedback();
   gl.disable(gl.RASTERIZER_DISCARD);
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
   readIndex = (readIndex + 1) % 2;
@@ -184,7 +199,9 @@ const draw = (sixtieths: number) => {
   gl.bindTexture(gl.TEXTURE_2D, particleTextures[0]);
   gl.uniform1i(particleRenderingProgramInfo.uniformLocations.particleTexture, 0);
 
+  gl.disable(gl.DEPTH_TEST);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+  gl.enable(gl.DEPTH_TEST);
   gl.bindVertexArray(null);
 };
 

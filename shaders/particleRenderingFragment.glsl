@@ -6,10 +6,14 @@ uniform sampler2D uSample;
 in float vAge;
 in float vLife;
 in vec2 vTextureCoord;
-in vec4 vColor;
+in vec4 vBehavior;
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
-  outColor = texture(uSample, vTextureCoord);
+  // if (vBehavior.x > 1.0) {
+  //   outColor = vec4(1.0) * vLife / 20.0;
+  // } else {
+    outColor = texture(uSample, vTextureCoord);
+  // }
 }

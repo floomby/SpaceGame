@@ -9,16 +9,18 @@ layout (location = 4) in vec4 aBehavior;
 
 uniform float uTimeDelta;
 uniform sampler2D uNoise;
-uniform vec3 uGravity;
-uniform vec3 uOrigin;
-uniform float uMinSpeed;
-uniform float uMaxSpeed;
 
 out vec3 vPosition;
 out float vAge;
 out float vLife;
 out vec3 vVelocity;
 out vec4 vBehavior;
+
+// UBOs exist in webgl2, but I am not wanting to figure out the javascript api for it right now
+uniform float uEmitWeight[24];
+uniform uint uEmitType[24];
+uniform vec3 uEmitPosition[24];
+uniform vec3 uEmitVelocity[24];
 
 void main() {
   if (aAge >= aLife) {
@@ -28,15 +30,15 @@ void main() {
 
     vec3 dir = normalize(rand.xyz - 0.5);
 
-    vPosition = aBehavior.xyz + uOrigin;
+    vPosition = aBehavior.xyz;
 
     vAge = 0.0;
     vLife = rand.w * 80.0 + 15.0;
 
-    vVelocity = dir * (uMinSpeed + rand.g * (uMaxSpeed - uMinSpeed));
+    vVelocity = dir * (0.01 + rand.g * (0.01));
     vBehavior = vec4(aBehavior.x + 0.5, 0.0, 0.0, 0.0);
   } else {
-    vVelocity = aVelocity + uGravity * uTimeDelta;
+    vVelocity = aVelocity * 0.99;
     vPosition = vVelocity * uTimeDelta + aPosition;
     vAge = aAge + 1.0;
     vLife = aLife;

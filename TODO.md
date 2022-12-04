@@ -39,7 +39,7 @@
 - instanced rendering for projectiles
 - move a bunch of the vbos into vaos to avoid setting the attributes over and over
 - instanced rendering for other things
-- figure out if rebinding samplers can be reduced using sampler arrays? (Do these exist in WebGL?)
+- use ubos for the lights and particle emitters
 
 ### Wishlist
 

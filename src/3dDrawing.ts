@@ -262,12 +262,6 @@ const init3dDrawing = (callback: () => void) => {
       uniformLocations: {
         timeDelta: gl.getUniformLocation(particleProgram, "uTimeDelta"),
         noise: gl.getUniformLocation(particleProgram, "uNoise"),
-        gravity: gl.getUniformLocation(particleProgram, "uGravity"),
-        origin: gl.getUniformLocation(particleProgram, "uOrigin"),
-        minTheta: gl.getUniformLocation(particleProgram, "uMinTheta"),
-        maxTheta: gl.getUniformLocation(particleProgram, "uMaxTheta"),
-        minSpeed: gl.getUniformLocation(particleProgram, "uMinSpeed"),
-        maxSpeed: gl.getUniformLocation(particleProgram, "uMaxSpeed"),
       },
     };
 
@@ -893,11 +887,13 @@ const processFadingMines = (sixtieths: number, pointLights: PointLightData[]) =>
     }
     fadingMine.modelMatrix = mat4.create();
     fadingMine.heading = (fadingMine.heading + (fadingMine.id % 2 ? 0.007 : -0.007)) % (Math.PI * 2);
-    mat4.rotateZ(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.heading);
-    mat4.rotateY(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.pitch);
-    const scaleFactor = (fadingMine.framesRemaining / 180) * 1.5;
-    mat4.scale(fadingMine.modelMatrix, fadingMine.modelMatrix, [scaleFactor, scaleFactor, scaleFactor]);
-    drawMine(fadingMine, pointLights, 1 - fadingMine.framesRemaining / 180);
+    if (isRemotelyOnscreen) {
+      mat4.rotateZ(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.heading);
+      mat4.rotateY(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.pitch);
+      const scaleFactor = (fadingMine.framesRemaining / 180) * 1.5;
+      mat4.scale(fadingMine.modelMatrix, fadingMine.modelMatrix, [scaleFactor, scaleFactor, scaleFactor]);
+      drawMine(fadingMine, pointLights, 1 - fadingMine.framesRemaining / 180);
+    }
     return true;
   });
 };
@@ -1007,7 +1003,6 @@ const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) 
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 };
-
 
 const drawProjectile = (projectile: Ballistic, pointLights: PointLightData[]) => {
   let bufferData = modelMap.get("projectile")[0];
@@ -1174,22 +1169,25 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
-}
+};
 
-let drawn = false;
+const isRemotelyOnscreen = (position: Position) => {
+  return !(
+    position.x < canvasGameTopLeft.x - 500 ||
+    position.x > canvasGameBottomRight.x + 500 ||
+    position.y < canvasGameTopLeft.y - 500 ||
+    position.y > canvasGameBottomRight.y + 500
+  );
+};
 
 // Main draw function (some game things appear to be updated here, but it is just cosmetic updates and has nothing to do with game logic)
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
-  // if (drawn) {
-  //   return;
-  // }
-  
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  
+
   if (!lastSelf) {
     return;
   }
-  // drawn = true;
+
   gl.useProgram(programInfo.program);
 
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
@@ -1226,10 +1224,12 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   const lightSources: PointLightData[] = [];
 
   for (const projectile of state.projectiles.values()) {
-    lightSources.push({
-      position: { x: projectile.position.x, y: projectile.position.y, z: gamePlaneZ },
-      color: [4.0, 4.0, 4.0],
-    });
+    if (isRemotelyOnscreen(projectile.position)) {
+      lightSources.push({
+        position: { x: projectile.position.x, y: projectile.position.y, z: gamePlaneZ },
+        color: [4.0, 4.0, 4.0],
+      });
+    }
   }
 
   for (const player of state.players.values()) {
@@ -1295,24 +1295,34 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   processFadingMines(sixtieths, lightSources);
 
   for (const player of state.players.values()) {
-    drawPlayer(player, lightSources);
+    if (isRemotelyOnscreen(player.position)) {
+      drawPlayer(player, lightSources);
+    }
   }
 
   for (const asteroid of state.asteroids.values()) {
     asteroid.roll += asteroid.rotationRate * sixtieths;
-    drawAsteroid(asteroid, lightSources);
+    if (isRemotelyOnscreen(asteroid.position)) {
+      drawAsteroid(asteroid, lightSources);
+    }
   }
 
   for (const mine of state.mines.values()) {
-    drawMine(mine, lightSources);
+    if (isRemotelyOnscreen(mine.position)) {
+      drawMine(mine, lightSources);
+    }
   }
 
   for (const projectile of state.projectiles.values()) {
-    drawProjectile(projectile, lightSources);
+    if (isRemotelyOnscreen(projectile.position)) {
+      drawProjectile(projectile, lightSources);
+    }
   }
 
   for (const missile of state.missiles.values()) {
-    drawMissile(missile, lightSources);
+    if (isRemotelyOnscreen(missile.position)) {
+      drawMissile(missile, lightSources);
+    }
   }
 
   draw2d(programInfo);
@@ -1321,7 +1331,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   gl.useProgram(programInfo.program);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
-  
+
   // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
   gl.clear(gl.DEPTH_BUFFER_BIT);
 

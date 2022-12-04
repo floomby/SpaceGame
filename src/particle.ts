@@ -65,7 +65,6 @@ const createBuffers = () => {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-
   const particleData = initializeParticleData(count, 0, 20);
   for (let i = 0; i < 2; i++) {
     const particleBuffer = gl.createBuffer();
@@ -164,10 +163,6 @@ const draw = (sixtieths: number) => {
   gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
   gl.activeTexture(gl.TEXTURE0);
   gl.uniform1i(particleProgramInfo.uniformLocations.noise, 0);
-  gl.uniform3f(particleProgramInfo.uniformLocations.gravity, 0, 0, 0);
-  gl.uniform3f(particleProgramInfo.uniformLocations.origin, 0, 0, 0);
-  gl.uniform1f(particleProgramInfo.uniformLocations.minSpeed, 0.01);
-  gl.uniform1f(particleProgramInfo.uniformLocations.maxSpeed, 0.02);
 
   gl.bindVertexArray(particleAOs[readIndex]);
 

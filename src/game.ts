@@ -242,6 +242,7 @@ enum EffectAnchorKind {
   Player,
   Asteroid,
   Missile,
+  Projectile,
 }
 
 type EffectAnchor = {
@@ -703,15 +704,15 @@ const update = (
           idx: def.primaryDefIndex,
         };
         state.projectiles.set(state.projectileId, projectile);
-        state.projectileId++;
         player.toFirePrimary = false;
         player.energy -= primaryDef.energy;
         if (primaryDef.fireEffect !== undefined) {
           applyEffect({
             effectIndex: primaryDef.fireEffect,
-            from: { kind: EffectAnchorKind.Absolute, value: player.position },
+            from: { kind: EffectAnchorKind.Projectile, value: state.projectileId },
           });
         }
+        state.projectileId++;
       }
       // Run the secondary frameMutators
       player.arms.forEach((armament, index) => {
@@ -843,15 +844,15 @@ const update = (
                 idx: def.primaryDefIndex,
               };
               state.projectiles.set(state.projectileId, projectile);
-              state.projectileId++;
               player.energy -= primaryDef.energy;
               player.sinceLastShot[i] = 0;
               if (primaryDef.fireEffect !== undefined) {
                 applyEffect({
                   effectIndex: primaryDef.fireEffect,
-                  from: { kind: EffectAnchorKind.Absolute, value: hardpointLocations[i] },
+                  from: { kind: EffectAnchorKind.Projectile, value: state.projectileId },
                 });
               }
+              state.projectileId++;
             }
           }
         }

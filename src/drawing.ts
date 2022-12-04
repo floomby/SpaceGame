@@ -1160,7 +1160,7 @@ const drawEverything = (
     for (const projectile of state.projectiles.values()) {
       drawProjectile(projectile, lastSelf);
     }
-    drawEffects(lastSelf, state, sixtieths);
+    // drawEffects(lastSelf, state, sixtieths);
     if (self) {
       drawChats(self, state.players, chats.values());
     }

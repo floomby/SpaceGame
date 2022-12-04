@@ -14,7 +14,7 @@
 ### Hud Checklist
 
 - sector lines (2)
-- weapon text
+- Fix text to not be blit onto the screen in an way that overwrites the pixels of the other texts
 
 ### World Checklist
 

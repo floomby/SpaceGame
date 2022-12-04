@@ -1,4 +1,4 @@
-import { initEffects } from "./effects";
+import { drawEffects, initEffects } from "./effects";
 import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
@@ -141,7 +141,7 @@ let backgroundBuffer: WebGLBuffer;
 
 // Rendering constants stuff
 const pointLightCount = 10;
-const gamePlaneZ = -50.0;
+const gamePlaneZ = -60.0;
 
 const init3dDrawing = (callback: () => void) => {
   initDockingMessages();
@@ -159,7 +159,7 @@ const init3dDrawing = (callback: () => void) => {
     const fieldOfView = (45 * Math.PI) / 180;
     const aspect = canvas.width / canvas.height;
     const zNear = 0.1;
-    const zFar = 100.0;
+    const zFar = 300.0;
     projectionMatrix = mat4.create();
     inverseProjectionMatrix = mat4.create();
 
@@ -263,6 +263,11 @@ const init3dDrawing = (callback: () => void) => {
       uniformLocations: {
         timeDelta: gl.getUniformLocation(particleProgram, "uTimeDelta"),
         noise: gl.getUniformLocation(particleProgram, "uNoise"),
+        emitWeights: new Array(24).fill(0).map((_, i) => gl.getUniformLocation(particleProgram, `uEmitWeight[${i}]`)),
+        emitTypes: new Array(24).fill(0).map((_, i) => gl.getUniformLocation(particleProgram, `uEmitType[${i}]`)),
+        emitPositions: new Array(24).fill(0).map((_, i) => gl.getUniformLocation(particleProgram, `uEmitPosition[${i}]`)),
+        emitVelocities: new Array(24).fill(0).map((_, i) => gl.getUniformLocation(particleProgram, `uEmitVelocity[${i}]`)),
+        totalWeight: gl.getUniformLocation(particleProgram, "uTotalWeight"),
       },
     };
 
@@ -1181,6 +1186,15 @@ const isRemotelyOnscreen = (position: Position) => {
   );
 };
 
+const isRemotelyOnscreenReducedWorldCoords = (x: number, y: number) => {
+  return !(
+    x * 10 < canvasGameTopLeft.x - 500 ||
+    x * 10 > canvasGameBottomRight.x + 500 ||
+    y * -10 < canvasGameTopLeft.y - 500 ||
+    y * -10 > canvasGameBottomRight.y + 500
+  );
+};
+
 // Main draw function (some game things appear to be updated here, but it is just cosmetic updates and has nothing to do with game logic)
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1330,7 +1344,8 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   draw2d(programInfo);
 
-  // drawParticles(sixtieths);
+  drawEffects(sixtieths);
+  drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
@@ -1383,4 +1398,5 @@ export {
   particleProgramInfo,
   particleRenderingProgramInfo,
   fadeOutMine,
+  isRemotelyOnscreenReducedWorldCoords,
 };

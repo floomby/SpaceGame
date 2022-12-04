@@ -14,6 +14,13 @@ void main() {
   // if (vBehavior.x > 1.0) {
   //   outColor = vec4(1.0) * vLife / 20.0;
   // } else {
-    outColor = texture(uSample, vTextureCoord);
+  if (vBehavior.x < 0.0) {
+    discard;
+  } else if (vBehavior.x < 1.0) {
+    outColor = texture(uSample, vTextureCoord) * vLife / 20.0;
+  } else {
+    vec4 color = texture(uSample, vTextureCoord);
+    outColor = vec4(color.rrr, color.a);
+  }
   // }
 }

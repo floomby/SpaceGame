@@ -3,8 +3,11 @@ import { ctx, canvas, effectSprites, sprites } from "./drawing";
 import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound";
 import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
+import { lastSelf, state } from "./globals";
+import { pushTrailEmitter } from "./particle";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
+  // This does not really make sense, I will fix it later though
   if (anchor.kind === EffectAnchorKind.Absolute) {
     return [anchor.value as Position, undefined as Circle];
   }
@@ -36,7 +39,8 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
 
 type EffectDefinition = {
   frames: number;
-  draw: (effect: Effect, self: Player, state: GlobalState, framesLeft: number) => void;
+  draw?: (effect: Effect, self: Player, state: GlobalState, framesLeft: number) => void;
+  draw3?: (effect: Effect, self: Player, state: GlobalState, framesLeft: number) => void;
   initializer?: () => any;
 };
 
@@ -456,15 +460,13 @@ const initEffects = () => {
   // Primary pew sound - 8
   effectDefs.push({
     frames: 10,
-    draw: (effect, self, state, framesLeft) => {
-      const [from] = resolveAnchor(effect.from, state);
-      if (!from) {
-        return;
-      }
-
+    draw3: (effect, self, state, framesLeft) => {
       if (effect.extra.needSound) {
+        const from = pushTrailEmitter(effect.from);
         effect.extra.needSound = false;
-        play3dSound(pewSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+        if (from) {
+          play3dSound(pewSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        }
       }
     },
     initializer: () => {
@@ -873,7 +875,7 @@ const applyEffects = (triggers: EffectTrigger[]) => {
   }
 };
 
-const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
+const drawEffects = (sixtieths: number) => {
   effects = effects.filter((effect) => effect.frame > 0);
 
   // The effect culling is done in the draw functions (if we did it here it would be to inflexible)
@@ -901,7 +903,12 @@ const drawEffects = (self: Player, state: GlobalState, sixtieths: number) => {
       (effect.to.value as Position).y += Math.sin(effect.to.heading) * effect.to.speed * sixtieths;
     }
     const def = effectDefs[effect.definitionIndex];
-    def.draw(effect, self, state, effect.frame);
+    if (def.draw) {
+      // def.draw(effect, lastSelf, state, effect.frame);
+    }
+    if (def.draw3) {
+      def.draw3(effect, lastSelf, state, effect.frame);
+    }
   }
 };
 
@@ -909,4 +916,4 @@ const clearEffects = () => {
   effects.length = 0;
 };
 
-export { applyEffects, drawEffects, initEffects, clearEffects, effectSpriteDefs };
+export { applyEffects, drawEffects, initEffects, clearEffects, effectSpriteDefs, resolveAnchor };

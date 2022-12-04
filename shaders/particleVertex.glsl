@@ -19,28 +19,78 @@ out vec4 vBehavior;
 // UBOs exist in webgl2, but I am not wanting to figure out the javascript api for it right now
 uniform float uEmitWeight[24];
 uniform uint uEmitType[24];
-uniform vec3 uEmitPosition[24];
+uniform vec4 uEmitPosition[24];
 uniform vec3 uEmitVelocity[24];
 
-void main() {
-  if (aAge >= aLife) {
-    ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
-    
-    vec4 rand = texelFetch(uNoise, noiseCoord, 0);
+uniform float uTotalWeight;
 
-    vec3 dir = normalize(rand.xyz - 0.5);
+void emitNop() {
+  vBehavior = vec4(-1.0, 0.0, 0.0, 0.0);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+  vec2 noise = texelFetch(uNoise, noiseCoord, 0).xy;
+  vLife = noise.x * 5.0 + 5.0;
+  vAge = 0.0;
+}
 
-    vPosition = aBehavior.xyz;
+void emitExplosion(uint index) {
+  vBehavior = vec4(0.5, 0.98, 0.0, 0.0);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  vec4 rand = texelFetch(uNoise, noiseCoord, 0);
+  vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
 
-    vAge = 0.0;
-    vLife = rand.w * 80.0 + 15.0;
+  vAge = 0.0;
+  vLife = rand2.x * 15.0 + 1.0;
 
-    vVelocity = dir * (0.01 + rand.g * (0.01));
-    vBehavior = vec4(aBehavior.x + 0.5, 0.0, 0.0, 0.0);
+  vec3 dir = normalize(rand.xyz - 0.5);
+  // vVelocity = dir * (rand.w * 0.04) + uEmitVelocity[index];
+
+  vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.2);
+  vVelocity = (rand2.y * 0.03) * dir;
+  // vPosition = vec3(0.0, 0.0, 0.0);
+}
+
+
+void emitTrail(uint index) {
+  // emitExplosion(index);
+  vBehavior = vec4(1.5, 0.97, 0.0, 0.0);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  vec4 rand = texelFetch(uNoise, noiseCoord, 0);
+  vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
+
+  vAge = 0.0;
+  vLife = rand2.x * 3.0 + 2.0;
+
+  vec3 dir = normalize(rand.xyz - 0.5);
+
+  if (uEmitVelocity[index].z > 0.0) {
+    vPosition = uEmitPosition[index].xyz + rand2.x * vec3(uEmitVelocity[index].xy, 0.0) * 2.0 + dir * (rand2.y * 0.2);
   } else {
-    vVelocity = aVelocity * 0.99;
+    vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3);
+  }
+
+  vVelocity = (rand2.z * 0.01) * dir - vec3(uEmitVelocity[index].xy, 0.0);
+}
+
+void main() {
+  if (aAge >= 2.0 * aLife) {
+    // ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+    //   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
+
+
+    if (uEmitType[0] == 1u) {
+      emitExplosion(0u);
+    } else if (uEmitType[0] == 2u) {
+      emitTrail(0u);
+    } else {
+      emitNop();
+    }
+    // emitExplosion(0u);
+  } else {
+    vVelocity = aVelocity * aBehavior.y;
     vPosition = vVelocity * uTimeDelta + aPosition;
-    vAge = aAge + 1.0;
+    vAge = aAge + uTimeDelta;
     vLife = aLife;
     vBehavior = aBehavior;
   }

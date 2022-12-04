@@ -1,7 +1,20 @@
 // Stuff for the particle system (some of the stuff is in the 3dDrawing file, such as shader program compilation and linking)
 
 import { mat4 } from "gl-matrix";
-import { gl, particleProgramInfo, particleRenderingProgramInfo, projectionMatrix } from "./3dDrawing";
+import {
+  gamePlaneZ,
+  gl,
+  isRemotelyOnscreenReducedWorldCoords,
+  mapGameXToWorld,
+  mapGameYToWorld,
+  particleProgramInfo,
+  particleRenderingProgramInfo,
+  projectionMatrix,
+} from "./3dDrawing";
+import { resolveAnchor } from "./effects";
+import { EffectAnchor, EffectAnchorKind, effectiveInfinity } from "./game";
+import { Position } from "./geometry";
+import { lastSelf, state } from "./globals";
 import { loadTexture } from "./modelLoader";
 
 const randomNoise = (width: number, height: number, channels: number) => {
@@ -15,33 +28,36 @@ const randomNoise = (width: number, height: number, channels: number) => {
 let particleTextures: WebGLTexture = [];
 
 const initTextures = (gl: WebGL2RenderingContext, callback: () => void) => {
-  Promise.all(["particle_test.png"].map(file => loadTexture(file, gl))).then(textures => {
-    particleTextures = textures;
-    callback();
-  }).catch(console.error);
+  Promise.all(["particle_test.png"].map((file) => loadTexture(file, gl)))
+    .then((textures) => {
+      particleTextures = textures;
+      callback();
+    })
+    .catch(console.error);
 };
 
 const initializeParticleData = (count: number, minAge: number, maxAge: number) => {
   const data = new Float32Array(count * 12);
   for (let i = 0; i < count; i++) {
     // Position
-    data[i * 8 + 0] = Math.random() * 2 - 1;
-    data[i * 8 + 1] = Math.random() * 2 - 1;
-    data[i * 8 + 2] = Math.random() * 2 - 1;
+    data[i * 12 + 0] = Math.random() * 2 - 1;
+    data[i * 12 + 1] = Math.random() * 2 - 1;
+    data[i * 12 + 2] = Math.random() * 2 - 1;
     // Age
     const age = Math.random() * (maxAge - minAge) + minAge;
-    data[i * 8 + 3] = age;
+    data[i * 12 + 3] = age;
     // Life
-    data[i * 8 + 4] = age + 1;
+    data[i * 12 + 4] = age + 1;
     // Velocity
-    data[i * 8 + 5] = Math.random() * 0.01 - 0.005;
-    data[i * 8 + 6] = Math.random() * 0.01 - 0.005;
-    data[i * 8 + 7] = Math.random() * 0.01 - 0.005;
+    data[i * 12 + 5] = Math.random() * 0.01 - 0.005;
+    data[i * 12 + 6] = Math.random() * 0.01 - 0.005;
+    data[i * 12 + 7] = Math.random() * 0.01 - 0.005;
     // Behavior
-    data[i * 8 + 8] = 0;
-    data[i * 8 + 9] = 0;
-    data[i * 8 + 10] = 0;
-    data[i * 8 + 11] = 0;
+    // Type, Drag, -, -
+    data[i * 12 + 8] = 1.0;
+    data[i * 12 + 9] = 1.0;
+    data[i * 12 + 10] = 1.0;
+    data[i * 12 + 11] = 1.0;
   }
   return data;
 };
@@ -107,7 +123,7 @@ const createBuffers = () => {
     if (particleProgramInfo.attribLocations.behavior !== -1) {
       const offset = 32;
       const stride = 48;
-      const numComponents = 1;
+      const numComponents = 4;
       gl.vertexAttribPointer(particleProgramInfo.attribLocations.behavior, numComponents, gl.FLOAT, false, stride, offset);
       gl.enableVertexAttribArray(particleProgramInfo.attribLocations.behavior);
     }
@@ -149,8 +165,112 @@ const createBuffers = () => {
       gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.velocity);
       gl.vertexAttribDivisor(particleRenderingProgramInfo.attribLocations.velocity, 1);
     }
+    if (particleRenderingProgramInfo.attribLocations.behavior !== -1) {
+      const offset = 32;
+      const stride = 48;
+      const numComponents = 4;
+      gl.vertexAttribPointer(particleRenderingProgramInfo.attribLocations.behavior, numComponents, gl.FLOAT, false, stride, offset);
+      gl.enableVertexAttribArray(particleRenderingProgramInfo.attribLocations.behavior);
+      gl.vertexAttribDivisor(particleRenderingProgramInfo.attribLocations.behavior, 1);
+    }
     gl.bindVertexArray(null);
     particleRenderAOs.push(particleRenderAO);
+  }
+};
+
+enum EmitterKind {
+  Nop = 0,
+  Explosion = 1,
+  Trail = 2,
+}
+
+// The particle system operates in "reduced world" coordinates
+// x = gameX / 10
+// y = -gameY / 10
+type Emitter = {
+  position: [number, number, number, number];
+  velocity: [number, number, number];
+  kind: EmitterKind;
+  weight: number;
+  from: EffectAnchor;
+};
+
+const emitters: Emitter[] = [];
+
+const updateEmitter = (emitter: Emitter, sixtieths: number) => {
+  if (emitter.from.kind === EffectAnchorKind.Projectile) {
+    const projectile = state.projectiles.get(emitter.from.value as number);
+    if (!projectile) {
+      console.log("projectile not found");
+      return true;
+    }
+    emitter.position[0] = projectile.position.x / 10;
+    emitter.position[1] = -projectile.position.y / 10;
+    if (emitter.velocity[2] < 0) {
+      emitter.velocity[2] += sixtieths;
+    } else {
+      emitter.velocity[2] = 4;
+    }
+    return false;
+  }
+  return true;
+};
+
+// This is a place where ubos would be good
+const bindEmitters = (sixtieths: number) => {
+  let bindingIndex = 0;
+  let totalWeight = 0;
+  for (let i = 0; i < emitters.length; i++) {
+    emitters[i].position[3] -= sixtieths;
+    if (emitters[i].position[3] <= 0 || updateEmitter(emitters[i], sixtieths)) {
+      emitters.splice(i, 1);
+      i--;
+      continue;
+    }
+    if (bindingIndex < 24 && isRemotelyOnscreenReducedWorldCoords(emitters[i].position[0], emitters[i].position[1])) {
+      // switch (emitters[i].kind) {
+      //   case EmitterKind.Trail:
+      //     emitters[i].position[0] += emitters[i].velocity[0] * sixtieths;
+      //     break;
+      //   default:
+      //     console.warn("Unsupported emitter", emitters[i].kind);
+      // }
+      // const [from] = resolveAnchor(emitters[i].from, state) as [Position];
+      // emitters[i].position[0] = from.x / 10;
+      // emitters[i].position[1] = -from.y / 10;
+
+      gl.uniform1ui(particleProgramInfo.uniformLocations.emitTypes[bindingIndex], emitters[i].kind);
+      gl.uniform4fv(particleProgramInfo.uniformLocations.emitPositions[bindingIndex], emitters[i].position);
+      // console.log(emitters[i].position);
+      gl.uniform3fv(particleProgramInfo.uniformLocations.emitVelocities[bindingIndex], emitters[i].velocity);
+      gl.uniform1f(particleProgramInfo.uniformLocations.emitWeights[bindingIndex], emitters[i].weight);
+      totalWeight += emitters[i].weight;
+      bindingIndex++;
+    }
+  }
+  if (bindingIndex === 0) {
+    // bind a nop emitter
+    gl.uniform1ui(particleProgramInfo.uniformLocations.emitTypes[0], EmitterKind.Nop);
+    gl.uniform1f(particleProgramInfo.uniformLocations.emitWeights[0], 1);
+    totalWeight = 1;
+  }
+  gl.uniform1f(particleProgramInfo.uniformLocations.totalWeight, totalWeight);
+  console.log(emitters.length);
+};
+
+const pushTrailEmitter = (from: EffectAnchor) => {
+  if (from.kind === EffectAnchorKind.Projectile) {
+    const projectile = state.projectiles.get(from.value as number);
+    if (projectile) {
+      const position = [projectile.position.x / 10, -projectile.position.y / 10, -1, 20];
+      const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -5];
+      const kind = EmitterKind.Trail;
+      const weight = 4;
+      emitters.push({ position, velocity, kind, weight, from } as Emitter);
+      return projectile.position;
+    }
+  } else {
+    console.warn("Unsupported emitter", from);
   }
 };
 
@@ -163,6 +283,8 @@ const draw = (sixtieths: number) => {
   gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
   gl.activeTexture(gl.TEXTURE0);
   gl.uniform1i(particleProgramInfo.uniformLocations.noise, 0);
+
+  bindEmitters(sixtieths);
 
   gl.bindVertexArray(particleAOs[readIndex]);
 
@@ -184,7 +306,7 @@ const draw = (sixtieths: number) => {
 
   gl.bindVertexArray(particleRenderAOs[readIndex]);
   const viewMatrix = mat4.create();
-  mat4.translate(viewMatrix, viewMatrix, [0, 0, -5]);
+  mat4.translate(viewMatrix, viewMatrix, [-lastSelf.position.x / 10, lastSelf.position.y / 10, gamePlaneZ]);
 
   gl.uniformMatrix4fv(particleRenderingProgramInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
   gl.uniformMatrix4fv(particleRenderingProgramInfo.uniformLocations.viewMatrix, false, viewMatrix);
@@ -194,11 +316,10 @@ const draw = (sixtieths: number) => {
   gl.bindTexture(gl.TEXTURE_2D, particleTextures[0]);
   gl.uniform1i(particleRenderingProgramInfo.uniformLocations.particleTexture, 0);
 
-  gl.disable(gl.DEPTH_TEST);
+  // gl.disable(gl.DEPTH_TEST);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
-  gl.enable(gl.DEPTH_TEST);
+  // gl.enable(gl.DEPTH_TEST);
   gl.bindVertexArray(null);
 };
 
-
-export { randomNoise, createBuffers as createParticleBuffers, draw as drawParticles, initTextures as initParticleTextures };
+export { randomNoise, createBuffers as createParticleBuffers, draw as drawParticles, initTextures as initParticleTextures, pushTrailEmitter };

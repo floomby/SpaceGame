@@ -574,9 +574,9 @@ const drawSectorArrow = () => {
 
   switch (closestEdgeDirection) {
     case CardinalDirection.Up:
-      if (closestEdgeDistance < canvas.height / 2) {
-        return;
-      }
+      // if (closestEdgeDistance < canvas.height / 2) {
+      //   return;
+      // }
       ctx.save();
       ctx.translate(canvas.width / 2, 0);
       ctx.fillStyle = "green";
@@ -593,9 +593,9 @@ const drawSectorArrow = () => {
       ctx.restore();
       break;
     case CardinalDirection.Down:
-      if (closestEdgeDistance < canvas.height / 2) {
-        return;
-      }
+      // if (closestEdgeDistance < canvas.height / 2) {
+      //   return;
+      // }
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height);
       ctx.fillStyle = "green";
@@ -612,9 +612,9 @@ const drawSectorArrow = () => {
       ctx.restore();
       break;
     case CardinalDirection.Left:
-      if (closestEdgeDistance < canvas.width / 2) {
-        return;
-      }
+      // if (closestEdgeDistance < canvas.width / 2) {
+      //   return;
+      // }
       ctx.save();
       ctx.translate(0, canvas.height / 2);
       ctx.fillStyle = "green";
@@ -631,9 +631,9 @@ const drawSectorArrow = () => {
       ctx.restore();
       break;
     case CardinalDirection.Right:
-      if (closestEdgeDistance < canvas.width / 2) {
-        return;
-      }
+      // if (closestEdgeDistance < canvas.width / 2) {
+      //   return;
+      // }
       ctx.save();
       ctx.translate(canvas.width, canvas.height / 2);
       ctx.fillStyle = "green";

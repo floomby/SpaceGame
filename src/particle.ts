@@ -209,7 +209,7 @@ const updateEmitter = (emitter: Emitter, sixtieths: number) => {
     if (emitter.velocity[2] < 0) {
       emitter.velocity[2] += sixtieths;
     } else {
-      emitter.velocity[2] = 4;
+      emitter.velocity[2] = 1;
     }
     return false;
   }
@@ -262,8 +262,8 @@ const pushTrailEmitter = (from: EffectAnchor) => {
   if (from.kind === EffectAnchorKind.Projectile) {
     const projectile = state.projectiles.get(from.value as number);
     if (projectile) {
-      const position = [projectile.position.x / 10, -projectile.position.y / 10, -1, 20];
-      const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -5];
+      const position = [projectile.position.x / 10, -projectile.position.y / 10, -0.4, 20];
+      const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -3];
       const kind = EmitterKind.Trail;
       const weight = 4;
       emitters.push({ position, velocity, kind, weight, from } as Emitter);

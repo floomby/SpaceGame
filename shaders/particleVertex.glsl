@@ -53,7 +53,7 @@ void emitExplosion(uint index) {
 
 void emitTrail(uint index) {
   // emitExplosion(index);
-  vBehavior = vec4(1.5, 0.97, 0.0, 0.0);
+  vBehavior = vec4(1.5, 0.93, 0.0, 0.0);
   ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
   ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
@@ -63,14 +63,15 @@ void emitTrail(uint index) {
   vLife = rand2.x * 3.0 + 2.0;
 
   vec3 dir = normalize(rand.xyz - 0.5);
-
-  if (uEmitVelocity[index].z > 0.0) {
-    vPosition = uEmitPosition[index].xyz + rand2.x * vec3(uEmitVelocity[index].xy, 0.0) * 2.0 + dir * (rand2.y * 0.2);
+  
+  if (uEmitVelocity[index].z >= 0.0) {
+    vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3) + rand2.x * vec3(uEmitVelocity[index].xy, 0.0) * 2.0;
   } else {
-    vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3);
+    vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3) - vec3(uEmitVelocity[index].xy, 0.0);
   }
 
-  vVelocity = (rand2.z * 0.01) * dir - vec3(uEmitVelocity[index].xy, 0.0);
+  // vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3);
+  vVelocity = (rand2.y * 0.01) * dir - vec3(uEmitVelocity[index].xy, 0.0);
 }
 
 void main() {
@@ -80,7 +81,8 @@ void main() {
 
 
     if (uEmitType[0] == 1u) {
-      emitExplosion(0u);
+      // emitExplosion(0u);
+      emitNop();
     } else if (uEmitType[0] == 2u) {
       emitTrail(0u);
     } else {

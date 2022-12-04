@@ -29,6 +29,7 @@ import {
   displayDockedMessages,
   drawPrompts,
   rasterizePrompts,
+  drawWeaponText,
 } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
@@ -1325,9 +1326,11 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
+  drawWeaponText();
+
   draw2d(programInfo);
 
-  drawParticles(sixtieths);
+  // drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);

@@ -14,7 +14,7 @@ import {
 } from "./3dDrawing";
 import { armDefs, ArmUsage, defs, Faction, UnitKind } from "./defs";
 import { Asteroid, availableCargoCapacity, ChatMessage, CloakedState, Player, sectorBounds, TargetKind } from "./game";
-import { CardinalDirection, findHeadingBetween, l2Norm, Position, Position3, projectRayFromCenterOfRect, Rectangle } from "./geometry";
+import { CardinalDirection, findHeadingBetween, l2Norm, Position, Position3, positiveMod, projectRayFromCenterOfRect, Rectangle } from "./geometry";
 import { keybind, lastSelf, selectedSecondary, state, teamColorsFloat, teamColorsOpaque } from "./globals";
 
 const canvasCoordsToNDC = (x: number, y: number) => {
@@ -751,6 +751,63 @@ const drawPrompts = () => {
   }
 };
 
+type WeaponTextData = {
+  default: ImageData;
+  selected: ImageData;
+  active?: ImageData;
+  activeAndSelected?: ImageData;
+};
+
+const weaponTexts: WeaponTextData[] = [];
+let weaponTextInitialized = false;
+
+const rasterizeWeaponText = () => {
+  console.log("rasterizing weapon text");
+  if (!lastSelf) {
+    return;
+  }
+  weaponTextInitialized = true;
+  weaponTexts.length = 0;
+  for (let i = 1; i <= lastSelf.arms.length; i++) {
+    let armDef = armDefs[lastSelf.arms[i % lastSelf.arms.length]];
+    let slotData = lastSelf.slotData[i % lastSelf.arms.length];
+    const indexToShow = i % lastSelf.arms.length;
+    const weaponTextData = {
+      default: rasterizeText(`${indexToShow}: ${armDef.name}`, "14px Arial", [1.0, 1.0, 1.0, 1.0]),
+      selected: rasterizeText(`${indexToShow}: ${armDef.name}`, "14px Arial", [1.0, 1.0, 0.0, 1.0]),
+    } as WeaponTextData;
+    if (slotData && slotData.hasOwnProperty("active")) {
+      weaponTextData.active = rasterizeText(`${indexToShow}: ${armDef.name}`, "14px Arial", [0.0, 1.0, 0.0, 1.0]);
+      weaponTextData.activeAndSelected = rasterizeText(`${indexToShow}: ${armDef.name}`, "14px Arial", [0.6, 0.8, 0.2, 1.0]);
+    }
+    weaponTexts.push(weaponTextData);
+  }
+}
+
+const drawWeaponText = () => {
+  for (let i = 0; i < weaponTexts.length; i++) {
+    let weaponTextData = weaponTexts[i];
+    let slotData = lastSelf.slotData[(i + 1) % lastSelf.arms.length];
+    let imageData = weaponTextData.default;
+    const selected = positiveMod(selectedSecondary - 1, lastSelf.arms.length) === i;
+    if (selected) {
+      imageData = weaponTextData.selected;
+    }
+    if (slotData && slotData.hasOwnProperty("active") && slotData.active) {
+      if (selected) {
+        if (weaponTextData.activeAndSelected) {
+          imageData = weaponTextData.activeAndSelected;
+        }
+      } else {
+        if (weaponTextData.active) {
+          imageData = weaponTextData.active;
+        }
+      }
+    }
+    blitImageDataTopLeft(imageData, 10, overlayCanvas.height - 30 - (weaponTexts.length - i) * 20);
+  }
+}
+
 export {
   ArrowData,
   draw as draw2d,
@@ -779,4 +836,7 @@ export {
   dockedMessage,
   rasterizePrompts,
   drawPrompts,
+  rasterizeWeaponText,
+  drawWeaponText,
+  weaponTextInitialized,
 };

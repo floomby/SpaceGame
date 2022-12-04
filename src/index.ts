@@ -35,6 +35,7 @@ import {
   peekTag,
   setDialogBackground,
   clearStack,
+  bindPostUpdater,
 } from "./dialog";
 import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
 import { drawEverything, fadeOutCollectable } from "./drawing";
@@ -73,7 +74,7 @@ import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
 import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine } from "./3dDrawing";
-import { rasterizeText } from "./2dDrawing";
+import { rasterizeText, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 
 let chats: ChatMessage[] = [];
@@ -474,6 +475,9 @@ const run = () => {
     const self = state.players.get(ownId);
     if (self) {
       setLastSelf(self);
+      if (!weaponTextInitialized) {
+        rasterizeWeaponText();
+      }
       // These redundancies are stupid (minimal impact on performance though) and I should fix how this is done
       updateDom("cargo", self.cargo);
       updateDom("dumpCargo", self.cargo);
@@ -589,6 +593,8 @@ const run = () => {
   bindAction("tutorialStage", (stage: TutorialStage) => {
     setTutorialStage(stage);
   });
+
+  bindPostUpdater("arms", rasterizeWeaponText);
 
   addLoadingText("Launching...");
   displayLoginDialog();

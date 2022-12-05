@@ -119,7 +119,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
-    model: "spaceship",
+    model: "drone",
   });
   // Alliance Starbase - 2
   defs.push({

@@ -61,11 +61,12 @@ void emitTrail(uint index) {
   vLife = rand2.x * 6.0 + 4.0;
 
   vec3 dir = normalize(rand.xyz - 0.5);
+  dir = vec3(dir.xy, dir.z * 0.5);
   
   if (uEmitVelocity[index].z >= 0.0) {
-    vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3) + rand2.x * vec3(uEmitVelocity[index].xy, 0.0) * 2.0;
+    vPosition = vec3(uEmitPosition[index].xy, -0.3) + dir * (rand2.y * 0.3) + rand2.x * vec3(uEmitVelocity[index].xy, 0.0) * 2.0;
   } else {
-    vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3) - vec3(uEmitVelocity[index].xy, 0.0);
+    vPosition = vec3(uEmitPosition[index].xy, -0.3) + dir * (rand2.y * 0.3) - vec3(uEmitVelocity[index].xy, 0.0);
   }
 
   vVelocity = (rand2.y * 0.01) * dir - vec3(uEmitVelocity[index].xy, 0.0);
@@ -82,8 +83,9 @@ void emitSmoke(uint index) {
   vLife = rand2.x * 60.0 + 30.0;
 
   vec3 dir = normalize(rand.xyz - 0.5);
+  dir = vec3(dir.xy, dir.z * 0.5);
 
-  vPosition = vec3(uEmitPosition[index].xy, -0.1) + dir * (rand2.y * 0.2) - vec3(uEmitVelocity[index].xy, 0.0) * uEmitVelocity[index].z
+  vPosition = vec3(uEmitPosition[index].xy, -0.3) + dir * (rand2.y * 0.2) - vec3(uEmitVelocity[index].xy, 0.0) * uEmitVelocity[index].z
    + vec3(uEmitVelocity[index].xy, 0.0) * rand2.z * 1.5;
 
   vVelocity = (rand2.y * 0.1) * dir - vec3(uEmitVelocity[index].xy, 0.0) * uEmitPosition[index].z;

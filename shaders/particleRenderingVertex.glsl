@@ -26,24 +26,37 @@ const vec2 textureBottomLeft = vec2(0.0, 0.0);
 const vec2 textureBottomRight = vec2(1.0, 0.0);
 
 void main() {
-  gl_PointSize = aAge * 0.1;
+  float scale = 0.0;
+
+  if (aBehavior.x < 0.0) {
+    gl_Position = vec4(0.0);
+    vBehavior = aBehavior;
+    return;
+  } else if (aBehavior.x < 1.0) {
+    scale = 1.0;
+  } else if (aBehavior.x < 2.0) {
+    scale = 1.0 - aAge / aLife;
+  } else if (aBehavior.x < 3.0) {
+    scale = 1.0;
+  }
+
   if (gl_VertexID % 6 == 0) {
-    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + topLeft * (1.0 - aAge / aLife) * 0.03, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + topLeft * scale * 0.03, 1.0);
     vTextureCoord = textureTopLeft;
   } else if (gl_VertexID % 6 == 1) {
-    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + topRight * (1.0 - aAge / aLife) * 0.03, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + topRight * scale * 0.03, 1.0);
     vTextureCoord = textureTopRight;
   } else if (gl_VertexID % 6 == 2) {
-    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + bottomLeft * (1.0 - aAge / aLife) * 0.03, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + bottomLeft * scale * 0.03, 1.0);
     vTextureCoord = textureBottomLeft;
   } else if (gl_VertexID % 6 == 3) {
-    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + bottomLeft * (1.0 - aAge / aLife) * 0.03, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + bottomLeft * scale * 0.03, 1.0);
     vTextureCoord = textureBottomLeft;
   } else if (gl_VertexID % 6 == 4) {
-    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + topRight * (1.0 - aAge / aLife) * 0.03, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + topRight * scale * 0.03, 1.0);
     vTextureCoord = textureTopRight;
   } else if (gl_VertexID % 6 == 5) {
-    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + bottomRight * (1.0 - aAge / aLife) * 0.03, 1.0);
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(aPosition + bottomRight * scale * 0.03, 1.0);
     vTextureCoord = textureBottomRight;
   }
   vAge = aAge;

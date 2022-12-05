@@ -11,6 +11,7 @@ import {
   particleRenderingProgramInfo,
   projectionMatrix,
 } from "./3dDrawing";
+import { maxMissileLifetime, missileDefs } from "./defs";
 import { resolveAnchor } from "./effects";
 import { EffectAnchor, EffectAnchorKind, effectiveInfinity } from "./game";
 import { Position } from "./geometry";
@@ -68,7 +69,7 @@ let particleRenderAOs: WebGLVertexArrayObject[] = [];
 let particleBuffers: WebGLBuffer[] = [];
 let behaviorBuffers: WebGLBuffer[] = [];
 
-const count = 5000;
+const count = 20000;
 
 const createBuffers = () => {
   // Create a texture with the noise
@@ -182,6 +183,7 @@ enum EmitterKind {
   Nop = 0,
   Explosion = 1,
   Trail = 2,
+  Smoke = 3,
 }
 
 // The particle system operates in "reduced world" coordinates
@@ -211,6 +213,18 @@ const updateEmitter = (emitter: Emitter, sixtieths: number) => {
       emitter.velocity[2] = 1;
     }
     return false;
+  } else if (emitter.from.kind === EffectAnchorKind.Missile) {
+    const missile = state.missiles.get(emitter.from.value as number);
+    if (!missile) {
+      return true;
+    }
+    const def = missileDefs[missile.defIndex];
+    emitter.position[0] = missile.position.x / 10;
+    emitter.position[1] = -missile.position.y / 10;
+    emitter.position[2] = missile.speed / def.speed;
+    emitter.velocity[0] = Math.cos(missile.heading);
+    emitter.velocity[1] = -Math.sin(missile.heading);
+    return false;
   }
   return true;
 };
@@ -227,17 +241,6 @@ const bindEmitters = (sixtieths: number) => {
       continue;
     }
     if (bindingIndex < 24 && isRemotelyOnscreenReducedWorldCoords(emitters[i].position[0], emitters[i].position[1])) {
-      // switch (emitters[i].kind) {
-      //   case EmitterKind.Trail:
-      //     emitters[i].position[0] += emitters[i].velocity[0] * sixtieths;
-      //     break;
-      //   default:
-      //     console.warn("Unsupported emitter", emitters[i].kind);
-      // }
-      // const [from] = resolveAnchor(emitters[i].from, state) as [Position];
-      // emitters[i].position[0] = from.x / 10;
-      // emitters[i].position[1] = -from.y / 10;
-
       gl.uniform1ui(particleProgramInfo.uniformLocations.emitTypes[bindingIndex], emitters[i].kind);
       gl.uniform4fv(particleProgramInfo.uniformLocations.emitPositions[bindingIndex], emitters[i].position);
       // console.log(emitters[i].position);
@@ -254,19 +257,36 @@ const bindEmitters = (sixtieths: number) => {
     totalWeight = 1;
   }
   gl.uniform1f(particleProgramInfo.uniformLocations.totalWeight, totalWeight);
-  // console.log(emitters.length);
+  console.log(emitters.length);
 };
 
 const pushTrailEmitter = (from: EffectAnchor) => {
   if (from.kind === EffectAnchorKind.Projectile) {
     const projectile = state.projectiles.get(from.value as number);
     if (projectile) {
-      const position = [projectile.position.x / 10, -projectile.position.y / 10, -0.4, 20];
+      const position = [projectile.position.x / 10, -projectile.position.y / 10, -0.4, 120];
       const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -3];
       const kind = EmitterKind.Trail;
       const weight = 4;
       emitters.push({ position, velocity, kind, weight, from } as Emitter);
       return projectile.position;
+    }
+  } else {
+    console.warn("Unsupported emitter", from);
+  }
+};
+
+const pushSmokeEmitter = (from: EffectAnchor) => {
+  if (from.kind === EffectAnchorKind.Missile) {
+    const missile = state.missiles.get(from.value as number);
+    if (missile) {
+      const def = missileDefs[missile.defIndex];
+      const position = [missile.position.x / 10, -missile.position.y / 10, missile.speed / def.speed, maxMissileLifetime];
+      const velocity = [Math.cos(missile.heading), -Math.sin(missile.heading), missile.radius / 10];
+      const kind = EmitterKind.Smoke;
+      const weight = 4;
+      emitters.push({ position, velocity, kind, weight, from } as Emitter);
+      return missile.position;
     }
   } else {
     console.warn("Unsupported emitter", from);
@@ -321,4 +341,4 @@ const draw = (sixtieths: number) => {
   gl.bindVertexArray(null);
 };
 
-export { randomNoise, createBuffers as createParticleBuffers, draw as drawParticles, initTextures as initParticleTextures, pushTrailEmitter };
+export { randomNoise, createBuffers as createParticleBuffers, draw as drawParticles, initTextures as initParticleTextures, pushTrailEmitter, pushSmokeEmitter };

@@ -4,7 +4,7 @@ import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound"
 import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
 import { lastSelf, state } from "./globals";
-import { pushTrailEmitter } from "./particle";
+import { pushSmokeEmitter, pushTrailEmitter } from "./particle";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   // This does not really make sense, I will fix it later though
@@ -345,42 +345,17 @@ const initEffects = () => {
   // Missile trail - 5
   effectDefs.push({
     frames: maxMissileLifetime,
-    draw: (effect, self, state, framesLeft) => {
-      const [from, fromPlayer] = resolveAnchor(effect.from, state);
-      if (!from || !fromPlayer) {
-        effect.frame = 0;
-        return;
-      }
-      if (effect.frame > maxMissileLifetime - 100 && effect.extra.needSound) {
+    draw3: (effect, self, state, framesLeft) => {
+      if (effect.extra.needSound) {
+        const from = pushSmokeEmitter(effect.from);
         effect.extra.needSound = false;
-        play3dSound(fireSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
-      }
-
-      if (
-        Math.abs((from as Position).x - self.position.x) < canvas.width / 2 + 100 &&
-        Math.abs((from as Position).y - self.position.y) < canvas.height / 2 + 100 &&
-        effect.frame < effect.extra.lastPoof - 5
-      ) {
-        effect.extra.lastPoof = effect.frame;
-        const heading = (fromPlayer as Missile).heading;
-        const speed = (fromPlayer as Missile).speed / 2;
-        const trigger = {
-          effectIndex: 6,
-          from: {
-            kind: EffectAnchorKind.Absolute,
-            value: {
-              x: (from as Position).x + Math.random() * 8 - 4 - Math.cos((fromPlayer as Missile).heading) * 8,
-              y: (from as Position).y + Math.random() * 8 - 4 - Math.sin((fromPlayer as Missile).heading) * 8,
-            },
-            heading,
-            speed,
-          },
-        };
-        applyEffects([trigger]);
+        if (from) {
+          play3dSound(fireSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        }
       }
     },
     initializer: () => {
-      return { lastPoof: maxMissileLifetime, needSound: true };
+      return { needSound: true };
     },
   });
   // Missile trail poof - 6

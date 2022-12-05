@@ -177,14 +177,14 @@ const init3dDrawing = (callback: () => void) => {
   const barData = new Float32Array([
     // top right
     -1, 1, 1.9,
+    // bottom left
+    1, 0.5, 1.9,
     // top left
     1, 1, 1.9,
     // bottom left
     1, 0.5, 1.9,
     // top right
     -1, 1, 1.9,
-    // bottom left
-    1, 0.5, 1.9,
     // bottom right
     -1, 0.5, 1.9,
   ]);

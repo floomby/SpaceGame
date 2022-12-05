@@ -50,9 +50,7 @@ void emitExplosion(uint index) {
   // vPosition = vec3(0.0, 0.0, 0.0);
 }
 
-
 void emitTrail(uint index) {
-  // emitExplosion(index);
   vBehavior = vec4(1.5, 0.93, 0.0, 0.0);
   ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
   ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
@@ -60,7 +58,7 @@ void emitTrail(uint index) {
   vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
 
   vAge = 0.0;
-  vLife = rand2.x * 3.0 + 2.0;
+  vLife = rand2.x * 6.0 + 4.0;
 
   vec3 dir = normalize(rand.xyz - 0.5);
   
@@ -70,21 +68,54 @@ void emitTrail(uint index) {
     vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3) - vec3(uEmitVelocity[index].xy, 0.0);
   }
 
-  // vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.3);
   vVelocity = (rand2.y * 0.01) * dir - vec3(uEmitVelocity[index].xy, 0.0);
 }
 
+void emitSmoke(uint index) {
+  vBehavior = vec4(2.5, 0.85, 0.0, 0.0);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  vec4 rand = texelFetch(uNoise, noiseCoord, 0);
+  vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
+
+  vAge = 0.0;
+  vLife = rand2.x * 60.0 + 30.0;
+
+  vec3 dir = normalize(rand.xyz - 0.5);
+
+  vPosition = vec3(uEmitPosition[index].xy, -0.1) + dir * (rand2.y * 0.2) - vec3(uEmitVelocity[index].xy, 0.0) * uEmitVelocity[index].z
+   + vec3(uEmitVelocity[index].xy, 0.0) * rand2.z * 1.5;
+
+  vVelocity = (rand2.y * 0.1) * dir - vec3(uEmitVelocity[index].xy, 0.0) * uEmitPosition[index].z;
+}
+
 void main() {
-  if (aAge >= 2.0 * aLife) {
+  if (aAge >= aLife) {
     // ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
     //   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
+    ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+    vec4 rand = texelFetch(uNoise, noiseCoord, 0);
 
-
-    if (uEmitType[0] == 1u) {
+    float weight = rand.x * uTotalWeight;
+    
+    uint index = 0u;
+    while (true) {
+      weight -= uEmitWeight[index];
+      if (weight <= 0.0) {
+        break;
+      }
+      index++;
+    }
+    if (index >  23u) {
+      emitNop();
+    }
+    if (uEmitType[index] == 1u) {
       // emitExplosion(0u);
       emitNop();
-    } else if (uEmitType[0] == 2u) {
-      emitTrail(0u);
+    } else if (uEmitType[index] == 2u) {
+      emitTrail(index);
+    } else if (uEmitType[index] == 3u) {
+      emitSmoke(index);
     } else {
       emitNop();
     }

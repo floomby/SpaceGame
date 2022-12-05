@@ -226,11 +226,14 @@ const updateEmitter = (emitter: Emitter, sixtieths: number) => {
     emitter.velocity[1] = -Math.sin(missile.heading);
     return false;
   } else if (emitter.from.kind === EffectAnchorKind.Absolute) {
-    emitter.position[0] += emitter.velocity[0];
-    emitter.position[1] += emitter.velocity[1];
+    // I have emitter drag in the position z component
+    emitter.velocity[0] *= emitter.position[2];
+    emitter.velocity[1] *= emitter.position[2];
+    emitter.position[0] += emitter.velocity[0] * sixtieths;
+    emitter.position[1] += emitter.velocity[1] * sixtieths;
     return false;
   } else {
-    console.log("Unknown emitter kind", emitter.from);
+    console.warn("Unknown emitter kind", emitter.from);
   }
   return true;
 };
@@ -263,7 +266,7 @@ const bindEmitters = (sixtieths: number) => {
     totalWeight = 1;
   }
   gl.uniform1f(particleProgramInfo.uniformLocations.totalWeight, totalWeight);
-  console.log(emitters.length);
+  // console.log(emitters.length);
 };
 
 const pushTrailEmitter = (from: EffectAnchor) => {
@@ -300,9 +303,8 @@ const pushSmokeEmitter = (from: EffectAnchor) => {
 };
 
 const pushExplosionEmitter = (from: EffectAnchor, size = 1) => {
-  console.log("Explosion", from);
   if (from.kind === EffectAnchorKind.Absolute) {
-    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0, 30];
+    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0.96, 30];
     let velocity = [0, 0, size];
     if (from.heading !== undefined) {
       const x = Math.cos(from.heading) * from.speed / 10;

@@ -666,7 +666,11 @@ const update = (
           kill(def, otherPlayer, state, applyEffect, onDeath, ret.collectables);
         }
         state.missiles.delete(id);
-        applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
+        const explosionSpeed = Math.min(missile.speed / 2, otherPlayer.speed);
+        applyEffect({
+          effectIndex: missileDef.deathEffect,
+          from: { kind: EffectAnchorKind.Absolute, value: missile.position, heading: missile.heading, speed: missile.speed / 2 },
+        });
         didRemove = true;
         if (missileDef.hitMutator) {
           missileDef.hitMutator(otherPlayer, state, applyEffect, missile);
@@ -682,7 +686,10 @@ const update = (
     }
     if (!didRemove && missile.lifetime <= 0) {
       state.missiles.delete(id);
-      applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
+      applyEffect({
+        effectIndex: missileDef.deathEffect,
+        from: { kind: EffectAnchorKind.Absolute, value: missile.position, heading: missile.heading, speed: missile.speed },
+      });
     }
   }
 
@@ -1094,7 +1101,7 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
     if (player.rl === undefined) {
       player.rl = player.irl = 0;
     }
-    player.irl = player.side / def.sideThrustMaxSpeed * 0.2 * def.sideThrustAcceleration;
+    player.irl = (player.side / def.sideThrustMaxSpeed) * 0.2 * def.sideThrustAcceleration;
   }
   if (player.speed > def.speed) {
     player.speed = def.speed;

@@ -761,20 +761,20 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
   const resources = Math.max(asteroid.resources, 0) / def.resources;
   gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [resources, 0, def.radius / 10]);
 
-  // {
-  //   const numComponents = 3;
-  //   const type = gl.FLOAT;
-  //   const normalize = false;
-  //   const stride = 0;
-  //   const offset = 0;
-  //   gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
-  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  // }
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, barBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
 
-  // gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.ResourceBar);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.ResourceBar);
 
-  // gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
 const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {

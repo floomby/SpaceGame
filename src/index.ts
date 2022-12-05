@@ -440,9 +440,8 @@ const run = () => {
         asteroid.pitch = existing.pitch;
         asteroid.roll = existing.roll;
         asteroid.rotationRate = existing.rotationRate;
-      } else {
-        state.asteroids.set(asteroid.id, asteroid);
       }
+      state.asteroids.set(asteroid.id, asteroid);
     }
     for (const missile of state.missiles.values()) {
       missile.stale = true;

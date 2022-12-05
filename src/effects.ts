@@ -483,7 +483,7 @@ const initEffects = () => {
   // Disabled effect - 11
   effectDefs.push({
     frames: 30,
-    draw: (effect, self, state) => {
+    draw3: (effect, self, state) => {
       if (effect.extra.needSound) {
         effect.extra.needSound = false;
         playSound(disabledSound);
@@ -496,7 +496,7 @@ const initEffects = () => {
   // Mine drop sound - 12
   effectDefs.push({
     frames: 10,
-    draw: (effect, self, state, framesLeft) => {
+    draw3: (effect, self, state, framesLeft) => {
       const [from] = resolveAnchor(effect.from, state);
       if (!from) {
         return;

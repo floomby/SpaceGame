@@ -201,7 +201,6 @@ const updateEmitter = (emitter: Emitter, sixtieths: number) => {
   if (emitter.from.kind === EffectAnchorKind.Projectile) {
     const projectile = state.projectiles.get(emitter.from.value as number);
     if (!projectile) {
-      console.log("projectile not found");
       return true;
     }
     emitter.position[0] = projectile.position.x / 10;
@@ -255,7 +254,7 @@ const bindEmitters = (sixtieths: number) => {
     totalWeight = 1;
   }
   gl.uniform1f(particleProgramInfo.uniformLocations.totalWeight, totalWeight);
-  console.log(emitters.length);
+  // console.log(emitters.length);
 };
 
 const pushTrailEmitter = (from: EffectAnchor) => {

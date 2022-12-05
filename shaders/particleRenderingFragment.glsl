@@ -17,7 +17,7 @@ void main() {
   if (vBehavior.x < 0.0) {
     discard;
   } else if (vBehavior.x < 1.0) {
-    outColor = texture(uSample, vTextureCoord) * vLife / 20.0;
+    outColor = vec4(vec3(1.0, 0.9, 0.9) * (1.0 - vAge / vLife), (1.0 - vAge / vLife) * 3.0);
   } else  if (vBehavior.x < 2.0) {
     vec4 color = texture(uSample, vTextureCoord);
     outColor = vec4(color.rrr, color.a);

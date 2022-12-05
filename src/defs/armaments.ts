@@ -225,7 +225,7 @@ const initArmaments = () => {
     speed: 15,
     damage: 13,
     acceleration: 0.2,
-    lifetime: 600,
+    lifetime: 60,
     deathEffect: 2,
     model: "missile",
     pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],

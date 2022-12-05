@@ -225,6 +225,12 @@ const updateEmitter = (emitter: Emitter, sixtieths: number) => {
     emitter.velocity[0] = Math.cos(missile.heading);
     emitter.velocity[1] = -Math.sin(missile.heading);
     return false;
+  } else if (emitter.from.kind === EffectAnchorKind.Absolute) {
+    emitter.position[0] += emitter.velocity[0];
+    emitter.position[1] += emitter.velocity[1];
+    return false;
+  } else {
+    console.log("Unknown emitter kind", emitter.from);
   }
   return true;
 };
@@ -264,7 +270,7 @@ const pushTrailEmitter = (from: EffectAnchor) => {
   if (from.kind === EffectAnchorKind.Projectile) {
     const projectile = state.projectiles.get(from.value as number);
     if (projectile) {
-      const position = [projectile.position.x / 10, -projectile.position.y / 10, -0.4, 120];
+      const position = [projectile.position.x / 10, -projectile.position.y / 10, 0, 120];
       const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -3];
       const kind = EmitterKind.Trail;
       const weight = 4;
@@ -272,7 +278,7 @@ const pushTrailEmitter = (from: EffectAnchor) => {
       return projectile.position;
     }
   } else {
-    console.warn("Unsupported emitter", from);
+    console.warn("Unsupported anchor trail", from);
   }
 };
 
@@ -282,14 +288,33 @@ const pushSmokeEmitter = (from: EffectAnchor) => {
     if (missile) {
       const def = missileDefs[missile.defIndex];
       const position = [missile.position.x / 10, -missile.position.y / 10, missile.speed / def.speed, maxMissileLifetime];
-      const velocity = [Math.cos(missile.heading), -Math.sin(missile.heading), missile.radius / 10];
+      const velocity = [Math.cos((missile.heading * from.speed) / 10), (-Math.sin(missile.heading) * from.speed) / 10, missile.radius / 10];
       const kind = EmitterKind.Smoke;
       const weight = 4;
       emitters.push({ position, velocity, kind, weight, from } as Emitter);
       return missile.position;
     }
   } else {
-    console.warn("Unsupported emitter", from);
+    console.warn("Unsupported anchor smoke", from);
+  }
+};
+
+const pushExplosionEmitter = (from: EffectAnchor) => {
+  console.log("Explosion", from);
+  if (from.kind === EffectAnchorKind.Absolute) {
+    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0, 30];
+    let velocity = [0, 0, 0];
+    if (from.heading !== undefined) {
+      const x = Math.cos(from.heading);
+      const y = Math.sin(from.heading);
+      velocity = [x, -y, 0];
+    }
+    const weight = 20;
+    const kind = EmitterKind.Explosion;
+    emitters.push({ position, velocity, kind, weight, from } as Emitter);
+    return from.value as Position;
+  } else {
+    console.warn("Unsupported anchor explosion", from);
   }
 };
 
@@ -341,4 +366,12 @@ const draw = (sixtieths: number) => {
   gl.bindVertexArray(null);
 };
 
-export { randomNoise, createBuffers as createParticleBuffers, draw as drawParticles, initTextures as initParticleTextures, pushTrailEmitter, pushSmokeEmitter };
+export {
+  randomNoise,
+  createBuffers as createParticleBuffers,
+  draw as drawParticles,
+  initTextures as initParticleTextures,
+  pushTrailEmitter,
+  pushSmokeEmitter,
+  pushExplosionEmitter,
+};

@@ -4,7 +4,7 @@ import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound"
 import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
 import { lastSelf, state } from "./globals";
-import { pushSmokeEmitter, pushTrailEmitter } from "./particle";
+import { pushExplosionEmitter, pushSmokeEmitter, pushTrailEmitter } from "./particle";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   // This does not really make sense, I will fix it later though
@@ -212,45 +212,18 @@ const initEffects = () => {
   // Small explosion (missiles) - 2
   effectDefs.push({
     frames: 15,
-    draw: (effect, self, state, framesLeft) => {
-      const [from] = resolveAnchor(effect.from, state);
-
-      if (self) {
-        effect.extra.lastSelfX = self.position.x;
-        effect.extra.lastSelfY = self.position.y;
-      }
-
+    draw3: (effect, self, state, framesLeft) => {
       if (effect.extra.needSound) {
+        console.log("draw3 for small explosion");
+        const from = pushExplosionEmitter(effect.from);
         effect.extra.needSound = false;
-        effect.extra.panner = play3dSound(
-          popSound,
-          ((from as Position).x - self.position.x) / soundScale,
-          ((from as Position).y - self.position.y) / soundScale
-        );
-      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
-        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
-        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+        if (from) {
+          play3dSound(popSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        }
       }
-
-      const spriteIdx = 0;
-      const width = effectSprites[spriteIdx].width;
-      const height = effectSprites[spriteIdx].height;
-
-      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
-        return;
-      }
-      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
-        return;
-      }
-
-      ctx.save();
-      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
-      ctx.rotate(effect.extra.heading);
-      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
-      ctx.restore();
     },
     initializer: () => {
-      return { heading: Math.random() * Math.PI * 2, needSound: true };
+      return { needSound: true };
     },
   });
   // Medium explosion (ships) - 3
@@ -359,6 +332,7 @@ const initEffects = () => {
     },
   });
   // Missile trail poof - 6
+  // OBSOLETE
   effectDefs.push({
     frames: 50,
     draw: (effect, self, state, framesLeft) => {

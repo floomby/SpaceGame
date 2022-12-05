@@ -141,7 +141,7 @@ let backgroundBuffer: WebGLBuffer;
 
 // Rendering constants stuff
 const pointLightCount = 10;
-const gamePlaneZ = -60.0;
+const gamePlaneZ = -80.0;
 
 const init3dDrawing = (callback: () => void) => {
   initDockingMessages();

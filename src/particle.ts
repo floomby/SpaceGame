@@ -69,7 +69,7 @@ let particleRenderAOs: WebGLVertexArrayObject[] = [];
 let particleBuffers: WebGLBuffer[] = [];
 let behaviorBuffers: WebGLBuffer[] = [];
 
-const count = 20000;
+const count = 50000;
 
 const createBuffers = () => {
   // Create a texture with the noise
@@ -299,17 +299,17 @@ const pushSmokeEmitter = (from: EffectAnchor) => {
   }
 };
 
-const pushExplosionEmitter = (from: EffectAnchor) => {
+const pushExplosionEmitter = (from: EffectAnchor, size = 1) => {
   console.log("Explosion", from);
   if (from.kind === EffectAnchorKind.Absolute) {
     const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0, 30];
-    let velocity = [0, 0, 0];
+    let velocity = [0, 0, size];
     if (from.heading !== undefined) {
-      const x = Math.cos(from.heading);
-      const y = Math.sin(from.heading);
-      velocity = [x, -y, 0];
+      const x = Math.cos(from.heading) * from.speed / 10;
+      const y = Math.sin(from.heading) * from.speed / -10;
+      velocity = [x, y, size];
     }
-    const weight = 20;
+    const weight = 20 * size;
     const kind = EmitterKind.Explosion;
     emitters.push({ position, velocity, kind, weight, from } as Emitter);
     return from.value as Position;

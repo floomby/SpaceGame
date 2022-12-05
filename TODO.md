@@ -20,17 +20,14 @@
 
 - fix projectile drawing
 - draw collectables
-- fix drawing player effects for warping and being disabled
+- fix drawing player effects for warping
 - draw the repair bars on stations that need repairing
-- pitch and roll for players
 - make the rest of the missile models
+- player selection highlighting
 
 ### Effects Stuff
 
-- Finish particle system (1)
-- Explosion effects (1)
-- Missile trail effects (1)
-- Projectile effects (1)
+- Finish off effects
 - Warp effect (1)
 - Beam effects (3)
 

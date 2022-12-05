@@ -37,6 +37,7 @@ import {
   CardinalDirection,
   pointOutsideRectangle,
   pointInRectangle,
+  canonicalizeAngle,
 } from "./geometry";
 import { NPC } from "./npc";
 import { seek } from "./pathing";
@@ -106,8 +107,18 @@ type Player = Entity & {
   omega?: number;
   v?: Position;
   cloak?: number;
+  // Velocity impulse
   iv: Position;
+  // Rotation impulse
   ir: number;
+  // Pitch
+  p?: number;
+  // Pitch impulse
+  ip?: number;
+  // Roll
+  rl?: number;
+  // Roll impulse
+  irl?: number;
 };
 
 type Asteroid = Circle & {
@@ -477,6 +488,46 @@ const dampenImpulse = (player: Player) => {
   player.ir *= 0.98;
   if (Math.abs(player.ir) < 0.001) {
     player.ir = 0;
+  }
+  // Pitch
+  if (player.p !== undefined) {
+    // clamp ip to 0.05
+    if (player.ip > 0.05) {
+      player.ip = 0.05;
+    }
+    if (player.ip < -0.05) {
+      player.ip = -0.05;
+    }
+    player.ip *= 0.84;
+    if (Math.abs(player.ip) < 0.0001) {
+      player.ip = 0;
+    }
+    player.p += player.ip;
+    player.p = canonicalizeAngle(player.p);
+    player.p *= 0.95;
+    if (Math.abs(player.p) < 0.001) {
+      player.p = 0;
+    }
+  }
+  // Roll
+  if (player.rl !== undefined) {
+    // clamp irl to 0.05
+    if (player.irl > 0.05) {
+      player.irl = 0.05;
+    }
+    if (player.irl < -0.05) {
+      player.irl = -0.05;
+    }
+    player.irl *= 0.84;
+    if (Math.abs(player.irl) < 0.0001) {
+      player.irl = 0;
+    }
+    player.rl += player.irl;
+    player.rl = canonicalizeAngle(player.rl);
+    player.rl *= 0.95;
+    if (Math.abs(player.rl) < 0.001) {
+      player.rl = 0;
+    }
   }
 };
 
@@ -985,9 +1036,24 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
   player.omega = player.heading;
   if (input.up) {
     player.speed += def.acceleration;
+    // I don't like this here...
+    if (player.p === undefined) {
+      player.p = 0;
+      player.ip = 0;
+    }
+    if (player.speed < def.speed) {
+      player.ip -= 0.04 * Math.pow((def.speed - player.speed) / def.speed, 0.5) * def.acceleration;
+    }
   }
   if (input.down) {
     player.speed -= def.acceleration;
+    if (player.p === undefined) {
+      player.p = 0;
+      player.ip = 0;
+    }
+    if (player.speed > 0) {
+      player.ip += 0.04 * Math.pow(player.speed / def.speed, 0.5) * def.acceleration;
+    }
   }
   if (angle === undefined) {
     if (input.left) {
@@ -1025,6 +1091,10 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
         }
       }
     }
+    if (player.rl === undefined) {
+      player.rl = player.irl = 0;
+    }
+    player.irl = player.side / def.sideThrustMaxSpeed * 0.2 * def.sideThrustAcceleration;
   }
   if (player.speed > def.speed) {
     player.speed = def.speed;

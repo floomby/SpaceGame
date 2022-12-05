@@ -425,6 +425,12 @@ const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
 
   const modelMatrix = mat4.create();
   mat4.rotateZ(modelMatrix, modelMatrix, -player.heading);
+  if (player.p !== undefined) {
+    mat4.rotateY(modelMatrix, modelMatrix, player.p);
+  }
+  if (player.rl !== undefined) {
+    mat4.rotateX(modelMatrix, modelMatrix, player.rl);
+  }
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
 
   const viewMatrix = mat4.create();
@@ -569,6 +575,12 @@ const drawTarget = (target: Player, where: Rectangle) => {
 
   const modelMatrix = mat4.create();
   mat4.rotateZ(modelMatrix, modelMatrix, -target.heading);
+  if (target.p !== undefined) {
+    mat4.rotateY(modelMatrix, modelMatrix, target.p);
+  }
+  if (target.rl !== undefined) {
+    mat4.rotateX(modelMatrix, modelMatrix, target.rl);
+  }
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
 
   const viewMatrix = mat4.create();

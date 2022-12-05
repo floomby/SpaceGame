@@ -186,6 +186,11 @@ const projectRayFromCenterOfRect = (rect: Rectangle, angle: number) => {
   }
 };
 
+// Give an angle between -PI and PI
+const canonicalizeAngle = (angle: number) => {
+  return positiveMod(angle + Math.PI, 2 * Math.PI) - Math.PI;
+};
+
 export {
   Position,
   Position3,
@@ -213,4 +218,5 @@ export {
   mirrorAngleVertically,
   sumPositions,
   projectRayFromCenterOfRect,
+  canonicalizeAngle,
 };

@@ -8,6 +8,7 @@ uniform mat4 uModelMatrix;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform mat4 uNormalMatrix;
+// I am going to highjack the first point lights for pushing the line data to the shader when uDrawType is set to Line (11)
 uniform vec4 uPointLights[10];
 // When drawing asteroids the "health" is the resources left
 uniform mediump vec3 uHealthAndEnergyAndScale;
@@ -24,6 +25,99 @@ out highp vec4 vColor;
 
 void main() {
   vDrawType = uDrawType;
+
+  // World lines
+  if (uDrawType == 11) {
+    vec2 from = uPointLights[0].xy;
+    vec2 to = uPointLights[0].zw;
+    float width = uPointLights[1].x;
+    vec4 color = uPointLights[2];
+
+    vec2 basisParallel = normalize(to - from);
+    vec2 basisPerpendicular = vec2(-basisParallel.y, basisParallel.x);
+    // float dist = distance(vec2(xTo, yTo), vec2(xFrom, yFrom));
+
+    vec4 topLeft = vec4(
+      from + basisPerpendicular * width / 2.0,
+      0.0,
+      1.0
+    );
+    vec4 topRight = vec4(
+      to + basisPerpendicular * width / 2.0,
+      0.0,
+      1.0
+    );
+    vec4 bottomLeft = vec4(
+      from - basisPerpendicular * width / 2.0,
+      0.0,
+      1.0
+    );
+    vec4 bottomRight = vec4(
+      to - basisPerpendicular * width / 2.0,
+      0.0,
+      1.0
+    );
+    vec4 centerLeft = vec4(
+      from,
+      0.0,
+      1.0
+    );
+    vec4 centerRight = vec4(
+      to,
+      0.0,
+      1.0
+    );
+
+    if (gl_VertexID > 5) {
+      topRight = centerRight;
+      topLeft = centerLeft;
+    } else {
+      bottomRight = centerRight;
+      bottomLeft = centerLeft;
+    }
+
+    // vec4 topLeft = vec4(
+    //   -10.0 + from.x,
+    //   10.0 + from.y,
+    //   0.0,
+    //   1.0
+    // );
+    // vec4 topRight = vec4(
+    //   10.0 + from.x,
+    //   10.0 + from.y,
+    //   0.0,
+    //   1.0
+    // );
+    // vec4 bottomLeft = vec4(
+    //   -10.0 + from.x,
+    //   -10.0 + from.y,
+    //   0.0,
+    //   1.0
+    // );
+    // vec4 bottomRight = vec4(
+    //   10.0 + from.x,
+    //   -10.0 + from.y,
+    //   0.0,
+    //   1.0
+    // );
+
+    if (gl_VertexID % 6 == 0) {
+      gl_Position = uProjectionMatrix * uViewMatrix * topLeft;
+    } else if (gl_VertexID % 6 == 1) {
+      gl_Position = uProjectionMatrix * uViewMatrix * topRight;
+    } else if (gl_VertexID % 6 == 2) {
+      gl_Position = uProjectionMatrix * uViewMatrix * botomLeft;
+    } else if (gl_VertexID % 6 == 3) {
+      gl_Position = uProjectionMatrix * uViewMatrix * botomLeft;
+    } else if (gl_VertexID % 6 == 4) {
+      gl_Position = uProjectionMatrix * uViewMatrix * topRight;
+    } else if (gl_VertexID % 6 == 5) {
+      gl_Position = uProjectionMatrix * uViewMatrix * botomRight;
+    }
+
+    return;
+  }
+
   vColor = aVertexColor;
 
   // Hud polygon

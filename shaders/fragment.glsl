@@ -22,6 +22,12 @@ void main(void) {
     return;
   }
 
+  // World lines
+  if (vDrawType == 11) {
+    outColor = vec4(1.0);
+    return;
+  }
+
   if (vDrawType == 2) {
     outColor = vColor;
     return;

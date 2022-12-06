@@ -57,6 +57,7 @@ enum DrawType {
   TargetHealthBar = 8,
   TargetEnergyBar = 9,
   TargetResourceBar = 10,
+  Line = 11,
 }
 
 const initShaders = (callback: (program: any, particleProgram: any, particleRenderingProgram: any) => void) => {
@@ -250,6 +251,11 @@ const init3dDrawing = (callback: () => void) => {
         desaturateAndTransparency: gl.getUniformLocation(program, "uDesaturateAndTransparency"),
       },
     };
+
+    // Reuse of same uniforms for multiple purposes
+    programInfo.uniformLocations.lineFromTo = programInfo.uniformLocations.pointLights[0];
+    programInfo.uniformLocations.lineWidthAndDropoff = programInfo.uniformLocations.pointLights[1];
+    programInfo.uniformLocations.lineColor = programInfo.uniformLocations.pointLights[2];
 
     particleProgramInfo = {
       program: particleProgram,
@@ -1197,6 +1203,23 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 };
 
+// Uses reduced world coordinates
+const drawWorldLine = (from: [number, number], to: [number, number], width: number, color: [number, number, number, number], dropoff = 0) => {
+  gl.uniform4f(programInfo.uniformLocations.lineFromTo, from[0], from[1], to[0], to[1]);
+  gl.uniform4f(programInfo.uniformLocations.lineWidthAndDropoff, width * 10, dropoff, 0, 0);
+  gl.uniform4fv(programInfo.uniformLocations.lineColor, color);
+
+  // Can move since all the lines will be drawn at once
+  const viewMatrix = mat4.create();
+  mat4.scale(viewMatrix, viewMatrix, [1 / 10, -1 / 10, 1]);
+  mat4.translate(viewMatrix, viewMatrix, [-lastSelf.position.x, -lastSelf.position.y, gamePlaneZ]);
+  
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Line);
+  gl.drawArrays(gl.TRIANGLES, 0, 12);
+};
+
 const isRemotelyOnscreen = (position: Position) => {
   return !(
     position.x < canvasGameTopLeft.x - 500 ||
@@ -1364,13 +1387,12 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   drawWeaponText();
 
-  draw2d(programInfo);
+  drawWorldLine([-1500, -1500], [-1300, -1400], 1, [0.5, 0, 0.5, 1]);
 
   drawEffects(sixtieths);
   drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
-
-  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+  draw2d(programInfo);
 
   // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
   gl.clear(gl.DEPTH_BUFFER_BIT);

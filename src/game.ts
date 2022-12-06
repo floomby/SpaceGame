@@ -666,10 +666,10 @@ const update = (
           kill(def, otherPlayer, state, applyEffect, onDeath, ret.collectables);
         }
         state.missiles.delete(id);
-        const explosionSpeed = Math.min(missile.speed / 2, otherPlayer.speed);
+        const explosionSpeed = Math.min(missile.speed / 2, otherPlayer.speed + missile.speed / 5);
         applyEffect({
           effectIndex: missileDef.deathEffect,
-          from: { kind: EffectAnchorKind.Absolute, value: missile.position, heading: missile.heading, speed: missile.speed / 2 },
+          from: { kind: EffectAnchorKind.Absolute, value: missile.position, heading: missile.heading, speed: explosionSpeed },
         });
         didRemove = true;
         if (missileDef.hitMutator) {

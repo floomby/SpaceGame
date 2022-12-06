@@ -31,11 +31,10 @@ void main() {
     vec2 from = uPointLights[0].xy;
     vec2 to = uPointLights[0].zw;
     float width = uPointLights[1].x;
-    vec4 color = uPointLights[2];
+    float dropoff = uPointLights[1].y;
 
     vec2 basisParallel = normalize(to - from);
     vec2 basisPerpendicular = vec2(-basisParallel.y, basisParallel.x);
-    // float dist = distance(vec2(xTo, yTo), vec2(xFrom, yFrom));
 
     vec4 topLeft = vec4(
       from + basisPerpendicular * width / 2.0,
@@ -68,53 +67,41 @@ void main() {
       1.0
     );
 
+    int idx = gl_VertexID % 6;
+
     if (gl_VertexID > 5) {
       topRight = centerRight;
       topLeft = centerLeft;
+      if (idx == 0 || idx == 1 || idx == 4) {
+        vPosition = vec3(1.0, dropoff, 0.0);
+      } else {
+        vPosition = vec3(0.0, dropoff, 0.0);
+      }
     } else {
+      if (idx == 0 || idx == 1 || idx == 4) {
+        vPosition = vec3(0.0, dropoff, 0.0);
+      } else {
+        vPosition = vec3(1.0, dropoff, 0.0);
+      }
       bottomRight = centerRight;
       bottomLeft = centerLeft;
     }
 
-    // vec4 topLeft = vec4(
-    //   -10.0 + from.x,
-    //   10.0 + from.y,
-    //   0.0,
-    //   1.0
-    // );
-    // vec4 topRight = vec4(
-    //   10.0 + from.x,
-    //   10.0 + from.y,
-    //   0.0,
-    //   1.0
-    // );
-    // vec4 bottomLeft = vec4(
-    //   -10.0 + from.x,
-    //   -10.0 + from.y,
-    //   0.0,
-    //   1.0
-    // );
-    // vec4 bottomRight = vec4(
-    //   10.0 + from.x,
-    //   -10.0 + from.y,
-    //   0.0,
-    //   1.0
-    // );
-
-    if (gl_VertexID % 6 == 0) {
+    if (idx == 0) {
       gl_Position = uProjectionMatrix * uViewMatrix * topLeft;
-    } else if (gl_VertexID % 6 == 1) {
+    } else if (idx == 1) {
       gl_Position = uProjectionMatrix * uViewMatrix * topRight;
-    } else if (gl_VertexID % 6 == 2) {
-      gl_Position = uProjectionMatrix * uViewMatrix * botomLeft;
-    } else if (gl_VertexID % 6 == 3) {
-      gl_Position = uProjectionMatrix * uViewMatrix * botomLeft;
-    } else if (gl_VertexID % 6 == 4) {
+    } else if (idx == 2) {
+      gl_Position = uProjectionMatrix * uViewMatrix * bottomLeft;
+    } else if (idx == 3) {
+      gl_Position = uProjectionMatrix * uViewMatrix * bottomLeft;
+    } else if (idx == 4) {
       gl_Position = uProjectionMatrix * uViewMatrix * topRight;
-    } else if (gl_VertexID % 6 == 5) {
-      gl_Position = uProjectionMatrix * uViewMatrix * botomRight;
+    } else if (idx == 5) {
+      gl_Position = uProjectionMatrix * uViewMatrix * bottomRight;
     }
 
+    vColor = uPointLights[2];
     return;
   }
 

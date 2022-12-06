@@ -25,13 +25,13 @@
 - make the rest of the missile models
 - player selection highlighting
 
-### Effects Stuff
+### Effects Checklist
 
 - Finish off effects
 - Warp effect (1)
-- Beam effects (3)
+- Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something)
 
-### UI Stuff
+### UI Checklist
 
 - Draw the ship previews (IDK the best way to do this, probably hijack the target drawing code to render and then grab the pixels)
 

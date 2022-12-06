@@ -1204,7 +1204,7 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
 };
 
 // Uses reduced world coordinates
-const drawWorldLine = (from: [number, number], to: [number, number], width: number, color: [number, number, number, number], dropoff = 0) => {
+const drawLine = (from: [number, number], to: [number, number], width: number, color: [number, number, number, number], dropoff = 0) => {
   gl.uniform4f(programInfo.uniformLocations.lineFromTo, from[0], from[1], to[0], to[1]);
   gl.uniform4f(programInfo.uniformLocations.lineWidthAndDropoff, width * 10, dropoff, 0, 0);
   gl.uniform4fv(programInfo.uniformLocations.lineColor, color);
@@ -1387,7 +1387,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   drawWeaponText();
 
-  drawWorldLine([-1500, -1500], [-1300, -1400], 1, [0.5, 0, 0.5, 1]);
+  // drawLine([-1500, -1500], [-1300, -1400], 1, [0.5, 0, 0.5, 1]);
 
   drawEffects(sixtieths);
   drawParticles(sixtieths);
@@ -1443,4 +1443,5 @@ export {
   particleRenderingProgramInfo,
   fadeOutMine,
   isRemotelyOnscreenReducedWorldCoords,
+  drawLine,
 };

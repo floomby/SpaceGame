@@ -24,7 +24,7 @@ void main(void) {
 
   // World lines
   if (vDrawType == 11) {
-    outColor = vec4(1.0);
+    outColor = vec4(vColor.xyz, vPosition.x * vColor.w);
     return;
   }
 

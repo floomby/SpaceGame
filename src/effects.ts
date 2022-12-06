@@ -5,6 +5,7 @@ import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
 import { lastSelf, state } from "./globals";
 import { pushExplosionEmitter, pushSmokeEmitter, pushTrailEmitter } from "./particle";
+import { drawLine } from "./3dDrawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   // This does not really make sense, I will fix it later though
@@ -138,20 +139,20 @@ const initEffects = () => {
   // Laser beam effect - 1
   effectDefs.push({
     frames: 15,
-    draw: (effect, self, state, framesLeft) => {
-      const [from] = resolveAnchor(effect.from, state);
-      let [to, toCircle] = resolveAnchor(effect.to, state);
+    draw3: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state) as Position[];
+      let [to, toCircle] = resolveAnchor(effect.to, state) as Position[];
       if (!from || !to) {
         return;
       }
 
-      const heading = findHeadingBetween(from as Position, to as Position);
-      if (toCircle) {
-        to = {
-          x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
-          y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
-        };
-      }
+      // const heading = findHeadingBetween(from as Position, to as Position);
+      // if (toCircle) {
+      //   to = {
+      //     x: (to as Position).x - Math.cos(heading) * (toCircle as Circle).radius * 0.9,
+      //     y: (to as Position).y - Math.sin(heading) * (toCircle as Circle).radius * 0.9,
+      //   };
+      // }
 
       if (self) {
         effect.extra.lastSelfX = self.position.x;
@@ -165,45 +166,7 @@ const initEffects = () => {
         play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
       }
 
-      const cos = Math.cos(heading);
-      const sin = Math.sin(heading);
-      const halfBeamWidth = 2.5;
-      const offsets = [
-        { x: -halfBeamWidth * sin, y: halfBeamWidth * cos },
-        { x: halfBeamWidth * sin, y: -halfBeamWidth * cos },
-      ];
-
-      const alpha = Math.min(framesLeft / 10, 1);
-      const color = `rgba(255, 40, 155, ${alpha})`;
-
-      ctx.save();
-      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
-      ctx.shadowBlur = 4;
-      ctx.shadowColor = "red";
-      ctx.beginPath();
-      ctx.moveTo((to as Position).x - (from as Position).x + offsets[1].x, (to as Position).y - (from as Position).y + offsets[1].y);
-      ctx.moveTo(offsets[1].x, offsets[1].y);
-      ctx.arc(0, 0, halfBeamWidth, heading - Math.PI / 2, heading + Math.PI / 2, true);
-      ctx.lineTo(offsets[0].x, offsets[0].y);
-      ctx.arc(
-        (to as Position).x - (from as Position).x,
-        (to as Position).y - (from as Position).y,
-        halfBeamWidth,
-        heading + Math.PI / 2,
-        heading - Math.PI / 2,
-        true
-      );
-      ctx.fillStyle = color;
-      ctx.fill();
-
-      ctx.filter = "blur(10px)";
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      ctx.arc((to as Position).x - (from as Position).x, (to as Position).y - (from as Position).y, 30, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.restore();
+      drawLine([from.x, from.y], [to.x, to.y], 2, [0.7, 0.2, 0.7, 1 - framesLeft / 15]);
     },
     initializer: () => {
       return { needSound: true };

@@ -149,8 +149,8 @@ const initShipsAndStations = () => {
     mass: effectiveInfinity,
     model: "alliance_starbase",
     pointLights: [
-      { position: { x: 31, y: 10, z: 3.3 }, color: [0.0, 5.0, 0] },
-      { position: { x: 31, y: -10, z: 3.3 }, color: [0.0, 5.0, 0] },
+      { position: { x: 3.1, y: 1, z: 3.3 }, color: [0.0, 5.0, 0] },
+      { position: { x: 3.1, y: -1, z: 3.3 }, color: [0.0, 5.0, 0] },
     ],
   });
   // Confederacy Starbase - 3

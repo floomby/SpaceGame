@@ -96,9 +96,9 @@ const initEffects = () => {
   // Mining laser effect - 0
   effectDefs.push({
     frames: 10,
-    draw: (effect, self, state) => {
-      const [from] = resolveAnchor(effect.from, state) as (Position | undefined)[];
-      const [to, toCircle] = resolveAnchor(effect.to, state);
+    draw3: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state) as Position[];
+      const [to, toCircle] = resolveAnchor(effect.to, state) as [Position, Circle];
       if (!from || !to || !toCircle) {
         return;
       }
@@ -113,25 +113,19 @@ const initEffects = () => {
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
         const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
-        // panner.positionZ.value = 10;
       }
-
-      ctx.save();
-      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
-      ctx.filter = "blur(1px)";
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(
-        (to as Position).x - from.x + effect.extra.offset.x * (toCircle as Circle).radius,
-        (to as Position).y - from.y + effect.extra.offset.y * (toCircle as Circle).radius
-      );
-      ctx.strokeStyle = "green";
-      ctx.stroke();
-      ctx.restore();
+      drawLine([from.x, from.y], [to.x + effect.extra.offset.x * toCircle.radius * 0.8, to.y + effect.extra.offset.y * toCircle.radius * 0.8], 0.3, [
+        0.0,
+        1.0,
+        0.0,
+        1 - framesLeft / 10,
+      ]);
     },
     initializer: () => {
+      const r = Math.sqrt(Math.random());
+      const theta = Math.random() * 2 * Math.PI;
       return {
-        offset: { x: Math.random() - 0.5, y: Math.random() - 0.5 },
+        offset: { x: r * Math.cos(theta), y: r * Math.sin(theta) },
         needSound: true,
       };
     },
@@ -360,9 +354,9 @@ const initEffects = () => {
   // Advanced Mining Laser effect - 9
   effectDefs.push({
     frames: 10,
-    draw: (effect, self, state) => {
-      const [from] = resolveAnchor(effect.from, state) as (Position | undefined)[];
-      const [to, toCircle] = resolveAnchor(effect.to, state);
+    draw3: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state) as Position[];
+      const [to, toCircle] = resolveAnchor(effect.to, state) as [Position, Circle];
       if (!from || !to || !toCircle) {
         return;
       }
@@ -376,25 +370,20 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
+        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
       }
-
-      ctx.save();
-      ctx.translate(from.x - self.position.x + canvas.width / 2, from.y - self.position.y + canvas.height / 2);
-      ctx.filter = "blur(1px)";
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(
-        (to as Position).x - from.x + effect.extra.offset.x * (toCircle as Circle).radius,
-        (to as Position).y - from.y + effect.extra.offset.y * (toCircle as Circle).radius
-      );
-      ctx.strokeStyle = "blue";
-      ctx.stroke();
-      ctx.restore();
+      drawLine([from.x, from.y], [to.x + effect.extra.offset.x * toCircle.radius * 0.8, to.y + effect.extra.offset.y * toCircle.radius * 0.8], 0.3, [
+        0.0,
+        0.0,
+        1.0,
+        1 - framesLeft / 10,
+      ]);
     },
     initializer: () => {
+      const r = Math.sqrt(Math.random());
+      const theta = Math.random() * 2 * Math.PI;
       return {
-        offset: { x: Math.random() - 0.5, y: Math.random() - 0.5 },
+        offset: { x: r * Math.cos(theta), y: r * Math.sin(theta) },
         needSound: true,
       };
     },
@@ -626,7 +615,11 @@ const initEffects = () => {
 
       if (effect.extra.needSound) {
         effect.extra.needSound = false;
-        play3dSound(disruptorLaunchSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+        play3dSound(
+          disruptorLaunchSound,
+          ((from as Position).x - self.position.x) / soundScale,
+          ((from as Position).y - self.position.y) / soundScale
+        );
       }
     },
     initializer: () => {

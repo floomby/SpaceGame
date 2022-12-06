@@ -119,6 +119,7 @@ type Player = Entity & {
   rl?: number;
   // Roll impulse
   irl?: number;
+  modelMatrix?: any;
 };
 
 type Asteroid = Circle & {

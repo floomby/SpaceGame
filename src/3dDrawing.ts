@@ -338,6 +338,18 @@ const init3dDrawing = (callback: () => void) => {
   });
 };
 
+const playerClientUpdate = (player: Player) => {
+  const modelMatrix = mat4.create();
+  mat4.rotateZ(modelMatrix, modelMatrix, -player.heading);
+  if (player.p !== undefined) {
+    mat4.rotateY(modelMatrix, modelMatrix, player.p);
+  }
+  if (player.rl !== undefined) {
+    mat4.rotateX(modelMatrix, modelMatrix, player.rl);
+  }
+  player.modelMatrix = modelMatrix;
+};
+
 const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
   const cloakedAmount = !player.cloak ? 0 : player.cloak / CloakedState.Cloaked;
   if (cloakedAmount === 1 && player.team !== lastSelf.team) {
@@ -429,22 +441,14 @@ const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
     }
   }
 
-  const modelMatrix = mat4.create();
-  mat4.rotateZ(modelMatrix, modelMatrix, -player.heading);
-  if (player.p !== undefined) {
-    mat4.rotateY(modelMatrix, modelMatrix, player.p);
-  }
-  if (player.rl !== undefined) {
-    mat4.rotateX(modelMatrix, modelMatrix, player.rl);
-  }
-  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, player.modelMatrix);
 
   const viewMatrix = mat4.create();
   mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(player.position.x), mapGameYToWorld(player.position.y), gamePlaneZ]);
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   const normalMatrix = mat4.create();
-  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, player.modelMatrix));
   mat4.transpose(normalMatrix, normalMatrix);
   gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
@@ -495,6 +499,10 @@ const mapWorldXToGame = (x: number) => x * 10 + lastSelf.position.x;
 const mapWorldYToGame = (y: number) => -y * 10 + lastSelf.position.y;
 
 const drawTarget = (target: Player, where: Rectangle) => {
+  if (target.modelMatrix === undefined) {
+    playerClientUpdate(target);
+  }
+
   const targetDisplayRectNDC = canvasRectToNDC(where);
 
   const def = defs[target.defIndex];
@@ -579,22 +587,14 @@ const drawTarget = (target: Player, where: Rectangle) => {
 
   gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[target.team]);
 
-  const modelMatrix = mat4.create();
-  mat4.rotateZ(modelMatrix, modelMatrix, -target.heading);
-  if (target.p !== undefined) {
-    mat4.rotateY(modelMatrix, modelMatrix, target.p);
-  }
-  if (target.rl !== undefined) {
-    mat4.rotateX(modelMatrix, modelMatrix, target.rl);
-  }
-  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, target.modelMatrix);
 
   const viewMatrix = mat4.create();
   mat4.translate(viewMatrix, viewMatrix, [0, 0, 0]);
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   const normalMatrix = mat4.create();
-  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, target.modelMatrix));
   mat4.transpose(normalMatrix, normalMatrix);
   gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
@@ -1213,7 +1213,7 @@ const drawLine = (from: [number, number], to: [number, number], width: number, c
   const viewMatrix = mat4.create();
   mat4.scale(viewMatrix, viewMatrix, [1 / 10, -1 / 10, 1]);
   mat4.translate(viewMatrix, viewMatrix, [-lastSelf.position.x, -lastSelf.position.y, gamePlaneZ]);
-  
+
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Line);
@@ -1291,17 +1291,22 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   for (const player of state.players.values()) {
-    const def = defs[player.defIndex];
-    if (def.pointLights) {
-      for (const light of def.pointLights) {
-        lightSources.push({
-          position: {
-            x: player.position.x + light.position.x * Math.cos(player.heading) - light.position.y * Math.sin(player.heading),
-            y: player.position.y + light.position.x * Math.sin(player.heading) + light.position.y * Math.cos(player.heading),
-            z: gamePlaneZ + light.position.z,
-          },
-          color: light.color,
-        });
+    if (isRemotelyOnscreen(player.position)) {
+      playerClientUpdate(player);
+
+      const def = defs[player.defIndex];
+      if (def.pointLights) {
+        for (const light of def.pointLights) {
+          const pos = vec4.create();
+          vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
+
+          vec4.transformMat4(pos, pos, player.modelMatrix);
+
+          lightSources.push({
+            position: { x: pos[0] * 10 + player.position.x, y: -pos[1] * 10 + player.position.y, z: gamePlaneZ + pos[2] },
+            color: light.color,
+          });
+        }
       }
     }
   }
@@ -1314,18 +1319,20 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
       continue;
     }
 
-    const def = mineDefs[mine.defIndex];
-    if (def.pointLights) {
-      for (const light of def.pointLights) {
-        const pos = vec4.create();
-        vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
+    if (isRemotelyOnscreen(mine.position)) {
+      const def = mineDefs[mine.defIndex];
+      if (def.pointLights) {
+        for (const light of def.pointLights) {
+          const pos = vec4.create();
+          vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
 
-        vec4.transformMat4(pos, pos, mine.modelMatrix);
+          vec4.transformMat4(pos, pos, mine.modelMatrix);
 
-        lightSources.push({
-          position: { x: pos[0] * 10 + mine.position.x, y: pos[1] * 10 + mine.position.y, z: gamePlaneZ + pos[2] },
-          color: light.color,
-        });
+          lightSources.push({
+            position: { x: pos[0] * 10 + mine.position.x, y: -pos[1] * 10 + mine.position.y, z: gamePlaneZ + pos[2] },
+            color: light.color,
+          });
+        }
       }
     }
   }
@@ -1333,25 +1340,27 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   for (const missile of state.missiles.values()) {
     clientMissileUpdate(missile);
 
-    const def = missileDefs[missile.defIndex];
-    if (def.pointLights) {
-      for (const light of def.pointLights) {
-        const pos = vec4.create();
-        vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
+    if (isRemotelyOnscreen(missile.position)) {
+      const def = missileDefs[missile.defIndex];
+      if (def.pointLights) {
+        for (const light of def.pointLights) {
+          const pos = vec4.create();
+          vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
 
-        vec4.transformMat4(pos, pos, missile.modelMatrix);
+          vec4.transformMat4(pos, pos, missile.modelMatrix);
 
-        lightSources.push({
-          position: { x: pos[0] * 10 + missile.position.x, y: pos[1] * 10 + missile.position.y, z: gamePlaneZ + pos[2] },
-          color: light.color,
-        });
+          lightSources.push({
+            position: { x: pos[0] * 10 + missile.position.x, y: -pos[1] * 10 + missile.position.y, z: gamePlaneZ + pos[2] },
+            color: light.color,
+          });
+        }
       }
     }
   }
 
   // Start drawing world objects (all light sources are aggregated above this point)
   processFadingMines(sixtieths, lightSources);
-  
+
   gl.enable(gl.CULL_FACE);
   for (const player of state.players.values()) {
     if (isRemotelyOnscreen(player.position)) {

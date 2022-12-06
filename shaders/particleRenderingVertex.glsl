@@ -33,14 +33,14 @@ void main() {
     gl_Position = vec4(0.0);
     vBehavior = aBehavior;
     return;
-  // Explosion
   } else if (aBehavior.x < 1.0) {
-    scale = 1.5;
-  // Projectile trail
+    // Explosion
+    scale = 2.0 - aAge / aLife;
   } else if (aBehavior.x < 2.0) {
+    // Projectile trail
     scale = 1.0 - aAge / aLife;
-  // Missile trail
   } else if (aBehavior.x < 3.0) {
+    // Missile trail
     scale = 1.0;
   }
 

@@ -339,6 +339,8 @@ const init3dDrawing = (callback: () => void) => {
 };
 
 const playerClientUpdate = (player: Player) => {
+  const def = defs[player.defIndex];
+
   const modelMatrix = mat4.create();
   mat4.rotateZ(modelMatrix, modelMatrix, -player.heading);
   if (player.p !== undefined) {
@@ -347,6 +349,13 @@ const playerClientUpdate = (player: Player) => {
   if (player.rl !== undefined) {
     mat4.rotateX(modelMatrix, modelMatrix, player.rl);
   }
+
+  if (player.warping) {
+    const warpAmount = Math.abs(player.warping / def.warpTime);
+    const warpFramesLeft = def.warpTime - Math.abs(player.warping);
+    mat4.scale(modelMatrix, modelMatrix, [Math.max(1, 10 / (warpFramesLeft + 3)), Math.min(1, warpFramesLeft / 10), 1]);
+  }
+
   player.modelMatrix = modelMatrix;
 };
 
@@ -1203,12 +1212,7 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 };
 
-// Uses reduced world coordinates
-const drawLine = (from: [number, number], to: [number, number], width: number, color: [number, number, number, number], dropoff = 0) => {
-  gl.uniform4f(programInfo.uniformLocations.lineFromTo, from[0], from[1], to[0], to[1]);
-  gl.uniform4f(programInfo.uniformLocations.lineWidthAndDropoff, width * 10, dropoff, 0, 0);
-  gl.uniform4fv(programInfo.uniformLocations.lineColor, color);
-
+const setDrawLineUniforms = () => {
   // Can move since all the lines will be drawn at once
   const viewMatrix = mat4.create();
   mat4.scale(viewMatrix, viewMatrix, [1 / 10, -1 / 10, 1]);
@@ -1217,6 +1221,14 @@ const drawLine = (from: [number, number], to: [number, number], width: number, c
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Line);
+};
+
+// Uses reduced world coordinates
+const drawLine = (from: [number, number], to: [number, number], width: number, color: [number, number, number, number], dropoff = 0) => {
+  gl.uniform4f(programInfo.uniformLocations.lineFromTo, from[0], from[1], to[0], to[1]);
+  gl.uniform4f(programInfo.uniformLocations.lineWidthAndDropoff, width * 10, dropoff, 0, 0);
+  gl.uniform4fv(programInfo.uniformLocations.lineColor, color);
+
   gl.drawArrays(gl.TRIANGLES, 0, 12);
 };
 
@@ -1386,23 +1398,21 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   drawWeaponText();
 
-  // drawLine([-1500, -1500], [-1300, -1400], 1, [0.5, 0, 0.5, 1]);
-
-  // TODO Put the uniforms in line drawing mode
-
   // TODO Need to use bitmap with source atop
   drawChats(chats.values());
+
+  setDrawLineUniforms();
 
   if (!lastSelf.docked) {
     // Likewise for all these functions we need to switch to a bitmap with source atop
     const arrows = computeArrows(target, targetAsteroid);
     drawArrows(arrows);
-    
+
     drawSectorArrowAndLines();
     drawMessages(sixtieths);
     drawPrompts();
   }
-
+  
   drawEffects(sixtieths);
   drawParticles(sixtieths);
   gl.useProgram(programInfo.program);

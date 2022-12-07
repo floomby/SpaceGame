@@ -23,7 +23,7 @@ import {
   classDataFont,
   computeArrows,
   drawArrows,
-  drawSectorArrow,
+  drawSectorArrowAndLines,
   drawMessages,
   initDockingMessages,
   displayDockedMessages,
@@ -1268,16 +1268,6 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
-  drawChats(chats.values());
-
-  if (!lastSelf.docked) {
-    const arrows = computeArrows(target, targetAsteroid);
-    drawArrows(arrows);
-    drawSectorArrow();
-    drawMessages(sixtieths);
-    drawPrompts();
-  }
-
   // Compute all point lights in the scene (and handle some other updates to drawing data)
   const lightSources: PointLightData[] = [];
 
@@ -1397,6 +1387,21 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   drawWeaponText();
 
   // drawLine([-1500, -1500], [-1300, -1400], 1, [0.5, 0, 0.5, 1]);
+
+  // TODO Put the uniforms in line drawing mode
+
+  // TODO Need to use bitmap with source atop
+  drawChats(chats.values());
+
+  if (!lastSelf.docked) {
+    // Likewise for all these functions we need to switch to a bitmap with source atop
+    const arrows = computeArrows(target, targetAsteroid);
+    drawArrows(arrows);
+    
+    drawSectorArrowAndLines();
+    drawMessages(sixtieths);
+    drawPrompts();
+  }
 
   drawEffects(sixtieths);
   drawParticles(sixtieths);

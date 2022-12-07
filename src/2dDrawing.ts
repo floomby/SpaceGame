@@ -11,6 +11,7 @@ import {
   mapGameXToWorld,
   canvasGameTopLeft,
   canvasGameBottomRight,
+  drawLine,
 } from "./3dDrawing";
 import { armDefs, ArmUsage, defs, Faction, UnitKind } from "./defs";
 import { Asteroid, availableCargoCapacity, ChatMessage, CloakedState, Player, sectorBounds, TargetKind } from "./game";
@@ -548,7 +549,7 @@ const drawArrows = (arrows: ArrowData[]) => {
   }
 };
 
-const drawSectorArrow = () => {
+const drawSectorArrowAndLines = () => {
   let closestEdgeDirection: CardinalDirection | null = null;
 
   const distanceToLeft = lastSelf.position.x - sectorBounds.x;
@@ -572,11 +573,51 @@ const drawSectorArrow = () => {
     return;
   }
 
+  const canvasGameHeight = canvasGameBottomRight.y - canvasGameTopLeft.y;
+  const canvasGameWidth = canvasGameBottomRight.x - canvasGameTopLeft.x;
+
+  if (distanceToBottom <= canvasGameHeight / 2) {
+    drawLine(
+      [canvasGameTopLeft.x, sectorBounds.y + sectorBounds.height],
+      [canvasGameBottomRight.x, sectorBounds.y + sectorBounds.height],
+      1,
+      [0, 1.0, 0, 0.5],
+      0
+    );
+  }
+  if (distanceToTop <= canvasGameHeight / 2) {
+    drawLine(
+      [canvasGameTopLeft.x, sectorBounds.y],
+      [canvasGameBottomRight.x, sectorBounds.y],
+      1,
+      [0, 1.0, 0, 0.5],
+      0
+    );
+  }
+  if (distanceToLeft <= canvasGameWidth / 2) {
+    drawLine(
+      [sectorBounds.x, canvasGameTopLeft.y],
+      [sectorBounds.x, canvasGameBottomRight.y],
+      1,
+      [0, 1.0, 0, 0.5],
+      0
+    );
+  }
+  if (distanceToRight <= canvasGameWidth / 2) {
+    drawLine(
+      [sectorBounds.x + sectorBounds.width, canvasGameTopLeft.y],
+      [sectorBounds.x + sectorBounds.width, canvasGameBottomRight.y],
+      1,
+      [0, 1.0, 0, 0.5],
+      0
+    );
+  }
+
   switch (closestEdgeDirection) {
     case CardinalDirection.Up:
-      // if (closestEdgeDistance < canvas.height / 2) {
-      //   return;
-      // }
+      if (closestEdgeDistance < canvasGameHeight / 2) {
+        return;
+      }
       ctx.save();
       ctx.translate(canvas.width / 2, 0);
       ctx.fillStyle = "green";
@@ -593,9 +634,9 @@ const drawSectorArrow = () => {
       ctx.restore();
       break;
     case CardinalDirection.Down:
-      // if (closestEdgeDistance < canvas.height / 2) {
-      //   return;
-      // }
+      if (closestEdgeDistance < canvasGameHeight / 2) {
+        return;
+      }
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height);
       ctx.fillStyle = "green";
@@ -612,9 +653,9 @@ const drawSectorArrow = () => {
       ctx.restore();
       break;
     case CardinalDirection.Left:
-      // if (closestEdgeDistance < canvas.width / 2) {
-      //   return;
-      // }
+      if (closestEdgeDistance < canvasGameWidth / 2) {
+        return;
+      }
       ctx.save();
       ctx.translate(0, canvas.height / 2);
       ctx.fillStyle = "green";
@@ -631,9 +672,9 @@ const drawSectorArrow = () => {
       ctx.restore();
       break;
     case CardinalDirection.Right:
-      // if (closestEdgeDistance < canvas.width / 2) {
-      //   return;
-      // }
+      if (closestEdgeDistance < canvasGameWidth / 2) {
+        return;
+      }
       ctx.save();
       ctx.translate(canvas.width, canvas.height / 2);
       ctx.fillStyle = "green";
@@ -782,7 +823,7 @@ const rasterizeWeaponText = () => {
     }
     weaponTexts.push(weaponTextData);
   }
-}
+};
 
 const drawWeaponText = () => {
   for (let i = 0; i < weaponTexts.length; i++) {
@@ -806,7 +847,7 @@ const drawWeaponText = () => {
     }
     blitImageDataTopLeft(imageData, 10, overlayCanvas.height - 30 - (weaponTexts.length - i) * 20);
   }
-}
+};
 
 export {
   ArrowData,
@@ -828,7 +869,7 @@ export {
   classDataFont,
   computeArrows,
   drawArrows,
-  drawSectorArrow,
+  drawSectorArrowAndLines,
   pushMessage,
   drawMessages,
   initDockingMessages,

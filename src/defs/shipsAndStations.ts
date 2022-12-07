@@ -237,7 +237,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 20,
-    model: "spaceship",
+    model: "seeker",
   });
   // Strafer - 6
   defs.push({

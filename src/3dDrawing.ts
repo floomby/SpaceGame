@@ -311,6 +311,7 @@ const init3dDrawing = (callback: () => void) => {
         "strafer.obj",
         "missile.obj",
         "drone.obj",
+        "seeker.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {

@@ -12,7 +12,8 @@ uniform vec3 uBaseColor;
 uniform sampler2D uSampler;
 uniform vec3 uPointLightLighting[10];
 uniform mediump vec3 uHealthAndEnergyAndScale;
-uniform vec2 uDesaturateAndTransparency;
+uniform mediump vec4 uDesaturateAndTransparencyAndWarpingAndHighlight;
+uniform mediump float uPhase;
 
 layout(location = 0) out vec4 outColor;
 
@@ -74,7 +75,8 @@ void main(void) {
 
   // desaturate
   float average = (materialColor.r + materialColor.g + materialColor.b) / 3.0;
-  materialColor = mix(vec3(average), materialColor, 1.0 - uDesaturateAndTransparency.x);
+  materialColor = mix(vec3(average), materialColor, 1.0 - uDesaturateAndTransparencyAndWarpingAndHighlight.x);
+  materialColor = mix(vec3(average * 1.2), materialColor, 1.0 - uPhase * uDesaturateAndTransparencyAndWarpingAndHighlight.w * 0.4);
 
   vec3 pointLightSum = vec3(0.0, 0.0, 0.0);
 
@@ -94,7 +96,9 @@ void main(void) {
       pointLightSum += (uPointLightLighting[i] * diffuse + specular) / max(lightDistance * lightDistance, 2.0);
     }
   }
-  
+
+  vec3 emissive = vec3(uDesaturateAndTransparencyAndWarpingAndHighlight.z * 0.8 + uPhase * uDesaturateAndTransparencyAndWarpingAndHighlight.w * 0.9);
+
   // blinn-phong
   vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
   vec3 halfDir = normalize(lightDir + viewDir);
@@ -102,5 +106,5 @@ void main(void) {
   float specular = pow(max(dot(vNormal, halfDir), 0.0), 20.0);
   float ambient = 0.1;
 
-  outColor = vec4(materialColor * (ambient + diffuse) + specular + pointLightSum, 1.0 - uDesaturateAndTransparency.y);
+  outColor = vec4(materialColor * (ambient + diffuse + emissive) + specular + pointLightSum, 1.0 - uDesaturateAndTransparencyAndWarpingAndHighlight.y);
 }

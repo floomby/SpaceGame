@@ -12,6 +12,8 @@ uniform mat4 uNormalMatrix;
 uniform vec4 uPointLights[10];
 // When drawing asteroids the "health" is the resources left
 uniform mediump vec3 uHealthAndEnergyAndScale;
+// uniform mediump vec4 uDesaturateAndTransparencyAndWarpingAndHighlight;
+uniform mediump float uPhase;
 
 uniform int uDrawType;
 

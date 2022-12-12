@@ -20,7 +20,6 @@
 - fix projectile drawing *
 - draw collectables *
 - draw the repair bars on stations that need repairing *
-- player selection highlighting *
 
 ### Effects Checklist
 

@@ -249,7 +249,8 @@ const init3dDrawing = (callback: () => void) => {
         pointLightLighting: new Array(pointLightCount).fill(0).map((_, i) => gl.getUniformLocation(program, `uPointLightLighting[${i}]`)),
         drawType: gl.getUniformLocation(program, "uDrawType"),
         healthAndEnergyAndScale: gl.getUniformLocation(program, "uHealthAndEnergyAndScale"),
-        desaturateAndTransparency: gl.getUniformLocation(program, "uDesaturateAndTransparency"),
+        desaturateAndTransparencyAndWarpingAndHighlight: gl.getUniformLocation(program, "uDesaturateAndTransparencyAndWarpingAndHighlight"),
+        phase: gl.getUniformLocation(program, "uPhase"),
       },
     };
 
@@ -357,7 +358,6 @@ const clientPlayerUpdate = (player: Player) => {
   }
 
   if (player.warping) {
-    const warpAmount = Math.abs(player.warping / def.warpTime);
     const warpFramesLeft = def.warpTime - Math.abs(player.warping);
     mat4.scale(modelMatrix, modelMatrix, [Math.max(1, 10 / (warpFramesLeft + 3)), Math.min(1, warpFramesLeft / 10), 1]);
   }
@@ -365,7 +365,7 @@ const clientPlayerUpdate = (player: Player) => {
   player.modelMatrix = modelMatrix;
 };
 
-const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
+const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighted: boolean) => {
   const cloakedAmount = !player.cloak ? 0 : player.cloak / CloakedState.Cloaked;
   if (cloakedAmount === 1 && player.team !== lastSelf.team) {
     return;
@@ -471,7 +471,8 @@ const drawPlayer = (player: Player, lightSources: PointLightData[]) => {
 
   const toDesaturate = player.inoperable ? 1 : 0;
   // const transparency = player.cloak ? 0.5 : 0;
-  gl.uniform2f(programInfo.uniformLocations.desaturateAndTransparency, toDesaturate, cloakOpacity);
+  const warpAmount = !player.warping ? 0 : Math.abs(player.warping / def.warpTime);
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, toDesaturate, cloakOpacity, warpAmount, isHighlighted ? 1 : 0);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   // if (player.id === lastSelf.id) {
@@ -616,7 +617,8 @@ const drawTarget = (target: Player, where: Rectangle) => {
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Target);
 
   const toDesaturate = target.inoperable ? 1 : 0;
-  gl.uniform2f(programInfo.uniformLocations.desaturateAndTransparency, toDesaturate, 0);
+  const warpAmount = !target.warping ? 0 : Math.abs(target.warping / def.warpTime);
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, toDesaturate, 0, warpAmount, 0);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -678,7 +680,7 @@ const drawBackground = (where: Position) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
-const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
+const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[], isHighlighted: boolean) => {
   const def = asteroidDefs[asteroid.defIndex];
   let bufferData = models[def.modelIndex];
 
@@ -771,7 +773,7 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[]) => {
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
 
   const toDesaturate = asteroid.resources === 0 ? 0.5 : 0;
-  gl.uniform2f(programInfo.uniformLocations.desaturate, toDesaturate, 0.0);
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, toDesaturate, 0, 0, isHighlighted ? 1 : 0);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -889,7 +891,7 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Target);
 
   const toDesaturate = asteroid.resources === 0 ? 0.5 : 0;
-  gl.uniform2f(programInfo.uniformLocations.desaturateAndTransparency, toDesaturate, 0.0);
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, toDesaturate, 0.0, 0, 0);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -1043,7 +1045,7 @@ const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) 
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
 
-  gl.uniform2f(programInfo.uniformLocations.desaturateAndTransparency, desaturation, 0.0);
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, desaturation, 0.0, 0, 0);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -1210,7 +1212,7 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
 
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
 
-  gl.uniform2f(programInfo.uniformLocations.desaturateAndTransparency, 0.0, 0.0);
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, 0.0, 0.0, 0, 0);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -1272,7 +1274,10 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     return;
   }
 
+  const phase = Math.sin(Date.now() / 250) * 0.5 + 0.5;
+
   gl.useProgram(programInfo.program);
+  gl.uniform1f(programInfo.uniformLocations.phase, phase);
 
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
@@ -1378,7 +1383,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   gl.enable(gl.CULL_FACE);
   for (const player of state.players.values()) {
     if (isRemotelyOnscreen(player.position)) {
-      drawPlayer(player, lightSources);
+      drawPlayer(player, lightSources, player.id === target?.id);
     }
   }
   gl.disable(gl.CULL_FACE);
@@ -1386,7 +1391,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   for (const asteroid of state.asteroids.values()) {
     asteroid.roll += asteroid.rotationRate * sixtieths;
     if (isRemotelyOnscreen(asteroid.position)) {
-      drawAsteroid(asteroid, lightSources);
+      drawAsteroid(asteroid, lightSources, asteroid.id === targetAsteroid?.id);
     }
   }
 
@@ -1423,6 +1428,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
+  gl.uniform1f(programInfo.uniformLocations.phase, phase);
   setLineUniforms();
   // Lazy way to deal with point lights is to process them one frame later
   lightSources.length = 0;

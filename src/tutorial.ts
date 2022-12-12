@@ -2,7 +2,7 @@ import { armDefMap, defs, Faction } from "./defs";
 import { hasArm } from "./defs/armaments";
 import { peekTag } from "./dialog";
 import { sectorNumberToXY } from "./dialogs/map";
-import { pushMessage } from "./2dDrawing";
+import { pushMessage, rasterizeWeaponText } from "./2dDrawing";
 import { availableCargoCapacity, mapSize, TutorialStage } from "./game";
 import { currentSector, faction, inventory, keybind, lastSelf, selectedSecondary, state } from "./globals";
 import { targetAsteroidId, targetId } from "./index";
@@ -127,6 +127,7 @@ tutorialPrompters.set(TutorialStage.SwitchSecondary, () => {
   };
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
+  rasterizeWeaponText();
   fx();
 });
 
@@ -150,6 +151,7 @@ tutorialPrompters.set(TutorialStage.SelectAsteroid, () => {
   clearTimeout(promptTimeout);
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
+  rasterizeWeaponText();
   fx();
 });
 
@@ -184,6 +186,7 @@ tutorialPrompters.set(TutorialStage.LaserBeam, () => {
   clearTimeout(promptTimeout);
   clearInterval(promptInterval);
   promptInterval = window.setInterval(fx, 1000 * 13);
+  rasterizeWeaponText();
   fx();
 });
 

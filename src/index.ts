@@ -442,6 +442,8 @@ const run = () => {
         asteroid.pitch = existing.pitch;
         asteroid.roll = existing.roll;
         asteroid.rotationRate = existing.rotationRate;
+      } else {
+        initAsteroid(asteroid);
       }
       state.asteroids.set(asteroid.id, asteroid);
     }

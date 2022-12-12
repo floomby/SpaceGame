@@ -5,7 +5,7 @@ import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
 import { lastSelf, state } from "./globals";
 import { pushExplosionEmitter, pushSmokeEmitter, pushTrailEmitter } from "./particle";
-import { drawLine } from "./3dDrawing";
+import { addLightSource, drawLine } from "./3dDrawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
   // This does not really make sense, I will fix it later though
@@ -114,12 +114,18 @@ const initEffects = () => {
         effect.extra.needSound = false;
         const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
       }
-      drawLine([from.x, from.y], [to.x + effect.extra.offset.x * toCircle.radius * 0.8, to.y + effect.extra.offset.y * toCircle.radius * 0.8], 0.3, [
-        0.0,
-        1.0,
-        0.0,
-        1 - framesLeft / 10,
-      ]);
+      drawLine(
+        [from.x, from.y],
+        [to.x + effect.extra.offset.x * toCircle.radius * 0.8, to.y + effect.extra.offset.y * toCircle.radius * 0.8],
+        0.3,
+        [0.0, 1.0, 0.0, 1 - framesLeft / 10],
+        1
+      );
+      const halfWay = {
+        x: (from.x + to.x + effect.extra.offset.x * toCircle.radius * 0.8) / 2,
+        y: (from.y + to.y + effect.extra.offset.y * toCircle.radius * 0.8) / 2,
+      };
+      addLightSource(halfWay, [0, 2 - framesLeft / 5, 0]);
     },
     initializer: () => {
       const r = Math.sqrt(Math.random());
@@ -152,7 +158,9 @@ const initEffects = () => {
         play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
       }
 
-      drawLine([from.x, from.y], [to.x, to.y], 2, [0.7, 0.2, 0.7, 1 - framesLeft / 15]);
+      drawLine([from.x, from.y], [to.x, to.y], 2, [0.7, 0.2, 0.7, 1 - framesLeft / 15], 1);
+      const halfWay = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+      addLightSource(halfWay, [15 - framesLeft, 0, 15 - framesLeft]);
     },
     initializer: () => {
       return { needSound: true };
@@ -336,12 +344,18 @@ const initEffects = () => {
         effect.extra.needSound = false;
         const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
       }
-      drawLine([from.x, from.y], [to.x + effect.extra.offset.x * toCircle.radius * 0.8, to.y + effect.extra.offset.y * toCircle.radius * 0.8], 0.3, [
-        0.0,
-        0.0,
-        1.0,
-        1 - framesLeft / 10,
-      ]);
+      drawLine(
+        [from.x, from.y],
+        [to.x + effect.extra.offset.x * toCircle.radius * 0.8, to.y + effect.extra.offset.y * toCircle.radius * 0.8],
+        0.3,
+        [0.0, 0.0, 1.0, 1 - framesLeft / 10],
+        1
+      );
+      const halfWay = {
+        x: (from.x + to.x + effect.extra.offset.x * toCircle.radius * 0.8) / 2,
+        y: (from.y + to.y + effect.extra.offset.y * toCircle.radius * 0.8) / 2,
+      };
+      addLightSource(halfWay, [0, 0, 2 - framesLeft / 5]);
     },
     initializer: () => {
       const r = Math.sqrt(Math.random());
@@ -612,7 +626,9 @@ const initEffects = () => {
         play3dSound(tractorSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
       }
 
-      drawLine([from.x, from.y], [to.x, to.y], 2, [1.0, 0.65, 0.1, framesLeft / 10]);
+      drawLine([from.x, from.y], [to.x, to.y], 2, [1.0, 0.65, 0.1, framesLeft / 10], 1);
+      const halfWay = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+      addLightSource(halfWay, [framesLeft / 5, framesLeft / 8, framesLeft / 50]);
     },
     initializer: () => {
       return { needSound: true };

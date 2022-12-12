@@ -13,7 +13,6 @@
 
 ### Hud Checklist
 
-- sector lines (2)
 - Fix text to not be blit onto the screen in an way that overwrites the pixels of the other texts
 
 ### World Checklist
@@ -27,7 +26,7 @@
 
 ### Effects Checklist
 
-- Finish off effects
+- Weak particle emitters
 - Warp effect (1)
 - Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something)
 

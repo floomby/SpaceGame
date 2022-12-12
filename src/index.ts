@@ -44,6 +44,7 @@ import {
   addLoadingText,
   clearInventory,
   currentSector,
+  hideLoadingText,
   initBlankState,
   inventory,
   keybind,
@@ -374,6 +375,7 @@ const run = () => {
       clearDialogStack();
       clearDialog();
       hideDialog();
+      hideLoadingText();
       initInputHandlers(targetAtCoords);
       setFaction(data.faction);
       for (const asteroid of data.asteroids) {

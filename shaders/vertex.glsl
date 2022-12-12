@@ -73,15 +73,15 @@ void main() {
       topRight = centerRight;
       topLeft = centerLeft;
       if (idx == 0 || idx == 1 || idx == 4) {
-        vPosition = vec3(1.0, dropoff, 0.0);
+        vPosition = vec3(1.0, 0.0, 0.0);
       } else {
-        vPosition = vec3(0.0, dropoff, 0.0);
+        vPosition = vec3(1.0 - dropoff, 0.0, 0.0);
       }
     } else {
       if (idx == 0 || idx == 1 || idx == 4) {
-        vPosition = vec3(0.0, dropoff, 0.0);
+        vPosition = vec3(1.0 - dropoff, 0.0, 0.0);
       } else {
-        vPosition = vec3(1.0, dropoff, 0.0);
+        vPosition = vec3(1.0, 0.0, 0.0);
       }
       bottomRight = centerRight;
       bottomLeft = centerLeft;

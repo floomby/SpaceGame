@@ -58,6 +58,7 @@ enum DrawType {
   TargetEnergyBar = 9,
   TargetResourceBar = 10,
   Line = 11,
+  Target = 12,
 }
 
 const initShaders = (callback: (program: any, particleProgram: any, particleRenderingProgram: any) => void) => {
@@ -339,7 +340,7 @@ const init3dDrawing = (callback: () => void) => {
   });
 };
 
-const playerClientUpdate = (player: Player) => {
+const clientPlayerUpdate = (player: Player) => {
   const def = defs[player.defIndex];
 
   const modelMatrix = mat4.create();
@@ -510,7 +511,7 @@ const mapWorldYToGame = (y: number) => -y * 10 + lastSelf.position.y;
 
 const drawTarget = (target: Player, where: Rectangle) => {
   if (target.modelMatrix === undefined) {
-    playerClientUpdate(target);
+    clientPlayerUpdate(target);
   }
 
   const targetDisplayRectNDC = canvasRectToNDC(where);
@@ -608,7 +609,7 @@ const drawTarget = (target: Player, where: Rectangle) => {
   mat4.transpose(normalMatrix, normalMatrix);
   gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Target);
 
   const toDesaturate = target.inoperable ? 1 : 0;
   gl.uniform2f(programInfo.uniformLocations.desaturateAndTransparency, toDesaturate, 0);
@@ -881,7 +882,7 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
   mat4.transpose(normalMatrix, normalMatrix);
   gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Target);
 
   const toDesaturate = asteroid.resources === 0 ? 0.5 : 0;
   gl.uniform2f(programInfo.uniformLocations.desaturateAndTransparency, toDesaturate, 0.0);
@@ -1213,7 +1214,7 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 };
 
-const setDrawLineUniforms = () => {
+const setLineUniforms = () => {
   // Can move since all the lines will be drawn at once
   const viewMatrix = mat4.create();
   mat4.scale(viewMatrix, viewMatrix, [1 / 10, -1 / 10, 1]);
@@ -1251,11 +1252,19 @@ const isRemotelyOnscreenReducedWorldCoords = (x: number, y: number) => {
   );
 };
 
+const lightSources: PointLightData[] = [];
+
+const addLightSource = (position: Position, unnormedColor: [number, number, number]) => {
+  lightSources.push({ position: { ...position, z: gamePlaneZ }, color: unnormedColor });
+  // console.log({ position: { ...position, z: gamePlaneZ }, color: unnormedColor });
+};
+
 // Main draw function (some game things appear to be updated here, but it is just cosmetic updates and has nothing to do with game logic)
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   if (!lastSelf) {
+    lightSources.length = 0;
     return;
   }
 
@@ -1282,8 +1291,6 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   // Compute all point lights in the scene (and handle some other updates to drawing data)
-  const lightSources: PointLightData[] = [];
-
   for (const projectile of state.projectiles.values()) {
     if (isRemotelyOnscreen(projectile.position)) {
       lightSources.push({
@@ -1295,7 +1302,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   for (const player of state.players.values()) {
     if (isRemotelyOnscreen(player.position)) {
-      playerClientUpdate(player);
+      clientPlayerUpdate(player);
 
       const def = defs[player.defIndex];
       if (def.pointLights) {
@@ -1402,21 +1409,21 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   // TODO Need to use bitmap with source atop
   drawChats(chats.values());
 
-  setDrawLineUniforms();
-
   if (!lastSelf.docked) {
     // Likewise for all these functions we need to switch to a bitmap with source atop
     const arrows = computeArrows(target, targetAsteroid);
     drawArrows(arrows);
-
-    drawSectorArrowAndLines();
     drawMessages(sixtieths);
     drawPrompts();
   }
-  
-  drawEffects(sixtieths);
+
   drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
+  setLineUniforms();
+  // Lazy way to deal with point lights is to process them one frame later
+  lightSources.length = 0;
+  drawEffects(sixtieths);
+  drawSectorArrowAndLines();
   draw2d(programInfo);
 
   // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
@@ -1469,4 +1476,5 @@ export {
   fadeOutMine,
   isRemotelyOnscreenReducedWorldCoords,
   drawLine,
+  addLightSource,
 };

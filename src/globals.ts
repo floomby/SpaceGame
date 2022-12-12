@@ -134,6 +134,10 @@ const addLoadingText = (text: string) => {
   document.getElementById("loadingText")!.innerHTML += text + "<br/>";
 }
 
+const hideLoadingText = () => {
+  document.getElementById("loadingText")!.style.display = "none";
+}
+
 let tutorialStage: TutorialStage = TutorialStage.Done;
 
 const setTutorialStage = (newTutorialStage: TutorialStage) => {
@@ -186,4 +190,5 @@ export {
   addLoadingText,
   tutorialStage,
   setTutorialStage,
+  hideLoadingText,
 };

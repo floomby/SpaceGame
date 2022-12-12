@@ -24,7 +24,7 @@ void main(void) {
 
   // World lines
   if (vDrawType == 11) {
-    outColor = vec4(vColor.xyz, vPosition.x * vColor.w);
+    outColor = vec4(vColor.xyz, vColor.w * vPosition.x);
     return;
   }
 
@@ -80,15 +80,19 @@ void main(void) {
 
   vec3 viewDir = normalize(vec3(0.0, 0.0, -1.0));
   
-  for (int i = 0; i < 10; i++) {
-    vec3 lightDirection = normalize(vPointLights[i] - vPosition);
-    vec3 halfVector = normalize(lightDirection + viewDir);
-    float lightDistance = length(vPointLights[i] - vPosition) / 5.0;
-    
-    float diffuse = max(dot(vNormal, lightDirection), 0.0) * 0.3;
-    float specular = pow(max(dot(vNormal, halfVector), 0.0), 20.0);
+  // Do not apply point lights if we are drawing targets, there is junk in the point light uniforms
+  // drawTarget and drawTargetAsteroid do not set the point lights
+  if (vDrawType != 12) {
+    for (int i = 0; i < 10; i++) {
+      vec3 lightDirection = normalize(vPointLights[i] - vPosition);
+      vec3 halfVector = normalize(lightDirection + viewDir);
+      float lightDistance = length(vPointLights[i] - vPosition) / 5.0;
+      
+      float diffuse = max(dot(vNormal, lightDirection), 0.0) * 0.3;
+      float specular = pow(max(dot(vNormal, halfVector), 0.0), 20.0);
 
-    pointLightSum += (uPointLightLighting[i] * diffuse + specular) / max(lightDistance * lightDistance, 2.0);
+      pointLightSum += (uPointLightLighting[i] * diffuse + specular) / max(lightDistance * lightDistance, 2.0);
+    }
   }
   
   // blinn-phong

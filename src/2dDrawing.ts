@@ -582,26 +582,14 @@ const drawSectorArrowAndLines = () => {
       [canvasGameBottomRight.x, sectorBounds.y + sectorBounds.height],
       1,
       [0, 1.0, 0, 0.5],
-      0
+      1
     );
   }
   if (distanceToTop <= canvasGameHeight / 2) {
-    drawLine(
-      [canvasGameTopLeft.x, sectorBounds.y],
-      [canvasGameBottomRight.x, sectorBounds.y],
-      1,
-      [0, 1.0, 0, 0.5],
-      0
-    );
+    drawLine([canvasGameTopLeft.x, sectorBounds.y], [canvasGameBottomRight.x, sectorBounds.y], 1, [0, 1.0, 0, 0.5], 1);
   }
   if (distanceToLeft <= canvasGameWidth / 2) {
-    drawLine(
-      [sectorBounds.x, canvasGameTopLeft.y],
-      [sectorBounds.x, canvasGameBottomRight.y],
-      1,
-      [0, 1.0, 0, 0.5],
-      0
-    );
+    drawLine([sectorBounds.x, canvasGameTopLeft.y], [sectorBounds.x, canvasGameBottomRight.y], 1, [0, 1.0, 0, 0.5], 1);
   }
   if (distanceToRight <= canvasGameWidth / 2) {
     drawLine(
@@ -609,7 +597,7 @@ const drawSectorArrowAndLines = () => {
       [sectorBounds.x + sectorBounds.width, canvasGameBottomRight.y],
       1,
       [0, 1.0, 0, 0.5],
-      0
+      1
     );
   }
 

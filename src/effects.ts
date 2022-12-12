@@ -4,7 +4,7 @@ import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound"
 import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
 import { lastSelf, state } from "./globals";
-import { pushExplosionEmitter, pushSmokeEmitter, pushTrailEmitter } from "./particle";
+import { pushExplosionEmitter, pushSmokeEmitter, pushTrailEmitter, pushWarpEmitter } from "./particle";
 import { addLightSource, drawLine } from "./3dDrawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
@@ -201,47 +201,17 @@ const initEffects = () => {
   // Large explosion (stations) - 4
   effectDefs.push({
     frames: 50,
-    draw: (effect, self, state, framesLeft) => {
-      const [from] = resolveAnchor(effect.from, state);
-      if (!from) {
-        return;
-      }
-
-      if (self) {
-        effect.extra.lastSelfX = self.position.x;
-        effect.extra.lastSelfY = self.position.y;
-      }
-
+    draw3: (effect, self, state, framesLeft) => {
       if (effect.extra.needSound) {
+        const from = pushExplosionEmitter(effect.from, 7);
         effect.extra.needSound = false;
-        effect.extra.panner = play3dSound(
-          explosionSound,
-          ((from as Position).x - self.position.x) / soundScale,
-          ((from as Position).y - self.position.y) / soundScale
-        );
-      } else if (effect.extra.panner && effect.extra.lastSelfX !== undefined && effect.extra.lastSelfY !== undefined) {
-        effect.extra.panner.positionX.value = ((from as Position).x - effect.extra.lastSelfX) / soundScale;
-        effect.extra.panner.positionY.value = ((from as Position).y - effect.extra.lastSelfY) / soundScale;
+        if (from) {
+          play3dSound(explosionSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        }
       }
-
-      const spriteIdx = 2;
-      const width = effectSprites[spriteIdx].width;
-      const height = effectSprites[spriteIdx].height;
-      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
-        return;
-      }
-      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
-        return;
-      }
-
-      ctx.save();
-      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
-      ctx.rotate(effect.extra.heading);
-      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
-      ctx.restore();
     },
     initializer: () => {
-      return { heading: Math.random() * Math.PI * 2, needSound: true };
+      return { needSound: true };
     },
   });
   // Missile trail - 5
@@ -293,14 +263,10 @@ const initEffects = () => {
   effectDefs.push({
     frames: 10,
     draw3: (effect, self, state, framesLeft) => {
-      const [from] = resolveAnchor(effect.from, state);
-      if (!from) {
-        return;
-      }
-
       if (effect.extra.needSound) {
+        const from = pushWarpEmitter(effect.from);
         effect.extra.needSound = false;
-        play3dSound(twinkleSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+        play3dSound(twinkleSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
       }
     },
     initializer: () => {

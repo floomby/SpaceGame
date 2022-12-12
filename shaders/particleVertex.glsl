@@ -92,10 +92,31 @@ void emitSmoke(uint index) {
   vVelocity = (rand2.y * 0.1) * dir - vec3(uEmitVelocity[index].xy, 0.0) * uEmitPosition[index].z;
 }
 
+void emitWarp(uint index) {
+  vBehavior = vec4(3.5, 0.98, 0.0, 0.0);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+  vec4 rand = texelFetch(uNoise, noiseCoord, 0);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
+
+  vAge = 0.0;
+  vLife = rand2.w * 60.0 + 30.0;
+
+  vec3 dir = normalize(rand.xyz - 0.5);
+  dir = vec3(dir.xy, dir.z * 0.5);
+
+  vec3 dir2 = normalize(rand2.xyz - 0.5);
+  dir2 = vec3(dir2.xy, dir2.z * 0.5);
+
+  vPosition = vec3(uEmitPosition[index].xy, -0.1) + dir * 3.0;
+
+  vVelocity = uEmitVelocity[index].xyz + dir2 * 0.1;
+}
+
+const int weakParticleCount = 1000;
+
 void main() {
   if (aAge >= aLife) {
-    // ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
-    //   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
     ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512 + 40);
     vec4 rand = texelFetch(uNoise, noiseCoord, 0);
 
@@ -114,15 +135,15 @@ void main() {
     }
     if (uEmitType[index] == 1u) {
       emitExplosion(index);
-      // emitNop();
     } else if (uEmitType[index] == 2u) {
       emitTrail(index);
     } else if (uEmitType[index] == 3u) {
       emitSmoke(index);
+    } else if (uEmitType[index] == 4u) {
+      emitWarp(index);
     } else {
       emitNop();
     }
-    // emitExplosion(0u);
   } else {
     vVelocity = aVelocity * aBehavior.y;
     vPosition = vVelocity * uTimeDelta + aPosition;

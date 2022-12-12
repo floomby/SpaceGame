@@ -13,16 +13,15 @@
 
 ### Hud Checklist
 
-- Fix text to not be blit onto the screen in an way that overwrites the pixels of the other texts
+- Fix text to not be blit onto the screen in an way that overwrites the pixels of the other texts *
 
 ### World Checklist
 
-- fix projectile drawing
-- draw collectables
-- fix drawing player effects for warping
-- draw the repair bars on stations that need repairing
-- make the rest of the missile models
-- player selection highlighting
+- fix projectile drawing *
+- draw collectables *
+- draw the repair bars on stations that need repairing *
+- make the rest of the missile models *
+- player selection highlighting *
 
 ### Effects Checklist
 

@@ -18,7 +18,10 @@ void main() {
   } else  if (vBehavior.x < 2.0) {
     vec4 color = texture(uSample, vTextureCoord);
     outColor = vec4(color.rrr, color.a);
-  } else {
+  } else if (vBehavior.x < 3.0) {
     outColor = vec4(vec3(1.0, 0.5, 0.5) * (1.0 - vAge / vLife), 1.0);
+  } else {
+    vec4 color = texture(uSample, vTextureCoord);
+    outColor = vec4(vec3((vLife - 30.0) / 60.0, (vLife - 30.0) / 60.0, 1.0) * color.r, color.a);
   }
 }

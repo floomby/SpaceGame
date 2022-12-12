@@ -184,6 +184,7 @@ enum EmitterKind {
   Explosion = 1,
   Trail = 2,
   Smoke = 3,
+  Warp = 4,
 }
 
 // The particle system operates in "reduced world" coordinates
@@ -320,6 +321,21 @@ const pushExplosionEmitter = (from: EffectAnchor, size = 1) => {
   }
 };
 
+const pushWarpEmitter = (from: EffectAnchor) => {
+  if (from.kind === EffectAnchorKind.Absolute) {
+    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0, 40];
+    const x = Math.cos(from.heading) * from.speed / 10;
+    const y = Math.sin(from.heading) * from.speed / -10;
+    const velocity = [x, y, 0];
+    const weight = 4;
+    const kind = EmitterKind.Warp;
+    emitters.push({ position, velocity, kind, weight, from } as Emitter);
+    return from.value as Position;
+  } else {
+    console.warn("Unsupported anchor warp", from);
+  }
+};
+
 let readIndex = 0;
 
 const draw = (sixtieths: number) => {
@@ -376,4 +392,5 @@ export {
   pushTrailEmitter,
   pushSmokeEmitter,
   pushExplosionEmitter,
+  pushWarpEmitter,
 };

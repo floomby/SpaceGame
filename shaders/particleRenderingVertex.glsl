@@ -42,6 +42,8 @@ void main() {
   } else if (aBehavior.x < 3.0) {
     // Missile trail
     scale = 1.0;
+  } else if (aBehavior.x < 4.0) {
+    scale = 2.0;
   }
 
   if (gl_VertexID % 6 == 0) {

@@ -1,7 +1,7 @@
 # Blender 3.3.1
 # www.blender.org
 mtllib missile.mtl
-o missile
+o javelin
 v 0.887349 0.000000 0.197601
 v -0.849124 -0.000000 0.197601
 v 0.887349 -0.139725 0.139725

@@ -310,7 +310,11 @@ const init3dDrawing = (callback: () => void) => {
         "russanite.obj",
         "proximity_mine.obj",
         "strafer.obj",
-        "missile.obj",
+        "javelin.obj",
+        "impulse.obj",
+        "emp.obj",
+        "tomahawk.obj",
+        "heavy_javelin.obj",
         "drone.obj",
         "seeker.obj",
       ].map((url) => loadObj(url, gl, programInfo))

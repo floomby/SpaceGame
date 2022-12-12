@@ -227,7 +227,7 @@ const initArmaments = () => {
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
-    model: "missile",
+    model: "javelin",
     pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const javelinIndex = missileDefs.length - 1;
@@ -279,7 +279,7 @@ const initArmaments = () => {
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
-    model: "missile",
+    model: "heavy_javelin",
     pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const heavyJavelinIndex = missileDefs.length - 1;
@@ -332,7 +332,7 @@ const initArmaments = () => {
     lifetime: 600,
     deathEffect: 2,
     turnRate: 0.1,
-    model: "missile",
+    model: "tomahawk",
     pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const tomahawkIndex = missileDefs.length - 1;
@@ -432,7 +432,7 @@ const initArmaments = () => {
     hitMutator: (player, state, applyEffect) => {
       player.disabled = 240;
     },
-    model: "missile",
+    model: "emp",
     pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const empMissileIndex = missileDefs.length - 1;
@@ -665,7 +665,7 @@ const initArmaments = () => {
         players[i].ir += Math.random() * 0.09;
       }
     },
-    model: "missile",
+    model: "impulse",
     pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const impulseMissileIndex = missileDefs.length - 1;

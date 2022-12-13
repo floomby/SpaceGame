@@ -322,6 +322,7 @@ const init3dDrawing = (callback: () => void) => {
         "striker.obj",
         "disruptor.obj",
         "plasma.obj",
+        "confederacy_starbase.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {
@@ -1325,7 +1326,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   gl.enable(gl.CULL_FACE);
   for (const player of state.players.values()) {
-    if (isRemotelyOnscreen(player.position)) {
+    if (!player.docked && isRemotelyOnscreen(player.position)) {
       drawPlayer(player, lightSources, player.id === target?.id);
     }
   }

@@ -164,13 +164,13 @@ const initShipsAndStations = () => {
     energyRegen: 0.5,
     primaryReloadTime: 10,
     primaryDamage: 40,
-    radius: 144,
+    radius: 120,
     kind: UnitKind.Station,
     hardpoints: [
-      { x: -93, y: -93 },
-      { x: -93, y: 93 },
-      { x: 93, y: -93 },
-      { x: 93, y: 93 },
+      { x: -60, y: -60 },
+      { x: -60, y: 60 },
+      { x: 60, y: -60 },
+      { x: 60, y: 60 },
     ],
     dockable: true,
     slots: [],
@@ -179,7 +179,13 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
-    model: "spaceship",
+    model: "confederacy_starbase",
+    pointLights: [
+      { position: { x: 6, y: 6, z: 5 }, color: [2.0, 0.0, 0] },
+      { position: { x: 6, y: -6, z: 5 }, color: [2.0, 0.0, 0] },
+      { position: { x: -6, y: -6, z: 5 }, color: [2.0, 0.0, 0] },
+      { position: { x: -6, y: 6, z: 5 }, color: [2.0, 0.0, 0] },
+    ],
   });
   // Advanced Fighter - 4
   defs.push({

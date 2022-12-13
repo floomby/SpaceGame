@@ -377,7 +377,7 @@ const initShipsAndStations = () => {
     primaryDefIndex: 2,
     mass: 8,
     isCloaky: true,
-    model: "spaceship",
+    model: "striker",
   });
 
   for (let i = 0; i < defs.length; i++) {

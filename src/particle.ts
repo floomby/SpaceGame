@@ -270,11 +270,17 @@ const bindEmitters = (sixtieths: number) => {
   // console.log(emitters.length);
 };
 
-const pushTrailEmitter = (from: EffectAnchor) => {
+enum TrailColors {
+  White = 0,
+  Red = 1,
+  YellowGreen = 2,
+};
+
+const pushTrailEmitter = (from: EffectAnchor, color = TrailColors.White) => {
   if (from.kind === EffectAnchorKind.Projectile) {
     const projectile = state.projectiles.get(from.value as number);
     if (projectile) {
-      const position = [projectile.position.x / 10, -projectile.position.y / 10, 0, 120];
+      const position = [projectile.position.x / 10, -projectile.position.y / 10, color, 120];
       const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -3];
       const kind = EmitterKind.Trail;
       const weight = 4;
@@ -393,4 +399,5 @@ export {
   pushSmokeEmitter,
   pushExplosionEmitter,
   pushWarpEmitter,
+  TrailColors,
 };

@@ -35,6 +35,7 @@ import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 import { getNameOfPlayer } from "./rest";
 import { createParticleBuffers, drawParticles, initParticleTextures } from "./particle";
+import { drawProjectile } from "./3dProjectileDrawing";
 
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
@@ -318,6 +319,9 @@ const init3dDrawing = (callback: () => void) => {
         "heavy_javelin.obj",
         "drone.obj",
         "seeker.obj",
+        "striker.obj",
+        "disruptor.obj",
+        "plasma.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {
@@ -1053,67 +1057,6 @@ const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) 
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 };
 
-const drawProjectile = (projectile: Ballistic, pointLights: PointLightData[]) => {
-  let bufferData = modelMap.get("projectile")[0];
-
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
-
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
-
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
-
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
-
-  const modelMatrix = mat4.create();
-  mat4.rotateZ(modelMatrix, modelMatrix, -projectile.heading);
-  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
-
-  const viewMatrix = mat4.create();
-  mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(projectile.position.x), mapGameYToWorld(projectile.position.y), gamePlaneZ]);
-  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
-
-  const normalMatrix = mat4.create();
-  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
-  mat4.transpose(normalMatrix, normalMatrix);
-  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
-
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Projectile);
-
-  gl.uniform3fv(programInfo.uniformLocations.baseColor, [1.0, 1.0, 1.0]);
-
-  const vertexCount = modelMap.get("projectile")[0].indices.length || 0;
-  const type = gl.UNSIGNED_SHORT;
-  const offset = 0;
-  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
-};
-
 const clientMissileUpdate = (missile: Missile) => {
   if (missile.roll === undefined) {
     missile.roll = 0;
@@ -1403,7 +1346,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   for (const projectile of state.projectiles.values()) {
     if (isRemotelyOnscreen(projectile.position)) {
-      drawProjectile(projectile, lightSources);
+      drawProjectile(projectile);
     }
   }
 
@@ -1487,4 +1430,5 @@ export {
   isRemotelyOnscreenReducedWorldCoords,
   drawLine,
   addLightSource,
+  programInfo,
 };

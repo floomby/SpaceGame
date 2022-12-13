@@ -52,7 +52,8 @@ void emitExplosion(uint index) {
 }
 
 void emitTrail(uint index) {
-  vBehavior = vec4(1.5, 0.93, 0.0, 0.0);
+  // Use the emitter position z uniform to determine color
+  vBehavior = vec4(1.5, 0.93, uEmitPosition[index].z, 0.0);
   ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
   ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
@@ -63,7 +64,7 @@ void emitTrail(uint index) {
 
   vec3 dir = normalize(rand.xyz - 0.5);
   dir = vec3(dir.xy, dir.z * 0.5);
-  
+
   if (uEmitVelocity[index].z >= 0.0) {
     vPosition = vec3(uEmitPosition[index].xy, -0.3) + dir * (rand2.y * 0.3) + rand2.x * vec3(uEmitVelocity[index].xy, 0.0) * 2.0;
   } else {
@@ -113,8 +114,6 @@ void emitWarp(uint index) {
   vVelocity = uEmitVelocity[index].xyz + dir2 * 0.1;
 }
 
-const int weakParticleCount = 1000;
-
 void main() {
   if (aAge >= aLife) {
     ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512 + 40);
@@ -140,7 +139,11 @@ void main() {
     } else if (uEmitType[index] == 3u) {
       emitSmoke(index);
     } else if (uEmitType[index] == 4u) {
-      emitWarp(index);
+      if (rand.y / uTotalWeight * 20.0 < 1.0) {
+        emitWarp(index);
+      } else {
+        emitNop();
+      }
     } else {
       emitNop();
     }

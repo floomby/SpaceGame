@@ -19,7 +19,21 @@ layout(location = 0) out vec4 outColor;
 
 void main(void) {
   if (vDrawType == 1) {
-    outColor = vec4(uBaseColor, 1.0);
+    vec4 sampled = texture(uSampler, vTextureCoord);
+    vec3 materialColor = mix(uBaseColor, sampled.rgb, sampled.a);
+
+    vec3 viewDir = normalize(vec3(0.0, 0.0, -1.0));
+  
+    vec3 emissive = vec3(0.0, 0.0, 0.0);
+
+    // blinn-phong
+    vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
+    vec3 halfDir = normalize(lightDir + viewDir);
+    float diffuse = max(dot(vNormal, lightDir), 0.0);
+    float specular = pow(max(dot(vNormal, halfDir), 0.0), 20.0);
+    float ambient = 0.1;
+
+    outColor = vec4(materialColor * (ambient + diffuse + emissive) + specular, 1.0);
     return;
   }
 

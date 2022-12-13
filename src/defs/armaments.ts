@@ -572,6 +572,7 @@ const initArmaments = () => {
             idx: 1,
           };
           state.projectiles.set(state.projectileId, projectile);
+          applyEffect({ effectIndex: 6, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
           state.projectileId++;
         }
         applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
@@ -779,9 +780,9 @@ const initArmaments = () => {
           frameTillEXpire: projectileDef.framesToExpire,
           idx: 2,
         };
-        state.projectiles.set(state.projectileId++, projectile);
+        state.projectiles.set(state.projectileId, projectile);
+        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
         state.projectileId++;
-        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
       }
     },
     equipMutator: (player, slotIndex) => {

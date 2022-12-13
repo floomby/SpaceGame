@@ -4,7 +4,7 @@ import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound"
 import { maxMissileLifetime } from "./defs";
 import { Position, Circle, Rectangle } from "./geometry";
 import { lastSelf, state } from "./globals";
-import { pushExplosionEmitter, pushSmokeEmitter, pushTrailEmitter, pushWarpEmitter } from "./particle";
+import { pushExplosionEmitter, pushSmokeEmitter, pushTrailEmitter, pushWarpEmitter, TrailColors } from "./particle";
 import { addLightSource, drawLine } from "./3dDrawing";
 
 const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
@@ -230,33 +230,15 @@ const initEffects = () => {
       return { needSound: true };
     },
   });
-  // Missile trail poof - 6
-  // OBSOLETE
+  // Plasma trail effect - 6
   effectDefs.push({
-    frames: 50,
-    draw: (effect, self, state, framesLeft) => {
-      const [from] = resolveAnchor(effect.from, state);
-      const spriteIdx = 3;
-      // const width = effectSprites[spriteIdx].width;
-      // const height = effectSprites[spriteIdx].height;
-      // V8 profiler says the above lines of code are slow and this is a hot path
-      const width = 64;
-      const height = 64;
-      if (Math.abs((from as Position).x - self.position.x) > canvas.width / 2 + width) {
-        return;
-      }
-      if (Math.abs((from as Position).y - self.position.y) > canvas.height / 2 + height) {
-        return;
-      }
-
-      ctx.save();
-      ctx.translate((from as Position).x - self.position.x + canvas.width / 2, (from as Position).y - self.position.y + canvas.height / 2);
-      ctx.rotate(effect.extra.heading);
-      drawExplosion({ x: 0, y: 0 }, effectDefs[effect.definitionIndex], framesLeft, spriteIdx);
-      ctx.restore();
+    frames: 10,
+    draw3: (effect, self, state, framesLeft) => {
+      pushTrailEmitter(effect.from, TrailColors.YellowGreen);
+      effect.frame = 0;
     },
     initializer: () => {
-      return { heading: Math.random() * Math.PI * 2 };
+      return {};
     },
   });
   // Warp effect - 7
@@ -552,18 +534,12 @@ const initEffects = () => {
   effectDefs.push({
     frames: 10,
     draw3: (effect, self, state, framesLeft) => {
-      const [from] = resolveAnchor(effect.from, state);
-      if (!from) {
-        return;
-      }
-
       if (effect.extra.needSound) {
+        const from = pushTrailEmitter(effect.from, TrailColors.Red);
         effect.extra.needSound = false;
-        play3dSound(
-          disruptorLaunchSound,
-          ((from as Position).x - self.position.x) / soundScale,
-          ((from as Position).y - self.position.y) / soundScale
-        );
+        if (from) {
+          play3dSound(pewSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        }
       }
     },
     initializer: () => {

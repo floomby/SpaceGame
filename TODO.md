@@ -28,12 +28,10 @@
 
 ### UI Checklist
 
-- Draw the ship previews (IDK the best way to do this, probably hijack the target drawing code to render and then grab the pixels) *
-
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 
-- instanced rendering for projectiles
 - move a bunch of the vbos into vaos to avoid setting the attributes over and over
+- instanced rendering for projectiles
 - instanced rendering for other things
 - use ubos for the lights and particle emitters
 

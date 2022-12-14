@@ -12,6 +12,7 @@ import { domFromRest, getRestRaw } from "../rest";
 import { manufacturingBay, setupManufacturingBay } from "./manufacturing";
 import { maxDecimals } from "../geometry";
 import { inventoryDialog, setupInventory } from "./inventory";
+import { requestShipPreview } from "../3dDrawing";
 
 let docker = () => {};
 
@@ -196,7 +197,7 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
 const shipViewer = () => {
   return `<div style="display: flex; flex-direction: row;">
   <div style="display: flex; flex-direction: column; margin-right: 5px;">
-    <canvas id="shipView" width="200" height="200"></canvas>
+    <canvas id="shipView" width="800" height="800" style="width: 200px; height: 200px;"></canvas>
     <button id="changeShip" style="top: 0;">Change</button>
   </div>
   <div style="width: 60vw;">
@@ -209,7 +210,7 @@ const shipViewer = () => {
 const shipPreviewer = (definitionIndex: number) => {
   const def = defs[definitionIndex];
   return `<div style="display: flex; flex-direction: row;">
-  <canvas id="shipPreview" width="200" height="200" style="width: 200px; height: 200px;"></canvas>
+  <canvas id="shipPreview" width="800" height="800" style="width: 200px; height: 200px;"></canvas>
   <div style="width: 60vw;">
     <div id="shipStatsPreview" style="width: 100%">
     </div>
@@ -254,33 +255,12 @@ const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: stri
   if (!isDialogShown) {
     return;
   }
-  const canvas = document.getElementById(shipViewId) as HTMLCanvasElement;
-  if (!canvas) {
-    console.log("no canvas for ship preview");
-    return;
-  }
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    console.log("no context for ship preview");
-    return;
-  }
   const def = defs[defIndex];
-  const sprite = composited[Faction.Count * defIndex + lastSelf.team];
-  if (!sprite) {
-    console.log("no sprite for ship preview");
+  // IDK why sometimes at start this is undefined??
+  if (!def) {
     return;
   }
-  const widthScale = canvas.width / sprite.width;
-  const heightScale = canvas.height / sprite.height;
-  let scale = Math.min(widthScale, heightScale);
-  if (scale > 1) {
-    scale = 1;
-  }
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  ctx.drawImage(sprite, centerX - (sprite.width * scale) / 2, centerY - (sprite.height * scale) / 2, sprite.width * scale, sprite.height * scale);
+  requestShipPreview(shipViewId, defIndex);
 
   const stats = document.getElementById(shipStatId);
   if (stats) {

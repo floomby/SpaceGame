@@ -103,7 +103,6 @@ app.get("/stationName", (req, res) => {
     }
     // Assume if we didn't find the station it is the tutorial station
     res.send(JSON.stringify({ value: "Tutorial Station" }));
-    // res.send(JSON.stringify({ error: "Station not found" }));
   });
 });
 

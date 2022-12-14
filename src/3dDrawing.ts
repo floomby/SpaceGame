@@ -172,7 +172,7 @@ const init3dDrawing = (callback: () => void) => {
     mat4.invert(inverseProjectionMatrix, projectionMatrix);
   };
 
-  gl = canvas.getContext("webgl2");
+  gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
   if (!gl) {
     console.error("Your browser does not support WebGL 2.0");
   }
@@ -480,7 +480,13 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
   const toDesaturate = player.inoperable ? 1 : 0;
   // const transparency = player.cloak ? 0.5 : 0;
   const warpAmount = !player.warping ? 0 : Math.abs(player.warping / def.warpTime);
-  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, toDesaturate, cloakOpacity, warpAmount, isHighlighted ? 1 : 0);
+  gl.uniform4f(
+    programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight,
+    toDesaturate,
+    cloakOpacity,
+    warpAmount,
+    isHighlighted ? 1 : 0
+  );
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
   const type = gl.UNSIGNED_SHORT;
@@ -522,15 +528,15 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
     const health = Math.max(player.health, 0) / def.health;
     const energy = player.energy / def.energy;
     gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [health, energy, def.radius / 10]);
-  
+
     // Draw the health bar
     gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
-  
+
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-  
+
     // Draw the energy bar
     gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
-  
+
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 };
@@ -1230,6 +1236,98 @@ const addLightSource = (position: Position, unnormedColor: [number, number, numb
   // console.log({ position: { ...position, z: gamePlaneZ }, color: unnormedColor });
 };
 
+// Renders a ship in in the main world, grabs the pixels and then blits the pixels to the preview canvas
+const doPreviewRendering = (previewRequest: PreviewRequest) => {
+  const targetDisplayRectNDC = canvasRectToNDC({ x: 0, y: 0, width: 800, height: 800 });
+
+  const def = defs[previewRequest.defIndex];
+  let bufferData = models[def.modelIndex];
+
+  const targetDisplayProjectionMatrix = mat4.create();
+  mat4.ortho(targetDisplayProjectionMatrix, -def.radius / 7, def.radius / 7, -def.radius / 7, def.radius / 7, -10, 10);
+
+  const scaleX = targetDisplayRectNDC.width / 2;
+  const scaleY = targetDisplayRectNDC.height / 2;
+  const scaleZ = (scaleX + scaleY) / 2;
+
+  mat4.translate(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [
+    ((targetDisplayRectNDC.x + targetDisplayRectNDC.width / 2) * def.radius) / 7,
+    ((targetDisplayRectNDC.y - targetDisplayRectNDC.height / 2) * def.radius) / 7,
+    0,
+  ]);
+  mat4.scale(targetDisplayProjectionMatrix, targetDisplayProjectionMatrix, [scaleX, scaleY, scaleZ]);
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, targetDisplayProjectionMatrix);
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  // Uniforms
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+  gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[lastSelf.team]);
+
+  const viewMatrix = mat4.create();
+  mat4.translate(viewMatrix, viewMatrix, [0, 0, 0]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+  
+  const modelMatrix = mat4.create();
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+  const normalMatrix = mat4.create();
+  // mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+  // mat4.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Target);
+
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, 0, 0, 0, 0);
+
+  const vertexCount = models[def.modelIndex].indices.length || 0;
+  const type = gl.UNSIGNED_SHORT;
+  const offset = 0;
+  const pixelData = new Uint8Array(4 * 800 * 800);
+  
+  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+  gl.readPixels(0, canvas.height - 800, 800, 800, gl.RGBA, gl.UNSIGNED_BYTE, pixelData);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  blitShipPreview(previewRequest.canvasId, new Uint8ClampedArray(pixelData));
+};
+
 // Main draw function (some game things appear to be updated here, but it is just cosmetic updates and has nothing to do with game logic)
 const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | undefined, chats: Map<number, ChatMessage>, sixtieths: number) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1240,9 +1338,13 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   }
 
   const phase = Math.sin(Date.now() / 250) * 0.5 + 0.5;
-
   gl.useProgram(programInfo.program);
   gl.uniform1f(programInfo.uniformLocations.phase, phase);
+
+  if (previewRequests.length > 0) {
+    const previewRequest = previewRequests.shift();
+    doPreviewRendering(previewRequest);
+  }
 
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
@@ -1267,7 +1369,6 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   // Compute all point lights in the scene (and handle some other updates to drawing data)
   for (const projectile of state.projectiles.values()) {
     if (isRemotelyOnscreen(projectile.position)) {
-      
       lightSources.push({
         position: { x: projectile.position.x, y: projectile.position.y, z: gamePlaneZ },
         color: projectileLightColorUnnormed(projectile.idx),
@@ -1285,9 +1386,9 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
           for (const light of def.pointLights) {
             const pos = vec4.create();
             vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
-  
+
             vec4.transformMat4(pos, pos, player.modelMatrix);
-  
+
             lightSources.push({
               position: { x: pos[0] * 10 + player.position.x, y: -pos[1] * 10 + player.position.y, z: gamePlaneZ + pos[2] },
               color: light.color,
@@ -1434,6 +1535,25 @@ const canvasCoordsToGameCoords = (x: number, y: number) => {
   return { x: mapWorldXToGame(worldX), y: mapWorldYToGame(worldY) };
 };
 
+const previewRequests: PreviewRequest[] = [];
+
+type PreviewRequest = {
+  canvasId: string;
+  defIndex: number;
+};
+
+const requestShipPreview = (canvasId: string, defIndex: number) => {
+  previewRequests.push({ canvasId, defIndex });
+};
+
+const blitShipPreview = (canvasId: string, data: Uint8ClampedArray) => {
+  const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+  const ctx = canvas.getContext("2d");
+  const imageData = ctx.createImageData(canvas.width, canvas.height);
+  imageData.data.set(data);
+  ctx.putImageData(imageData, 0, 0);
+};
+
 export {
   init3dDrawing,
   canvas,
@@ -1456,4 +1576,5 @@ export {
   drawLine,
   addLightSource,
   programInfo,
+  requestShipPreview,
 };

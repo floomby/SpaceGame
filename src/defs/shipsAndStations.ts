@@ -324,7 +324,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 50,
-    model: "spaceship",
+    model: "venture",
   });
   // Spartan - 9
   defs.push({

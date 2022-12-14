@@ -11,7 +11,7 @@
 
 - Anti chat spam needed
 - Collision and redo docking and repairing radius *
-- Delayed damage for beam weapons
+- Delayed damage for beam weapons *
 
 ### Hud Checklist
 

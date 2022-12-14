@@ -325,6 +325,7 @@ const init3dDrawing = (callback: () => void) => {
         "disruptor.obj",
         "plasma.obj",
         "confederacy_starbase.obj",
+        "venture.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {

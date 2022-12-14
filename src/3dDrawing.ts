@@ -303,7 +303,6 @@ const init3dDrawing = (callback: () => void) => {
     addLoadingText("Loading models...");
     Promise.all(
       [
-        "spaceship.obj",
         "projectile.obj",
         "advanced_fighter.obj",
         "alliance_starbase.obj",
@@ -328,6 +327,7 @@ const init3dDrawing = (callback: () => void) => {
         "venture.obj",
         "bounty.obj",
         "spartan.obj",
+        "rogue_starbase.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {
@@ -1437,7 +1437,7 @@ const doPreviewRendering = (previewRequest: PreviewRequest) => {
   const viewMatrix = mat4.create();
   mat4.translate(viewMatrix, viewMatrix, [0, 0, 0]);
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
-  
+
   const modelMatrix = mat4.create();
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
   const normalMatrix = mat4.create();
@@ -1453,7 +1453,7 @@ const doPreviewRendering = (previewRequest: PreviewRequest) => {
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   const pixelData = new Uint8Array(4 * 800 * 800);
-  
+
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
   gl.readPixels(0, canvas.height - 800, 800, 800, gl.RGBA, gl.UNSIGNED_BYTE, pixelData);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

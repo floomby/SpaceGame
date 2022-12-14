@@ -295,7 +295,7 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
-    model: "spaceship",
+    model: "rogue_starbase",
   });
   // Venture - 8
   defs.push({

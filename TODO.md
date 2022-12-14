@@ -20,7 +20,6 @@
 ### World Checklist
 
 - finish collectable models **
-- finish making all ship and station models **
 
 ### Effects Checklist
 

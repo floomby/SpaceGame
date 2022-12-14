@@ -7,7 +7,6 @@ import { inventory, lastSelf, ownId, state } from "../globals";
 import { sendDepositCargo, sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
-import { composited } from "../drawing";
 import { domFromRest, getRestRaw } from "../rest";
 import { manufacturingBay, setupManufacturingBay } from "./manufacturing";
 import { maxDecimals } from "../geometry";

@@ -38,7 +38,6 @@ import {
   bindPostUpdater,
 } from "./dialog";
 import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
-import { drawEverything } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
   addLoadingText,

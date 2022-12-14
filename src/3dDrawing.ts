@@ -36,6 +36,7 @@ import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 import { getNameOfPlayer } from "./rest";
 import { createParticleBuffers, drawParticles, initParticleTextures } from "./particle";
 import { drawProjectile } from "./3dProjectileDrawing";
+import { projectileLightColorUnnormed } from "./defs/projectiles";
 
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
@@ -60,6 +61,7 @@ enum DrawType {
   TargetResourceBar = 10,
   Line = 11,
   Target = 12,
+  RepairBar = 13,
 }
 
 const initShaders = (callback: (program: any, particleProgram: any, particleRenderingProgram: any) => void) => {
@@ -480,19 +482,10 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
   gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, toDesaturate, cloakOpacity, warpAmount, isHighlighted ? 1 : 0);
 
   const vertexCount = models[def.modelIndex].indices.length || 0;
-  // if (player.id === lastSelf.id) {
-  //   console.log("drawing player", vertexCount);
-  // }
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 
-  // Draw the players status bars
-  const health = Math.max(player.health, 0) / def.health;
-  const energy = player.energy / def.energy;
-  gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [health, energy, def.radius / 10]);
-
-  // Draw the health bar
   {
     const numComponents = 3;
     const type = gl.FLOAT;
@@ -504,14 +497,41 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
     gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
   }
 
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
+  if (player.inoperable) {
+    // drawBar({ x: -sprite.width * 0.4, y: -27 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
+    // drawBar(
+    //   { x: -sprite.width * 0.4, y: -13 },
+    //   sprite.width * 0.8,
+    //   12,
+    //   confederationColorOpaque,
+    //   "#333333DD",
+    //   player.repairs[1] / def.repairsRequired
+    // );
+    // drawBar({ x: -sprite.width * 0.4, y: 1 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
+    // drawBar({ x: -sprite.width * 0.4, y: 15 }, sprite.width * 0.8, 12, scourgeColorOpaque, "#333333DD", player.repairs[3] / def.repairsRequired);
 
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-  // Draw the energy bar
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
-
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.RepairBar);
+    for (let i = 0; i < 4; i++) {
+      const repairAmount = player.repairs[i] / def.repairsRequired;
+      gl.uniform3f(programInfo.uniformLocations.healthAndEnergyAndScale, repairAmount, i, def.radius / 10);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+  } else {
+    // Draw the players status bars
+    const health = Math.max(player.health, 0) / def.health;
+    const energy = player.energy / def.energy;
+    gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [health, energy, def.radius / 10]);
+  
+    // Draw the health bar
+    gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.HealthBar);
+  
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  
+    // Draw the energy bar
+    gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.EnergyBar);
+  
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
 };
 
 const mapGameXToWorld = (x: number) => (x - lastSelf.position.x) / 10;
@@ -1246,9 +1266,10 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   // Compute all point lights in the scene (and handle some other updates to drawing data)
   for (const projectile of state.projectiles.values()) {
     if (isRemotelyOnscreen(projectile.position)) {
+      
       lightSources.push({
         position: { x: projectile.position.x, y: projectile.position.y, z: gamePlaneZ },
-        color: [4.0, 4.0, 4.0],
+        color: projectileLightColorUnnormed(projectile.idx),
       });
     }
   }
@@ -1257,18 +1278,20 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     if (isRemotelyOnscreen(player.position)) {
       clientPlayerUpdate(player);
 
-      const def = defs[player.defIndex];
-      if (def.pointLights) {
-        for (const light of def.pointLights) {
-          const pos = vec4.create();
-          vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
-
-          vec4.transformMat4(pos, pos, player.modelMatrix);
-
-          lightSources.push({
-            position: { x: pos[0] * 10 + player.position.x, y: -pos[1] * 10 + player.position.y, z: gamePlaneZ + pos[2] },
-            color: light.color,
-          });
+      if (!player.inoperable && !player.docked) {
+        const def = defs[player.defIndex];
+        if (def.pointLights) {
+          for (const light of def.pointLights) {
+            const pos = vec4.create();
+            vec4.set(pos, light.position.x, light.position.y, light.position.z, 1);
+  
+            vec4.transformMat4(pos, pos, player.modelMatrix);
+  
+            lightSources.push({
+              position: { x: pos[0] * 10 + player.position.x, y: -pos[1] * 10 + player.position.y, z: gamePlaneZ + pos[2] },
+              color: light.color,
+            });
+          }
         }
       }
     }

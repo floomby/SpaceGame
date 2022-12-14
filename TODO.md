@@ -20,7 +20,6 @@
 ### World Checklist
 
 - draw collectables *
-- draw the repair bars on stations that need repairing *
 
 ### Effects Checklist
 
@@ -29,7 +28,7 @@
 
 ### UI Checklist
 
-- Draw the ship previews (IDK the best way to do this, probably hijack the target drawing code to render and then grab the pixels)
+- Draw the ship previews (IDK the best way to do this, probably hijack the target drawing code to render and then grab the pixels) *
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

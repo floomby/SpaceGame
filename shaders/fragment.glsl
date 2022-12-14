@@ -37,6 +37,16 @@ void main(void) {
     return;
   }
 
+  // Repair bar
+  if (vDrawType == 13) {
+    if (vPosition.x > uHealthAndEnergyAndScale.x) {
+      outColor = vec4(0.3, 0.3, 0.3, 0.8);
+    } else {
+      outColor = vColor;
+    }
+    return;
+  }
+
   // World lines
   if (vDrawType == 11) {
     outColor = vec4(vColor.xyz, vColor.w * vPosition.x);

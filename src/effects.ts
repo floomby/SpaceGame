@@ -538,7 +538,7 @@ const initEffects = () => {
         const from = pushTrailEmitter(effect.from, TrailColors.Red);
         effect.extra.needSound = false;
         if (from) {
-          play3dSound(pewSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+          play3dSound(disruptorLaunchSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
         }
       }
     },

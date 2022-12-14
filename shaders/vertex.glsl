@@ -11,6 +11,7 @@ uniform mat4 uNormalMatrix;
 // I am going to highjack the first point lights for pushing the line data to the shader when uDrawType is set to Line (11)
 uniform vec4 uPointLights[10];
 // When drawing asteroids the "health" is the resources left
+// When drawing repair bars "health" is the repair amount and "energy" is the offset of the bar vertically (each team needs a different offset)
 uniform mediump vec3 uHealthAndEnergyAndScale;
 // uniform mediump vec4 uDesaturateAndTransparencyAndWarpingAndHighlight;
 uniform mediump float uPhase;
@@ -25,8 +26,30 @@ out highp vec3 vPosition;
 flat out int vDrawType;
 out highp vec4 vColor;
 
+// See src/globals.ts for where these values come from
+void setRepairBarColor (float offset) {
+  if (offset < 0.5) {
+    vColor = vec4(0.0, 1.0, 1.0, 0.8);
+  } else if (offset < 1.5) {
+    vColor = vec4(1.0, 0.0, 0.0, 0.8);
+  } else if (offset < 2.5) {
+    vColor = vec4(1.0, 0.549, 0.0, 0.8);
+  } else {
+    vColor = vec4(0.235, 1.0, 0.02, 0.8);
+  }
+}
+
 void main() {
   vDrawType = uDrawType;
+
+  // Repair bar
+  if (uDrawType == 13) {
+    gl_Position = uProjectionMatrix * uViewMatrix * vec4(
+      aVertexPosition.x * uHealthAndEnergyAndScale.z, (aVertexPosition.y - uHealthAndEnergyAndScale.y * 0.6 + 0.2) * uHealthAndEnergyAndScale.z / 2.0, aVertexPosition.z + 2.0, 1.0);
+    vPosition = vec3(aVertexPosition.x / 2.0 + 0.5, 0.0, 0.0);
+    setRepairBarColor(uHealthAndEnergyAndScale.y);
+    return;
+  }
 
   // World lines
   if (uDrawType == 11) {

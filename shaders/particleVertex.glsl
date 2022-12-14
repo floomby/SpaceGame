@@ -23,7 +23,7 @@ uniform uint uEmitType[24];
 // It is dependent on the type of particle being emitted
 // The w component of the position is the time remaining before the emitter times out (other conditions may cause the emitter to be removed anyway)
 uniform vec4 uEmitPosition[24];
-uniform vec3 uEmitVelocity[24];
+uniform vec4 uEmitVelocity[24];
 
 uniform float uTotalWeight;
 
@@ -36,7 +36,7 @@ void emitNop() {
 }
 
 void emitExplosion(uint index) {
-  vBehavior = vec4(0.5, 0.85, 0.0, 0.0);
+  vBehavior = vec4(0.5, 0.85, uEmitVelocity[index].w, 0.0);
   ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
   ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
@@ -48,7 +48,7 @@ void emitExplosion(uint index) {
   vec3 dir = normalize(rand.xyz - 0.5);
   vVelocity = dir * (rand.w * 0.7) + vec3(uEmitVelocity[index].xy, 0.0) * uEmitVelocity[index].z;
 
-  vPosition = uEmitPosition[index].xyz + dir * (rand2.y * 0.2) * uEmitVelocity[index].z;
+  vPosition = uEmitPosition[index].xyz + dir * (rand2.y) * uEmitVelocity[index].z;
 }
 
 void emitTrail(uint index) {

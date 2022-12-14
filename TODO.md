@@ -23,7 +23,6 @@
 
 ### Effects Checklist
 
-- Finish effects **
 - Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *
 
 ### UI Checklist

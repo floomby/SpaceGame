@@ -825,10 +825,14 @@ const initArmaments = () => {
             idx: 0,
           };
           state.projectiles.set(state.projectileId, projectile);
+          if (i === 0) {
+            applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
+          } else {
+            applyEffect({ effectIndex: 19, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
+          }
           state.projectileId++;
         }
       }
-      applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
     },
     equipMutator: (player, slotIndex) => {
       player.slotData[slotIndex] = { sinceFired: 26 };

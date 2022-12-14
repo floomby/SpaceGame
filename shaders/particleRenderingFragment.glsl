@@ -20,11 +20,28 @@ vec3 colorFromBehavior(float behavior) {
   }
 }
 
+vec4 explosionColor(float behavior) {
+  if (behavior < 0.5) {
+    // regular explosion
+    return vec4(vec3(1.0, 0.9, 0.9) * (1.0 - vAge / vLife), (1.0 - vAge / vLife) * 3.0);
+  } else if (behavior < 1.5) {
+    // purple explosion (impulse missile)
+    return vec4(vec3(1.0, 0.1, 1.0) * (1.5 - vAge / vLife), (1.0 - vAge / vLife) * 3.0);
+  } else if (behavior < 2.5) {
+    // white to blue explosion (emp)
+    return vec4(vec3(1.0 - vAge / vLife, 1.0 - vAge / vLife, 1.0) * (1.5 - vAge / vLife), (1.0 - vAge / vLife) * 3.0);
+  } else {
+    // yellow green explosion (plasma)
+    return vec4(vec3(1.0, 1.2, 0.2) * (1.0 - vAge / vLife), (1.0 - vAge / vLife) * 3.0);
+  }
+}
+
 void main() {
   if (vBehavior.x < 0.0) {
     discard;
   } else if (vBehavior.x < 1.0) {
-    outColor = vec4(vec3(1.0, 0.9, 0.9) * (1.0 - vAge / vLife), (1.0 - vAge / vLife) * 3.0);
+    // Explosion
+    outColor = explosionColor(vBehavior.z);
   } else  if (vBehavior.x < 2.0) {
     // Trail
     vec4 color = texture(uSample, vTextureCoord);

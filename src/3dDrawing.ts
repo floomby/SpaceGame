@@ -1700,6 +1700,9 @@ const requestShipPreview = (canvasId: string, defIndex: number) => {
 
 const blitShipPreview = (canvasId: string, data: Uint8ClampedArray) => {
   const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
   const ctx = canvas.getContext("2d");
   const imageData = ctx.createImageData(canvas.width, canvas.height);
   imageData.data.set(data);

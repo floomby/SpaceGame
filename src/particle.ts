@@ -198,6 +198,10 @@ type Emitter = {
   from: EffectAnchor;
 };
 
+const clearEmitters = () => {
+  emitters.length = 0;
+};
+
 const emitters: Emitter[] = [];
 
 const updateEmitter = (emitter: Emitter, sixtieths: number) => {
@@ -254,7 +258,7 @@ const bindEmitters = (sixtieths: number) => {
       gl.uniform1ui(particleProgramInfo.uniformLocations.emitTypes[bindingIndex], emitters[i].kind);
       gl.uniform4fv(particleProgramInfo.uniformLocations.emitPositions[bindingIndex], emitters[i].position);
       // console.log(emitters[i].position);
-      gl.uniform3fv(particleProgramInfo.uniformLocations.emitVelocities[bindingIndex], emitters[i].velocity);
+      gl.uniform4fv(particleProgramInfo.uniformLocations.emitVelocities[bindingIndex], emitters[i].velocity);
       gl.uniform1f(particleProgramInfo.uniformLocations.emitWeights[bindingIndex], emitters[i].weight);
       totalWeight += emitters[i].weight;
       bindingIndex++;
@@ -274,14 +278,14 @@ enum TrailColors {
   White = 0,
   Red = 1,
   YellowGreen = 2,
-};
+}
 
 const pushTrailEmitter = (from: EffectAnchor, color = TrailColors.White) => {
   if (from.kind === EffectAnchorKind.Projectile) {
     const projectile = state.projectiles.get(from.value as number);
     if (projectile) {
       const position = [projectile.position.x / 10, -projectile.position.y / 10, color, 120];
-      const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -3];
+      const velocity = [(Math.cos(projectile.heading) * projectile.speed) / -10, (Math.sin(projectile.heading) * projectile.speed) / 10, -3, 0];
       const kind = EmitterKind.Trail;
       const weight = 4;
       emitters.push({ position, velocity, kind, weight, from } as Emitter);
@@ -298,7 +302,7 @@ const pushSmokeEmitter = (from: EffectAnchor) => {
     if (missile) {
       const def = missileDefs[missile.defIndex];
       const position = [missile.position.x / 10, -missile.position.y / 10, missile.speed / def.speed, maxMissileLifetime];
-      const velocity = [Math.cos((missile.heading * from.speed) / 10), (-Math.sin(missile.heading) * from.speed) / 10, missile.radius / 10];
+      const velocity = [Math.cos((missile.heading * from.speed) / 10), (-Math.sin(missile.heading) * from.speed) / 10, missile.radius / 10, 0];
       const kind = EmitterKind.Smoke;
       const weight = 4;
       emitters.push({ position, velocity, kind, weight, from } as Emitter);
@@ -309,14 +313,21 @@ const pushSmokeEmitter = (from: EffectAnchor) => {
   }
 };
 
-const pushExplosionEmitter = (from: EffectAnchor, size = 1) => {
+enum ExplosionKind {
+  Normal = 0,
+  Impulse = 1,
+  EMP = 2,
+  Plasma = 3,
+}
+
+const pushExplosionEmitter = (from: EffectAnchor, size = 1, explosionKind = ExplosionKind.Normal) => {
   if (from.kind === EffectAnchorKind.Absolute) {
     const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0.96, 30];
-    let velocity = [0, 0, size];
+    let velocity = [0, 0, size, explosionKind];
     if (from.heading !== undefined) {
-      const x = Math.cos(from.heading) * from.speed / 10;
-      const y = Math.sin(from.heading) * from.speed / -10;
-      velocity = [x, y, size];
+      const x = (Math.cos(from.heading) * from.speed) / 10;
+      const y = (Math.sin(from.heading) * from.speed) / -10;
+      velocity = [x, y, size, explosionKind];
     }
     const weight = 20 * size;
     const kind = EmitterKind.Explosion;
@@ -330,9 +341,9 @@ const pushExplosionEmitter = (from: EffectAnchor, size = 1) => {
 const pushWarpEmitter = (from: EffectAnchor) => {
   if (from.kind === EffectAnchorKind.Absolute) {
     const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0, 40];
-    const x = Math.cos(from.heading) * from.speed / 10;
-    const y = Math.sin(from.heading) * from.speed / -10;
-    const velocity = [x, y, 0];
+    const x = (Math.cos(from.heading) * from.speed) / 10;
+    const y = (Math.sin(from.heading) * from.speed) / -10;
+    const velocity = [x, y, 0, 0];
     const weight = 4;
     const kind = EmitterKind.Warp;
     emitters.push({ position, velocity, kind, weight, from } as Emitter);
@@ -400,4 +411,6 @@ export {
   pushExplosionEmitter,
   pushWarpEmitter,
   TrailColors,
+  ExplosionKind,
+  clearEmitters,
 };

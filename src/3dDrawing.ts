@@ -328,6 +328,7 @@ const init3dDrawing = (callback: () => void) => {
         "bounty.obj",
         "spartan.obj",
         "rogue_starbase.obj",
+        "spare_parts.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {

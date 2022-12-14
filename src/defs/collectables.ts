@@ -59,8 +59,8 @@ const initCollectables = () => {
     collectMutator: (player) => {
       addCargo(player, "Spare Parts", 5);
     },
-    model: "bounty",
-    light: [0.0, 4.0, 0.0],
+    model: "spare_parts",
+    light: [3.0, 2.0, 2.0],
   });
   collectableDefs.push({
     sprite: { x: 320, y: 320, width: 64, height: 64 },

@@ -162,7 +162,7 @@ const initEffects = () => {
       return { needSound: true };
     },
   });
-  // Medium explosion (ships) - 3
+  // Medium explosion - 3
   effectDefs.push({
     frames: 50,
     draw3: (effect, self, state, framesLeft) => {
@@ -178,12 +178,12 @@ const initEffects = () => {
       return { needSound: true };
     },
   });
-  // Large explosion (stations) - 4
+  // Large explosion - 4
   effectDefs.push({
     frames: 50,
     draw3: (effect, self, state, framesLeft) => {
       if (effect.extra.needSound) {
-        const from = pushExplosionEmitter(effect.from, 7);
+        const from = pushExplosionEmitter(effect.from, 5);
         effect.extra.needSound = false;
         if (from) {
           play3dSound(explosionSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);

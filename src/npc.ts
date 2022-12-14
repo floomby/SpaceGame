@@ -853,7 +853,7 @@ class TutorialRoamingVenture implements NPC {
 
   constructor(id: number, where: Position) {
     this.lootTable = new LootTable();
-    this.lootTable.addEntry("Bounty", 1);
+    this.lootTable.addEntry("Spare Parts", 1);
 
     const { def, index } = defMap.get("Venture");
 

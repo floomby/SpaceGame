@@ -287,7 +287,7 @@ const initShipsAndStations = () => {
     primaryDamage: 15,
     radius: 93,
     kind: UnitKind.Station,
-    hardpoints: [{ x: -84, y: -80 }],
+    hardpoints: [{ x: 0, y: 0 }],
     dockable: true,
     slots: [],
     deathEffect: 4,

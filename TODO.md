@@ -10,7 +10,7 @@
 ### Server stuff
 
 - Anti chat spam needed
-- Collision and redo docking and repairing radius *
+- Collision and redo docking and repairing radius **
 - Delayed damage for beam weapons *
 
 ### Hud Checklist
@@ -19,12 +19,13 @@
 
 ### World Checklist
 
-- draw collectables *
+- finish collectable models **
+- finish making all ship and station models **
 
 ### Effects Checklist
 
-- Finish effects *
-- Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something)
+- Finish effects **
+- Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *
 
 ### UI Checklist
 

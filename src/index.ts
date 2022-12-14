@@ -38,7 +38,7 @@ import {
   bindPostUpdater,
 } from "./dialog";
 import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
-import { drawEverything, fadeOutCollectable } from "./drawing";
+import { drawEverything } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
   addLoadingText,
@@ -74,7 +74,7 @@ import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
 import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
-import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine } from "./3dDrawing";
+import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutCollectable } from "./3dDrawing";
 import { rasterizeText, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 

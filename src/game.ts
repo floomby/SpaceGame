@@ -247,7 +247,7 @@ type Mine = Entity & { defIndex: number; team: number; left: number; deploying: 
 //   }
 // };
 
-type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
+type Collectable = Entity & { index: number; framesLeft: number; phase?: number, scale?: number };
 
 enum EffectAnchorKind {
   Absolute,
@@ -296,7 +296,6 @@ const setCanDockOrRepair = (player: Player, state: GlobalState) => {
           player.canDock = otherPlayer.id;
         }
         if (canRepair(player, otherPlayer)) {
-          // console.log("can repair", player.id, otherPlayer.id);
           player.canRepair = otherPlayer.id;
         }
       }

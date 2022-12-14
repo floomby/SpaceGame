@@ -2,8 +2,8 @@ import { drawEffects, initEffects } from "./effects";
 import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
-import { asteroidDefs, defs, mineDefs, missileDefs } from "./defs";
-import { Asteroid, Ballistic, ChatMessage, CloakedState, Mine, Missile, Player } from "./game";
+import { asteroidDefs, collectableDefs, defs, mineDefs, missileDefs } from "./defs";
+import { Asteroid, Ballistic, ChatMessage, CloakedState, Collectable, Mine, Missile, Player } from "./game";
 import { l2NormSquared, Position, Rectangle } from "./geometry";
 import {
   appendBottomBars,
@@ -326,6 +326,7 @@ const init3dDrawing = (callback: () => void) => {
         "plasma.obj",
         "confederacy_starbase.obj",
         "venture.obj",
+        "bounty.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {
@@ -339,6 +340,9 @@ const init3dDrawing = (callback: () => void) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
         missileDefs.forEach((def) => {
+          def.modelIndex = modelMap.get(def.model)[1];
+        });
+        collectableDefs.forEach((def) => {
           def.modelIndex = modelMap.get(def.model)[1];
         });
 
@@ -832,6 +836,106 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[], isHigh
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+const drawCollectable = (collectable: Collectable, lightSources: PointLightData[], desaturation = 0) => {
+  const def = collectableDefs[collectable.index];
+  const bufferData = models[def.modelIndex];
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  }
+
+  {
+    const numComponents = 3;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  // Uniforms
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+  // gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
+
+  // find the closest lights
+  let lights: [number, PointLightData][] = [];
+  for (let i = 0; i < pointLightCount; i++) {
+    lights.push([Infinity, null]);
+  }
+  for (const light of lightSources) {
+    const dist2 = l2NormSquared(light.position, collectable.position);
+    let insertionIndex = 0;
+    while (insertionIndex < pointLightCount && dist2 > lights[insertionIndex][0]) {
+      insertionIndex++;
+    }
+    if (insertionIndex < pointLightCount) {
+      lights.splice(insertionIndex, 0, [dist2, light]);
+      lights.pop();
+    }
+  }
+
+  for (let i = 0; i < pointLightCount; i++) {
+    if (lights[i][1]) {
+      const pointLight = [mapGameXToWorld(lights[i][1].position.x), mapGameYToWorld(lights[i][1].position.y), lights[i][1].position.z, 0];
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], pointLight);
+      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], lights[i][1].color);
+    } else {
+      gl.uniform4fv(programInfo.uniformLocations.pointLights[i], [0.0, 0.0, 0.0, 0.0]);
+      gl.uniform3fv(programInfo.uniformLocations.pointLightLighting[i], [0.0, 0.0, 0.0]);
+    }
+  }
+
+  const modelMatrix = mat4.create();
+  const scaleFactor = (collectable.scale ?? 1) + Math.sin(collectable.phase) * 0.3;
+  mat4.scale(modelMatrix, modelMatrix, [scaleFactor, scaleFactor, scaleFactor]);
+  mat4.rotateZ(modelMatrix, modelMatrix, -collectable.heading);
+
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+
+  const viewMatrix = mat4.create();
+  mat4.translate(viewMatrix, viewMatrix, [mapGameXToWorld(collectable.position.x), mapGameYToWorld(collectable.position.y), gamePlaneZ]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  const normalMatrix = mat4.create();
+  mat4.invert(normalMatrix, mat4.mul(normalMatrix, viewMatrix, modelMatrix));
+  mat4.transpose(normalMatrix, normalMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
+
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Player);
+
+  gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, desaturation, 0, 0, 0);
+
+  const vertexCount = models[def.modelIndex].indices.length || 0;
+  const type = gl.UNSIGNED_SHORT;
+  const offset = 0;
+  gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+};
+
 const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
   const targetDisplayRectNDC = canvasRectToNDC(where);
 
@@ -953,8 +1057,10 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
 };
 
 type FadingMine = Mine & { framesRemaining: number };
+type FadingCollectable = Collectable & { framesRemaining: number };
 
 let fadingMines: FadingMine[] = [];
+let fadingCollectables: FadingCollectable[] = [];
 
 const fadeOutMine = (mine: Mine) => {
   fadingMines.push({ ...mine, framesRemaining: 180 });
@@ -968,7 +1074,7 @@ const processFadingMines = (sixtieths: number, pointLights: PointLightData[]) =>
     }
     fadingMine.modelMatrix = mat4.create();
     fadingMine.heading = (fadingMine.heading + (fadingMine.id % 2 ? 0.007 : -0.007)) % (Math.PI * 2);
-    if (isRemotelyOnscreen) {
+    if (isRemotelyOnscreen(fadingMine.position)) {
       mat4.rotateZ(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.heading);
       mat4.rotateY(fadingMine.modelMatrix, fadingMine.modelMatrix, fadingMine.pitch);
       const scaleFactor = (fadingMine.framesRemaining / 180) * 1.5;
@@ -977,6 +1083,32 @@ const processFadingMines = (sixtieths: number, pointLights: PointLightData[]) =>
     }
     return true;
   });
+};
+
+const fadeOutCollectable = (collectable: Collectable) => {
+  if (collectable.scale === undefined) {
+    collectable.scale = 1;
+  }
+  fadingCollectables.push({ ...collectable, framesRemaining: 180 });
+};
+
+const processFadingCollectables = (sixtieths: number, pointLights: PointLightData[]) => {
+  fadingCollectables = fadingCollectables.filter((fadingCollectable) => {
+    fadingCollectable.framesRemaining -= sixtieths;
+    if (fadingCollectable.framesRemaining < 0) {
+      return false;
+    }
+    fadingCollectable.scale -= 0.8 / 180;
+    if (isRemotelyOnscreen(fadingCollectable.position)) {
+      drawCollectable(fadingCollectable, pointLights, 1 - fadingCollectable.framesRemaining / 180);
+    }
+    return true;
+  });
+};
+
+const clientCollectableUpdate = (collectable: Collectable, sixtieths: number) => {
+  collectable.phase += sixtieths * 0.03;
+  collectable.heading = (collectable.heading + (collectable.id % 2 ? 0.007 : -0.007)) % (Math.PI * 2);
 };
 
 const clientMineUpdate = (mine: Mine, sixtieths: number) => {
@@ -1399,6 +1531,18 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
+  for (const collectable of state.collectables.values()) {
+    if (isRemotelyOnscreen(collectable.position)) {
+      clientCollectableUpdate(collectable, sixtieths);
+
+      const def = collectableDefs[collectable.index];
+      lightSources.push({
+        position: { x: collectable.position.x, y: collectable.position.y, z: gamePlaneZ + 4 },
+        color: def.light,
+      });
+    }
+  }
+
   // Update the mines and also add the point lights
   for (const mine of state.mines.values()) {
     clientMineUpdate(mine, sixtieths);
@@ -1448,6 +1592,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   // Start drawing world objects (all light sources are aggregated above this point)
   processFadingMines(sixtieths, lightSources);
+  processFadingCollectables(sixtieths, lightSources);
 
   gl.enable(gl.CULL_FACE);
   for (const player of state.players.values()) {
@@ -1461,6 +1606,12 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     asteroid.roll += asteroid.rotationRate * sixtieths;
     if (isRemotelyOnscreen(asteroid.position)) {
       drawAsteroid(asteroid, lightSources, asteroid.id === targetAsteroid?.id);
+    }
+  }
+
+  for (const collectable of state.collectables.values()) {
+    if (isRemotelyOnscreen(collectable.position)) {
+      drawCollectable(collectable, lightSources);
     }
   }
 
@@ -1577,4 +1728,5 @@ export {
   addLightSource,
   programInfo,
   requestShipPreview,
+  fadeOutCollectable,
 };

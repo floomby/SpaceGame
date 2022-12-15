@@ -5,7 +5,8 @@
     "outFile": "dist/app.js",
     "esModuleInterop": true,
     "downlevelIteration": true,
-    "lib": ["es2017", "dom"]
+    "lib": ["es2019", "dom"],
+    "moduleResolution": "node"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
 }

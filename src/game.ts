@@ -37,6 +37,7 @@ import {
   CardinalDirection,
   pointOutsideRectangle,
   pointInRectangle,
+  canonicalizeAngle,
 } from "./geometry";
 import { NPC } from "./npc";
 import { seek } from "./pathing";
@@ -106,8 +107,19 @@ type Player = Entity & {
   omega?: number;
   v?: Position;
   cloak?: number;
+  // Velocity impulse
   iv: Position;
+  // Rotation impulse
   ir: number;
+  // Pitch
+  p?: number;
+  // Pitch impulse
+  ip?: number;
+  // Roll
+  rl?: number;
+  // Roll impulse
+  irl?: number;
+  modelMatrix?: any;
 };
 
 type Asteroid = Circle & {
@@ -115,6 +127,9 @@ type Asteroid = Circle & {
   resources: number;
   heading: number;
   defIndex: number;
+  roll?: number;
+  pitch?: number;
+  rotationRate?: number;
 };
 
 type Missile = Entity & {
@@ -123,6 +138,9 @@ type Missile = Entity & {
   team: number;
   lifetime: number;
   defIndex: number;
+  modelMatrix?: any;
+  roll?: number;
+  stale?: boolean;
 };
 
 enum TargetKind {
@@ -177,6 +195,7 @@ type ChatMessage = {
   id: number;
   message: string;
   showUntil: number;
+  rasterizationData?: any;
 };
 
 const copyPlayer = (player: Player) => {
@@ -220,21 +239,22 @@ const canRepair = (player: Player | undefined, station: Player | undefined, stri
 
 type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number; idx: number };
 
-type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; phase?: number };
+type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; pitch?: number; modelMatrix?: any };
 
-const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: number) => {
-  for (const mine of mines) {
-    mine.deploying = Math.max(0, mine.deploying - sixtieths);
-  }
-};
+// const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: number) => {
+//   for (const mine of mines) {
+//     mine.deploying = Math.max(0, mine.deploying - sixtieths);
+//   }
+// };
 
-type Collectable = Entity & { index: number; framesLeft: number; phase?: number };
+type Collectable = Entity & { index: number; framesLeft: number; phase?: number, scale?: number };
 
 enum EffectAnchorKind {
   Absolute,
   Player,
   Asteroid,
   Missile,
+  Projectile,
 }
 
 type EffectAnchor = {
@@ -276,7 +296,6 @@ const setCanDockOrRepair = (player: Player, state: GlobalState) => {
           player.canDock = otherPlayer.id;
         }
         if (canRepair(player, otherPlayer)) {
-          // console.log("can repair", player.id, otherPlayer.id);
           player.canRepair = otherPlayer.id;
         }
       }
@@ -470,6 +489,46 @@ const dampenImpulse = (player: Player) => {
   if (Math.abs(player.ir) < 0.001) {
     player.ir = 0;
   }
+  // Pitch
+  if (player.p !== undefined) {
+    // clamp ip to 0.05
+    if (player.ip > 0.05) {
+      player.ip = 0.05;
+    }
+    if (player.ip < -0.05) {
+      player.ip = -0.05;
+    }
+    player.ip *= 0.84;
+    if (Math.abs(player.ip) < 0.0001) {
+      player.ip = 0;
+    }
+    player.p += player.ip;
+    player.p = canonicalizeAngle(player.p);
+    player.p *= 0.95;
+    if (Math.abs(player.p) < 0.001) {
+      player.p = 0;
+    }
+  }
+  // Roll
+  if (player.rl !== undefined) {
+    // clamp irl to 0.05
+    if (player.irl > 0.05) {
+      player.irl = 0.05;
+    }
+    if (player.irl < -0.05) {
+      player.irl = -0.05;
+    }
+    player.irl *= 0.84;
+    if (Math.abs(player.irl) < 0.0001) {
+      player.irl = 0;
+    }
+    player.rl += player.irl;
+    player.rl = canonicalizeAngle(player.rl);
+    player.rl *= 0.95;
+    if (Math.abs(player.rl) < 0.001) {
+      player.rl = 0;
+    }
+  }
 };
 
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
@@ -477,7 +536,7 @@ type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: M
 
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
-const   update = (
+const update = (
   state: GlobalState,
   frameNumber: number,
   serverTargets: Map<number, [TargetKind, number]>,
@@ -607,7 +666,11 @@ const   update = (
           kill(def, otherPlayer, state, applyEffect, onDeath, ret.collectables);
         }
         state.missiles.delete(id);
-        applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
+        const explosionSpeed = Math.min(missile.speed / 2, otherPlayer.speed + missile.speed / 5);
+        applyEffect({
+          effectIndex: missileDef.deathEffect,
+          from: { kind: EffectAnchorKind.Absolute, value: missile.position, heading: missile.heading, speed: explosionSpeed },
+        });
         didRemove = true;
         if (missileDef.hitMutator) {
           missileDef.hitMutator(otherPlayer, state, applyEffect, missile);
@@ -623,7 +686,10 @@ const   update = (
     }
     if (!didRemove && missile.lifetime <= 0) {
       state.missiles.delete(id);
-      applyEffect({ effectIndex: missileDef.deathEffect, from: { kind: EffectAnchorKind.Absolute, value: missile.position } });
+      applyEffect({
+        effectIndex: missileDef.deathEffect,
+        from: { kind: EffectAnchorKind.Absolute, value: missile.position, heading: missile.heading, speed: missile.speed },
+      });
     }
   }
 
@@ -696,15 +762,15 @@ const   update = (
           idx: def.primaryDefIndex,
         };
         state.projectiles.set(state.projectileId, projectile);
-        state.projectileId++;
         player.toFirePrimary = false;
         player.energy -= primaryDef.energy;
         if (primaryDef.fireEffect !== undefined) {
           applyEffect({
             effectIndex: primaryDef.fireEffect,
-            from: { kind: EffectAnchorKind.Absolute, value: player.position },
+            from: { kind: EffectAnchorKind.Projectile, value: state.projectileId },
           });
         }
+        state.projectileId++;
       }
       // Run the secondary frameMutators
       player.arms.forEach((armament, index) => {
@@ -836,15 +902,15 @@ const   update = (
                 idx: def.primaryDefIndex,
               };
               state.projectiles.set(state.projectileId, projectile);
-              state.projectileId++;
               player.energy -= primaryDef.energy;
               player.sinceLastShot[i] = 0;
               if (primaryDef.fireEffect !== undefined) {
                 applyEffect({
                   effectIndex: primaryDef.fireEffect,
-                  from: { kind: EffectAnchorKind.Absolute, value: hardpointLocations[i] },
+                  from: { kind: EffectAnchorKind.Projectile, value: state.projectileId },
                 });
               }
+              state.projectileId++;
             }
           }
         }
@@ -977,9 +1043,24 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
   player.omega = player.heading;
   if (input.up) {
     player.speed += def.acceleration;
+    // I don't like this here...
+    if (player.p === undefined) {
+      player.p = 0;
+      player.ip = 0;
+    }
+    if (player.speed < def.speed) {
+      player.ip -= 0.04 * Math.pow((def.speed - player.speed) / def.speed, 0.5) * def.acceleration;
+    }
   }
   if (input.down) {
     player.speed -= def.acceleration;
+    if (player.p === undefined) {
+      player.p = 0;
+      player.ip = 0;
+    }
+    if (player.speed > 0) {
+      player.ip += 0.04 * Math.pow(player.speed / def.speed, 0.5) * def.acceleration;
+    }
   }
   if (angle === undefined) {
     if (input.left) {
@@ -1017,6 +1098,10 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
         }
       }
     }
+    if (player.rl === undefined) {
+      player.rl = player.irl = 0;
+    }
+    player.irl = (player.side / def.sideThrustMaxSpeed) * 0.2 * def.sideThrustAcceleration;
   }
   if (player.speed > def.speed) {
     player.speed = def.speed;
@@ -1417,7 +1502,7 @@ export {
   maxNameLength,
   effectiveInfinity,
   serverMessagePersistTime,
-  clientMineDeploymentUpdater,
+  // clientMineDeploymentUpdater,
   isValidSectorInDirection,
   sectorBounds,
   sectorDelta,

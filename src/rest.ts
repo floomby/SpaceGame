@@ -82,10 +82,10 @@ const getRestRaw = (query: string, callback: (value: any) => void, cache = false
 const nameMap = new Map<number, string>();
 const namesLookedUp = new Set<number>();
 
-// Memoized name lookup from server
+// Memoized name lookup from server for players and stations
 const getNameOfPlayer = (player: Player) => {
   const def = defs[player.defIndex];
-  if (!player.isPC || def.kind === UnitKind.Station) {
+  if (!player.isPC && def.kind !== UnitKind.Station) {
     return undefined;
   }
   if (nameMap.has(player.id)) {
@@ -95,7 +95,7 @@ const getNameOfPlayer = (player: Player) => {
     return undefined;
   }
   namesLookedUp.add(player.id);
-  getRestRaw(`/nameOf?id=${player.id}`, (data) => {
+  getRestRaw(`/${def.kind === UnitKind.Station ? "stationName" : "nameOf"}?id=${player.id}`, (data) => {
     if (data.error) {
       console.log("Rest error: " + data.error);
     } else {

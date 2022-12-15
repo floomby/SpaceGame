@@ -1,15 +1,38 @@
 ### Things to think about
 
-- Shields?
 - Handle network interruptions
 - Network optimizations
 - Economy does not make sense
-- Try and make the strafe animations work in a way that looks tolerable?
 - Manufacturing slots and time??
 - Armament purchase options for stations??
 - Killed/killed by messages??
 
-### Refactoring stuff
+### Server stuff
 
-- Make mine drawing not this ad-hoc thing it is right now (probably model after the projectile drawing)
-- Investigate drawing performance (Missile trails are still bad)
+- Anti chat spam needed
+- Collision and redo docking and repairing radius **
+- Delayed damage for beam weapons *
+
+### Hud Checklist
+
+- Fix text to not be blit onto the screen in an way that overwrites the pixels of the other texts *
+
+### World Checklist
+
+### Effects Checklist
+
+- Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *
+
+### UI Checklist
+
+### WebGL optimizations that can be done (in estimated order of performance gain)
+
+- move a bunch of the vbos into vaos to avoid setting the attributes over and over
+- instanced rendering for projectiles
+- instanced rendering for other things
+- use ubos for the lights and particle emitters
+
+### Wishlist
+
+- Material system (likely to happen)
+- Animations for the models

@@ -68,4 +68,17 @@ const initProjectileDefs = () => {
     projectileDefs[projectileDefs.length - 1].range / projectileDefs[projectileDefs.length - 1].speed;
 };
 
-export { projectileDefs, initProjectileDefs };
+const projectileLightColorUnnormed = (projectileIndex: number): [number, number, number] => {
+  switch (projectileIndex) {
+    case 0:
+      return [4.0, 4.0, 4.0];
+    case 1:
+      return [4.0, 4.0, 0.0];
+    case 2:
+      return [4.0, 0.0, 0.0];
+    default:
+      return [4.0, 4.0, 4.0];
+  }
+};
+
+export { projectileDefs, initProjectileDefs, projectileLightColorUnnormed };

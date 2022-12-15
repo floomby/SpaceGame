@@ -1,6 +1,7 @@
 import { Player } from "./game";
 
 type Position = { x: number; y: number };
+type Position3 = Position & { z: number };
 type Circle = { position: Position; radius: number };
 type Rectangle = { x: number; y: number; width: number; height: number };
 type Line = { from: Position; to: Position };
@@ -11,6 +12,15 @@ enum CardinalDirection {
   Down,
   Left,
 }
+
+const sumPositions = (...positions: Position[]) => {
+  return positions.reduce(
+    (sum, position) => {
+      return { x: sum.x + position.x, y: sum.y + position.y };
+    },
+    { x: 0, y: 0 }
+  );
+};
 
 const maxDecimals = (num: number, decimals: number) => {
   const factor = Math.pow(10, decimals);
@@ -121,12 +131,7 @@ const findInterceptAimingHeading = (from: Position, target: Player, projectileSp
 };
 
 const pointInRectangle = (point: Position, rectangle: Rectangle) => {
-  return (
-    point.x >= rectangle.x &&
-    point.x <= rectangle.x + rectangle.width &&
-    point.y >= rectangle.y &&
-    point.y <= rectangle.y + rectangle.height
-  );
+  return point.x >= rectangle.x && point.x <= rectangle.x + rectangle.width && point.y >= rectangle.y && point.y <= rectangle.y + rectangle.height;
 };
 
 const pointOutsideRectangle = (point: Position, rectangle: Rectangle) => {
@@ -148,7 +153,7 @@ const pointOutsideRectangle = (point: Position, rectangle: Rectangle) => {
 const headingFromCardinalDirection = (direction: CardinalDirection) => {
   switch (direction) {
     case CardinalDirection.Up:
-      return 3 * Math.PI / 2;
+      return (3 * Math.PI) / 2;
     case CardinalDirection.Right:
       return 0;
     case CardinalDirection.Down:
@@ -166,8 +171,29 @@ const mirrorAngleVertically = (angle: number) => {
   return Math.PI - angle;
 };
 
+const projectRayFromCenterOfRect = (rect: Rectangle, angle: number) => {
+  const center = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  if (rect.width * Math.abs(sin) < rect.height * Math.abs(cos)) {
+    const x = (rect.width / 2) * Math.sign(cos);
+    const y = x * Math.tan(angle);
+    return { x: center.x + x, y: center.y + y };
+  } else {
+    const y = (rect.height / 2) * Math.sign(sin);
+    const x = y / Math.tan(angle);
+    return { x: center.x + x, y: center.y + y };
+  }
+};
+
+// Give an angle between -PI and PI
+const canonicalizeAngle = (angle: number) => {
+  return positiveMod(angle + Math.PI, 2 * Math.PI) - Math.PI;
+};
+
 export {
   Position,
+  Position3,
   Circle,
   Rectangle,
   Line,
@@ -190,4 +216,7 @@ export {
   headingFromCardinalDirection,
   mirrorAngleHorizontally,
   mirrorAngleVertically,
+  sumPositions,
+  projectRayFromCenterOfRect,
+  canonicalizeAngle,
 };

@@ -1,4 +1,4 @@
-import { dockedMessage } from "./drawing";
+import { dockedMessage } from "./2dDrawing";
 
 let div: HTMLDivElement;
 

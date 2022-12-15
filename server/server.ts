@@ -431,6 +431,9 @@ wss.on("connection", (ws) => {
           const state = sectors.get(client.currentSector)!;
           const player = state.players.get(client.id);
           if (player) {
+            if (player.docked) {
+              return;
+            }
             const station = state.players.get(data.payload.stationId);
             if (canDock(player, station, false)) {
               const def = defs[player.defIndex];

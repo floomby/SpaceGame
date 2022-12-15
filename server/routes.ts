@@ -32,6 +32,10 @@ app.get("/dist/require.min.js.map", (req, res) => {
   res.sendFile("dist/require.min.js.map", { root });
 });
 
+app.get("/dist/gl-matrix.js", (req, res) => {
+  res.sendFile("node_modules/gl-matrix/gl-matrix.js", { root });
+});
+
 app.get("/", (req, res) => {
   res.sendFile("index.html", { root });
 });
@@ -97,7 +101,8 @@ app.get("/stationName", (req, res) => {
       res.send(JSON.stringify({ value: station.name }));
       return;
     }
-    res.send(JSON.stringify({ error: "Station not found" }));
+    // Assume if we didn't find the station it is the tutorial station
+    res.send(JSON.stringify({ value: "Tutorial Station" }));
   });
 });
 
@@ -557,6 +562,7 @@ app.get("/changePassword", (req, res) => {
 export default () => {
   if (useSsl) {
     app.use(express.static("resources"));
+    app.use(express.static("shaders"));
 
     const httpsServer = createSecureServer(credentials, app);
     httpsServer.listen(httpPort, () => {

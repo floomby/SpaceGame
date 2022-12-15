@@ -1,5 +1,5 @@
 import { effectiveInfinity } from "../game";
-import { Position, Rectangle } from "../geometry";
+import { Position, Position3, Rectangle } from "../geometry";
 
 const computeBrakeDistance = (acceleration: number, speed: number) => {
   return (speed * speed) / (2 * acceleration);
@@ -17,6 +17,11 @@ enum SlotKind {
   Large,
   Mining,
 }
+
+type PointLightData = {
+  position: Position3;
+  color: [number, number, number];
+};
 
 type UnitDefinition = {
   name: string;
@@ -49,6 +54,9 @@ type UnitDefinition = {
   primaryDefIndex: number;
   mass: number;
   isCloaky?: boolean;
+  model: string;
+  modelIndex?: number;
+  pointLights?: PointLightData[];
 };
 
 const defs: UnitDefinition[] = [];
@@ -82,6 +90,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
+    model: "fighter",
   });
   // Drone - 1
   defs.push({
@@ -110,6 +119,7 @@ const initShipsAndStations = () => {
     scanRange: 4000,
     primaryDefIndex: 0,
     mass: 10,
+    model: "drone",
   });
   // Alliance Starbase - 2
   defs.push({
@@ -137,6 +147,11 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
+    model: "alliance_starbase",
+    pointLights: [
+      { position: { x: 3.1, y: 1, z: 3.3 }, color: [0.0, 5.0, 0] },
+      { position: { x: 3.1, y: -1, z: 3.3 }, color: [0.0, 5.0, 0] },
+    ],
   });
   // Confederacy Starbase - 3
   defs.push({
@@ -149,13 +164,13 @@ const initShipsAndStations = () => {
     energyRegen: 0.5,
     primaryReloadTime: 10,
     primaryDamage: 40,
-    radius: 144,
+    radius: 120,
     kind: UnitKind.Station,
     hardpoints: [
-      { x: -93, y: -93 },
-      { x: -93, y: 93 },
-      { x: 93, y: -93 },
-      { x: 93, y: 93 },
+      { x: -60, y: -60 },
+      { x: -60, y: 60 },
+      { x: 60, y: -60 },
+      { x: 60, y: 60 },
     ],
     dockable: true,
     slots: [],
@@ -164,6 +179,13 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
+    model: "confederacy_starbase",
+    pointLights: [
+      { position: { x: 6, y: 6, z: 5 }, color: [2.0, 0.0, 0] },
+      { position: { x: 6, y: -6, z: 5 }, color: [2.0, 0.0, 0] },
+      { position: { x: -6, y: -6, z: 5 }, color: [2.0, 0.0, 0] },
+      { position: { x: -6, y: 6, z: 5 }, color: [2.0, 0.0, 0] },
+    ],
   });
   // Advanced Fighter - 4
   defs.push({
@@ -192,6 +214,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 20,
+    model: "advanced_fighter",
   });
   // Seeker - 5
   defs.push({
@@ -220,6 +243,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 20,
+    model: "seeker",
   });
   // Strafer - 6
   defs.push({
@@ -248,6 +272,7 @@ const initShipsAndStations = () => {
     scanRange: 3000,
     primaryDefIndex: 0,
     mass: 8,
+    model: "strafer",
   });
   // Rogue Starbase - 7
   defs.push({
@@ -262,7 +287,7 @@ const initShipsAndStations = () => {
     primaryDamage: 15,
     radius: 93,
     kind: UnitKind.Station,
-    hardpoints: [{ x: -84, y: -80 }],
+    hardpoints: [{ x: 0, y: 0 }],
     dockable: true,
     slots: [],
     deathEffect: 4,
@@ -270,6 +295,7 @@ const initShipsAndStations = () => {
     repairsRequired: 8,
     primaryDefIndex: 0,
     mass: effectiveInfinity,
+    model: "rogue_starbase",
   });
   // Venture - 8
   defs.push({
@@ -286,7 +312,7 @@ const initShipsAndStations = () => {
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine, SlotKind.Mine],
     cargoCapacity: 1600,
-    deathEffect: 3,
+    deathEffect: 4,
     turnRate: 0.02,
     acceleration: 0.05,
     healthRegen: 0.05,
@@ -298,6 +324,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 50,
+    model: "venture",
   });
   // Spartan - 9
   defs.push({
@@ -314,7 +341,7 @@ const initShipsAndStations = () => {
     kind: UnitKind.Ship,
     slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine, SlotKind.Utility, SlotKind.Utility],
     cargoCapacity: 400,
-    deathEffect: 3,
+    deathEffect: 4,
     turnRate: 0.05,
     acceleration: 0.1,
     healthRegen: 0.1,
@@ -326,6 +353,7 @@ const initShipsAndStations = () => {
     scanRange: 13000,
     primaryDefIndex: 0,
     mass: 50,
+    model: "spartan",
   });
   // Striker - 10
   defs.push({
@@ -355,6 +383,7 @@ const initShipsAndStations = () => {
     primaryDefIndex: 2,
     mass: 8,
     isCloaky: true,
+    model: "striker",
   });
 
   for (let i = 0; i < defs.length; i++) {
@@ -383,4 +412,16 @@ const emptyLoadout = (index: number) => {
   return [...def.slots] as unknown as EmptySlot[];
 };
 
-export { UnitKind, SlotKind, UnitDefinition, EmptySlot, defs, defMap, initShipsAndStations, computeBrakeDistance, emptySlotData, emptyLoadout };
+export {
+  UnitKind,
+  SlotKind,
+  UnitDefinition,
+  EmptySlot,
+  PointLightData,
+  defs,
+  defMap,
+  initShipsAndStations,
+  computeBrakeDistance,
+  emptySlotData,
+  emptyLoadout,
+};

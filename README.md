@@ -1,6 +1,7 @@
 ## Space IO Game
 
-Fly around with your friends blasting enemies, exploring space, collecting resources, taking over starbases, and manufacturing new ships and weapons
-in a game that's style harkens back to the flash games.
+Fly around with your friends blasting enemies, exploring space, collecting resources, taking over starbases, and manufacturing new ships and weapons.
 
-[Live alpha](https://inharmonious.floomby.us/)
+[Play the alpha version!](https://inharmonious.floomby.us/)
+
+[![Tutorial play through](https://raw.githubusercontent.com/floomby/SpaceGame/master/workspace/video_preview_image.png)](https://www.youtube.com/watch?v=NE052TzY79s)

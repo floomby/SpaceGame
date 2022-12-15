@@ -54,6 +54,11 @@ enum CloakedState {
   Uncloaked = 0,
 }
 
+type DelayedDamage = {
+  ticks: number;
+  damage: number;
+};
+
 // There is a bunch of information that the clients do not need but end up receiving anyways
 // The server should probably not send the extra information
 // This would reduces throughput through the single hottest path in the client code
@@ -120,6 +125,8 @@ type Player = Entity & {
   // Roll impulse
   irl?: number;
   modelMatrix?: any;
+  // Delayed damage
+  dd?: DelayedDamage[];
 };
 
 type Asteroid = Circle & {
@@ -721,6 +728,19 @@ const update = (
       kill(def, player, state, applyEffect, onDeath, ret.collectables);
     }
 
+    // Apply delayed damage
+    if (player.dd !== undefined) {
+      for (let i = 0; i < player.dd.length; i++) {
+        player.dd[i].ticks -= 1;
+        if (player.dd[i].ticks <= 0) {
+          player.health -= player.dd[i].damage;
+          player.dd.splice(i, 1);
+          i -= 1;
+        }
+      }
+    }
+
+    // Process collectables
     if (def.kind !== UnitKind.Station) {
       for (const collectable of state.collectables.values()) {
         const collectableDef = collectableDefs[collectable.index];

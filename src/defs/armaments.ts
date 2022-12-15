@@ -195,7 +195,10 @@ const initArmaments = () => {
         target = target as Player;
         if (l2NormSquared(player.position, target.position) < 700 * 700) {
           player.energy -= 35;
-          target.health -= 30;
+          if (target.dd === undefined) {
+            target.dd = [];
+          }
+          target.dd.push({ ticks: 15, damage: 30 });
           slotData.sinceFired = 0;
           const to =
             target.health > 0

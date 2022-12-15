@@ -401,7 +401,10 @@ const drawDag = () => {
         manufactureQuantity = 1;
 
         const inputChangeHandler = () => {
-          const amount = parseInt(inputField.value);
+          let amount = parseInt(inputField.value);
+          if (inputField.value === "") {
+            amount = 1;
+          }
           if (amount > 0) {
             manufactureQuantity = amount;
             manufacturable = redrawEdges();

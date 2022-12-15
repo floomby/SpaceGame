@@ -395,12 +395,14 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
 
   if (player.isPC || def.kind === UnitKind.Station) {
     const name = getNameOfPlayer(player);
-    let nameData = nameDataCache.get(name);
-    if (!nameData) {
-      nameData = rasterizeText(name, nameDataFont, [1.0, 1.0, 1.0, 0.8]);
-      nameDataCache.set(name, nameData);
+    if (name !== undefined) {
+      let nameData = nameDataCache.get(name);
+      if (!nameData) {
+        nameData = rasterizeText(name, nameDataFont, [1.0, 1.0, 1.0, 0.8]);
+        nameDataCache.set(name, nameData);
+      }
+      blitImageDataToOverlayCenteredFromGame(nameData, player.position, { x: 0, y: -def.radius / 10 - 1, z: 5 });
     }
-    blitImageDataToOverlayCenteredFromGame(nameData, player.position, { x: 0, y: -def.radius / 10 - 1, z: 5 });
   }
 
   {

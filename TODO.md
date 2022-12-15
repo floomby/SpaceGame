@@ -7,11 +7,9 @@
 - Armament purchase options for stations??
 - Killed/killed by messages??
 
-
 ### Server stuff
 
 - Anti chat spam needed
-- Delayed damage for beam weapons *
 
 ### Hud
 

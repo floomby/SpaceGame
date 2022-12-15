@@ -29,7 +29,7 @@ uniform float uTotalWeight;
 
 void emitNop() {
   vBehavior = vec4(-1.0, 0.0, 0.0, 0.0);
-  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024);
   vec2 noise = texelFetch(uNoise, noiseCoord, 0).xy;
   vLife = noise.x * 5.0 + 5.0;
   vAge = 0.0;
@@ -37,8 +37,8 @@ void emitNop() {
 
 void emitExplosion(uint index) {
   vBehavior = vec4(0.5, 0.85, uEmitVelocity[index].w, 0.0);
-  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
-  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 1024, (gl_VertexID / 1024) + 1);
   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
   vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
 
@@ -54,8 +54,8 @@ void emitExplosion(uint index) {
 void emitTrail(uint index) {
   // Use the emitter position z uniform to determine color
   vBehavior = vec4(1.5, 0.93, uEmitPosition[index].z, 0.0);
-  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
-  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 1024, (gl_VertexID / 1024) + 1);
   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
   vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
 
@@ -76,8 +76,8 @@ void emitTrail(uint index) {
 
 void emitSmoke(uint index) {
   vBehavior = vec4(2.5, 0.85, 0.0, 0.0);
-  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
-  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 1024, (gl_VertexID / 1024) + 1);
   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
   vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
 
@@ -95,9 +95,9 @@ void emitSmoke(uint index) {
 
 void emitWarp(uint index) {
   vBehavior = vec4(3.5, 0.98, 0.0, 0.0);
-  ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512);
+  ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024);
   vec4 rand = texelFetch(uNoise, noiseCoord, 0);
-  ivec2 noiseCoord2 = ivec2(gl_VertexID % 512, (gl_VertexID / 512) + 1);
+  ivec2 noiseCoord2 = ivec2(gl_VertexID % 1024, (gl_VertexID / 1024) + 1);
   vec4 rand2 = texelFetch(uNoise, noiseCoord2, 0);
 
   vAge = 0.0;
@@ -116,7 +116,7 @@ void emitWarp(uint index) {
 
 void main() {
   if (aAge >= aLife) {
-    ivec2 noiseCoord = ivec2(gl_VertexID % 512, gl_VertexID / 512 + 40);
+    ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024 + 40);
     vec4 rand = texelFetch(uNoise, noiseCoord, 0);
 
     float weight = rand.x * uTotalWeight;

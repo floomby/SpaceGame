@@ -15,8 +15,10 @@ import { maxMissileLifetime, missileDefs } from "./defs";
 import { resolveAnchor } from "./effects";
 import { EffectAnchor, EffectAnchorKind, effectiveInfinity } from "./game";
 import { Position } from "./geometry";
-import { lastSelf, state } from "./globals";
+import { getParticlePref, lastSelf, state } from "./globals";
 import { loadTexture } from "./modelLoader";
+
+let count: number;
 
 const randomNoise = (width: number, height: number, channels: number) => {
   const data = new Uint8Array(width * height * channels);
@@ -69,11 +71,24 @@ let particleRenderAOs: WebGLVertexArrayObject[] = [];
 let particleBuffers: WebGLBuffer[] = [];
 let behaviorBuffers: WebGLBuffer[] = [];
 
-const count = 50000;
+const reinitializeParticleSystem = (newCount: number) => {
+  if (newCount === count) {
+    return;
+  }
+  clearEmitters();
+  count = newCount;
+  createBuffers();
+};
 
 const createBuffers = () => {
+  count = getParticlePref() ?? 50000;
+  particleAOs.length = 0;
+  particleRenderAOs.length = 0;
+  particleBuffers.length = 0;
+  behaviorBuffers.length = 0;
+
   // Create a texture with the noise
-  const noise = randomNoise(512, 512, 4);
+  const noise = randomNoise(1024, 1024, 4);
   noiseTexture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, noise);
@@ -413,4 +428,6 @@ export {
   TrailColors,
   ExplosionKind,
   clearEmitters,
+  reinitializeParticleSystem,
+  count as particleCount,
 };

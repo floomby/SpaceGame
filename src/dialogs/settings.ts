@@ -1,18 +1,20 @@
 import { Faction } from "../defs";
 import { horizontalCenter, peekTag, setDialogBackground, shown } from "../dialog";
-import { faction, teamColorsDark, teamColorsLight } from "../globals";
+import { faction, getParticlePref, setParticlePref, teamColorsDark, teamColorsLight } from "../globals";
 import { getMusicVolume, getVolume, setMusicVolume, setVolume } from "../sound";
 import { pop as popDialog, push as pushDialog } from "../dialog";
 import { keylayoutSelector, keylayoutSelectorSetup } from "./keyboardLayout";
 import { showControls } from "./controls";
+import { particleCount as particles, reinitializeParticleSystem } from "../particle";
 
 const settingsDialog = () =>
   horizontalCenter([
-    `<h1>Settings</h1>`,
-    `<span class="labeledSlider"><label for="volumeSlider">Effect volume:</label>
+    `<h1 class="unselectable">Settings</h1>`,
+    `<span class="labeledSlider unselectable"><label for="volumeSlider">Effect volume:</label>
 <input type="range" min="0" max="1" value="${getVolume()}" class="slider" id="volumeSlider" step="0.05"></span>`,
-    `<span class="labeledSlider"><label for="musicVolumeSlider">Music volume:</label>
+    `<span class="labeledSlider unselectable"><label for="musicVolumeSlider">Music volume:</label>
 <input type="range" min="0" max="1" value="${getMusicVolume()}" class="slider" id="musicVolumeSlider" step="0.05"></span>`,
+    `<span>Particle Count: <input id="particleCount" style="margin-bottom: 10px;"></input></span>`,
     keylayoutSelector(),
     `<button style="margin-top: 10px;" id="viewControls">View Controls</button>`,
     `<button style="margin-top: 10px;" class="bottomButton" id="closeSettings" class="secondary">Close</button>`,
@@ -22,6 +24,7 @@ const setupSettingsDialog = () => {
   document.getElementById("closeSettings")?.addEventListener("click", () => {
     setDialogBackground(teamColorsLight[faction]);
     popDialog();
+    reinitializeParticleSystem(getParticlePref() ?? particles);
   });
   document.getElementById("viewControls")?.addEventListener("click", () => {
     showControls();
@@ -36,6 +39,14 @@ const setupSettingsDialog = () => {
     setMusicVolume(parseFloat(musicVolumeSlider.value));
   });
   keylayoutSelectorSetup();
+  const particleCount = document.getElementById("particleCount") as HTMLInputElement;
+  particleCount.value = localStorage.getItem("particleCount") || particles.toString();
+  particleCount.addEventListener("input", () => {
+    const count = parseInt(particleCount.value);
+    if (count > 0) {
+      setParticlePref(count);
+    }
+  });
 };
 
 let settingsInitialized = false;
@@ -52,6 +63,7 @@ const initSettings = () => {
       if (peekTag() === "controls") {
         setDialogBackground(teamColorsLight[faction]);
         popDialog();
+        reinitializeParticleSystem(getParticlePref() ?? particles);
         return;
       }
       if (peekTag() !== "settings") {
@@ -60,6 +72,7 @@ const initSettings = () => {
       } else if (shown) {
         setDialogBackground(teamColorsLight[faction]);
         popDialog();
+        reinitializeParticleSystem(getParticlePref() ?? particles);
       }
     });
     settingsIcon.style.display = "flex";

@@ -92,7 +92,7 @@ const populateInventoryTable = () => {
 
 const inventoryDialog = () => {
   return horizontalCenter([
-    "<h2>Inventory</h2>",
+    "<h2 class='unselectable'>Inventory</h2>",
     "<br/>",
     `Credits: <span id='inventoryCredits'>${lastSelf.credits}</span>`,
     "<br/>",

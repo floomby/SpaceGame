@@ -10,3 +10,4 @@ server/log
 server/errorlog
 node_modules
 pnpm-lock.yaml
+workspace

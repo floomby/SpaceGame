@@ -76,6 +76,7 @@ import { setMusicAdaptationPollFunction } from "./sound";
 import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutCollectable } from "./3dDrawing";
 import { rasterizeText, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
+import { setCurrentSectorText } from "./dialogs/map";
 
 let chats: ChatMessage[] = [];
 
@@ -527,6 +528,7 @@ const run = () => {
       // initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);
+      setCurrentSectorText();
     }
 
     for (const sectorInfo of data.sectorInfos) {

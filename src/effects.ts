@@ -92,7 +92,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
+        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 1.2);
       }
       drawLine(
         [from.x, from.y],
@@ -135,7 +135,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
+        play3dSound(laserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 1.2);
       }
 
       drawLine([from.x, from.y], [to.x, to.y], 2, [0.7, 0.2, 0.7, 1 - framesLeft / 15], 1);
@@ -154,7 +154,7 @@ const initEffects = () => {
         const from = pushExplosionEmitter(effect.from);
         effect.extra.needSound = false;
         if (from) {
-          play3dSound(popSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+          play3dSound(popSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
         }
       }
     },
@@ -170,7 +170,7 @@ const initEffects = () => {
         const from = pushExplosionEmitter(effect.from, 3);
         effect.extra.needSound = false;
         if (from) {
-          play3dSound(explosionSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+          play3dSound(explosionSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
         }
       }
     },
@@ -186,7 +186,7 @@ const initEffects = () => {
         const from = pushExplosionEmitter(effect.from, 5);
         effect.extra.needSound = false;
         if (from) {
-          play3dSound(explosionSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+          play3dSound(explosionSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
         }
       }
     },
@@ -202,7 +202,7 @@ const initEffects = () => {
         const from = pushSmokeEmitter(effect.from);
         effect.extra.needSound = false;
         if (from) {
-          play3dSound(fireSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+          play3dSound(fireSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
         }
       }
     },
@@ -228,7 +228,7 @@ const initEffects = () => {
       if (effect.extra.needSound) {
         const from = pushWarpEmitter(effect.from);
         effect.extra.needSound = false;
-        play3dSound(twinkleSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        play3dSound(twinkleSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
       }
     },
     initializer: () => {
@@ -243,7 +243,7 @@ const initEffects = () => {
         const from = pushTrailEmitter(effect.from);
         effect.extra.needSound = false;
         if (from) {
-          play3dSound(pewSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+          play3dSound(pewSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
         }
       }
     },
@@ -270,7 +270,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
+        const panner = play3dSound(miningLaserSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 1.2);
       }
       drawLine(
         [from.x, from.y],
@@ -300,7 +300,7 @@ const initEffects = () => {
     draw3: (effect, self, state, framesLeft) => {
       const from = pushExplosionEmitter(effect.from, 2, ExplosionKind.EMP);
       if (from) {
-        play3dSound(popSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        play3dSound(popSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
       }
       effect.frame = 0;
     },
@@ -311,7 +311,7 @@ const initEffects = () => {
     draw3: (effect, self, state) => {
       if (effect.extra.needSound) {
         effect.extra.needSound = false;
-        playSound(disabledSound);
+        playSound(disabledSound, 0.7);
       }
     },
     initializer: () => {
@@ -327,7 +327,7 @@ const initEffects = () => {
         return;
       }
 
-      play3dSound(mineDropSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale);
+      play3dSound(mineDropSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale, 2.0);
       effect.frame = 0;
     },
   });
@@ -338,7 +338,7 @@ const initEffects = () => {
       console.log("launch sound");
       const [from] = resolveAnchor(effect.from, state) as Position[];
       if (from) {
-        play3dSound(plasmaLaunchSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        play3dSound(plasmaLaunchSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
       }
       effect.frame = 0;
     },
@@ -349,7 +349,7 @@ const initEffects = () => {
     draw3: (effect, self, state, framesLeft) => {
       const from = pushExplosionEmitter(effect.from, 2, ExplosionKind.Plasma);
       if (from) {
-        play3dSound(plasmaHitSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        play3dSound(plasmaHitSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
       }
       effect.frame = 0;
     },
@@ -360,7 +360,7 @@ const initEffects = () => {
     draw3: (effect, self, state, framesLeft) => {
       const from = pushExplosionEmitter(effect.from, 2);
       if (from) {
-        play3dSound(popSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        play3dSound(popSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
       }
       effect.frame = 0;
     },
@@ -371,7 +371,7 @@ const initEffects = () => {
     draw3: (effect, self, state, framesLeft) => {
       const from = pushExplosionEmitter(effect.from, 4, ExplosionKind.Impulse);
       if (from) {
-        play3dSound(impulseMissileHitSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        play3dSound(impulseMissileHitSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
       }
       effect.frame = 0;
     },
@@ -382,7 +382,7 @@ const initEffects = () => {
     draw3: (effect, self, state, framesLeft) => {
       const from = pushTrailEmitter(effect.from, TrailColors.Red);
       if (from) {
-        play3dSound(disruptorLaunchSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale);
+        play3dSound(disruptorLaunchSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);
         effect.frame = 0;
       }
     },
@@ -406,7 +406,7 @@ const initEffects = () => {
         const midX = ((from as Position).x + (to as Position).x) / 2;
         const midY = ((from as Position).y + (to as Position).y) / 2;
         effect.extra.needSound = false;
-        play3dSound(tractorSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 0.6);
+        play3dSound(tractorSound, (midX - effect.extra.lastSelfX) / soundScale, (midY - effect.extra.lastSelfY) / soundScale, 1.2);
       }
 
       drawLine([from.x, from.y], [to.x, to.y], 2, [1.0, 0.65, 0.1, framesLeft / 10], 1);

@@ -92,14 +92,19 @@ const getMusicVolume = () => {
   return musicVolume.gain.value;
 };
 
-const playSound = (index: number) => {
+const playSound = (index: number, gain = 1.0) => {
   if (!ctx || index < 0 || index >= soundBuffers.length) {
     console.log(ctx ? `Invalid sound index ${index}` : "Sound not initialized");
     return;
   }
   const source = ctx.createBufferSource();
   source.buffer = soundBuffers[index];
-  source.connect(effectVolume);
+
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = gain * 4.0;
+  gainNode.connect(effectVolume);
+
+  source.connect(gainNode);
   source.start(0);
 };
 
@@ -123,7 +128,7 @@ const play3dSound = (index: number, x: number, y: number, gain = 0.8, important 
   panner.positionZ.value = 10;
 
   const gainNode = ctx.createGain();
-  gainNode.gain.value = gain;
+  gainNode.gain.value = gain * 4.0;
 
   source.connect(gainNode);
   gainNode.connect(panner);

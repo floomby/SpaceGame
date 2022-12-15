@@ -20,11 +20,8 @@
 
 ### World
 
-- Be more zoomed out
-
 ### Effects
 
-- Fix firefox bug where lines only draw when the projectiles draw (it is a webgl state issue with the uniforms for the main monolithic shader)
 - Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *
 
 ### UI
@@ -35,7 +32,6 @@
 ### Misc
 
 - Particle count setting
-- Boost volume of all effects
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

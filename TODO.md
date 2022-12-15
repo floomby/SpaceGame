@@ -11,7 +11,6 @@
 ### Server stuff
 
 - Anti chat spam needed
-- Collision and redo docking and repairing radius **
 - Delayed damage for beam weapons *
 
 ### Hud
@@ -26,7 +25,6 @@
 
 ### UI
 
-- Don't show weapon text while docked
 - Make a bunch of the text unselectable when it shouldn't be selectable
 
 ### Misc

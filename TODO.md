@@ -19,8 +19,6 @@
 
 ### World Checklist
 
-- finish collectable models **
-
 ### Effects Checklist
 
 - Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *

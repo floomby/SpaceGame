@@ -93,8 +93,8 @@ const initCollectables = () => {
         }
       }
     },
-    model: "bounty",
-    light: [0.0, 4.0, 0.0],
+    model: "ammo",
+    light: [2.0, 3.0, 2.0],
   });
 
   collectableDefs.push({
@@ -110,8 +110,8 @@ const initCollectables = () => {
       const def = defs[player.defIndex];
       player.energy = def.energy;
     },
-    model: "bounty",
-    light: [0.0, 4.0, 0.0],
+    model: "energy",
+    light: [4.0, 4.0, 0.0],
   });
 
   collectableDefs.push({
@@ -127,8 +127,8 @@ const initCollectables = () => {
       const def = defs[player.defIndex];
       player.health = Math.min(def.health, player.health + 80);
     },
-    model: "bounty",
-    light: [0.0, 4.0, 0.0],
+    model: "health",
+    light: [2.0, 1.0, 1.0],
   });
 
   const recipeFor = (what: string) => {
@@ -153,8 +153,8 @@ const initCollectables = () => {
       collectMutator: (player, discoverRecipe) => {
         discoverRecipe(player.id, what);
       },
-      model: "bounty",
-      light: [0.0, 4.0, 0.0],
+      model: "recipe",
+      light: [3.0, 2.5, 2.5],
     } as CollectableDef;
   };
 

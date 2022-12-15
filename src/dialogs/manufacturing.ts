@@ -63,7 +63,7 @@ const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: numbe
 };
 
 const filterButton = (what: string) => {
-  return `<div id="${what}Filter" class="checkAsText checkAsTextChecked">${what}</div>`;
+  return `<div id="${what}Filter" class="checkAsText checkAsTextChecked unselectable">${what}</div>`;
 };
 
 let showShips = true;

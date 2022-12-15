@@ -49,10 +49,17 @@ const sectorNumberToXY = (sector: number) => {
   return `${x}-${y}`;
 };
 
+const setCurrentSectorText = () => {
+  const currentSectorText = document.getElementById("currentSectorText");
+  if (currentSectorText) {
+    currentSectorText.innerText = `Current Sector: ${sectorNumberToXY(currentSector)}`;
+  }
+};
+
 const mapDialog = () => {
   return `<div class="unselectable">${horizontalCenter([
     `<h1>Map</h1>`,
-    `<h3>Current Sector: ${sectorNumberToXY(currentSector)}</h3>`,
+    `<h3 id="currentSectorText"></h3>`,
     `<div style="display: flex; flex-direction: row;">
   <div style="height: 50vh;">${mapHtml}</div>
   <div style="width: 4vw;"></div>
@@ -71,6 +78,7 @@ const setupMapDialog = () => {
       populateSectorInfo(i);
     });
   }
+  setCurrentSectorText();
 };
 
-export { mapDialog, setupMapDialog, sectorNumberToXY };
+export { mapDialog, setupMapDialog, sectorNumberToXY, setCurrentSectorText };

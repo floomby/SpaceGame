@@ -63,7 +63,7 @@ const drawConnectionSpline = (svg: SVGElement, x1: number, y1: number, x2: numbe
 };
 
 const filterButton = (what: string) => {
-  return `<div id="${what}Filter" class="checkAsText checkAsTextChecked">${what}</div>`;
+  return `<div id="${what}Filter" class="checkAsText checkAsTextChecked unselectable">${what}</div>`;
 };
 
 let showShips = true;
@@ -104,7 +104,7 @@ const setupFilterButtons = (what: string) => {
 
 const manufacturingBay = () => {
   return horizontalCenter([
-    "<h2>Manufacturing Bay</h2>",
+    "<h2 class='unselectable'>Manufacturing Bay</h2>",
     `<div style="display: flex; flex-direction: row; justify-content: left; width: 100%; margin-left: 2rem;">
       ${filterButton("Ships")}
       ${filterButton("Weapons")}
@@ -302,6 +302,7 @@ const drawDag = () => {
       text.setAttribute("text-anchor", "middle");
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
+      text.classList.add("unselectable");
       text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") || recipe.isNaturalResource ? recipe.recipe?.name || "Root" : "???";
       container.appendChild(text);
 
@@ -311,6 +312,7 @@ const drawDag = () => {
       amount.setAttribute("text-anchor", "middle");
       amount.setAttribute("alignment-baseline", "middle");
       amount.setAttribute("font-size", "12");
+      amount.classList.add("unselectable");
       amount.innerHTML = "";
       container.appendChild(amount);
 
@@ -360,6 +362,7 @@ const drawDag = () => {
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("alignment-baseline", "middle");
         text.setAttribute("font-size", "12");
+        text.classList.add("unselectable");
         text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") ? recipe.recipe?.name || "Root" : "???";
         manufacturingPopup.appendChild(text);
         // Add a manufacturing button
@@ -380,6 +383,7 @@ const drawDag = () => {
         buttonText.setAttribute("text-anchor", "middle");
         buttonText.setAttribute("alignment-baseline", "middle");
         buttonText.setAttribute("font-size", "12");
+        buttonText.classList.add("unselectable");
         buttonText.innerHTML = "Manufacture";
         manufacturingPopup.appendChild(buttonText);
 
@@ -401,7 +405,10 @@ const drawDag = () => {
         manufactureQuantity = 1;
 
         const inputChangeHandler = () => {
-          const amount = parseInt(inputField.value);
+          let amount = parseInt(inputField.value);
+          if (inputField.value === "") {
+            amount = 1;
+          }
           if (amount > 0) {
             manufactureQuantity = amount;
             manufacturable = redrawEdges();
@@ -435,6 +442,7 @@ const drawDag = () => {
         closeButtonText.setAttribute("text-anchor", "middle");
         closeButtonText.setAttribute("alignment-baseline", "middle");
         closeButtonText.setAttribute("font-size", "12");
+        closeButtonText.classList.add("unselectable");
         closeButtonText.innerHTML = "X";
         manufacturingPopup.appendChild(closeButtonText);
 

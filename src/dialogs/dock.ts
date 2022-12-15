@@ -351,12 +351,12 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     return `Docking error - station ${self.docked} not found`;
   }
   return horizontalCenter([
-    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2>Docked with ${name}</h2>`, undefined, true),
+    domFromRest(`/stationName?id=${station.id}`, (name) => `<h2 class="unselectable">Docked with ${name}</h2>`, undefined, true),
     `${shipViewer()}`,
-    `<div id="credits">${creditsHtml(self.credits)}</div>`,
+    `<div id="credits"  class="unselectable">${creditsHtml(self.credits)}</div>`,
     `<div style="width: 80vw;">
   <div style="width: 45%; float: left;">
-    <h3>Cargo</h3>
+    <h3  class="unselectable">Cargo</h3>
     <div id="cargo">${cargoHtml(self.cargo)}</div>
     <div style="display: flex; justify-content: center; flex-direction: row;">
     <button id="openInventory" style="margin-top: 10px; margin-right: 10px;">Inventory</button>
@@ -364,7 +364,7 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     </div>
   </div>
   <div style="width: 45%; float: right;">
-    <h3>Armaments</h3>
+    <h3  class="unselectable">Armaments</h3>
     <div id="arms">${armsHtml(self.arms)}</div>
   </div>
   <div style="clear: both;"></div>

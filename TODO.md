@@ -25,11 +25,9 @@
 
 ### UI
 
-- Make a bunch of the text unselectable when it shouldn't be selectable
+- Make a bunch of the text unselectable when it shouldn't be selectable (This is somewhat done, I left most tables selectable for now, idk if wanted or not)
 
 ### Misc
-
-- Particle count setting
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

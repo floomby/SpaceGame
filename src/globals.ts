@@ -67,6 +67,18 @@ const getMusicVolumePref = () => {
   return null;
 };
 
+const getParticlePref = () => {
+  const particles = localStorage.getItem("particles");
+  if (particles) {
+    return JSON.parse(particles);
+  }
+  return null;
+};
+
+const setParticlePref = (newCount: number) => {
+  localStorage.setItem("particles", JSON.stringify(newCount));
+};
+
 let keybind = useKeybindings(getKeybindPref() ?? defaultKeyLayout);
 
 const setKeybind = (newKeybind: KeyBindings) => {
@@ -194,4 +206,6 @@ export {
   setTutorialStage,
   hideLoadingText,
   isFirefox,
+  getParticlePref,
+  setParticlePref,
 };

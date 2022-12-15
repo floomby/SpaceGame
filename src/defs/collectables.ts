@@ -12,6 +12,9 @@ type CollectableDef = {
   description: string;
   canBeCollected: (player: Player, knownRecipes: Map<number, Set<string>>) => boolean;
   collectMutator: (player: Player, discoverRecipe: (id: number, what: string) => void) => void;
+  model: string;
+  modelIndex?: number;
+  light: [number, number, number];
 };
 
 const collectableDefs: CollectableDef[] = [];
@@ -56,6 +59,8 @@ const initCollectables = () => {
     collectMutator: (player) => {
       addCargo(player, "Spare Parts", 5);
     },
+    model: "spare_parts",
+    light: [3.0, 2.0, 2.0],
   });
   collectableDefs.push({
     sprite: { x: 320, y: 320, width: 64, height: 64 },
@@ -68,6 +73,8 @@ const initCollectables = () => {
     collectMutator: (player) => {
       player.credits += 100;
     },
+    model: "bounty",
+    light: [0.0, 4.0, 0.0],
   });
   collectableDefs.push({
     sprite: { x: 256, y: 512, width: 64, height: 64 },
@@ -86,6 +93,8 @@ const initCollectables = () => {
         }
       }
     },
+    model: "ammo",
+    light: [2.0, 3.0, 2.0],
   });
 
   collectableDefs.push({
@@ -101,6 +110,8 @@ const initCollectables = () => {
       const def = defs[player.defIndex];
       player.energy = def.energy;
     },
+    model: "energy",
+    light: [4.0, 4.0, 0.0],
   });
 
   collectableDefs.push({
@@ -116,6 +127,8 @@ const initCollectables = () => {
       const def = defs[player.defIndex];
       player.health = Math.min(def.health, player.health + 80);
     },
+    model: "health",
+    light: [2.0, 1.0, 1.0],
   });
 
   const recipeFor = (what: string) => {
@@ -140,7 +153,9 @@ const initCollectables = () => {
       collectMutator: (player, discoverRecipe) => {
         discoverRecipe(player.id, what);
       },
-    };
+      model: "recipe",
+      light: [3.0, 2.5, 2.5],
+    } as CollectableDef;
   };
 
   for (const recipe of recipeMap.keys()) {

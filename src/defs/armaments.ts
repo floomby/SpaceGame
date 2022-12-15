@@ -14,7 +14,7 @@ import {
   TargetKind,
 } from "../game";
 import { findHeadingBetween, l2Norm, l2NormSquared, Position, Rectangle } from "../geometry";
-import { defs, SlotKind, UnitKind } from "./shipsAndStations";
+import { defs, PointLightData, SlotKind, UnitKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
 import { projectileDefs } from "./projectiles";
@@ -60,6 +60,10 @@ type ArmamentDef = {
 type MineDef = {
   explosionEffectIndex: number;
   explosionMutator: (mine: Mine, state: GlobalState) => void;
+  model: string;
+  modelIndex?: number;
+  pointLights?: PointLightData[];
+  deploymentTime: number;
 };
 
 type MissileDef = {
@@ -73,6 +77,9 @@ type MissileDef = {
   deathEffect: number;
   turnRate?: number;
   hitMutator?: (player: Player, state: GlobalState, applyEffect: (effectTrigger: EffectTrigger) => void, missile: Missile) => void;
+  model: string;
+  modelIndex?: number;
+  pointLights?: PointLightData[];
 };
 
 const armDefs: ArmamentDef[] = [];
@@ -220,6 +227,8 @@ const initArmaments = () => {
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
+    model: "javelin",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const javelinIndex = missileDefs.length - 1;
   // Javelin Missile - 7
@@ -270,6 +279,8 @@ const initArmaments = () => {
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
+    model: "heavy_javelin",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const heavyJavelinIndex = missileDefs.length - 1;
   // Heavy Javelin Missile - 8
@@ -321,6 +332,8 @@ const initArmaments = () => {
     lifetime: 600,
     deathEffect: 2,
     turnRate: 0.1,
+    model: "tomahawk",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const tomahawkIndex = missileDefs.length - 1;
   // Tomahawk Missile - 9
@@ -419,6 +432,8 @@ const initArmaments = () => {
     hitMutator: (player, state, applyEffect) => {
       player.disabled = 240;
     },
+    model: "emp",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const empMissileIndex = missileDefs.length - 1;
   // EMP Missile - 9
@@ -474,6 +489,12 @@ const initArmaments = () => {
         players[i].health -= 80;
       }
     },
+    model: "proximity_mine",
+    pointLights: [
+      { position: { x: 0, y: 0, z: 0.5 }, color: [3.0, 0.0, 0.0] },
+      { position: { x: 0, y: 0, z: -0.5 }, color: [3.0, 0.0, 0.0] },
+    ],
+    deploymentTime: 30,
   });
   const proximityMineIndex = mineDefs.length - 1;
   // Proximity Mine - 11
@@ -551,6 +572,7 @@ const initArmaments = () => {
             idx: 1,
           };
           state.projectiles.set(state.projectileId, projectile);
+          applyEffect({ effectIndex: 6, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
           state.projectileId++;
         }
         applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
@@ -644,6 +666,8 @@ const initArmaments = () => {
         players[i].ir += Math.random() * 0.09;
       }
     },
+    model: "impulse",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
   });
   const impulseMissileIndex = missileDefs.length - 1;
   armDefs.push({
@@ -756,9 +780,9 @@ const initArmaments = () => {
           frameTillEXpire: projectileDef.framesToExpire,
           idx: 2,
         };
-        state.projectiles.set(state.projectileId++, projectile);
+        state.projectiles.set(state.projectileId, projectile);
+        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
         state.projectileId++;
-        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
       }
     },
     equipMutator: (player, slotIndex) => {
@@ -801,10 +825,14 @@ const initArmaments = () => {
             idx: 0,
           };
           state.projectiles.set(state.projectileId, projectile);
+          if (i === 0) {
+            applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
+          } else {
+            applyEffect({ effectIndex: 19, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
+          }
           state.projectileId++;
         }
       }
-      applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
     },
     equipMutator: (player, slotIndex) => {
       player.slotData[slotIndex] = { sinceFired: 26 };

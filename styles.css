@@ -1,5 +1,6 @@
 body {
   font-family: Arial, Helvetica, sans-serif;
+  background-color: black;
 }
 
 .center {
@@ -341,4 +342,8 @@ kbd {
 
 .labeledSlider label {
   margin-right: 10px;
+}
+
+.hud-text {
+  z-index: 1;
 }

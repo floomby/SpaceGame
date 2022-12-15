@@ -35,14 +35,15 @@ import {
   peekTag,
   setDialogBackground,
   clearStack,
+  bindPostUpdater,
 } from "./dialog";
 import { defs, initDefs, Faction, armDefs, SlotKind, EmptySlot } from "./defs";
-import { drawEverything, fadeOutCollectable, fadeOutMine, initDrawing, initStars, pushMessage } from "./drawing";
 import { applyEffects, clearEffects } from "./effects";
 import {
   addLoadingText,
   clearInventory,
   currentSector,
+  hideLoadingText,
   initBlankState,
   inventory,
   keybind,
@@ -72,6 +73,9 @@ import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
 import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
+import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutCollectable } from "./3dDrawing";
+import { rasterizeText, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
+import { pushMessage } from "./2dDrawing";
 
 let chats: ChatMessage[] = [];
 
@@ -297,7 +301,9 @@ const loop = () => {
   }
   chats = newChats;
 
-  drawEverything(state, self, target, targetAsteroid, ownId, selectedSecondary, keybind, sixtieths, lastChats);
+  // drawEverything(state, self, target, targetAsteroid, ownId, selectedSecondary, keybind, sixtieths, lastChats);
+
+  drawEverything3(target, targetAsteroid, lastChats, sixtieths);
 
   requestAnimationFrame(loop);
 };
@@ -331,6 +337,17 @@ const targetAtCoords = (coords: Position) => {
   }
 };
 
+const initAsteroid = (asteroid: Asteroid) => {
+  asteroid.pitch = Math.random() * Math.PI * 2;
+  asteroid.roll = Math.random() * Math.PI * 2;
+  asteroid.rotationRate = Math.random() * 0.01 - 0.005;
+}
+
+const initMine = (mine: Mine) => {
+  mine.heading = Math.random() * Math.PI * 2;
+  mine.pitch = Math.random();
+};
+
 const run = () => {
   addLoadingText("Initializing client game state");
   initBlankState();
@@ -351,15 +368,17 @@ const run = () => {
     }) => {
       setOwnId(data.id);
       setCurrentSector(data.sector);
-      initStars(data.sector);
+      // initStars(data.sector);
       initSettings();
       initCargo();
       clearDialogStack();
       clearDialog();
       hideDialog();
+      hideLoadingText();
       initInputHandlers(targetAtCoords);
       setFaction(data.faction);
       for (const asteroid of data.asteroids) {
+        initAsteroid(asteroid);
         state.asteroids.set(asteroid.id, asteroid);
       }
       for (const collectable of data.collectables) {
@@ -367,7 +386,7 @@ const run = () => {
         state.collectables.set(collectable.id, collectable);
       }
       for (const mine of data.mines) {
-        mine.phase = Math.random() * Math.PI * 2;
+        initMine(mine);
         state.mines.set(mine.id, mine);
       }
       for (const sectorInfo of data.sectorInfos) {
@@ -410,7 +429,6 @@ const run = () => {
   bindAction("state", (data: any) => {
     state.players.clear();
     state.projectiles.clear();
-    state.missiles.clear();
 
     const players = data.players as Player[];
 
@@ -418,14 +436,40 @@ const run = () => {
       state.players.set(player.id, player);
     }
     for (const asteroid of data.asteroids as Asteroid[]) {
+      const existing = state.asteroids.get(asteroid.id);
+      if (existing) {
+        asteroid.pitch = existing.pitch;
+        asteroid.roll = existing.roll;
+        asteroid.rotationRate = existing.rotationRate;
+      } else {
+        initAsteroid(asteroid);
+      }
       state.asteroids.set(asteroid.id, asteroid);
     }
+    for (const missile of state.missiles.values()) {
+      missile.stale = true;
+    }
     for (const missile of data.missiles as Missile[]) {
+      const existing = state.missiles.get(missile.id);
+      if (existing) {
+        missile.roll = existing.roll;
+      }
       state.missiles.set(missile.id, missile);
     }
+    for (const [id, missile] of state.missiles) {
+      if (missile.stale) {
+        state.missiles.delete(id);
+      }
+    }
     for (const mine of data.mines as Mine[]) {
-      mine.phase = Math.random() * Math.PI * 2;
-      state.mines.set(mine.id, mine);
+      const existing = state.mines.get(mine.id);
+      if (existing) {
+        mine.heading = existing.heading;
+        mine.pitch = existing.pitch;
+      } else {
+        initMine(mine);
+        state.mines.set(mine.id, mine);
+      }
     }
     for (const projectile of data.projectiles as Ballistic[]) {
       state.projectiles.set(projectile.id, projectile);
@@ -433,6 +477,9 @@ const run = () => {
     const self = state.players.get(ownId);
     if (self) {
       setLastSelf(self);
+      if (!weaponTextInitialized) {
+        rasterizeWeaponText();
+      }
       // These redundancies are stupid (minimal impact on performance though) and I should fix how this is done
       updateDom("cargo", self.cargo);
       updateDom("dumpCargo", self.cargo);
@@ -464,6 +511,7 @@ const run = () => {
     if (data.to !== currentSector) {
       state.asteroids.clear();
       for (const asteroid of data.asteroids) {
+        initAsteroid(asteroid);
         state.asteroids.set(asteroid.id, asteroid);
       }
       state.collectables.clear();
@@ -473,10 +521,10 @@ const run = () => {
       }
       state.mines.clear();
       for (const mine of data.mines) {
-        mine.phase = Math.random() * Math.PI * 2;
+        initMine(mine);
         state.mines.set(mine.id, mine);
       }
-      initStars(data.to);
+      // initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);
     }
@@ -493,6 +541,7 @@ const run = () => {
       id: data.id,
       message: data.message,
       showUntil: Date.now() + 8000,
+      rasterizationData: rasterizeText(data.message, "18px Arial", [1.0, 1.0, 1.0, 1.0]),
     });
   });
 
@@ -547,6 +596,8 @@ const run = () => {
     setTutorialStage(stage);
   });
 
+  bindPostUpdater("arms", rasterizeWeaponText);
+
   addLoadingText("Launching...");
   displayLoginDialog();
 
@@ -559,7 +610,11 @@ const toRun = () => {
   addLoadingText("Initializing game data");
   initDefs();
   addLoadingText("Initializing drawing subsystem");
-  initDrawing(() => {
+  // initDrawing(() => {
+  //   connect(run);
+  // });
+
+  init3dDrawing(() => {
     connect(run);
   });
 

@@ -1,3 +1,4 @@
+import { rasterizePrompts } from "./2dDrawing";
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
@@ -22,9 +23,21 @@ const scourgeColor = "rgba(60, 255, 5, 0.431)";
 const scourgeColorDark = "rgba(60, 255, 5, 0.8)";
 const scourgeColorOpaque = "rgba(60, 255, 5, 1)";
 
+const rgbaToFloatRGB = (rgba: string) => {
+  let stripped = rgba.replace("rgba(", "").replace(")", "");
+  let [r, g, b] = stripped.split(",").map((x) => parseFloat(x));
+  return new Float32Array([r / 255, g / 255, b / 255]);
+};
+
 const teamColorsLight = [allianceColor, confederationColor, rogueColor, scourgeColor];
 const teamColorsDark = [allianceColorDark, confederationColorDark, rogueColorDark, scourgeColorDark];
 const teamColorsOpaque = [allianceColorOpaque, confederationColorOpaque, rogueColorOpaque, scourgeColorOpaque];
+const teamColorsFloat = [
+  [0 / 255, 255 / 255, 255 / 255],
+  [255 / 255, 0 / 255, 0 / 255],
+  [255 / 255, 140 / 255, 0 / 255],
+  [60 / 255, 255 / 255, 5 / 255,]
+];
 
 const setFaction = (newFaction: Faction) => {
   faction = newFaction;
@@ -65,6 +78,7 @@ const setKeybind = (newKeybind: KeyBindings) => {
     localStorage.setItem("layout", JSON.stringify(KeyLayouts.Azerty));
   }
   keybind = newKeybind;
+  rasterizePrompts();
 };
 
 // The id that the players ship is
@@ -120,6 +134,10 @@ const addLoadingText = (text: string) => {
   document.getElementById("loadingText")!.innerHTML += text + "<br/>";
 }
 
+const hideLoadingText = () => {
+  document.getElementById("loadingText")!.style.display = "none";
+}
+
 let tutorialStage: TutorialStage = TutorialStage.Done;
 
 const setTutorialStage = (newTutorialStage: TutorialStage) => {
@@ -150,6 +168,7 @@ export {
   scourgeColor,
   scourgeColorDark,
   scourgeColorOpaque,
+  teamColorsFloat,
   keybind,
   setKeybind,
   ownId,
@@ -171,4 +190,5 @@ export {
   addLoadingText,
   tutorialStage,
   setTutorialStage,
+  hideLoadingText,
 };

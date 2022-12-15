@@ -6,6 +6,8 @@ type AsteroidDef = {
   radius: number;
   mineral: string;
   difficulty: number;
+  model: string;
+  modelIndex?: number;
 };
 
 const asteroidDefs: AsteroidDef[] = [];
@@ -18,6 +20,7 @@ const initAsteroids = () => {
     radius: 24,
     mineral: "Prifecite",
     difficulty: 1,
+    model: "prifecite",
   });
   asteroidDefs.push({
     resources: 100,
@@ -25,6 +28,7 @@ const initAsteroids = () => {
     radius: 22,
     mineral: "Russanite",
     difficulty: 3,
+    model: "russanite",
   });
   asteroidDefs.push({
     resources: 1000,
@@ -32,6 +36,7 @@ const initAsteroids = () => {
     radius: 19,
     mineral: "Hemacite",
     difficulty: 2,
+    model: "hemacite",
   });
   asteroidDefs.push({
     resources: 1000,
@@ -39,6 +44,7 @@ const initAsteroids = () => {
     radius: 19,
     mineral: "Aziracite",
     difficulty: 2,
+    model: "aziracite",
   });
 
   for (let i = 0; i < asteroidDefs.length; i++) {

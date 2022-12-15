@@ -7,23 +7,29 @@
 - Armament purchase options for stations??
 - Killed/killed by messages??
 
+
 ### Server stuff
 
 - Anti chat spam needed
-- Collision and redo docking and repairing radius **
 - Delayed damage for beam weapons *
 
-### Hud Checklist
+### Hud
 
 - Fix text to not be blit onto the screen in an way that overwrites the pixels of the other texts *
 
-### World Checklist
+### World
 
-### Effects Checklist
+### Effects
 
 - Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *
 
-### UI Checklist
+### UI
+
+- Make a bunch of the text unselectable when it shouldn't be selectable
+
+### Misc
+
+- Particle count setting
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

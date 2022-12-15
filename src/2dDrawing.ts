@@ -275,7 +275,8 @@ const appendCanvasBar = (
 
 const appendBottomBars = () => {
   const def = defs[lastSelf.defIndex];
-  const totalCargo = def.cargoCapacity - availableCargoCapacity(lastSelf);
+  let totalCargo = def.cargoCapacity - availableCargoCapacity(lastSelf);
+  totalCargo = Math.min(def.cargoCapacity, totalCargo);
   appendCanvasBar(
     { x: 10, y: canvas.height - 20, width: canvas.width / 2 - 20, height: 10 },
     totalCargo / def.cargoCapacity,

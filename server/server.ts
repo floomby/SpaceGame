@@ -31,6 +31,7 @@ import {
   CloakedState,
   TutorialStage,
   mapSize,
+  applyUndockingOffset,
 } from "../src/game";
 import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, clientUid } from "../src/defs";
 import { appendFile } from "fs";
@@ -473,6 +474,7 @@ wss.on("connection", (ws) => {
           const player = state.players.get(client.id);
           if (player) {
             player.docked = undefined;
+            applyUndockingOffset(player);
             state.players.set(client.id, player);
 
             if (!client.inTutorial) {

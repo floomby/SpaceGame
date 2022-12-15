@@ -1,5 +1,5 @@
 import { drawEffects, initEffects } from "./effects";
-import { addLoadingText, lastSelf, state, teamColorsFloat } from "./globals";
+import { addLoadingText, isFirefox, lastSelf, state, teamColorsFloat } from "./globals";
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { asteroidDefs, collectableDefs, defs, mineDefs, missileDefs } from "./defs";
@@ -146,7 +146,7 @@ let backgroundBuffer: WebGLBuffer;
 
 // Rendering constants stuff
 const pointLightCount = 10;
-const gamePlaneZ = -80.0;
+const gamePlaneZ = -120.0;
 
 const init3dDrawing = (callback: () => void) => {
   initDockingMessages();
@@ -515,18 +515,6 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
   }
 
   if (player.inoperable) {
-    // drawBar({ x: -sprite.width * 0.4, y: -27 }, sprite.width * 0.8, 12, allianceColorOpaque, "#333333DD", player.repairs[0] / def.repairsRequired);
-    // drawBar(
-    //   { x: -sprite.width * 0.4, y: -13 },
-    //   sprite.width * 0.8,
-    //   12,
-    //   confederationColorOpaque,
-    //   "#333333DD",
-    //   player.repairs[1] / def.repairsRequired
-    // );
-    // drawBar({ x: -sprite.width * 0.4, y: 1 }, sprite.width * 0.8, 12, rogueColorOpaque, "#333333DD", player.repairs[2] / def.repairsRequired);
-    // drawBar({ x: -sprite.width * 0.4, y: 15 }, sprite.width * 0.8, 12, scourgeColorOpaque, "#333333DD", player.repairs[3] / def.repairsRequired);
-
     gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.RepairBar);
     for (let i = 0; i < 4; i++) {
       const repairAmount = player.repairs[i] / def.repairsRequired;
@@ -1330,7 +1318,6 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
 };
 
 const setLineUniforms = () => {
-  // Can move since all the lines will be drawn at once
   const viewMatrix = mat4.create();
   mat4.scale(viewMatrix, viewMatrix, [1 / 10, -1 / 10, 1]);
   mat4.translate(viewMatrix, viewMatrix, [-lastSelf.position.x, -lastSelf.position.y, gamePlaneZ]);
@@ -1464,6 +1451,23 @@ const doPreviewRendering = (previewRequest: PreviewRequest) => {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   blitShipPreview(previewRequest.canvasId, new Uint8ClampedArray(pixelData));
+};
+
+const fixFirefoxJankyness = () => {
+  // Firefox appears to have a problem where it will not do a drawArrays call if there is not a buffer with an active attribute
+  {
+    const model = models[0];
+    {
+      const numComponents = 3;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+    }
+  }
 };
 
 // Main draw function (some game things appear to be updated here, but it is just cosmetic updates and has nothing to do with game logic)
@@ -1614,7 +1618,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
       drawAsteroid(asteroid, lightSources, asteroid.id === targetAsteroid?.id);
     }
   }
-
+    
   for (const collectable of state.collectables.values()) {
     if (isRemotelyOnscreen(collectable.position)) {
       drawCollectable(collectable, lightSources);
@@ -1639,12 +1643,11 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     }
   }
 
-  drawWeaponText();
-
   // TODO Need to use bitmap with source atop
   drawChats(chats.values());
-
+  
   if (!lastSelf.docked) {
+    drawWeaponText();
     // Likewise for all these functions we need to switch to a bitmap with source atop
     const arrows = computeArrows(target, targetAsteroid);
     drawArrows(arrows);
@@ -1655,18 +1658,21 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   drawParticles(sixtieths);
   gl.useProgram(programInfo.program);
   gl.uniform1f(programInfo.uniformLocations.phase, phase);
+
+  if (isFirefox) {
+    fixFirefoxJankyness();
+  }
   setLineUniforms();
   // Lazy way to deal with point lights is to process them one frame later
   lightSources.length = 0;
   drawEffects(sixtieths);
   drawSectorArrowAndLines();
-  draw2d(programInfo);
-
-  // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
-  gl.clear(gl.DEPTH_BUFFER_BIT);
-
+  
   if (!lastSelf.docked) {
+    draw2d(programInfo);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
     if (target) {
+      // DEPTH CLEARED HERE AND ALSO AGAIN IN THE TARGET DRAWING FUNCTIONS!!!
       drawTarget(target, targetDisplayRect);
     } else if (targetAsteroid) {
       drawTargetAsteroid(targetAsteroid, targetDisplayRect);

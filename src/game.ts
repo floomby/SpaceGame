@@ -212,9 +212,9 @@ const canDock = (player: Player | undefined, station: Player | undefined, strict
   }
   const distance = l2Norm(player.position, station.position);
   if (strict) {
-    return distance < stationDef.radius;
-  } else {
     return distance < stationDef.radius * 2;
+  } else {
+    return distance < stationDef.radius * 3;
   }
 };
 
@@ -229,23 +229,15 @@ const canRepair = (player: Player | undefined, station: Player | undefined, stri
   }
   const distance = l2Norm(player.position, station.position);
   if (strict) {
-    return distance < stationDef.radius && cargoContains(player, "Spare Parts");
-    // return distance < stationDef.radius;
-  } else {
-    // return distance < stationDef.radius * 2;
     return distance < stationDef.radius * 2 && cargoContains(player, "Spare Parts");
+  } else {
+    return distance < stationDef.radius * 3 && cargoContains(player, "Spare Parts");
   }
 };
 
 type Ballistic = Entity & { damage: number; team: number; parent: number; frameTillEXpire: number; idx: number };
 
 type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; pitch?: number; modelMatrix?: any };
-
-// const clientMineDeploymentUpdater = (mines: IterableIterator<Mine>, sixtieths: number) => {
-//   for (const mine of mines) {
-//     mine.deploying = Math.max(0, mine.deploying - sixtieths);
-//   }
-// };
 
 type Collectable = Entity & { index: number; framesLeft: number; phase?: number, scale?: number };
 
@@ -531,6 +523,32 @@ const dampenImpulse = (player: Player) => {
   }
 };
 
+const applyUndockingOffset = (player: Player) => {
+  const x = Math.cos(player.heading) * 150;
+  const y = Math.sin(player.heading) * 150;
+  player.position.x += x;
+  player.position.y += y;
+};
+
+const applyCollisionForce = (collider: Player, collidee: Circle, collideeMass = effectiveInfinity) => {
+  const def = defs[collider.defIndex];
+  const massRatio = Math.min(collideeMass, 100) / Math.min(def.mass, 100);
+  const overlap = collider.radius + collidee.radius - l2Norm(collider.position, collidee.position);
+  const heading = findHeadingBetween(collider.position, collidee.position);
+  collider.iv.x -= overlap * Math.cos(heading) * massRatio * 0.04;
+  collider.iv.y -= overlap * Math.sin(heading) * massRatio * 0.04;
+  // calculate the pitch and roll impulse
+  const headingDiff = canonicalizeAngle(heading - collider.heading);
+  const pitch = Math.sin(headingDiff) * overlap * massRatio * 0.3;
+  const roll = Math.cos(headingDiff) * overlap * massRatio * 0.3;
+  if (collider.p !== undefined) {
+    collider.ip += pitch;
+  }
+  if (collider.rl !== undefined) {
+    collider.irl += roll;
+  }
+};
+
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
 type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: Mine[] };
 
@@ -742,6 +760,28 @@ const update = (
       player.position.x += player.iv.x;
       player.position.y += player.iv.y;
       dampenImpulse(player);
+
+      if (!player.docked) {
+        // Do collision for other players
+        for (const otherPlayer of state.players.values()) {
+          if (otherPlayer.id === id) {
+            continue;
+          }
+          if (otherPlayer.docked) {
+            continue;
+          }
+          if (circlesIntersect(player, otherPlayer)) {
+            const otherDef = defs[otherPlayer.defIndex];
+            applyCollisionForce(player, otherPlayer, otherDef.mass);
+          }
+        }
+        // Do collision for asteroids
+        for (const asteroid of state.asteroids.values()) {
+          if (circlesIntersect(player, asteroid)) {
+            applyCollisionForce(player, asteroid);
+          }
+        }
+      }
 
       let energyGain = 0;
 
@@ -1508,4 +1548,5 @@ export {
   sectorDelta,
   mapSize,
   randomNearbyPointInSector,
+  applyUndockingOffset,
 };

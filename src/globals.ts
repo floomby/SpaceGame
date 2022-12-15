@@ -150,6 +150,8 @@ const setTutorialStage = (newTutorialStage: TutorialStage) => {
   }
 };
 
+const isFirefox = navigator.userAgent.toLowerCase().indexOf("firefox") > -1;
+
 export {
   faction,
   setFaction,
@@ -191,4 +193,5 @@ export {
   tutorialStage,
   setTutorialStage,
   hideLoadingText,
+  isFirefox,
 };

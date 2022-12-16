@@ -305,14 +305,21 @@ const appendBottomBars = () => {
 };
 
 const nameDataFont = "24px Arial";
-const nameDataCache = new Map<string, ImageData>();
+const nameDataCache = new Map<string, ImageBitmap>();
 const classDataFont = "20px Arial";
-const classDataCache = new Map<string, ImageData>();
+const classDataCache = new Map<string, ImageBitmap>();
 
 const blitImageDataCentered = (image: ImageData, x: number, y: number) => {
   x -= image.width / 2;
   y -= image.height / 2;
   ctx.putImageData(image, x, y, 0, 0, image.width, image.width);
+};
+
+const putBitmapCenteredUnderneath = (bitmap: ImageBitmap, x: number, y: number) => {
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-over";
+  ctx.drawImage(bitmap, x - bitmap.width / 2, y - bitmap.height / 2);
+  ctx.restore();
 };
 
 const blitImageDataTopLeft = (image: ImageData, x: number, y: number) => {
@@ -333,6 +340,25 @@ const blitImageDataToOverlayCenteredFromGame = (image: ImageData, gameCoords: Po
   }
 
   ctx.putImageData(image, x, y, 0, 0, image.width, image.height);
+};
+
+const putBitmapCenteredUnderneathFromGame = (bitmap: ImageBitmap, gameCoords: Position, offset: Position3) => {
+  const pos = vec4.create();
+  vec4.set(pos, mapGameXToWorld(gameCoords.x) + offset.x, -mapGameYToWorld(gameCoords.y) + offset.y, gamePlaneZ + offset.z, 1);
+  vec4.transformMat4(pos, pos, projectionMatrix);
+
+  const x = ((pos[0] / pos[3] + 1) * canvas.width) / 2 - bitmap.width / 2;
+  const y = ((pos[1] / pos[3] + 1) * canvas.height) / 2 - bitmap.height / 2;
+
+  // Check if the image is on screen
+  if (x > canvas.width || y > canvas.height || x + bitmap.width < 0 || y + bitmap.height < 0) {
+    return;
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-over";
+  ctx.drawImage(bitmap, x, y);
+  ctx.restore();
 };
 
 const draw = (programInfo: any) => {
@@ -417,6 +443,31 @@ const rasterizeTextMultiline = (text: string[], font: string, color: [number, nu
   );
 };
 
+const rasterizeTextMultilineBitmap = (text: string[], font: string, color: [number, number, number, number], filter = "none", padding = 0) => {
+  if (rasterizerContext === null) {
+    return;
+  }
+  rasterizerContext.clearRect(0, 0, rasterizerContext.canvas.width, rasterizerContext.canvas.height);
+  rasterizerContext.font = font;
+  rasterizerContext.fillStyle = `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`;
+  rasterizerContext.filter = filter;
+  let height = padding;
+  let maxLineWidth = 0;
+  for (let i = 0; i < text.length; i++) {
+    rasterizerContext.fillText(text[i], padding, height);
+    let metric = rasterizerContext.measureText(text[i]);
+    height += metric.actualBoundingBoxAscent + 2 * metric.actualBoundingBoxDescent;
+    maxLineWidth = Math.max(maxLineWidth, metric.width);
+  }
+  return createImageBitmap(
+    rasterizerCanvas,
+    0,
+    0,
+    Math.min(maxLineWidth + padding * 2, rasterizerCanvas.width),
+    Math.min(height + padding * 2, rasterizerCanvas.height)
+  );
+};
+
 const rasterizeTextBitmap = (text: string, font: string, color: [number, number, number, number], filter = "none", padding = 0) => {
   if (rasterizerContext === null) {
     return;
@@ -447,8 +498,8 @@ const drawChats = (chats: IterableIterator<ChatMessage>) => {
   }
 };
 
-const drawChat = (player: Player, data: ImageData) => {
-  blitImageDataToOverlayCenteredFromGame(data, player.position, { x: 0, y: -2, z: 2 });
+const drawChat = (player: Player, data: ImageBitmap) => {
+  putBitmapCenteredUnderneathFromGame(data, player.position, { x: 0, y: -2, z: 2 });
 };
 
 type ArrowData = {
@@ -767,7 +818,7 @@ const promptTexts = {
   repair: (ImageData = null),
 };
 
-const rasterizePrompts = () => {
+const rasterizePrompts = async () => {
   promptTexts.docking = rasterizeTextMultiline([`Press ${keybind.dock}`, "to dock."], "22px Arial", [1.0, 1.0, 1.0, 1.0]);
   promptTexts.repair = rasterizeTextMultiline([`Press ${keybind.dock}`, "to repair."], "22px Arial", [1.0, 1.0, 1.0, 1.0]);
 };
@@ -838,6 +889,11 @@ const drawWeaponText = () => {
   }
 };
 
+const insertPromise = async <T, U>(promise: Promise<U>, map: Map<T, U>, key: T) => {
+  const data = await promise;
+  map.set(key, data);
+};
+
 export {
   ArrowData,
   draw as draw2d,
@@ -850,6 +906,7 @@ export {
   blitImageDataToOverlayCenteredFromGame,
   initRasterizer,
   rasterizeText,
+  rasterizeTextBitmap,
   drawChats,
   blitImageDataCentered,
   nameDataCache,
@@ -869,4 +926,7 @@ export {
   rasterizeWeaponText,
   drawWeaponText,
   weaponTextInitialized,
+  putBitmapCenteredUnderneath,
+  insertPromise,
+  putBitmapCenteredUnderneathFromGame,
 };

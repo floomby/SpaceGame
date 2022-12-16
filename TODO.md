@@ -9,11 +9,9 @@
 
 ### Server stuff
 
-- Anti chat spam needed
+- Anti chat spam (low priority)
 
 ### Hud
-
-- Fix text to not be blit onto the screen in an way that overwrites the pixels of the other texts *
 
 ### World
 

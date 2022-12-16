@@ -30,6 +30,10 @@ import {
   drawPrompts,
   rasterizePrompts,
   drawWeaponText,
+  rasterizeTextBitmap,
+  putBitmapCenteredUnderneath,
+  insertPromise,
+  putBitmapCenteredUnderneathFromGame,
 } from "./2dDrawing";
 import { loadBackground } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
@@ -397,11 +401,12 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
     const name = getNameOfPlayer(player);
     if (name !== undefined) {
       let nameData = nameDataCache.get(name);
-      if (!nameData) {
-        nameData = rasterizeText(name, nameDataFont, [1.0, 1.0, 1.0, 0.8]);
-        nameDataCache.set(name, nameData);
+      if (nameData === undefined) {
+        nameDataCache.set(name, null);
+        insertPromise(rasterizeTextBitmap(name, nameDataFont, [1.0, 1.0, 1.0, 0.8]), nameDataCache, name);
+      } else if (nameData !== null) {
+        putBitmapCenteredUnderneathFromGame(nameData, player.position, { x: 0, y: -def.radius / 10 - 1, z: 5 });
       }
-      blitImageDataToOverlayCenteredFromGame(nameData, player.position, { x: 0, y: -def.radius / 10 - 1, z: 5 });
     }
   }
 
@@ -559,22 +564,24 @@ const drawTarget = (target: Player, where: Rectangle) => {
   const centerX = where.x + where.width / 2;
 
   let classData = classDataCache.get(def.name);
-  if (!classData) {
-    classData = rasterizeText(def.name, classDataFont, [1.0, 1.0, 1.0, 0.9]);
-    classDataCache.set(def.name, classData);
+  if (classData === undefined) {
+    classDataCache.set(def.name, null);
+    insertPromise(rasterizeTextBitmap(def.name, classDataFont, [1.0, 1.0, 1.0, 0.9]), classDataCache, def.name);
+  } else if (classData) {
+    const yPosition = where.y + where.height + 10 + classData.height / 2;
+    putBitmapCenteredUnderneath(classData, centerX, yPosition);
   }
-  const yPosition = where.y + where.height + 10 + classData.height / 2;
-  blitImageDataCentered(classData, centerX, yPosition);
 
   const name = getNameOfPlayer(target);
   if (name) {
     let nameData = nameDataCache.get(name);
-    if (!nameData) {
-      nameData = rasterizeText(name, nameDataFont, [1.0, 1.0, 1.0, 0.9]);
-      nameDataCache.set(name, nameData);
+    if (nameData === undefined) {
+      nameDataCache.set(name, null);
+      insertPromise(rasterizeTextBitmap(name, nameDataFont, [1.0, 1.0, 1.0, 0.9]), nameDataCache, name);
+    } else if (nameData) {
+      const yPosition = where.y + where.height + 10 + nameData.height / 2 + (classData?.height ?? 0);
+      putBitmapCenteredUnderneath(nameData, centerX, yPosition);
     }
-    const yPosition = where.y + where.height + 10 + nameData.height / 2 + classData.height;
-    blitImageDataCentered(nameData, centerX, yPosition);
   }
 
   const targetDisplayProjectionMatrix = mat4.create();
@@ -942,12 +949,13 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
 
   // Just call the mineral the "class" and be done with it
   let classData = classDataCache.get(def.mineral);
-  if (!classData) {
-    classData = rasterizeText(def.mineral, classDataFont, [1.0, 1.0, 1.0, 0.9]);
-    classDataCache.set(def.mineral, classData);
+  if (classData === undefined) {
+    classDataCache.set(def.mineral, null);
+    insertPromise(rasterizeTextBitmap(def.mineral, classDataFont, [1.0, 1.0, 1.0, 0.9]), classDataCache, def.mineral);
+  } else if (classData) {
+    const yPosition = where.y + where.height + 10 + classData.height / 2;
+    putBitmapCenteredUnderneath(classData, centerX, yPosition);
   }
-  const yPosition = where.y + where.height + 10 + classData.height / 2;
-  blitImageDataCentered(classData, centerX, yPosition);
 
   const targetDisplayProjectionMatrix = mat4.create();
   mat4.ortho(targetDisplayProjectionMatrix, -def.radius / 7, def.radius / 7, -def.radius / 7, def.radius / 7, -10, 10);
@@ -1508,6 +1516,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     if (target || targetAsteroid) {
       appendCanvasRect(targetDisplayRect, -1, [0.3, 0.3, 0.3, 0.5]);
     }
+    drawPrompts();
   }
 
   // Compute all point lights in the scene (and handle some other updates to drawing data)
@@ -1620,7 +1629,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
       drawAsteroid(asteroid, lightSources, asteroid.id === targetAsteroid?.id);
     }
   }
-    
+
   for (const collectable of state.collectables.values()) {
     if (isRemotelyOnscreen(collectable.position)) {
       drawCollectable(collectable, lightSources);
@@ -1647,14 +1656,13 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   // TODO Need to use bitmap with source atop
   drawChats(chats.values());
-  
+
   if (!lastSelf.docked) {
     drawWeaponText();
     // Likewise for all these functions we need to switch to a bitmap with source atop
     const arrows = computeArrows(target, targetAsteroid);
     drawArrows(arrows);
     drawMessages(sixtieths);
-    drawPrompts();
   }
 
   drawParticles(sixtieths);
@@ -1669,7 +1677,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   lightSources.length = 0;
   drawEffects(sixtieths);
   drawSectorArrowAndLines();
-  
+
   if (!lastSelf.docked) {
     draw2d(programInfo);
     gl.clear(gl.DEPTH_BUFFER_BIT);

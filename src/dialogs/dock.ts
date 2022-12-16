@@ -175,6 +175,10 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   </colgroup>`;
   html += '<tr><th>Armament</th><th></th><th style="text-align: left;">Price</th><th></th></tr>';
   for (const armDef of armDefs) {
+    if (armDef.tier === 2 && !inventory.hasOwnProperty(armDef.name)) {
+      index++;
+      continue;
+    }
     if (armDef.kind === kind) {
       html += `<tr>
   <td>${armDef.name}</td>
@@ -185,7 +189,8 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   </td>
   <td style="text-align: right;"><button id="equip${index++}" ${disableTooExpensive(
         state.players.get(ownId),
-        armDef.cost
+        armDef.cost,
+        armDef.tier === 2
       )}>Purchase</button></td></tr>`;
     }
   }

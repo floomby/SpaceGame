@@ -1,6 +1,9 @@
 import { Player } from "../game";
 
-const disableTooExpensive = (player: Player | undefined, cost: number) => {
+const disableTooExpensive = (player: Player | undefined, cost: number, forceDisable = false) => {
+  if (forceDisable) {
+    return "disabled";
+  }
   if (player) {
     if (player.credits < cost) {
       return "disabled";

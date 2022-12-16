@@ -853,7 +853,6 @@ class TutorialRoamingVenture implements NPC {
 
   constructor(id: number, where: Position) {
     this.lootTable = new LootTable();
-    this.lootTable.addEntry("Recipe - Boson Incabulator", 1);
 
     const { def, index } = defMap.get("Venture");
 

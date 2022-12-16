@@ -337,7 +337,7 @@ enum ExplosionKind {
 
 const pushExplosionEmitter = (from: EffectAnchor, size = 1, explosionKind = ExplosionKind.Normal) => {
   if (from.kind === EffectAnchorKind.Absolute) {
-    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0.96, 30];
+    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0.96, 15];
     let velocity = [0, 0, size, explosionKind];
     if (from.heading !== undefined) {
       const x = (Math.cos(from.heading) * from.speed) / 10;

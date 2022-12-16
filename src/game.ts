@@ -219,9 +219,9 @@ const canDock = (player: Player | undefined, station: Player | undefined, strict
   }
   const distance = l2Norm(player.position, station.position);
   if (strict) {
-    return distance < stationDef.radius * 2;
-  } else {
     return distance < stationDef.radius * 3;
+  } else {
+    return distance < stationDef.radius * 4;
   }
 };
 

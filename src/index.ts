@@ -74,7 +74,7 @@ import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
 import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutCollectable } from "./3dDrawing";
-import { rasterizeText, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
+import { rasterizeText, rasterizeTextBitmap, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 import { setCurrentSectorText } from "./dialogs/map";
 
@@ -538,12 +538,12 @@ const run = () => {
     targetAsteroidId = 0;
   });
 
-  bindAction("chat", (data: { id: number; message: string }) => {
+  bindAction("chat", async (data: { id: number; message: string }) => {
     chats.push({
       id: data.id,
       message: data.message,
       showUntil: Date.now() + 8000,
-      rasterizationData: rasterizeText(data.message, "18px Arial", [1.0, 1.0, 1.0, 1.0]),
+      rasterizationData: await rasterizeTextBitmap(data.message, "18px Arial", [1.0, 1.0, 1.0, 1.0]),
     });
   });
 

@@ -1342,6 +1342,10 @@ const equip = (player: Player, slotIndex: number, what: string | number, noCost?
     console.log("Warning: player armaments not initialized correctly");
     return player;
   }
+  if (!noCost && armDef.tier === 2) {
+    console.log("Warning: cannot purchase tier 2 armaments");
+    return player;
+  }
 
   if ((player.credits !== undefined && armDef.cost <= player.credits) || noCost) {
     const npc = player.npc;

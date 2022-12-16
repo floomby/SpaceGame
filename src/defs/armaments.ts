@@ -54,6 +54,7 @@ type ArmamentDef = {
   equipMutator?: (player: Player, slotIndex: number) => void;
   // I will change the return type as needed, but right now the only thing that we need is energy gained
   frameMutator?: (player: Player, slotIndex: number, state: GlobalState, flashServerMessage: (id: number, message: string) => void) => void | number;
+  tier: number,
 };
 
 // Idk if this needs a more efficient implementation or not
@@ -99,6 +100,7 @@ const initArmaments = () => {
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
     cost: 0,
+    tier: 1,
   });
   // Empty utility slot - 1
   armDefs.push({
@@ -108,6 +110,7 @@ const initArmaments = () => {
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
     cost: 0,
+    tier: 1,
   });
   // Empty mine slot - 2
   armDefs.push({
@@ -117,6 +120,7 @@ const initArmaments = () => {
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
     cost: 0,
+    tier: 1,
   });
   // Empty large slot - 3
   armDefs.push({
@@ -126,6 +130,7 @@ const initArmaments = () => {
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
     cost: 0,
+    tier: 1,
   });
   // Empty mining slot - 4
   armDefs.push({
@@ -135,6 +140,7 @@ const initArmaments = () => {
     usage: ArmUsage.Empty,
     targeted: TargetedKind.Empty,
     cost: 0,
+    tier: 1,
   });
   // Basic Mining Laser - 5
   armDefs.push({
@@ -177,6 +183,7 @@ const initArmaments = () => {
       }
     },
     cost: 0,
+    tier: 1,
   });
   // Laser Beam - 6
   armDefs.push({
@@ -220,6 +227,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 100,
+    tier: 1,
   });
 
   missileDefs.push({
@@ -272,6 +280,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 100,
+    tier: 1,
   });
 
   missileDefs.push({
@@ -324,6 +333,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 800,
+    tier: 2,
   });
 
   missileDefs.push({
@@ -380,6 +390,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 200,
+    tier: 1,
   });
   // Advanced Mining Laser - 10
   armDefs.push({
@@ -421,6 +432,7 @@ const initArmaments = () => {
       }
     },
     cost: 250,
+    tier: 1,
   });
 
   missileDefs.push({
@@ -480,6 +492,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 1200,
+    tier: 1,
   });
 
   mineDefs.push({
@@ -539,6 +552,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 200,
+    tier: 1,
   });
 
   // Plasma Cannon - 12
@@ -589,6 +603,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 1500,
+    tier: 1,
   });
 
   // Cloaking Generator - 13
@@ -641,6 +656,7 @@ const initArmaments = () => {
       slotData.active = !!player.cloak;
     },
     cost: 2000,
+    tier: 1,
   });
 
   // Impulse Missile - 14
@@ -713,6 +729,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 300,
+    tier: 1,
   });
 
   // Hull Regenerator - 15
@@ -743,6 +760,7 @@ const initArmaments = () => {
       }
     },
     cost: 500,
+    tier: 1,
   });
 
   // Disruptor - 16
@@ -796,6 +814,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 1500,
+    tier: 1,
   });
 
   // Shotgun - 17
@@ -845,6 +864,7 @@ const initArmaments = () => {
       slotData.sinceFired++;
     },
     cost: 1300,
+    tier: 1,
   });
 
   // Tractor Beam - 18
@@ -897,6 +917,7 @@ const initArmaments = () => {
       }
     },
     cost: 1000,
+    tier: 1,
   });
 
   // Energy Cell - 19
@@ -933,6 +954,7 @@ const initArmaments = () => {
       player.slotData[slotIndex] = { ammo: 3, active: 0 };
     },
     cost: 400,
+    tier: 1,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

@@ -25,6 +25,9 @@
 
 ### Misc
 
+- Fix the recipes
+- Fix how dark the tomahawk and emp missiles are (does not appear to be backwards normals)
+
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 
 - move a bunch of the vbos into vaos to avoid setting the attributes over and over

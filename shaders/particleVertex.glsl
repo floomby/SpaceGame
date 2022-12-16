@@ -46,7 +46,7 @@ void emitExplosion(uint index) {
   vLife = rand2.x * 90.0 + 5.0;
 
   vec3 dir = normalize(rand.xyz - 0.5);
-  vVelocity = dir * (rand.w * 0.7) + vec3(uEmitVelocity[index].xy, 0.0) * uEmitVelocity[index].z;
+  vVelocity = dir * (rand.w * 0.7) * uEmitVelocity[index].z + vec3(uEmitVelocity[index].xy, 0.0);
 
   vPosition = uEmitPosition[index].xyz + dir * (rand2.y) * uEmitVelocity[index].z;
 }

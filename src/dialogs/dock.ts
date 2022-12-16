@@ -125,7 +125,7 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
 };
 
 const armsHtml = (armIndices: number[]) => {
-  let html = '<table style="width: 100%; text-align: left;">';
+  let html = '<table style="width: 100%; text-align: left;" class="rowHover" cellspacing="0">';
   // html += "<tr><th>Item</th><th></th><th></th></tr>";
   let index = 0;
   for (const entry of armIndices) {
@@ -165,7 +165,7 @@ const armsPostUpdate = (armIndices: number[]) => {
 
 let equipMenu = (kind: SlotKind, slotIndex: number) => {
   let index = 0;
-  let html = `<table style="width: 80vw; text-align: left;">
+  let html = `<table style="width: 80vw; text-align: left;" class="rowHover" cellspacing="0">
   <colgroup>
     <col span="1" style="width: 16vw;">
     <col span="1" style="width: 16vw;">
@@ -230,7 +230,7 @@ const shipShop = () => {
 const populateShipList = (availableShips: { def: UnitDefinition; index: number; atStation: boolean }[], self: Player) => {
   const shipList = document.getElementById("shipList");
   if (shipList) {
-    shipList.innerHTML = `<table style="width: 80vw; text-align: left;">
+    shipList.innerHTML = `<table style="width: 80vw; text-align: left;" class="rowHover" cellspacing="0">
   <colgroup>
     <col span="1" style="width: 18vw;">
     <col span="1" style="width: 18vw;">

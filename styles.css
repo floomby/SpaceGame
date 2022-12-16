@@ -349,3 +349,11 @@ kbd {
 .labeledSlider label {
   margin-right: 10px;
 }
+
+.rowHover tr:hover {
+  background-color: #8e8e8eaa;
+}
+
+.rowHover td {
+  padding: 3px;
+}

@@ -1097,6 +1097,46 @@ setInterval(() => {
   }
 }, 1000 / ticksPerSecond);
 
+const spawnIncrementalGuardians = (sector: number) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    return;
+  }
+
+  const faction = sectorFactions[sector];
+  if (faction === null) {
+    return;
+  }
+
+  const allies = allyCount(faction, sector);
+  const count = sectorGuardianCount[sector] - allies;
+  if (count <= 0) {
+    return;
+  }
+
+  switch (faction) {
+    case Faction.Alliance:
+      for (let i = 0; i < 2; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid(), friendlySectors(faction));
+      }
+      break;
+    case Faction.Confederation:
+      for (let i = 0; i < 2; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid(), friendlySectors(faction));
+      }
+      break;
+    case Faction.Rogue:
+      for (let i = 0; i < 2; i++) {
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid(), friendlySectors(faction));
+      }
+      break;
+    case Faction.Scourge:
+      for (let i = 0; i < 2; i++) {
+        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid(), friendlySectors(faction));
+      }
+  }
+};
+
 const spawnSectorGuardians = (sector: number) => {
   const state = sectors.get(sector);
   if (!state) {
@@ -1150,9 +1190,15 @@ const spawnSectorGuardians = (sector: number) => {
 
 setInterval(() => {
   for (let i = 0; i < sectorList.length; i++) {
+    spawnIncrementalGuardians(i);
+  }
+}, 20 * 990);
+
+setInterval(() => {
+  for (let i = 0; i < sectorList.length; i++) {
     spawnSectorGuardians(i);
   }
-}, 3 * 60 * 1000);
+}, 5 * 60 * 1000);
 
 const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
   const state = sectors.get(sector);

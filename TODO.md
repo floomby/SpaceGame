@@ -36,5 +36,6 @@
 
 ### Wishlist
 
-- Material system (likely to happen)
+- Bloom (Also using some sort of hdr internally to make this even nicer would be cool)
+- Material system
 - Animations for the models

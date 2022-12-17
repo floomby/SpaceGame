@@ -385,6 +385,35 @@ const initShipsAndStations = () => {
     isCloaky: true,
     model: "striker",
   });
+  // Smasher - 11
+  defs.push({
+    name: "Smasher",
+    description: "A durable all around ship",
+    sprite: { x: 320, y: 256, width: 64, height: 64 },
+    health: 800,
+    speed: 7,
+    energy: 220,
+    energyRegen: 0.3,
+    primaryReloadTime: 15,
+    primaryDamage: 20,
+    radius: 23,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine, SlotKind.Utility],
+    cargoCapacity: 100,
+    deathEffect: 3,
+    turnRate: 0.09,
+    acceleration: 0.08,
+    healthRegen: 0.06,
+    price: 2500,
+    warpTime: 120,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 2.5,
+    sideThrustAcceleration: 0.09,
+    scanRange: 13000,
+    primaryDefIndex: 0,
+    mass: 30,
+    model: "smasher",
+  });
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];

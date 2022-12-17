@@ -175,11 +175,11 @@ let equipMenu = (kind: SlotKind, slotIndex: number) => {
   </colgroup>`;
   html += '<tr><th>Armament</th><th></th><th style="text-align: left;">Price</th><th></th></tr>';
   for (const armDef of armDefs) {
-    if (armDef.tier === 2 && !inventory.hasOwnProperty(armDef.name)) {
-      index++;
-      continue;
-    }
     if (armDef.kind === kind) {
+      if (armDef.tier === 2 && !inventory.hasOwnProperty(armDef.name)) {
+        index++;
+        continue;
+      }
       html += `<tr>
   <td>${armDef.name}</td>
   <td><div class="tooltip">?<span class="tooltipText">&nbsp;${armDef.description}&nbsp;</span></div></td>

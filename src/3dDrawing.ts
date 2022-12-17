@@ -337,6 +337,7 @@ const init3dDrawing = (callback: () => void) => {
         "health.obj",
         "ammo.obj",
         "recipe.obj",
+        "smasher.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {

@@ -66,6 +66,7 @@ enum DrawType {
   Line = 11,
   Target = 12,
   RepairBar = 13,
+  TargetReversedLighting = 14,
 }
 
 const initShaders = (callback: (program: any, particleProgram: any, particleRenderingProgram: any) => void) => {
@@ -1448,7 +1449,7 @@ const doPreviewRendering = (previewRequest: PreviewRequest) => {
   // mat4.transpose(normalMatrix, normalMatrix);
   gl.uniformMatrix4fv(programInfo.uniformLocations.normalMatrix, false, normalMatrix);
 
-  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Target);
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.TargetReversedLighting);
 
   gl.uniform4f(programInfo.uniformLocations.desaturateAndTransparencyAndWarpingAndHighlight, 0, 0, 0, 0);
 

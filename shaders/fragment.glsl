@@ -108,7 +108,7 @@ void main(void) {
   
   // Do not apply point lights if we are drawing targets, there is junk in the point light uniforms
   // drawTarget and drawTargetAsteroid do not set the point lights
-  if (vDrawType != 12) {
+  if (vDrawType != 12 && vDrawType != 14) {
     for (int i = 0; i < 10; i++) {
       vec3 lightDirection = normalize(vPointLights[i] - vPosition);
       vec3 halfVector = normalize(lightDirection + viewDir);
@@ -125,6 +125,11 @@ void main(void) {
 
   // blinn-phong
   vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
+  // Revesed lighting for preview so that we dont have to reorder the pixels with the cpu
+  if (vDrawType == 14) {
+    lightDir = normalize(vec3(0.0, -0.6, 1.7));
+  }
+
   vec3 halfDir = normalize(lightDir + viewDir);
   float diffuse = max(dot(vNormal, lightDir), 0.0);
   float specular = pow(max(dot(vNormal, halfDir), 0.0), 20.0);

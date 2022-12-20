@@ -627,7 +627,7 @@ const initArmaments = () => {
     },
     equipMutator: (player, slotIndex) => {
       player.cloak = 0;
-      player.slotData[slotIndex] = { sinceFired: 1000 };
+      player.slotData[slotIndex] = { sinceFired: 1000, active: false };
     },
     // NOTE right now you can equip and use multiple cloaking generators to get faster cloaking (probably fine to leave it like this)
     frameMutator: (player, slotIndex) => {

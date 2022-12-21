@@ -15,6 +15,8 @@ uniform mediump vec3 uHealthAndEnergyAndScale;
 uniform mediump vec4 uDesaturateAndTransparencyAndWarpingAndHighlight;
 uniform mediump float uPhase;
 
+uniform sampler2D uBackgroundSamplers[4];
+
 layout(location = 0) out vec4 outColor;
 
 void main(void) {
@@ -81,6 +83,13 @@ void main(void) {
   // Background
   if (vDrawType == 5) {
     outColor = texture(uSampler, vTextureCoord);
+    return;
+  }
+
+  // New background
+  if (vDrawType == 15) {
+    outColor = texture(uSampler, vTextureCoord);
+    // outColor = texture(uBackgroundSamplers[0], vTextureCoord);
     return;
   }
 

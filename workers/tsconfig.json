@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "amd",
+    "target": "es5",
+    "outFile": "../dist/workers.js",
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "lib": ["es2019", "dom", "webworker"],
+    "moduleResolution": "node",
+    "typeRoots": ["../node_modules/@types"],
+    "skipDefaultLibCheck": true,
+  },
+  "include": ["**/*.ts"],
+}

@@ -177,6 +177,13 @@ void main() {
     return;
   }
 
+  // New background drawing
+  if (uDrawType == 15) {
+    gl_Position = aVertexPosition.xyzz;
+    vTextureCoord = (uViewMatrix * aVertexPosition).xy;
+    return;
+  }
+
   gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
 
   // The vertex position in relative world space

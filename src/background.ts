@@ -19,8 +19,10 @@ const loadBackgroundOld = (gl: WebGLRenderingContext): Promise<WebGLTexture> => 
   });
 };
 
+const maxChunksInMemory = 100;
+
 // Probably want to use an array here, but until I decide how I am handling the overflow of the background I will leave it as a map
-const backgroundChunks = new Map<number, Map<number, WebGLTexture | undefined>>();
+const backgroundChunks = new Map<string, WebGLTexture | undefined>();
 
 let backgroundWorker: Worker;
 
@@ -31,7 +33,8 @@ const macroToChunkAndOffset = (position: Position) => {
   x = positiveMod(x, 16);
   y = positiveMod(y, 16);
 
-  const chunk = backgroundChunks.get(x)?.get(y);
+  const key = `${x},${y}`;
+  const chunk = backgroundChunks.get(key);
   const offset = { x: positiveMod(position.x, 2048), y: positiveMod(position.y, 2048) };
   const chunkCoords = [x, y];
   if (!chunk) {
@@ -44,11 +47,20 @@ const getChunk = (x: number, y: number) => {
   x = positiveMod(x, 16);
   y = positiveMod(y, 16);
 
-  const chunk = backgroundChunks.get(x)?.get(y);
+  const key = `${x},${y}`;
+  const chunk = backgroundChunks.get(key);
   if (!chunk) {
     backgroundWorker.postMessage([x, y]);
   }
   return chunk;
+};
+
+const preFetchChunks = (x: number, y: number) => {
+  const key = `${x},${y}`;
+  const chunk = backgroundChunks.get(key);
+  if (!chunk) {
+    backgroundWorker.postMessage([x, y]);
+  }
 };
 
 const initBackgroundWorker = (gl: WebGLRenderingContext) => {
@@ -56,6 +68,11 @@ const initBackgroundWorker = (gl: WebGLRenderingContext) => {
 
   worker.onmessage = (e) => {
     const [x, y, imageBitmap] = e.data;
+
+    const key = `${x},${y}`;
+    if (backgroundChunks.has(key)) {
+      return;
+    }
 
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -65,11 +82,18 @@ const initBackgroundWorker = (gl: WebGLRenderingContext) => {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-    const yMap = backgroundChunks.get(x);
-    if (!yMap) {
-      backgroundChunks.set(x, new Map([[y, texture]]));
-    } else {
-      yMap.set(y, texture);
+    backgroundChunks.set(key, texture);
+
+    // This is faster and better than an MRU (the only thing we care about is not exhausting vram)
+    // A little worse for the network, but should be fine (I can add something to the header from the server to have the browser strongly prefer to cache)
+    if (backgroundChunks.size > maxChunksInMemory) {
+      for (const [key, value] of backgroundChunks) {
+        if (Math.random() > 0.5) {
+          gl.deleteTexture(value);
+          backgroundChunks.delete(key);
+          break;
+        }
+      }
     }
   };
 

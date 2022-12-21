@@ -1,4 +1,3 @@
-import { Debouncer } from "./dialogs/helpers";
 import { Position, positiveMod } from "./geometry";
 
 const loadBackgroundOld = (gl: WebGLRenderingContext): Promise<WebGLTexture> => {
@@ -29,8 +28,8 @@ const macroToChunkAndOffset = (position: Position) => {
   let x = Math.floor(position.x / 2048);
   let y = Math.floor(position.y / 2048);
 
-  x = Math.min(Math.max(x, 0), 15);
-  y = Math.min(Math.max(y, 0), 15);
+  x = positiveMod(x, 16);
+  y = positiveMod(y, 16);
 
   const chunk = backgroundChunks.get(x)?.get(y);
   const offset = { x: positiveMod(position.x, 2048), y: positiveMod(position.y, 2048) };
@@ -41,7 +40,16 @@ const macroToChunkAndOffset = (position: Position) => {
   return { chunk, offset, chunkCoords };
 };
 
-const debouncer = new Debouncer(1000);
+const getChunk = (x: number, y: number) => {
+  x = positiveMod(x, 16);
+  y = positiveMod(y, 16);
+
+  const chunk = backgroundChunks.get(x)?.get(y);
+  if (!chunk) {
+    backgroundWorker.postMessage([x, y]);
+  }
+  return chunk;
+};
 
 const initBackgroundWorker = (gl: WebGLRenderingContext) => {
   const worker = new Worker("dist/workers.js");
@@ -52,8 +60,8 @@ const initBackgroundWorker = (gl: WebGLRenderingContext) => {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageBitmap);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
@@ -63,13 +71,9 @@ const initBackgroundWorker = (gl: WebGLRenderingContext) => {
     } else {
       yMap.set(y, texture);
     }
-
-    debouncer.debounce(() => {
-      console.log("backgroundChunks", backgroundChunks);
-    });
   };
 
   backgroundWorker = worker;
 };
 
-export { loadBackgroundOld, initBackgroundWorker, macroToChunkAndOffset };
+export { loadBackgroundOld, initBackgroundWorker, macroToChunkAndOffset, getChunk };

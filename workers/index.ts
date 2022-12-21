@@ -1,4 +1,5 @@
 // Right now the only worker is the worker that loads textures for webgl to use
+// TODO Get imports working in the worker tsconfig
 
 class EagerDebouncer {
   constructor(private delay: number) {}
@@ -19,6 +20,10 @@ class EagerDebouncer {
   }
 }
 
+const positiveMod = (a: number, b: number) => {
+  return ((a % b) + b) % b;
+};
+
 const debounceMap = new Map<string, EagerDebouncer>();
 
 const loadImageFromUrl = (x: number, y: number) => {
@@ -34,8 +39,8 @@ const loadImageFromUrl = (x: number, y: number) => {
 };
 
 onmessage = (e) => {
-  e.data[0] = Math.min(Math.max(e.data[0], 0), 15);
-  e.data[1] = Math.min(Math.max(e.data[1], 0), 15);
+  e.data[0] = positiveMod(e.data[0], 16);
+  e.data[1] = positiveMod(e.data[1], 16);
   const key = `${e.data[0]}_${e.data[1]}`;
   let debouncer = debounceMap.get(key);
   if (!debouncer) {

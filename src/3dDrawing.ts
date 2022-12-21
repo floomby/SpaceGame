@@ -35,12 +35,13 @@ import {
   insertPromise,
   putBitmapCenteredUnderneathFromGame,
 } from "./2dDrawing";
-import { initBackgroundWorker, loadBackgroundOld, macroToChunkAndOffset } from "./background";
+import { getChunk, initBackgroundWorker, loadBackgroundOld, macroToChunkAndOffset } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 import { getNameOfPlayer } from "./rest";
 import { createParticleBuffers, drawParticles, initParticleTextures } from "./particle";
 import { drawProjectile } from "./3dProjectileDrawing";
 import { projectileLightColorUnnormed } from "./defs/projectiles";
+import { Debouncer, EagerDebouncer } from "./dialogs/helpers";
 
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
@@ -262,7 +263,9 @@ const init3dDrawing = (callback: () => void) => {
         healthAndEnergyAndScale: gl.getUniformLocation(program, "uHealthAndEnergyAndScale"),
         desaturateAndTransparencyAndWarpingAndHighlight: gl.getUniformLocation(program, "uDesaturateAndTransparencyAndWarpingAndHighlight"),
         phase: gl.getUniformLocation(program, "uPhase"),
-        backgroundSamplers: new Array(4).fill(0).map((_, i) => gl.getUniformLocation(program, `uBackgroundSamplers[${i}]`)),
+        backgroundSamplers: new Array(4).fill(0).map((_, i) => gl.getUniformLocation(program, `uBackgroundSamplers${i}`)),
+        backgroundRect: gl.getUniformLocation(program, "uBackgroundRect"),
+        backgroundMissing: gl.getUniformLocation(program, "uBackgroundMissing"),
       },
     };
 
@@ -730,35 +733,36 @@ const drawBackground = (where: Position) => {
 const drawNewBackground = (where: Position) => {
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.NewBackground);
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, backgroundBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
-
   const fromMap = macroToChunkAndOffset(canvasMacroTopLeft);
-  
-  const texture = fromMap.chunk ?? backgroundTexture;
+  const chunks: WebGLTexture[] = new Array(4);
+  chunks[0] = fromMap.chunk;
+  chunks[1] = getChunk(fromMap.chunkCoords[0] + 1, fromMap.chunkCoords[1]);
+  chunks[2] = getChunk(fromMap.chunkCoords[0], fromMap.chunkCoords[1] + 1);
+  chunks[3] = getChunk(fromMap.chunkCoords[0] + 1, fromMap.chunkCoords[1] + 1);
 
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.uniform1i(programInfo.uniformLocations.backgroundSamplers[0], 0);
+  let missing = 0;
+
+  for (let i = 0; i < 4; i++) {
+    const texture = chunks[i];
+    if (!texture) {
+      missing |= 1 << i;
+      continue;
+    }
+
+    gl.activeTexture(gl.TEXTURE0 + i);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(programInfo.uniformLocations.backgroundSamplers[i], i);
+  }
+  
+  // Don't draw from a texture that is not loaded
+  gl.uniform1ui(programInfo.uniformLocations.backgroundMissing, missing);
 
   const macroWidth = canvasMacroBottomRight.x - canvasMacroTopLeft.x;
   const macroHeight = canvasMacroBottomRight.y - canvasMacroTopLeft.y;
+  
+  gl.uniform4f(programInfo.uniformLocations.backgroundRect, fromMap.offset.x, fromMap.offset.y, macroWidth, macroHeight);
 
   const viewMatrix = mat4.create();
-  
-  mat4.scale(viewMatrix, viewMatrix, [macroWidth / canvas.width, macroHeight / canvas.height, 1.0]);
-  mat4.translate(viewMatrix, viewMatrix, [fromMap.offset.x / macroWidth, fromMap.offset.y / -macroHeight, 0]);
-
-  // mat4.translate(viewMatrix, viewMatrix, [lastSelf.position.x / 1000, lastSelf.position.y / -1000, 0]);
-  // mat4.scale(viewMatrix, viewMatrix, [canvas.width / 1000, canvas.height / 1000, 1.0]);
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 

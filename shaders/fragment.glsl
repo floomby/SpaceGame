@@ -15,7 +15,13 @@ uniform mediump vec3 uHealthAndEnergyAndScale;
 uniform mediump vec4 uDesaturateAndTransparencyAndWarpingAndHighlight;
 uniform mediump float uPhase;
 
-uniform sampler2D uBackgroundSamplers[4];
+// To get around the lack of dynamic indexing is the fragment shader
+uniform sampler2D uBackgroundSamplers0;
+uniform sampler2D uBackgroundSamplers1;
+uniform sampler2D uBackgroundSamplers2;
+uniform sampler2D uBackgroundSamplers3;
+
+uniform uint uBackgroundMissing;
 
 layout(location = 0) out vec4 outColor;
 
@@ -88,8 +94,50 @@ void main(void) {
 
   // New background
   if (vDrawType == 15) {
-    outColor = texture(uSampler, vTextureCoord);
-    // outColor = texture(uBackgroundSamplers[0], vTextureCoord);
+    int idx = 0;
+    vec2 coord = vTextureCoord;
+    if (coord.x > 2048.0) {
+      idx += 1;
+      coord.x -= 2048.0;
+    }
+    if (coord.y > 2048.0) {
+      idx += 2;
+      coord.y -= 2048.0;
+    }
+    coord /= 2048.0;
+    // coord.y = coord.y;
+    // coord.x = coord.x;
+    uint missing = uBackgroundMissing;
+    switch (idx) {
+      case 0:
+        if (((missing & 1u) != 0u)) {
+          outColor = vec4(0.0);
+          return;
+        }
+        outColor = texture(uBackgroundSamplers0, coord);
+        break;
+      case 1:
+        if (((missing & 2u) != 0u)) {
+          outColor = vec4(0.0);
+          return;
+        }
+        outColor = texture(uBackgroundSamplers1, coord);
+        break;
+      case 2:
+        if (((missing & 4u) != 0u)) {
+          outColor = vec4(0.0);
+          return;
+        }
+        outColor = texture(uBackgroundSamplers2, coord);
+        break;
+      case 3:
+        if (((missing & 8u) != 0u)) {
+          outColor = vec4(0.0);
+          return;
+        }
+        outColor = texture(uBackgroundSamplers3, coord);
+        break;
+    }
     return;
   }
 

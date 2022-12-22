@@ -246,7 +246,7 @@ type Ballistic = Entity & { damage: number; team: number; parent: number; frameT
 
 type Mine = Entity & { defIndex: number; team: number; left: number; deploying: number; pitch?: number; modelMatrix?: any };
 
-type Collectable = Entity & { index: number; framesLeft: number; phase?: number, scale?: number };
+type Collectable = Entity & { index: number; framesLeft: number; phase?: number; scale?: number };
 
 enum EffectAnchorKind {
   Absolute,
@@ -1403,8 +1403,7 @@ const repairStation = (player: Player) => {
   if (player.inoperable) {
     const def = defs[player.defIndex];
     player.health = def.health;
-    // IDK if they should have full energy on being repaired
-    // player.energy = def.energy;
+    player.energy = def.energy;
     player.inoperable = false;
   }
 };
@@ -1461,8 +1460,8 @@ const ticksPerSecond = 60;
 const effectiveInfinity = 1000000000;
 
 const mapSize = 4;
-const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20000 };
-const sectorDelta = 20500;
+const sectorBounds: Rectangle = { x: -10240, y: -10240, width: 20480, height: 20480 };
+const sectorDelta = 20800;
 
 const randomNearbyPointInSector = (point: Position, distance: number) => {
   let ret = { x: Math.random() * distance * 2 - distance + point.x, y: Math.random() * distance * 2 - distance + point.y };
@@ -1511,6 +1510,15 @@ enum TutorialStage {
   UseMines,
   Map,
 }
+
+const gameToMacro = (position: Position, sector: number) => {
+  const sectorX = sector % mapSize;
+  const sectorY = Math.floor(sector / mapSize);
+  return {
+    x: ((sectorX + 0.5) * sectorBounds.width + position.x) / 2,
+    y: ((sectorY + 0.5) * sectorBounds.width + position.y) / 2,
+  };
+};
 
 export {
   GlobalState,
@@ -1573,4 +1581,5 @@ export {
   mapSize,
   randomNearbyPointInSector,
   applyUndockingOffset,
+  gameToMacro,
 };

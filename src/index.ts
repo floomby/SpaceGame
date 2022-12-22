@@ -73,7 +73,7 @@ import { bindManufacturingUpdaters } from "./dialogs/manufacturing";
 import { bindInventoryUpdaters } from "./dialogs/inventory";
 import { tutorialCheckers } from "./tutorial";
 import { setMusicAdaptationPollFunction } from "./sound";
-import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutCollectable } from "./3dDrawing";
+import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutCollectable, allowBackgroundFlash } from "./3dDrawing";
 import { rasterizeText, rasterizeTextBitmap, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 import { setCurrentSectorText } from "./dialogs/map";

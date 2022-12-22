@@ -28,4 +28,23 @@ class Debouncer {
   }
 }
 
-export { disableTooExpensive, Debouncer };
+class EagerDebouncer {
+  constructor(private delay: number) {}
+
+  private sent = false;
+
+  public debounce(func: () => void) {
+    if (this.sent) {
+      return;
+    }
+
+    this.sent = true;
+    func();
+
+    setTimeout(() => {
+      this.sent = false;
+    }, this.delay);
+  }
+}
+
+export { disableTooExpensive, Debouncer, EagerDebouncer };

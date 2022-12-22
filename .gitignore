@@ -1,7 +1,6 @@
 server/node_modules
 server/server.js
 dist
-deployer.sh
 server/resources
 soundCandidates
 resources/.*
@@ -11,3 +10,6 @@ server/errorlog
 node_modules
 pnpm-lock.yaml
 workspace
+resources/background/*.png
+tools/*.js
+tools/features.json

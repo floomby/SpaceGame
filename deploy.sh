@@ -5,4 +5,7 @@ cd server
 tsc --project config.json
 cd ..
 tsc
+cd workers
+tsc
+cd ..
 pm2 restart server

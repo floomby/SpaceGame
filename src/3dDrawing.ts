@@ -1,10 +1,10 @@
 import { drawEffects, initEffects } from "./effects";
-import { addLoadingText, isFirefox, lastSelf, state, teamColorsFloat } from "./globals";
+import { addLoadingText, currentSector, isFirefox, lastSelf, state, teamColorsFloat } from "./globals";
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { asteroidDefs, collectableDefs, defs, mineDefs, missileDefs } from "./defs";
-import { Asteroid, Ballistic, ChatMessage, CloakedState, Collectable, Mine, Missile, Player } from "./game";
-import { l2NormSquared, Position, Rectangle } from "./geometry";
+import { Asteroid, Ballistic, ChatMessage, CloakedState, Collectable, mapSize, Mine, Missile, Player, sectorBounds } from "./game";
+import { infinityNorm, l2NormSquared, Position, Rectangle } from "./geometry";
 import {
   appendBottomBars,
   appendCanvasRect,
@@ -35,12 +35,13 @@ import {
   insertPromise,
   putBitmapCenteredUnderneathFromGame,
 } from "./2dDrawing";
-import { loadBackground } from "./background";
+import { getChunk, initBackgroundWorker, loadBackgroundOld, macroToChunkAndOffset } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 import { getNameOfPlayer } from "./rest";
 import { createParticleBuffers, drawParticles, initParticleTextures } from "./particle";
 import { drawProjectile } from "./3dProjectileDrawing";
 import { projectileLightColorUnnormed } from "./defs/projectiles";
+import { Debouncer, EagerDebouncer } from "./dialogs/helpers";
 
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
@@ -67,6 +68,7 @@ enum DrawType {
   Target = 12,
   RepairBar = 13,
   TargetReversedLighting = 14,
+  NewBackground = 15,
 }
 
 const initShaders = (callback: (program: any, particleProgram: any, particleRenderingProgram: any) => void) => {
@@ -145,6 +147,8 @@ let projectionMatrix: mat4;
 let inverseProjectionMatrix: mat4;
 let canvasGameTopLeft: Position;
 let canvasGameBottomRight: Position;
+let canvasMacroTopLeft: Position = { x: 0, y: 0 };
+let canvasMacroBottomRight: Position = { x: 0, y: 0 };
 
 let barBuffer: WebGLBuffer;
 let backgroundBuffer: WebGLBuffer;
@@ -259,6 +263,9 @@ const init3dDrawing = (callback: () => void) => {
         healthAndEnergyAndScale: gl.getUniformLocation(program, "uHealthAndEnergyAndScale"),
         desaturateAndTransparencyAndWarpingAndHighlight: gl.getUniformLocation(program, "uDesaturateAndTransparencyAndWarpingAndHighlight"),
         phase: gl.getUniformLocation(program, "uPhase"),
+        backgroundSamplers: new Array(4).fill(0).map((_, i) => gl.getUniformLocation(program, `uBackgroundSamplers${i}`)),
+        backgroundRect: gl.getUniformLocation(program, "uBackgroundRect"),
+        backgroundMissing: gl.getUniformLocation(program, "uBackgroundMissing"),
       },
     };
 
@@ -362,7 +369,9 @@ const init3dDrawing = (callback: () => void) => {
           model.recordVertexArrayObject(gl, programInfo);
         });
 
-        backgroundTexture = await loadBackground(gl);
+        backgroundTexture = await loadBackgroundOld(gl);
+
+        initBackgroundWorker(gl);
         initParticleTextures(gl, callback);
       })
       .catch(console.error);
@@ -695,7 +704,21 @@ const drawTarget = (target: Player, where: Rectangle) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+// The change of position comes in a different message on the websocket from the sector change
+// We want to avoid sector flashes
+let oldBackgroundPosition: Position | undefined = undefined;
+
+const allowBackgroundFlash = () => {
+  oldBackgroundPosition = undefined;
+};
+
 const drawBackground = (where: Position) => {
+  if (oldBackgroundPosition && infinityNorm(oldBackgroundPosition, where) > 10000) {
+    where = oldBackgroundPosition;
+  } else {
+    oldBackgroundPosition = where;
+  }
+
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Background);
 
   {
@@ -716,6 +739,45 @@ const drawBackground = (where: Position) => {
   const viewMatrix = mat4.create();
   mat4.translate(viewMatrix, viewMatrix, [lastSelf.position.x / 1000, lastSelf.position.y / -1000, 0]);
   mat4.scale(viewMatrix, viewMatrix, [canvas.width / 1000, canvas.height / 1000, 1.0]);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+};
+
+const drawNewBackground = (where: Position) => {
+  gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.NewBackground);
+
+  const fromMap = macroToChunkAndOffset(canvasMacroTopLeft);
+  const chunks: WebGLTexture[] = new Array(4);
+  chunks[0] = fromMap.chunk;
+  chunks[1] = getChunk(fromMap.chunkCoords[0] + 1, fromMap.chunkCoords[1]);
+  chunks[2] = getChunk(fromMap.chunkCoords[0], fromMap.chunkCoords[1] + 1);
+  chunks[3] = getChunk(fromMap.chunkCoords[0] + 1, fromMap.chunkCoords[1] + 1);
+
+  let missing = 0;
+
+  for (let i = 0; i < 4; i++) {
+    const texture = chunks[i];
+    if (!texture) {
+      missing |= 1 << i;
+      continue;
+    }
+
+    gl.activeTexture(gl.TEXTURE0 + i);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(programInfo.uniformLocations.backgroundSamplers[i], i);
+  }
+  
+  // Don't draw from a texture that is not loaded
+  gl.uniform1ui(programInfo.uniformLocations.backgroundMissing, missing);
+
+  const macroWidth = canvasMacroBottomRight.x - canvasMacroTopLeft.x;
+  const macroHeight = canvasMacroBottomRight.y - canvasMacroTopLeft.y;
+  
+  gl.uniform4f(programInfo.uniformLocations.backgroundRect, fromMap.offset.x, fromMap.offset.y, macroWidth, macroHeight);
+
+  const viewMatrix = mat4.create();
+
   gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
   gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -1502,10 +1564,22 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
+  const sectorX = currentSector % mapSize;
+  const sectorY = Math.floor(currentSector / mapSize);
+  // Macro origin is at the top left of sector 0,0
+  canvasMacroTopLeft.x = ((sectorX + 0.5) * sectorBounds.width + canvasGameTopLeft.x) / 2;
+  canvasMacroTopLeft.y = ((sectorY + 0.5) * sectorBounds.width + canvasGameTopLeft.y) / 2;
+  canvasMacroBottomRight.x = ((sectorX + 0.5) * sectorBounds.width + canvasGameBottomRight.x) / 2;
+  canvasMacroBottomRight.y = ((sectorY + 0.5) * sectorBounds.width + canvasGameBottomRight.y) / 2;
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
 
-  drawBackground(lastSelf.position);
+  // Keep the background for the tutorial
+  if (currentSector > 15) {
+    drawBackground(lastSelf.position);
+  } else {
+    drawNewBackground(lastSelf.position);
+  }
 
   const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };
 
@@ -1756,4 +1830,5 @@ export {
   programInfo,
   requestShipPreview,
   fadeOutCollectable,
+  allowBackgroundFlash,
 };

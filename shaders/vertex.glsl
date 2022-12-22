@@ -18,6 +18,8 @@ uniform mediump float uPhase;
 
 uniform int uDrawType;
 
+uniform highp vec4 uBackgroundRect;
+
 out highp vec2 vTextureCoord;
 out highp vec3 vNormal;
 out highp vec3 vPointLights[10];
@@ -174,6 +176,39 @@ void main() {
   if (uDrawType == 5) {
     gl_Position = aVertexPosition.xyzz;
     vTextureCoord = (uViewMatrix * aVertexPosition).xy / 2.0 + 0.5;
+    return;
+  }
+
+  // New background drawing
+  if (uDrawType == 15) {
+    vec4 topRight = vec4(1.0, 1.0, 1.0, 1.0);
+    vec4 topLeft = vec4(-1.0, 1.0, 1.0, 1.0);
+    vec4 bottomLeft = vec4(-1.0, -1.0, 1.0, 1.0);
+    vec4 bottomRight = vec4(1.0, -1.0, 1.0, 1.0);
+
+    if (gl_VertexID == 0) {
+      gl_Position = topLeft;
+      vTextureCoord = uBackgroundRect.xy;
+    } else if (gl_VertexID == 1) {
+      gl_Position = topRight;
+      vTextureCoord = uBackgroundRect.xy;
+      vTextureCoord.x += uBackgroundRect.z;
+    } else if (gl_VertexID == 2) {
+      gl_Position = bottomLeft;
+      vTextureCoord = uBackgroundRect.xy;
+      vTextureCoord.y += uBackgroundRect.w;
+    } else if (gl_VertexID == 3) {
+      gl_Position = bottomLeft;
+      vTextureCoord = uBackgroundRect.xy;
+      vTextureCoord.y += uBackgroundRect.w;
+    } else if (gl_VertexID == 4) {
+      gl_Position = topRight;
+      vTextureCoord = uBackgroundRect.xy;
+      vTextureCoord.x += uBackgroundRect.z;
+    } else if (gl_VertexID == 5) {
+      gl_Position = bottomRight;
+      vTextureCoord = uBackgroundRect.xy + uBackgroundRect.zw;
+    }
     return;
   }
 

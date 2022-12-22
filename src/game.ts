@@ -1460,8 +1460,8 @@ const ticksPerSecond = 60;
 const effectiveInfinity = 1000000000;
 
 const mapSize = 4;
-const sectorBounds: Rectangle = { x: -10000, y: -10000, width: 20000, height: 20000 };
-const sectorDelta = 20500;
+const sectorBounds: Rectangle = { x: -10240, y: -10240, width: 20480, height: 20480 };
+const sectorDelta = 20800;
 
 const randomNearbyPointInSector = (point: Position, distance: number) => {
   let ret = { x: Math.random() * distance * 2 - distance + point.x, y: Math.random() * distance * 2 - distance + point.y };

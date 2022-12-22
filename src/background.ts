@@ -29,10 +29,7 @@ let backgroundWorker: Worker;
 const macroToChunkAndOffset = (position: Position) => {
   let x = Math.floor(position.x / 1024);
   let y = Math.floor(position.y / 1024);
-
-  x = positiveMod(x, 16);
-  y = positiveMod(y, 16);
-
+  
   const key = `${x},${y}`;
   const chunk = backgroundChunks.get(key);
   const offset = { x: positiveMod(position.x, 1024), y: positiveMod(position.y, 1024) };
@@ -44,9 +41,6 @@ const macroToChunkAndOffset = (position: Position) => {
 };
 
 const getChunk = (x: number, y: number) => {
-  x = positiveMod(x, 16);
-  y = positiveMod(y, 16);
-
   const key = `${x},${y}`;
   const chunk = backgroundChunks.get(key);
   if (!chunk) {

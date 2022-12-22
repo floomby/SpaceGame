@@ -1188,17 +1188,17 @@ const spawnSectorGuardians = (sector: number) => {
   }
 };
 
-setInterval(() => {
-  for (let i = 0; i < sectorList.length; i++) {
-    spawnIncrementalGuardians(i);
-  }
-}, 20 * 990);
+// setInterval(() => {
+//   for (let i = 0; i < sectorList.length; i++) {
+//     spawnIncrementalGuardians(i);
+//   }
+// }, 20 * 990);
 
-setInterval(() => {
-  for (let i = 0; i < sectorList.length; i++) {
-    spawnSectorGuardians(i);
-  }
-}, 5 * 60 * 1000);
+// setInterval(() => {
+//   for (let i = 0; i < sectorList.length; i++) {
+//     spawnSectorGuardians(i);
+//   }
+// }, 5 * 60 * 1000);
 
 const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
   const state = sectors.get(sector);

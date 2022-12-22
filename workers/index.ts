@@ -39,8 +39,6 @@ const loadImageFromUrl = (x: number, y: number) => {
 };
 
 onmessage = (e) => {
-  e.data[0] = positiveMod(e.data[0], 16);
-  e.data[1] = positiveMod(e.data[1], 16);
   const key = `${e.data[0]}_${e.data[1]}`;
   let debouncer = debounceMap.get(key);
   if (!debouncer) {

@@ -4,7 +4,7 @@ import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { asteroidDefs, collectableDefs, defs, mineDefs, missileDefs } from "./defs";
 import { Asteroid, Ballistic, ChatMessage, CloakedState, Collectable, mapSize, Mine, Missile, Player, sectorBounds } from "./game";
-import { l2NormSquared, Position, Rectangle } from "./geometry";
+import { infinityNorm, l2NormSquared, Position, Rectangle } from "./geometry";
 import {
   appendBottomBars,
   appendCanvasRect,
@@ -704,7 +704,21 @@ const drawTarget = (target: Player, where: Rectangle) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+// The change of position comes in a different message on the websocket from the sector change
+// We want to avoid sector flashes
+let oldBackgroundPosition: Position | undefined = undefined;
+
+const allowBackgroundFlash = () => {
+  oldBackgroundPosition = undefined;
+};
+
 const drawBackground = (where: Position) => {
+  if (oldBackgroundPosition && infinityNorm(oldBackgroundPosition, where) > 10000) {
+    where = oldBackgroundPosition;
+  } else {
+    oldBackgroundPosition = where;
+  }
+
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.Background);
 
   {
@@ -1816,4 +1830,5 @@ export {
   programInfo,
   requestShipPreview,
   fadeOutCollectable,
+  allowBackgroundFlash,
 };

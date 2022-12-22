@@ -1,4 +1,5 @@
 import { rasterizePrompts } from "./2dDrawing";
+import { allowBackgroundFlash } from "./3dDrawing";
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
@@ -104,6 +105,7 @@ let currentSector: number;
 
 const setCurrentSector = (newCurrentSector: number) => {
   currentSector = newCurrentSector;
+  allowBackgroundFlash();
 };
 
 let selectedSecondary = 0;

@@ -27,15 +27,15 @@ const backgroundChunks = new Map<string, WebGLTexture | undefined>();
 let backgroundWorker: Worker;
 
 const macroToChunkAndOffset = (position: Position) => {
-  let x = Math.floor(position.x / 2048);
-  let y = Math.floor(position.y / 2048);
+  let x = Math.floor(position.x / 1024);
+  let y = Math.floor(position.y / 1024);
 
   x = positiveMod(x, 16);
   y = positiveMod(y, 16);
 
   const key = `${x},${y}`;
   const chunk = backgroundChunks.get(key);
-  const offset = { x: positiveMod(position.x, 2048), y: positiveMod(position.y, 2048) };
+  const offset = { x: positiveMod(position.x, 1024), y: positiveMod(position.y, 1024) };
   const chunkCoords = [x, y];
   if (!chunk) {
     backgroundWorker.postMessage(chunkCoords);

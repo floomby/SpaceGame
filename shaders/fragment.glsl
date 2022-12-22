@@ -96,15 +96,15 @@ void main(void) {
   if (vDrawType == 15) {
     int idx = 0;
     vec2 coord = vTextureCoord;
-    if (coord.x > 2048.0) {
+    if (coord.x > 1024.0) {
       idx += 1;
-      coord.x -= 2048.0;
+      coord.x -= 1024.0;
     }
-    if (coord.y > 2048.0) {
+    if (coord.y > 1024.0) {
       idx += 2;
-      coord.y -= 2048.0;
+      coord.y -= 1024.0;
     }
-    coord /= 2048.0;
+    coord /= 1024.0;
     // coord.y = coord.y;
     // coord.x = coord.x;
     uint missing = uBackgroundMissing;

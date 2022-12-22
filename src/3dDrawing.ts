@@ -35,7 +35,7 @@ import {
   insertPromise,
   putBitmapCenteredUnderneathFromGame,
 } from "./2dDrawing";
-import { getChunk, initBackgroundWorker, loadBackgroundOld, macroToChunkAndOffset } from "./background";
+import { doPrefetch, getChunk, initBackgroundWorker, loadBackgroundOld, macroToChunkAndOffset } from "./background";
 import { PointLightData, UnitKind } from "./defs/shipsAndStations";
 import { getNameOfPlayer } from "./rest";
 import { createParticleBuffers, drawParticles, initParticleTextures } from "./particle";
@@ -744,7 +744,15 @@ const drawBackground = (where: Position) => {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 };
 
+let prefetchFrame = 0;
+
 const drawNewBackground = (where: Position) => {
+  prefetchFrame++;
+  if (prefetchFrame % 32 === 0) {
+    doPrefetch();
+    prefetchFrame = 0;
+  }
+
   gl.uniform1i(programInfo.uniformLocations.drawType, DrawType.NewBackground);
 
   const fromMap = macroToChunkAndOffset(canvasMacroTopLeft);

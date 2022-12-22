@@ -42,7 +42,7 @@ onmessage = (e) => {
   const key = `${e.data[0]}_${e.data[1]}`;
   let debouncer = debounceMap.get(key);
   if (!debouncer) {
-    debouncer = new EagerDebouncer(1300);
+    debouncer = new EagerDebouncer(1500);
     debounceMap.set(key, debouncer);
   }
   debouncer.debounce(() => loadImageFromUrl(e.data[0], e.data[1]));

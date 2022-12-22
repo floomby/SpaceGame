@@ -1,4 +1,6 @@
+import { gameToMacro } from "./game";
 import { Position, positiveMod } from "./geometry";
+import { currentSector, lastSelf } from "./globals";
 
 const loadBackgroundOld = (gl: WebGLRenderingContext): Promise<WebGLTexture> => {
   return new Promise((resolve, reject) => {
@@ -57,6 +59,20 @@ const preFetchChunks = (x: number, y: number) => {
   }
 };
 
+const selfChunk = () => {
+  if (!lastSelf) {
+    return [null, null];
+  }
+
+  const macro = gameToMacro(lastSelf.position, currentSector);
+  return [Math.floor(macro.x / 1024), Math.floor(macro.y / 1024)];
+};
+
+const keyToXY = (key: string) => {
+  const [x, y] = key.split(",");
+  return [parseInt(x), parseInt(y)];
+};
+
 const initBackgroundWorker = (gl: WebGLRenderingContext) => {
   const worker = new Worker("dist/workers.js");
 
@@ -81,11 +97,14 @@ const initBackgroundWorker = (gl: WebGLRenderingContext) => {
     // This is faster and better than an MRU (the only thing we care about is not exhausting vram)
     // A little worse for the network, but should be fine (I can add something to the header from the server to have the browser strongly prefer to cache)
     if (backgroundChunks.size > maxChunksInMemory) {
+      const [x, y] = selfChunk();
       for (const [key, value] of backgroundChunks) {
         if (Math.random() > 0.5) {
-          gl.deleteTexture(value);
-          backgroundChunks.delete(key);
-          break;
+          const [chunkX, chunkY] = keyToXY(key);
+          if (Math.abs(chunkX - x) > 1 || Math.abs(chunkY - y) > 1) {
+            gl.deleteTexture(value);
+            backgroundChunks.delete(key);
+          }
         }
       }
     }
@@ -94,4 +113,36 @@ const initBackgroundWorker = (gl: WebGLRenderingContext) => {
   backgroundWorker = worker;
 };
 
-export { loadBackgroundOld, initBackgroundWorker, macroToChunkAndOffset, getChunk };
+const doPrefetch = () => {
+  const [x, y] = selfChunk();
+  if (x === null || y === null) {
+    return;
+  }
+
+  preFetchChunks(x - 1, y - 1);
+  preFetchChunks(x - 1, y);
+  preFetchChunks(x - 1, y + 1);
+  preFetchChunks(x, y - 1);
+  preFetchChunks(x, y);
+  preFetchChunks(x, y + 1);
+  preFetchChunks(x + 1, y - 1);
+  preFetchChunks(x + 1, y);
+  preFetchChunks(x + 1, y + 1);
+
+  if (lastSelf?.warping > 0) {
+    const macro = gameToMacro(lastSelf.position, lastSelf.warpTo);
+    const warpX = Math.floor(macro.x / 1024);
+    const warpY = Math.floor(macro.y / 1024);
+    preFetchChunks(warpX - 1, warpY - 1);
+    preFetchChunks(warpX - 1, warpY);
+    preFetchChunks(warpX - 1, warpY + 1);
+    preFetchChunks(warpX, warpY - 1);
+    preFetchChunks(warpX, warpY);
+    preFetchChunks(warpX, warpY + 1);
+    preFetchChunks(warpX + 1, warpY - 1);
+    preFetchChunks(warpX + 1, warpY);
+    preFetchChunks(warpX + 1, warpY + 1);
+  }
+}
+
+export { loadBackgroundOld, initBackgroundWorker, macroToChunkAndOffset, getChunk, doPrefetch };

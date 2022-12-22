@@ -36,6 +36,10 @@ app.get("/dist/gl-matrix.js", (req, res) => {
   res.sendFile("node_modules/gl-matrix/gl-matrix.js", { root });
 });
 
+app.get("/dist/workers.js", (req, res) => {
+  res.sendFile("dist/workers.js", { root });
+});
+
 app.get("/", (req, res) => {
   res.sendFile("index.html", { root });
 });

@@ -164,6 +164,19 @@ const setTutorialStage = (newTutorialStage: TutorialStage) => {
   }
 };
 
+let useAlternativeBackgrounds = false;
+
+const setUseAlternativeBackgrounds = (newUseAlternativeBackgrounds: boolean) => {
+  if (newUseAlternativeBackgrounds !== useAlternativeBackgrounds) {
+    localStorage.setItem("useAlternativeBackgrounds", JSON.stringify(newUseAlternativeBackgrounds));
+    useAlternativeBackgrounds = newUseAlternativeBackgrounds;
+  };
+};
+
+const getUseAlternativeBackgroundsPref = () => {
+  return JSON.parse(localStorage.getItem("useAlternativeBackgrounds") ?? "false");
+};
+
 const isFirefox = navigator.userAgent.toLowerCase().indexOf("firefox") > -1;
 
 export {
@@ -210,4 +223,7 @@ export {
   isFirefox,
   getParticlePref,
   setParticlePref,
+  useAlternativeBackgrounds,
+  setUseAlternativeBackgrounds,
+  getUseAlternativeBackgroundsPref,
 };

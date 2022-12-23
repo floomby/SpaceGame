@@ -1,6 +1,6 @@
 import { Faction } from "../defs";
 import { horizontalCenter, peekTag, setDialogBackground, shown } from "../dialog";
-import { faction, getParticlePref, setParticlePref, teamColorsDark, teamColorsLight } from "../globals";
+import { faction, getParticlePref, getUseAlternativeBackgroundsPref, setParticlePref, setUseAlternativeBackgrounds, teamColorsDark, teamColorsLight } from "../globals";
 import { getMusicVolume, getVolume, setMusicVolume, setVolume } from "../sound";
 import { pop as popDialog, push as pushDialog } from "../dialog";
 import { keylayoutSelector, keylayoutSelectorSetup } from "./keyboardLayout";
@@ -15,6 +15,7 @@ const settingsDialog = () =>
     `<span class="labeledSlider unselectable"><label for="musicVolumeSlider">Music volume:</label>
 <input type="range" min="0" max="1" value="${getMusicVolume()}" class="slider" id="musicVolumeSlider" step="0.05"></span>`,
     `<span>Particle Count: <input id="particleCount" style="margin-bottom: 10px;"></input></span>`,
+    `<span>Use alternate background (can be laggy): <input id="useAltBackground" type="checkbox" style="margin-top: 10px; margin-bot: 10px;"></input></span>`,
     keylayoutSelector(),
     `<button style="margin-top: 10px;" id="viewControls">View Controls</button>`,
     `<button style="margin-top: 10px;" class="bottomButton" id="closeSettings" class="secondary">Close</button>`,
@@ -46,6 +47,11 @@ const setupSettingsDialog = () => {
     if (count > 0) {
       setParticlePref(count);
     }
+  });
+  const useAltBackground = document.getElementById("useAltBackground") as HTMLInputElement;
+  useAltBackground.checked = getUseAlternativeBackgroundsPref();
+  useAltBackground.addEventListener("input", () => {
+    setUseAlternativeBackgrounds(useAltBackground.checked);
   });
 };
 

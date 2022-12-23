@@ -1,5 +1,5 @@
 import { drawEffects, initEffects } from "./effects";
-import { addLoadingText, currentSector, isFirefox, lastSelf, state, teamColorsFloat } from "./globals";
+import { addLoadingText, currentSector, getUseAlternativeBackgroundsPref, isFirefox, lastSelf, setUseAlternativeBackgrounds, state, teamColorsFloat, useAlternativeBackgrounds } from "./globals";
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { asteroidDefs, collectableDefs, defs, mineDefs, missileDefs } from "./defs";
@@ -311,6 +311,7 @@ const init3dDrawing = (callback: () => void) => {
     };
 
     createParticleBuffers();
+    setUseAlternativeBackgrounds(getUseAlternativeBackgroundsPref());
 
     addLoadingText("Loading models...");
     Promise.all(
@@ -1586,7 +1587,11 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
   if (currentSector > 15) {
     drawBackground(lastSelf.position);
   } else {
-    drawNewBackground(lastSelf.position);
+    if (useAlternativeBackgrounds) {
+      drawNewBackground(lastSelf.position);
+    } else {
+      drawBackground(lastSelf.position);
+    }
   }
 
   const targetDisplayRect = { x: canvas.width - 210, y: 15, width: 200, height: 200 };

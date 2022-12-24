@@ -3,7 +3,7 @@ import { WebSocket } from "ws";
 import { clients, saveCheckpoint, sectors, tutorialRespawnPoints, uid } from "./state";
 import { defMap, Faction } from "../src/defs";
 import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
-import { discoverRecipe } from "./inventory";
+import { discoverRecipe, updateClientRecipes } from "./inventory";
 
 const spawnTutorialStation = (ws: WebSocket) => {
   const client = clients.get(ws);
@@ -144,6 +144,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
       {
         const client = clients.get(ws);
         if (client) {
+          updateClientRecipes(ws, client.id);
           const player = tutorialRespawnPoints.get(id);
           discoverRecipe(ws, client.id, "Refined Prifetium");
           if (player) {

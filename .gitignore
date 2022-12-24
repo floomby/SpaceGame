@@ -13,3 +13,4 @@ workspace
 resources/background/*.png
 tools/*.js
 tools/features.json
+resources/back.tar.gz

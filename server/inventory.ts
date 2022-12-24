@@ -2,12 +2,7 @@ import { addCargo, availableCargoCapacity, Player, removeAtMostCargo } from "../
 import { User } from "./dataModels";
 import { WebSocket } from "ws";
 import { market } from "./market";
-import {
-  computeUsedRequirementsShared,
-  naturalResources,
-  recipeDagMap,
-  recipeMap,
-} from "../src/recipes";
+import { computeUsedRequirementsShared, naturalResources, recipeDagMap, recipeMap } from "../src/recipes";
 import { inspect } from "util";
 import { isFreeArm } from "../src/defs/armaments";
 
@@ -111,6 +106,34 @@ const discoverRecipe = (ws: WebSocket, id: number, what: string) => {
         console.log(e);
         try {
           ws.send(JSON.stringify({ type: "error", payload: { message: "Error saving user" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+      }
+    }
+  });
+};
+
+const updateClientRecipes = (ws: WebSocket, id: number) => {
+  User.findOne({ id }, (err, user) => {
+    if (err) {
+      console.log(err);
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Error finding user for recipe update" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+    } else {
+      try {
+        if (user) {
+          ws.send(JSON.stringify({ type: "recipe", payload: user.recipesKnown }));
+        } else {
+          console.log("Warning: user not found in updateClientRecipes");
+        }
+      } catch (e) {
+        console.log(e);
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Error sending recipes" } }));
         } catch (e) {
           console.trace(e);
         }
@@ -286,7 +309,7 @@ const compositeManufacture = (
             }
             const inventoryObject = JSON.parse(JSON.stringify(inventory));
             const { usage, recipesUsed } = computeUsedRequirementsShared(recipeDag, inventoryObject, inventory, amount);
-            
+
             let unsatisfied = false;
             for (const resource of naturalResources) {
               const use = usage.get(resource);
@@ -506,4 +529,14 @@ const depositItemsIntoInventory = (
   });
 };
 
-export { depositCargo, sendInventory, sellInventory, manufacture, transferToShip, depositItemsIntoInventory, discoverRecipe, compositeManufacture };
+export {
+  depositCargo,
+  sendInventory,
+  sellInventory,
+  manufacture,
+  transferToShip,
+  depositItemsIntoInventory,
+  discoverRecipe,
+  updateClientRecipes,
+  compositeManufacture,
+};

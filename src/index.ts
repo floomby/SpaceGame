@@ -586,6 +586,7 @@ const run = () => {
 
   bindAction("recipe", (recipes: string[]) => {
     for (const recipe of recipes) {
+      console.log(`Discovered blueprint for ${recipe}`);
       recipesKnown.add(recipe);
       pushMessage(`Discovered blueprint for ${recipe}`);
     }

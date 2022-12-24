@@ -22,6 +22,6 @@ const hash = (str: string) => {
     .digest("hex");
 };
 
-const adminHash = "1d8465217b25152cb3de788928007459e451cb11a6e0e18ab5ed30e2648d809c";
+const adminHash = "77bf8af9b1f3f51c07556c529623732cb1feb23fae82b5fdaea68c7488362a91";
 
 export { credentials, wsPort, httpPort, hash, adminHash };

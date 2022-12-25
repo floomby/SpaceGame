@@ -50,7 +50,7 @@ const keybindingTooltipText = (bindings: KeyBindings) => {
 </table>`;
 };
 
-const keylayoutSelector = () => `<fieldset style="margin-top: 10px">
+const keylayoutSelector = () => `<fieldset style="margin-top: 10px;">
 <legend>Keyboard Layout</legend>
 <div style="text-align: left;">
   <input type="radio" id="qwerty" name="keyboard" value="qwerty">

@@ -5,6 +5,7 @@ import { armDefMap, asteroidDefMap, defMap, Faction, UnitKind } from "../src/def
 import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
+import cors from "cors";
 
 import { User, Station } from "./dataModels";
 
@@ -564,6 +565,7 @@ app.get("/changePassword", (req, res) => {
 });
 
 export default () => {
+  app.use(cors());
   if (useSsl) {
     app.use(express.static("resources"));
     app.use(express.static("shaders"));

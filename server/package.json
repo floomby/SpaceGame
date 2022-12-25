@@ -1,8 +1,10 @@
 {
   "dependencies": {
+    "@types/cors": "^2.8.13",
     "@types/express": "^4.17.14",
     "@types/node": "^18.7.23",
     "@types/ws": "^8.5.3",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "mongoose": "^6.6.5",
     "ws": "^8.9.0"

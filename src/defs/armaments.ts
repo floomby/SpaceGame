@@ -205,7 +205,7 @@ const initArmaments = () => {
           if (target.dd === undefined) {
             target.dd = [];
           }
-          target.dd.push({ ticks: 15, damage: 30 });
+          target.dd.push({ ticks: 11, damage: 30 });
           slotData.sinceFired = 0;
           const to =
             target.health > 0

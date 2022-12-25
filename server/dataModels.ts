@@ -55,6 +55,33 @@ const userSchema = new Schema({
   sectorsVisited: {
     type: [Number],
   },
+  loginCount: {
+    type: Number,
+    required: false,
+    default: 0,
+    validate: {
+      validator: Number.isInteger,
+      message: "{VALUE} is not an integer value",
+    },
+  },
+  loginTimes: {
+    type: [Date],
+    required: false,
+    default: [],
+    validate: {
+      validator: (v: Date[]) => v.every((item) => item instanceof Date),
+      message: (props) => `${props.value} is not a valid date`,
+    },
+  },
+  logoffTimes: {
+    type: [Date],
+    required: false,
+    default: [],
+    validate: {
+      validator: (v: Date[]) => v.every((item) => item instanceof Date),
+      message: (props) => `${props.value} is not a valid date`,
+    },
+  },
 });
 
 const User = mongoose.model("User", userSchema);

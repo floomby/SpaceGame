@@ -214,6 +214,7 @@ type Emitter = {
 };
 
 const clearEmitters = () => {
+  killParticles();
   emitters.length = 0;
 };
 
@@ -368,10 +369,20 @@ const pushWarpEmitter = (from: EffectAnchor) => {
   }
 };
 
+let toKillParticles = false;
+
+const killParticles = () => {
+  toKillParticles = true;
+};
+
 let readIndex = 0;
 
 const draw = (sixtieths: number) => {
   gl.useProgram(particleProgramInfo.program);
+
+  if (toKillParticles) {
+    gl.uniform1ui(particleProgramInfo.uniformLocations.killParticles, 1);
+  }
 
   gl.uniform1f(particleProgramInfo.uniformLocations.timeDelta, sixtieths);
   gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
@@ -394,6 +405,11 @@ const draw = (sixtieths: number) => {
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
   readIndex = (readIndex + 1) % 2;
+
+  if (toKillParticles) {
+    toKillParticles = false;
+    gl.uniform1ui(particleProgramInfo.uniformLocations.killParticles, 0);
+  }
 
   // Rendering
   gl.useProgram(particleRenderingProgramInfo.program);

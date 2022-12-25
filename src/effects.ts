@@ -335,7 +335,6 @@ const initEffects = () => {
   effectDefs.push({
     frames: 10,
     draw3: (effect, self, state, framesLeft) => {
-      console.log("launch sound");
       const [from] = resolveAnchor(effect.from, state) as Position[];
       if (from) {
         play3dSound(plasmaLaunchSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.6);

@@ -27,7 +27,6 @@ const positiveMod = (a: number, b: number) => {
 const debounceMap = new Map<string, EagerDebouncer>();
 
 const loadImageFromUrl = (x: number, y: number) => {
-  console.log("requesting chunk", x, y);
   // const url = `/resources/background/chunk${x}_${y}.png`;
   const url = `https://dkvt3ngwst97e.cloudfront.net/chunk${x}_${y}.png`;
   fetch(url).then((response) => {

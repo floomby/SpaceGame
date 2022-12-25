@@ -26,6 +26,7 @@ uniform vec4 uEmitPosition[24];
 uniform vec4 uEmitVelocity[24];
 
 uniform float uTotalWeight;
+uniform uint uKillParticles;
 
 void emitNop() {
   vBehavior = vec4(-1.0, 0.0, 0.0, 0.0);
@@ -115,7 +116,9 @@ void emitWarp(uint index) {
 }
 
 void main() {
-  if (aAge >= aLife) {
+  if (uKillParticles != 0u) {
+    emitNop();
+  } else if (aAge >= aLife) {
     ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024 + 40);
     vec4 rand = texelFetch(uNoise, noiseCoord, 0);
 

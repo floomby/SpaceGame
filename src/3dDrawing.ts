@@ -291,6 +291,7 @@ const init3dDrawing = (callback: () => void) => {
         emitPositions: new Array(24).fill(0).map((_, i) => gl.getUniformLocation(particleProgram, `uEmitPosition[${i}]`)),
         emitVelocities: new Array(24).fill(0).map((_, i) => gl.getUniformLocation(particleProgram, `uEmitVelocity[${i}]`)),
         totalWeight: gl.getUniformLocation(particleProgram, "uTotalWeight"),
+        killParticles: gl.getUniformLocation(particleProgram, "uKillParticles"),
       },
     };
 

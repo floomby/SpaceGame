@@ -33,23 +33,41 @@ const uid = () => {
 
 // This data will ultimately be stored in the database
 // TODO Make the sector list have names like 1-1, 1-2, 2-1, 2-2, etc.
-const sectorList = (new Array(mapSize * mapSize)).fill(0).map((_, i) => i);
-const sectorAsteroidResources = sectorList.map(_ => [{ resource: "Prifecite", density: 1 }]);
-const sectorAsteroidCounts = sectorList.map(_ => 5);
+const sectorList = new Array(mapSize * mapSize).fill(0).map((_, i) => i);
+const sectorAsteroidResources = sectorList.map((_) => [{ resource: "Prifecite", density: 1 }]);
+const sectorAsteroidCounts = sectorList.map((_) => 5);
 
-sectorAsteroidResources[0] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
-sectorAsteroidResources[1] = [{ resource: "Aziracite", density: 1 }, { resource: "Hemacite", density: 1 }];
-sectorAsteroidResources[2] = [{ resource: "Aziracite", density: 1 }, { resource: "Hemacite", density: 1 }];
-sectorAsteroidResources[3] = [{ resource: "Russanite", density: 1 }, { resource: "Hemacite", density: 1 }];
+sectorAsteroidResources[0] = [
+  { resource: "Russanite", density: 1 },
+  { resource: "Hemacite", density: 1 },
+];
+sectorAsteroidResources[1] = [
+  { resource: "Aziracite", density: 1 },
+  { resource: "Hemacite", density: 1 },
+];
+sectorAsteroidResources[2] = [
+  { resource: "Aziracite", density: 1 },
+  { resource: "Hemacite", density: 1 },
+];
+sectorAsteroidResources[3] = [
+  { resource: "Russanite", density: 1 },
+  { resource: "Hemacite", density: 1 },
+];
 
-sectorAsteroidResources[5] = [{ resource: "Prifecite", density: 1 }, { resource: "Russanite", density: 1 }];
-sectorAsteroidResources[6] = [{ resource: "Prifecite", density: 1 }, { resource: "Russanite", density: 1 }];
+sectorAsteroidResources[5] = [
+  { resource: "Prifecite", density: 1 },
+  { resource: "Russanite", density: 1 },
+];
+sectorAsteroidResources[6] = [
+  { resource: "Prifecite", density: 1 },
+  { resource: "Russanite", density: 1 },
+];
 
 sectorAsteroidCounts[6] = 20;
 sectorAsteroidCounts[1] = 12;
 sectorAsteroidCounts[2] = 12;
 
-const sectorFactions: (Faction | null)[] = sectorList.map(_ => null);
+const sectorFactions: (Faction | null)[] = sectorList.map((_) => null);
 sectorFactions[0] = Faction.Scourge;
 sectorFactions[3] = Faction.Scourge;
 
@@ -80,7 +98,7 @@ const friendlySectors = (faction: Faction) => {
   return ret;
 };
 
-const sectorGuardianCount = sectorList.map(_ => 0);
+const sectorGuardianCount = sectorList.map((_) => 0);
 
 sectorGuardianCount[0] = 6;
 sectorGuardianCount[3] = 6;
@@ -102,7 +120,7 @@ sectorGuardianCount[11] = 15;
 sectorGuardianCount[7] = 6;
 sectorGuardianCount[10] = 6;
 
-const sectorHasStarbase = sectorList.map(_ => false);
+const sectorHasStarbase = sectorList.map((_) => false);
 sectorHasStarbase[5] = true;
 
 sectorHasStarbase[12] = true;
@@ -194,7 +212,7 @@ for (let i = 0; i < sectorList.length; i++) {
 
 const tutorialRespawnPoints = new Map<number, Player>();
 
-const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisited: Set<number>) => {
+const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisited: Set<number>, isLogoff = false) => {
   if (player.health <= 0) {
     console.log("Warning: attempt to save checkpoint of dead player");
     return;
@@ -205,7 +223,11 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
       console.log("Error saving checkpoint: " + err);
       return;
     }
-    User.findOneAndUpdate({ id }, { id, sectorsVisited: Array.from(sectorsVisited) }, { upsert: false }, (err) => {
+    const toPush = {};
+    if (isLogoff) {
+      (toPush as any).logoffTimes = Date.now();
+    }
+    User.findOneAndUpdate({ id }, { $set: { id, sectorsVisited: Array.from(sectorsVisited) }, $push: toPush }, { upsert: false }, (err) => {
       if (err) {
         console.log("Error saving user: " + err);
         return;

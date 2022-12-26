@@ -42,7 +42,16 @@ import mongoose from "mongoose";
 
 import { addNpc, NPC } from "../src/npc";
 import { inspect } from "util";
-import { depositItemsIntoInventory, depositCargo, manufacture, sellInventory, sendInventory, transferToShip, discoverRecipe, compositeManufacture } from "./inventory";
+import {
+  depositItemsIntoInventory,
+  depositCargo,
+  manufacture,
+  sellInventory,
+  sendInventory,
+  transferToShip,
+  discoverRecipe,
+  compositeManufacture,
+} from "./inventory";
 import { market } from "./market";
 import {
   clients,
@@ -267,8 +276,15 @@ wss.on("connection", (ws) => {
           const sectorInfos: SectorInfo[] = [];
           if (!user.sectorsVisited) {
             user.sectorsVisited = [user.currentSector];
-            user.save();
           }
+          user.loginCount++;
+          user.loginTimes.push(Date.now());
+          try {
+            user.save();
+          } catch (err) {
+            console.log(err);
+          }
+
           const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
           for (const sector of sectorsVisited) {
             sectorInfos.push({
@@ -792,12 +808,15 @@ wss.on("connection", (ws) => {
       if (player) {
         if (player.docked) {
           if (!removedClient.inTutorial) {
-            saveCheckpoint(removedClient.id, removedClient.currentSector, player, removedClient.sectorsVisited);
+            saveCheckpoint(removedClient.id, removedClient.currentSector, player, removedClient.sectorsVisited, true);
           }
         } else {
           User.findOneAndUpdate(
             { id: removedClient.id },
-            { currentSector: removedClient.currentSector, sectorsVisited: Array.from(removedClient.sectorsVisited) },
+            {
+              $set: { sectorsVisited: Array.from(removedClient.sectorsVisited), currentSector: removedClient.currentSector },
+              $push: { logoffTimes: Date.now() },
+            },
             (err) => {
               if (err) {
                 console.log("Error saving user: " + err);

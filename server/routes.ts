@@ -15,6 +15,7 @@ import { clients, friendlySectors, idToWebsocket, sectorFactions, sectorHasStarb
 import { adminHash, credentials, hash, httpPort } from "./settings";
 import { recipeMap, recipes } from "../src/recipes";
 import { isFreeArm } from "../src/defs/armaments";
+import { generatePlayedIntervals, sumIntervals } from "./reports";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -526,6 +527,26 @@ app.get("/kill", (req, res) => {
 
 app.get("/usersOnline", (req, res) => {
   res.send(JSON.stringify(Array.from(clients.values()).map((client) => client.name)));
+});
+
+app.get("/totalPlayTime", (req, res) => {
+  const name = req.query.name;
+  if (!name || typeof name !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  User.findOne({ name }, (err, user) => {
+    if (err) {
+      res.send("Database error: " + err);
+      return;
+    }
+    if (!user) {
+      res.send("Invalid user");
+      return;
+    }
+    const totalPlayTime = sumIntervals(generatePlayedIntervals(user)) / 1000 / 60;
+    res.send(totalPlayTime.toString());
+  });
 });
 
 app.get("/changePassword", (req, res) => {

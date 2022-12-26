@@ -15,7 +15,9 @@ import { clients, friendlySectors, idToWebsocket, sectorFactions, sectorHasStarb
 import { adminHash, credentials, hash, httpPort } from "./settings";
 import { recipeMap, recipes } from "../src/recipes";
 import { isFreeArm } from "../src/defs/armaments";
-import { generatePlayedIntervals, sumIntervals } from "./reports";
+import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "./reports";
+import { makeBarGraph } from "./graphs";
+import { maxDecimals } from "../src/geometry";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -547,6 +549,30 @@ app.get("/totalPlayTime", (req, res) => {
     const totalPlayTime = sumIntervals(generatePlayedIntervals(user)) / 1000 / 60;
     res.send(totalPlayTime.toString());
   });
+});
+
+app.get("/testGraph", (req, res) => {
+  const name = req.query.name;
+  if (!name || typeof name !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  User.findOne({ name }, (err, user) => {
+    if (err) {
+      res.send("Database error: " + err);
+      return;
+    }
+    if (!user) {
+      res.send("Invalid user");
+      return;
+    }
+    const data = generatePlayedIntervals(user).map(([start, end]) => (end.getTime() - start.getTime()) / 1000 / 60);
+    res.send(makeBarGraph(data.map((value) => ({ value, tooltip: maxDecimals(value, 2).toString() })), "Time Period", "Time Played", "Player Play Time Graph"));
+  });
+});
+
+app.get("/playReport", async (req, res) => {
+  res.send(await createReport(statEpoch));
 });
 
 app.get("/changePassword", (req, res) => {

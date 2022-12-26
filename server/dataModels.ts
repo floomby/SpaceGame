@@ -1,10 +1,15 @@
 import mongoose, { SchemaType } from "mongoose";
-import { armDefMap, defMap } from "../src/defs";
+import { armDefMap, defMap, Faction } from "../src/defs";
 import { recipeMap } from "../src/recipes";
 
 const Schema = mongoose.Schema;
 
-const inventorySchema = new Schema({
+interface IInventoryEntry {
+  what: string;
+  amount: number;
+}
+
+const inventorySchema = new Schema<IInventoryEntry>({
   what: {
     type: String,
     required: true,
@@ -20,7 +25,20 @@ const inventorySchema = new Schema({
   },
 });
 
-const userSchema = new Schema({
+interface IUser {
+  name: string;
+  password: string;
+  id: number;
+  faction: Faction;
+  inventory: IInventoryEntry[];
+  recipesKnown: string[];
+  sectorsVisited: number[];
+  loginCount: number;
+  loginTimes: Date[];
+  logoffTimes: Date[];
+}
+
+const userSchema = new Schema<IUser>({
   name: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   id: {
@@ -54,6 +72,7 @@ const userSchema = new Schema({
   },
   sectorsVisited: {
     type: [Number],
+    default: [],
   },
   loginCount: {
     type: Number,
@@ -135,4 +154,4 @@ const checkpointSchema = new Schema({
 
 const Checkpoint = mongoose.model("Checkpoint", checkpointSchema);
 
-export { User, Station, Checkpoint };
+export { User, Station, Checkpoint, IUser };

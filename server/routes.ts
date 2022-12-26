@@ -551,28 +551,36 @@ app.get("/totalPlayTime", (req, res) => {
   });
 });
 
-app.get("/testGraph", (req, res) => {
-  const name = req.query.name;
-  if (!name || typeof name !== "string") {
-    res.send("Invalid get parameters");
-    return;
+app.get("/playerGraph", (req, res) => {
+  try {
+    const name = req.query.name;
+    if (!name || typeof name !== "string") {
+      res.send("Invalid get parameters");
+      return;
+    }
+    User.findOne({ name }, (err, user) => {
+      if (err) {
+        res.send("Database error: " + err);
+        return;
+      }
+      if (!user) {
+        res.send("Invalid user");
+        return;
+      }
+      const data = generatePlayedIntervals(user).map(([start, end]) => (end.getTime() - start.getTime()) / 1000 / 60);
+      res.send(makeBarGraph(data.map((value) => ({ value, tooltip: maxDecimals(value, 2).toString() })), "Time Period", "Time Played", "Player Play Time Graph"));
+    });
+  } catch (err) {
+    console.log(err);
   }
-  User.findOne({ name }, (err, user) => {
-    if (err) {
-      res.send("Database error: " + err);
-      return;
-    }
-    if (!user) {
-      res.send("Invalid user");
-      return;
-    }
-    const data = generatePlayedIntervals(user).map(([start, end]) => (end.getTime() - start.getTime()) / 1000 / 60);
-    res.send(makeBarGraph(data.map((value) => ({ value, tooltip: maxDecimals(value, 2).toString() })), "Time Period", "Time Played", "Player Play Time Graph"));
-  });
 });
 
 app.get("/playReport", async (req, res) => {
-  res.send(await createReport(statEpoch));
+  try {
+    res.send(await createReport(statEpoch));
+  } catch (err) {
+    console.log(err);
+  }
 });
 
 app.get("/changePassword", (req, res) => {

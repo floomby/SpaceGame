@@ -243,8 +243,6 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
 
 // TODO Need to go over this carefully, checking to make sure that malicious clients can't do anything bad
 wss.on("connection", (ws) => {
-  console.log("Client connected");
-
   ws.on("message", (msg) => {
     try {
       const data = JSON.parse(msg.toString());
@@ -793,7 +791,6 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    console.log("Client disconnected");
     const removedClient = clients.get(ws);
     if (removedClient) {
       const player = sectors.get(removedClient.currentSector)?.players.get(removedClient.id);

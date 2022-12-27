@@ -128,7 +128,7 @@ const loginDialog = `<div class="center">${horizontalCenter([
   `<input type="text" placeholder="Username" id="username"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,
   `<br/><button id="loginButton">Login</button>`,
-  `<button style="margin-top: 10px;" id="openRegister" class="secondary">Register</button>`,
+  `<button style="margin-top: 10px;" id="openRegister">Create an Account</button>`,
   `<button style="marin-top: 10px;" id="changePassword" class="secondary">Change Password</button>`
 ])}</div>`;
 

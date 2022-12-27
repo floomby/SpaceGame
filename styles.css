@@ -237,6 +237,16 @@ body {
   text-decoration: underline;
 }
 
+#dialog button.secondary:hover {
+  background-color: transparent;
+  color: #fff;
+  text-decoration: underline;
+}
+
+#dialog button:hover {
+  background-color: rgba(143, 152, 174, 0.95);
+}
+
 #dialog #controls tr {
   line-height: 1.6;
 }

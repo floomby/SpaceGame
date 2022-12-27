@@ -476,8 +476,8 @@ const kill = (
 };
 
 const dampenImpulse = (player: Player) => {
-  player.iv.x *= 0.98;
-  player.iv.y *= 0.98;
+  player.iv.x *= 0.94;
+  player.iv.y *= 0.94;
   if (Math.abs(player.iv.x) < 0.01) {
     player.iv.x = 0;
   }

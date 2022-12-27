@@ -427,7 +427,7 @@ wss.on("connection", (ws, req) => {
             ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Username too long" } }));
             return;
           }
-          User.create({ name, password: hash(password), faction, id: uid() }, (err, user) => {
+          User.create({ name, password: hash(password), faction, id: uid(), loginTimes: [Date.now()] }, (err, user) => {
             if (err) {
               ws.send(JSON.stringify({ type: "registerFail", payload: { error: "Database error" } }));
               console.log(err);

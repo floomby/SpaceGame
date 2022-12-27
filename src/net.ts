@@ -25,6 +25,8 @@ const register = (name: string, password: string, faction: Faction) => {
 
 const bindings: Map<string, (data: any) => void> = new Map();
 
+let heartbeatInterval: number;
+
 // Client connection code
 const connect = (callback: (socket: WebSocket) => void) => {
   addLoadingText("Connecting to server...");
@@ -33,6 +35,9 @@ const connect = (callback: (socket: WebSocket) => void) => {
     console.log(`Connected to the server at ${wsUrl}`);
     serverSocket = socket;
     addLoadingText("Connected to server!");
+    heartbeatInterval = window.setInterval(() => {
+      socket.send(JSON.stringify({ type: "heartbeat" }));
+    }, 25 * 1000);
     callback(socket);
   };
   socket.onclose = () => {

@@ -55,6 +55,19 @@ const playerTable = (playerAmounts: { name: string; amount: number, loginCount: 
   return `<table><tr><th>Name</th><th>Playtime (minutes)</th><th>Login count</th></tr>${rows.join("")}</table>`;
 };
 
+const wrapReportHTML = (content: string) => `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Space Game Report</title>
+    <link rel="stylesheet" href="report.css" />
+  </head>
+  <body>
+    ${content}
+  </body>
+</html>
+`;
+
 const totalPlayTimeByAllUsersInIntervals = async (intervals: [Date, Date][]) => {
   const users = await User.find({});
   let sums = intervals.map(() => 0);
@@ -107,7 +120,7 @@ const createReport = async (epoch: Date) => {
     });
   }
   const svg = makeBarGraph(data, "Date", "Minutes", "Play Time");
-  return sideBySideDivs([svg, playerTable(playerAmounts)]);
+  return wrapReportHTML(sideBySideDivs([svg, playerTable(playerAmounts)]));
 };
 
 export { generatePlayedIntervals, sumIntervals, intervalsStartingInInterval, totalPlayTimeByAllUsersInIntervals, statEpoch, createReport };

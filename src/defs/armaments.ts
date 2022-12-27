@@ -13,7 +13,7 @@ import {
   Player,
   TargetKind,
 } from "../game";
-import { findHeadingBetween, l2Norm, l2NormSquared, Position, Rectangle } from "../geometry";
+import { canonicalizeAngle, findHeadingBetween, l2Norm, l2NormSquared, Position, Rectangle } from "../geometry";
 import { defs, PointLightData, SlotKind, UnitKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
@@ -54,7 +54,7 @@ type ArmamentDef = {
   equipMutator?: (player: Player, slotIndex: number) => void;
   // I will change the return type as needed, but right now the only thing that we need is energy gained
   frameMutator?: (player: Player, slotIndex: number, state: GlobalState, flashServerMessage: (id: number, message: string) => void) => void | number;
-  tier: number,
+  tier: number;
 };
 
 // Idk if this needs a more efficient implementation or not
@@ -679,10 +679,19 @@ const initArmaments = () => {
         }
         const heading = findHeadingBetween(missile.position, players[i].position);
         const dist = Math.max(l2Norm(missile.position, players[i].position) - player.radius, 11);
-        const impulse = 2500 / dist / def.mass;
+        const impulse = 2500 / dist / def.mass * 2.0;
         players[i].iv.x += impulse * Math.cos(heading);
         players[i].iv.y += impulse * Math.sin(heading);
         players[i].ir += Math.random() * 0.09;
+        const headingDiff = canonicalizeAngle(heading - players[i].heading);
+        const pitch = Math.sin(headingDiff) / def.mass * 21.0;
+        const roll = Math.cos(headingDiff) / def.mass * 21.0;
+        if (players[i].p !== undefined) {
+          players[i].ip += pitch;
+        }
+        if (players[i].rl !== undefined) {
+          players[i].irl += roll;
+        }
       }
     },
     model: "impulse",
@@ -874,11 +883,11 @@ const initArmaments = () => {
     kind: SlotKind.Utility,
     usage: ArmUsage.Energy,
     targeted: TargetedKind.Targeted,
-    energyCost: 15,
+    energyCost: 12,
     fireMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
       const slotData = player.slotData[slotIndex];
 
-      if (targetKind === TargetKind.Player && player.energy > 15 && slotData.sinceFired > 10 && l2Norm(player.position, target.position) < 1200) {
+      if (targetKind === TargetKind.Player && player.energy > 12 && slotData.sinceFired > 10 && l2Norm(player.position, target.position) < 1200) {
         const targetDef = defs[target.defIndex];
         if (targetDef.kind === UnitKind.Station) {
           return;
@@ -891,7 +900,7 @@ const initArmaments = () => {
         });
 
         slotData.targets.push({ time: 30, id: target.id });
-        player.energy -= 15;
+        player.energy -= 12;
       }
     },
     equipMutator: (player, slotIndex) => {
@@ -911,8 +920,17 @@ const initArmaments = () => {
           const heading = findHeadingBetween(player.position, target.position);
           target.speed = Math.max(0, target.speed - 8 / mass);
           target.side = Math.max(0, Math.abs(target.side) - 3 / mass) * Math.sign(target.side);
-          target.iv.x -= (Math.cos(heading) * 4) / mass;
-          target.iv.y -= (Math.sin(heading) * 4) / mass;
+          target.iv.x -= (Math.cos(heading) * 5) / mass;
+          target.iv.y -= (Math.sin(heading) * 5) / mass;
+          const headingDiff = canonicalizeAngle(heading - target.heading);
+          const pitch = Math.sin(headingDiff) / mass;
+          const roll = Math.cos(headingDiff) / mass;
+          if (target.p !== undefined) {
+            target.ip += pitch;
+          }
+          if (target.rl !== undefined) {
+            target.irl += roll;
+          }
         }
       }
     },

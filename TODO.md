@@ -1,18 +1,14 @@
 ### Server stuff
 
 - Anti chat spam (low priority)
-- Handle log on attempt if websocket was formerly shut down improperly
 - Killed/killed by messages??
 
 ### Gameplay
 
-- Impulse missile and tractor beam should cause ship to get affected in pitch and roll
-- Change collision behavior - it takes too long for the impulse to decay right now
 - Add alliance ship equivalent to the confederacy smasher class
 
 ### User Interface
 
-- Make the settings menu look better
 - Readdress text selectability, upon more playing idk if even the tables should be selectable
 
 ### Effects
@@ -25,7 +21,6 @@
 - Make some more tier 2 weapons
 - Fix how dark the tomahawk and emp missiles are (does not appear to be backwards normals)
 - Stat and bridge system
-- Investigate global map boundary warp interaction (idk what is going on here)
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

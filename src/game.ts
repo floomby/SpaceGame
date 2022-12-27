@@ -1072,7 +1072,9 @@ const findSectorTransitions = (state: GlobalState, sector: number, transitions: 
       }
 
       transitions.push(transition);
-      player.warping = -player.warping;
+      if (player.warping > 0) {
+        player.warping = -player.warping;
+      }
       state.players.delete(player.id);
     }
   }

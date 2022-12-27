@@ -32,7 +32,7 @@ void emitNop() {
   vBehavior = vec4(-1.0, 0.0, 0.0, 0.0);
   ivec2 noiseCoord = ivec2(gl_VertexID % 1024, gl_VertexID / 1024);
   vec2 noise = texelFetch(uNoise, noiseCoord, 0).xy;
-  vLife = noise.x * 5.0 + 5.0;
+  vLife = noise.x * 15.0 + 5.0;
   vAge = 0.0;
 }
 

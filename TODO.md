@@ -21,7 +21,6 @@
 - Make some more tier 2 weapons
 - Fix how dark the tomahawk and emp missiles are (does not appear to be backwards normals)
 - Stat and bridge system
-- Investigate global map boundary warp interaction (idk what is going on here)
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

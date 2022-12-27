@@ -356,7 +356,7 @@ const pushExplosionEmitter = (from: EffectAnchor, size = 1, explosionKind = Expl
 
 const pushWarpEmitter = (from: EffectAnchor) => {
   if (from.kind === EffectAnchorKind.Absolute) {
-    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0, 40];
+    const position = [(from.value as Position).x / 10, -(from.value as Position).y / 10, 0, 8];
     const x = (Math.cos(from.heading) * from.speed) / 10;
     const y = (Math.sin(from.heading) * from.speed) / -10;
     const velocity = [x, y, 0, 0];

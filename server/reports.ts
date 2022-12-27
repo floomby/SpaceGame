@@ -27,7 +27,7 @@ const generatePlayedIntervals = (user: HydratedDocument<IUser>) => {
     if (!end) {
       end = new Date(logins[i].getTime() + defaultPlayTimeIfUndefined);
     }
-    intervals.push([logins[i], end]);    
+    intervals.push([logins[i], end]);
   }
   return intervals;
 };
@@ -50,10 +50,15 @@ const intervalsStartingInInterval = (intervals: [Date, Date][], start: Date, end
   return result;
 };
 
+const playerTable = (playerAmounts: { name: string; amount: number, loginCount: number }[]) => {
+  const rows = playerAmounts.map((p) => `<tr><td>${p.name}</td><td>${maxDecimals(p.amount / 1000 / 60, 2)}</td><td>${p.loginCount}</td></tr>`);
+  return `<table><tr><th>Name</th><th>Playtime (minutes)</th><th>Login count</th></tr>${rows.join("")}</table>`;
+};
+
 const totalPlayTimeByAllUsersInIntervals = async (intervals: [Date, Date][]) => {
   const users = await User.find({});
   let sums = intervals.map(() => 0);
-  let playerAmounts: { name: string, amount: number }[] = [];
+  let playerAmounts: { name: string; amount: number, loginCount: number }[] = [];
   for (const user of users) {
     let playerSum = 0;
     for (let i = 0; i < intervals.length; i++) {
@@ -63,7 +68,7 @@ const totalPlayTimeByAllUsersInIntervals = async (intervals: [Date, Date][]) => 
       sums[i] += playTime;
       playerSum += playTime;
     }
-    playerAmounts.push({ name: user.name, amount: playerSum });
+    playerAmounts.push({ name: user.name, amount: playerSum, loginCount: user.loginCount });
   }
 
   return { sums, playerAmounts };
@@ -76,16 +81,12 @@ const utcDateToInterval = (date: Date): [Date, Date] => {
   start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + dayLength);
   return [start, end];
-};  
+};
 
-const statEpoch = new Date(2022, 11, 20);
+const statEpoch = new Date(2022, 11, 24);
 
-const sideBySideDivs = (left: string, right: string) => `
-  <div style="display: flex; flex-direction: row; justify-content: left;">
-    <div>${left}</div>
-    <div>${right}</div>
-  </div>
-`;
+const sideBySideDivs = (content: string[]) => `<div style="display: flex; flex-direction: row; justify-content: left;">
+  ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
 
 const createReport = async (epoch: Date) => {
   const now = new Date();
@@ -106,7 +107,7 @@ const createReport = async (epoch: Date) => {
     });
   }
   const svg = makeBarGraph(data, "Date", "Minutes", "Play Time");
-  return sideBySideDivs(svg, playerAmounts.map(p => `${p.name}: ${maxDecimals(p.amount / 1000 / 60, 2)} minutes`).join("<br />"));
+  return sideBySideDivs([svg, playerTable(playerAmounts)]);
 };
 
 export { generatePlayedIntervals, sumIntervals, intervalsStartingInInterval, totalPlayTimeByAllUsersInIntervals, statEpoch, createReport };

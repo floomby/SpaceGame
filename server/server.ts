@@ -76,6 +76,7 @@ import { CardinalDirection, headingFromCardinalDirection, mirrorAngleHorizontall
 import { credentials, hash, wsPort } from "./settings";
 import Routes from "./routes";
 import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
+import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -242,11 +243,20 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
 };
 
 // TODO Need to go over this carefully, checking to make sure that malicious clients can't do anything bad
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
+  (ws as any).isAlive = true;
+
+  const ipAddr = req.socket.remoteAddress;
+
+  logWebSocketConnection(ipAddr);
+
   ws.on("message", (msg) => {
     try {
       const data = JSON.parse(msg.toString());
-      if (data.type === "login") {
+      if (data.type === "heartbeat") {
+        (ws as any).isAlive = true;
+        return;
+      } else if (data.type === "login") {
         const name = data.payload.name;
         const password = data.payload.password;
 
@@ -270,6 +280,7 @@ wss.on("connection", (ws) => {
           }
 
           idToWebsocket.set(user.id, ws);
+          assignPlayerIdToConnection(ipAddr, user.id);
 
           const sectorInfos: SectorInfo[] = [];
           if (!user.sectorsVisited) {
@@ -424,6 +435,7 @@ wss.on("connection", (ws) => {
             }
             setupPlayer(user.id, ws, name, faction);
             idToWebsocket.set(user.id, ws);
+            assignPlayerIdToConnection(ipAddr, user.id);
           });
         });
       } else if (data.type === "input") {
@@ -826,6 +838,19 @@ wss.on("connection", (ws) => {
       }
     }
   });
+});
+
+const interval = setInterval(function ping() {
+  wss.clients.forEach(function each(ws) {
+    if ((ws as any).isAlive === false) return ws.terminate();
+
+    (ws as any).isAlive = false;
+    ws.ping();
+  });
+}, 30000);
+
+wss.on("close", function close() {
+  clearInterval(interval);
 });
 
 const informDead = (player: Player) => {

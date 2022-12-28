@@ -51,7 +51,7 @@ const intervalsStartingInInterval = (intervals: [Date, Date][], start: Date, end
   return result;
 };
 
-const playerTable = (playerAmounts: { name: string; amount: number, loginCount: number }[]) => {
+const playerTable = (playerAmounts: { name: string; amount: number; loginCount: number }[]) => {
   const rows = playerAmounts.map((p) => `<tr><td>${p.name}</td><td>${maxDecimals(p.amount / 1000 / 60, 2)}</td><td>${p.loginCount}</td></tr>`);
   return `<table><tr><th>Name</th><th>Playtime (minutes)</th><th>Login count</th></tr>${rows.join("")}</table>`;
 };
@@ -69,7 +69,6 @@ const wrapReportHTML = (content: string) => `
 </html>
 `;
 
-
 const sideBySideDivs = (content: string[]) => `<div style="display: flex; flex-direction: row; justify-content: left;">
   ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
 
@@ -79,7 +78,7 @@ const stackedDivs = (content: string[]) => `<div style="display: flex; flex-dire
 const totalPlayTimeByAllUsersInIntervals = async (intervals: [Date, Date][]) => {
   const users = await User.find({});
   let sums = intervals.map(() => 0);
-  let playerAmounts: { name: string; amount: number, loginCount: number }[] = [];
+  let playerAmounts: { name: string; amount: number; loginCount: number }[] = [];
   for (const user of users) {
     let playerSum = 0;
     for (let i = 0; i < intervals.length; i++) {
@@ -103,7 +102,19 @@ const bouncedTallySince = async (date: Date) => {
 
 const bouncedHTML = async (date: Date) => {
   const { bouncedCount, totalCount } = await bouncedTallySince(date);
-  return `<div>Bounced connections since ${date.toDateString()}: ${bouncedCount} / ${totalCount} (${maxDecimals(bouncedCount / totalCount * 100, 2)}%)</div>`;
+  return `<div>Bounced connections since ${date.toDateString()}: ${bouncedCount} / ${totalCount} (${maxDecimals(
+    (bouncedCount / totalCount) * 100,
+    2
+  )}%)</div>`;
+};
+
+const uniqueIPsSince = async (date: Date) => {
+  return (await WebSocketConnection.distinct("ipAddr", { date: { $gt: date } })).length;
+};
+
+const uniqueIPsHTML = async (date: Date) => {
+  const count = await uniqueIPsSince(date);
+  return `<div>Unique IPs since ${date.toDateString()}: ${count}</div>`;
 };
 
 const dayLength = 1000 * 60 * 60 * 24;
@@ -136,7 +147,7 @@ const createReport = async (epoch: Date) => {
     });
   }
   const svg = makeBarGraph(data, "Date", "Minutes", "Play Time");
-  return wrapReportHTML(sideBySideDivs([stackedDivs([svg, await bouncedHTML(epoch)]), playerTable(playerAmounts)]));
+  return wrapReportHTML(sideBySideDivs([stackedDivs([svg, await bouncedHTML(epoch), await uniqueIPsHTML(epoch)]), playerTable(playerAmounts)]));
 };
 
 export { generatePlayedIntervals, sumIntervals, intervalsStartingInInterval, totalPlayTimeByAllUsersInIntervals, statEpoch, createReport };

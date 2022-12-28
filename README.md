@@ -4,4 +4,4 @@ Fly around with your friends blasting enemies, exploring space, collecting resou
 
 [Play the alpha version!](https://inharmonious.floomby.us/)
 
-[![Tutorial play through](https://raw.githubusercontent.com/floomby/SpaceGame/master/workspace/video_preview_image.png)](https://www.youtube.com/watch?v=NE052TzY79s)
+[![Tutorial play through](https://raw.githubusercontent.com/floomby/SpaceGame/master/workspace/video_preview_image.png)](https://www.youtube.com/watch?v=PqDjzgrWIhQ)

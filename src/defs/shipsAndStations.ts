@@ -26,7 +26,6 @@ type PointLightData = {
 type UnitDefinition = {
   name: string;
   description: string;
-  sprite: Rectangle;
   health: number;
   speed: number;
   energy: number;
@@ -67,7 +66,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Fighter",
     description: "A basic fighter",
-    sprite: { x: 0, y: 0, width: 32, height: 32 },
     health: 100,
     speed: 10,
     energy: 100,
@@ -96,7 +94,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Drone",
     description: "A basic drone",
-    sprite: { x: 32, y: 0, width: 32, height: 32 },
     health: 100,
     speed: 10,
     energy: 100,
@@ -125,7 +122,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Alliance Starbase",
     description: "Alliance starbase",
-    sprite: { x: 0, y: 32, width: 256, height: 256 },
     health: 10000,
     speed: 0,
     energy: 5000,
@@ -157,7 +153,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Confederacy Starbase",
     description: "Confederacy starbase",
-    sprite: { x: 0, y: 288, width: 256, height: 256 },
     health: 10000,
     speed: 0,
     energy: 5500,
@@ -191,7 +186,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Advanced Fighter",
     description: "A more heavily armed fighter",
-    sprite: { x: 256, y: 256, width: 64, height: 64 },
     health: 250,
     speed: 8,
     energy: 150,
@@ -220,7 +214,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Seeker",
     description: "A lightly armed, but solid ship",
-    sprite: { x: 320, y: 256, width: 64, height: 64 },
     health: 250,
     speed: 8,
     energy: 150,
@@ -249,7 +242,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Strafer",
     description: "A fast, lightly armed ship, with a powerful side thruster, that is practically blind",
-    sprite: { x: 256, y: 320, width: 64, height: 64 },
     health: 120,
     speed: 14,
     energy: 100,
@@ -278,7 +270,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Rogue Starbase",
     description: "A weak ramshackle starbase with unique build options",
-    sprite: { x: 0, y: 544, width: 256, height: 256 },
     health: 800,
     speed: 0,
     energy: 1100,
@@ -301,7 +292,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Venture",
     description: "A slow industrial ship",
-    sprite: { x: 256, y: 384, width: 128, height: 128 },
     health: 500,
     speed: 8,
     energy: 400,
@@ -330,7 +320,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Spartan",
     description: "A durable heavily armed ship",
-    sprite: { x: 256, y: 640, width: 128, height: 128 },
     health: 1200,
     speed: 8,
     energy: 500,
@@ -359,7 +348,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Striker",
     description: "The Striker is optimized for cloaking, but sacrifices firepower and durability",
-    sprite: { x: 320, y: 832, width: 64, height: 64 },
     health: 230,
     speed: 8,
     energy: 300,
@@ -389,7 +377,6 @@ const initShipsAndStations = () => {
   defs.push({
     name: "Smasher",
     description: "A durable all around ship",
-    sprite: { x: 320, y: 256, width: 64, height: 64 },
     health: 800,
     speed: 7,
     energy: 220,
@@ -413,6 +400,34 @@ const initShipsAndStations = () => {
     primaryDefIndex: 0,
     mass: 30,
     model: "smasher",
+  });
+  // Enforcer - 12
+  defs.push({
+    name: "Enforcer",
+    description: "A durable all around ship",
+    health: 800,
+    speed: 7,
+    energy: 220,
+    energyRegen: 0.3,
+    primaryReloadTime: 15,
+    primaryDamage: 20,
+    radius: 23,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Mine, SlotKind.Utility],
+    cargoCapacity: 100,
+    deathEffect: 3,
+    turnRate: 0.09,
+    acceleration: 0.08,
+    healthRegen: 0.06,
+    price: 2500,
+    warpTime: 120,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 2.5,
+    sideThrustAcceleration: 0.09,
+    scanRange: 13000,
+    primaryDefIndex: 0,
+    mass: 30,
+    model: "enforcer",
   });
 
   for (let i = 0; i < defs.length; i++) {

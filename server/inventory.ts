@@ -331,7 +331,10 @@ const compositeManufacture = (
 
             if (unsatisfied) {
               try {
-                flashServerMessage(player.id, `You don't have enough resources to make ${what}`);
+                flashServerMessage(
+                  player.id,
+                  `You don't have enough resources to make ${user.recipesKnown.includes(recipeDag.recipe.name) ? what : "???"}`
+                );
                 return;
               } catch (e) {
                 console.trace(e);

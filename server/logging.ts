@@ -48,4 +48,4 @@ const assignPlayerIdToConnection = (ipAddr: string | undefined, playerId: number
     });
 };
 
-export { logWebSocketConnection, assignPlayerIdToConnection };
+export { logWebSocketConnection, assignPlayerIdToConnection, WebSocketConnection };

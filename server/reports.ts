@@ -2,6 +2,7 @@ import { HydratedDocument } from "mongoose";
 import { maxDecimals } from "../src/geometry";
 import { IUser, User } from "./dataModels";
 import { GraphData, makeBarGraph } from "./graphs";
+import { WebSocketConnection } from "./logging";
 
 const defaultPlayTimeIfUndefined = 1000 * 60;
 
@@ -68,6 +69,13 @@ const wrapReportHTML = (content: string) => `
 </html>
 `;
 
+
+const sideBySideDivs = (content: string[]) => `<div style="display: flex; flex-direction: row; justify-content: left;">
+  ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
+
+const stackedDivs = (content: string[]) => `<div style="display: flex; flex-direction: column; justify-content: left;">
+  ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
+
 const totalPlayTimeByAllUsersInIntervals = async (intervals: [Date, Date][]) => {
   const users = await User.find({});
   let sums = intervals.map(() => 0);
@@ -87,6 +95,17 @@ const totalPlayTimeByAllUsersInIntervals = async (intervals: [Date, Date][]) => 
   return { sums, playerAmounts };
 };
 
+const bouncedTallySince = async (date: Date) => {
+  const bouncedCount = await WebSocketConnection.countDocuments({ date: { $gt: date }, playerId: null });
+  const totalCount = await WebSocketConnection.countDocuments({ date: { $gt: date } });
+  return { bouncedCount, totalCount };
+};
+
+const bouncedHTML = async (date: Date) => {
+  const { bouncedCount, totalCount } = await bouncedTallySince(date);
+  return `<div>Bounced connections since ${date.toDateString()}: ${bouncedCount} / ${totalCount} (${maxDecimals(bouncedCount / totalCount * 100, 2)}%)</div>`;
+};
+
 const dayLength = 1000 * 60 * 60 * 24;
 
 const utcDateToInterval = (date: Date): [Date, Date] => {
@@ -97,9 +116,6 @@ const utcDateToInterval = (date: Date): [Date, Date] => {
 };
 
 const statEpoch = new Date(2022, 11, 24);
-
-const sideBySideDivs = (content: string[]) => `<div style="display: flex; flex-direction: row; justify-content: left;">
-  ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
 
 const createReport = async (epoch: Date) => {
   const now = new Date();
@@ -120,7 +136,7 @@ const createReport = async (epoch: Date) => {
     });
   }
   const svg = makeBarGraph(data, "Date", "Minutes", "Play Time");
-  return wrapReportHTML(sideBySideDivs([svg, playerTable(playerAmounts)]));
+  return wrapReportHTML(sideBySideDivs([stackedDivs([svg, await bouncedHTML(epoch)]), playerTable(playerAmounts)]));
 };
 
 export { generatePlayedIntervals, sumIntervals, intervalsStartingInInterval, totalPlayTimeByAllUsersInIntervals, statEpoch, createReport };

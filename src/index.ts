@@ -586,8 +586,11 @@ const run = () => {
 
   bindAction("recipe", (recipes: string[]) => {
     for (const recipe of recipes) {
-      console.log(`Discovered blueprint for ${recipe}`);
       recipesKnown.add(recipe);
+      // Suppress the message for the recipe discovered in the tutorial
+      if (recipe === "Refined Prifetium") {
+        continue;
+      }
       pushMessage(`Discovered blueprint for ${recipe}`);
     }
 

@@ -5,7 +5,8 @@
 
 ### Gameplay
 
-- Add alliance ship equivalent to the confederacy smasher class
+- Fix the recipes for the existing weapons (change price and prereqs and stuff so they make more sense)
+- Make some more tier 2 weapons
 
 ### User Interface
 
@@ -17,8 +18,6 @@
 
 ### Misc
 
-- Fix the recipes for the existing weapons (change price and prereqs and stuff so they make more sense)
-- Make some more tier 2 weapons
 - Fix how dark the tomahawk and emp missiles are (does not appear to be backwards normals)
 - Stat and bridge system
 

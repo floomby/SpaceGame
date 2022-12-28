@@ -6,7 +6,6 @@ import { defs } from "./shipsAndStations";
 import { recipeMap } from "../recipes";
 
 type CollectableDef = {
-  sprite: Rectangle;
   radius: number;
   name: string;
   description: string;
@@ -49,7 +48,6 @@ const defaultLootTable = new LootTable();
 
 const initCollectables = () => {
   collectableDefs.push({
-    sprite: { x: 320, y: 64, width: 64, height: 64 },
     radius: 26,
     name: "Spare Parts",
     description: "Collect spare parts to repair stations",
@@ -63,7 +61,6 @@ const initCollectables = () => {
     light: [3.0, 2.0, 2.0],
   });
   collectableDefs.push({
-    sprite: { x: 320, y: 320, width: 64, height: 64 },
     radius: 26,
     name: "Bounty",
     description: "Extra credits",
@@ -77,7 +74,6 @@ const initCollectables = () => {
     light: [0.0, 4.0, 0.0],
   });
   collectableDefs.push({
-    sprite: { x: 256, y: 512, width: 64, height: 64 },
     radius: 26,
     name: "Ammo",
     description: "Extra ammo",
@@ -98,7 +94,6 @@ const initCollectables = () => {
   });
 
   collectableDefs.push({
-    sprite: { x: 320, y: 512, width: 64, height: 64 },
     radius: 26,
     name: "Energy",
     description: "Restore energy",
@@ -115,7 +110,6 @@ const initCollectables = () => {
   });
 
   collectableDefs.push({
-    sprite: { x: 320, y: 768, width: 64, height: 64 },
     radius: 26,
     name: "Health",
     description: "Restore health",
@@ -135,8 +129,10 @@ const initCollectables = () => {
     if (!recipeMap.has(what)) {
       throw new Error(`Unknown recipe ${what}`);
     }
+    if (recipeMap.get(what)!.recipe.isInputOnly) {
+      throw new Error(`Cannot collect input-only recipe ${what}`);
+    }
     return {
-      sprite: { x: 256, y: 768, width: 64, height: 64 },
       radius: 26,
       name: `Recipe - ${what}`,
       description: `Learn a new recipe for ${what}`,
@@ -158,8 +154,11 @@ const initCollectables = () => {
     } as CollectableDef;
   };
 
-  for (const recipe of recipeMap.keys()) {
-    collectableDefs.push(recipeFor(recipe));
+  for (const [key, recipe]  of recipeMap) {
+    if (recipe.recipe.isInputOnly) {
+      continue;
+    }
+    collectableDefs.push(recipeFor(key));
   }
 
   for (let i = 0; i < collectableDefs.length; i++) {
@@ -167,8 +166,11 @@ const initCollectables = () => {
     collectableDefMap.set(def.name, { index: i, def });
   }
 
-  for (const recipe of recipeMap.keys()) {
-    defaultLootTable.addEntry(`Recipe - ${recipe}`, 1);
+  for (const [key, recipe]  of recipeMap) {
+    if (recipe.recipe.isInputOnly) {
+      continue;
+    }
+    defaultLootTable.addEntry(`Recipe - ${key}`, 1);
   }
 
   defaultLootTable.addEntry("Bounty", 2);

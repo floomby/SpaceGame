@@ -242,7 +242,7 @@ const drawDag = () => {
       }
 
       for (const recipe of recipesUsed) {
-        if (!recipesKnown.has(recipe.recipe.name)) {
+        if (!recipesKnown.has(recipe.recipe.name) && !recipe.recipe.isInputOnly) {
           if (!pure) {
             markUnsatisfied(recipe);
           } else {
@@ -303,7 +303,10 @@ const drawDag = () => {
       text.setAttribute("alignment-baseline", "middle");
       text.setAttribute("font-size", "12");
       text.classList.add("unselectable");
-      text.innerHTML = recipesKnown.has(recipe.recipe?.name || "Root") || recipe.isNaturalResource ? recipe.recipe?.name || "Root" : "???";
+      text.innerHTML =
+        recipesKnown.has(recipe.recipe?.name || "Root") || recipe.isNaturalResource || recipe.recipe.isInputOnly
+          ? recipe.recipe?.name || "Root"
+          : "???";
       container.appendChild(text);
 
       const amount = document.createElementNS(ns, "text");
@@ -341,6 +344,9 @@ const drawDag = () => {
           selectedRecipe = recipe;
           manufactureQuantity = 1;
           manufacturable = redrawEdges();
+        }
+        if (recipe.recipe.isInputOnly) {
+          return;
         }
         manufacturingPopup = document.createElementNS(ns, "g");
         manufacturingPopup.setAttribute("id", "manufacturingPopup");

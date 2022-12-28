@@ -68,7 +68,6 @@ type MineDef = {
 };
 
 type MissileDef = {
-  sprite: Rectangle;
   speed: number;
   damage: number;
   radius: number;
@@ -231,7 +230,6 @@ const initArmaments = () => {
   });
 
   missileDefs.push({
-    sprite: { x: 64, y: 0, width: 32, height: 16 },
     radius: 8,
     speed: 15,
     damage: 13,
@@ -284,10 +282,9 @@ const initArmaments = () => {
   });
 
   missileDefs.push({
-    sprite: { x: 64, y: 16, width: 32, height: 16 },
     radius: 8,
-    speed: 5,
-    damage: 150,
+    speed: 7,
+    damage: 160,
     acceleration: 0.2,
     lifetime: 600,
     deathEffect: 2,
@@ -337,7 +334,6 @@ const initArmaments = () => {
   });
 
   missileDefs.push({
-    sprite: { x: 96, y: 0, width: 32, height: 16 },
     radius: 8,
     speed: 15,
     damage: 10,
@@ -436,7 +432,6 @@ const initArmaments = () => {
   });
 
   missileDefs.push({
-    sprite: { x: 96, y: 16, width: 32, height: 16 },
     radius: 10,
     speed: 20,
     damage: 0,
@@ -661,7 +656,6 @@ const initArmaments = () => {
 
   // Impulse Missile - 14
   missileDefs.push({
-    sprite: { x: 192, y: 0, width: 32, height: 16 },
     radius: 11,
     speed: 30,
     damage: 0,
@@ -973,6 +967,62 @@ const initArmaments = () => {
     },
     cost: 400,
     tier: 1,
+  });
+
+  missileDefs.push({
+    radius: 8,
+    speed: 13,
+    damage: 60,
+    acceleration: 0.18,
+    lifetime: 600,
+    deathEffect: 2,
+    turnRate: 0.9,
+    model: "heavy_tomahawk",
+    pointLights: [{ color: [3, 2, 2], position: { x: -1.2, y: 0, z: 0 } }],
+  });
+  const heavyTomahawkIndex = missileDefs.length - 1;
+  // Heavy Tomahawk Missile - 20
+  armDefs.push({
+    name: "Heavy Tomahawk Missile",
+    description: "A heavy guided missile",
+    kind: SlotKind.Normal,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Targeted,
+    maxAmmo: 20,
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 1 && slotData.sinceFired > 65 && slotData.ammo > 0 && targetKind === TargetKind.Player && target) {
+        if ((target as Player).inoperable) {
+          return;
+        }
+        player.energy -= 1;
+        slotData.sinceFired = 0;
+        slotData.ammo--;
+        const id = uid();
+        const missile: Missile = {
+          id,
+          position: { x: player.position.x, y: player.position.y },
+          speed: player.speed + 1,
+          heading: player.heading,
+          radius: missileDefs[heavyTomahawkIndex].radius,
+          team: player.team,
+          damage: missileDefs[heavyTomahawkIndex].damage,
+          target: target.id,
+          defIndex: heavyTomahawkIndex,
+          lifetime: missileDefs[heavyTomahawkIndex].lifetime,
+        };
+        state.missiles.set(id, missile);
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 20 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 5000,
+    tier: 2,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

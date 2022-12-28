@@ -3,6 +3,7 @@ type Recipe = {
   ingredients: { [key: string]: number };
   isShip?: boolean;
   isArmament?: boolean;
+  isInputOnly?: boolean;
 };
 
 let recipes: Recipe[] = [];
@@ -148,11 +149,9 @@ const initRecipes = () => {
     },
     {
       name: "Javelin Missile",
-      ingredients: {
-        "Ferrecium Alloy": 1,
-        "Light Warhead": 1,
-      },
+      ingredients: {},
       isArmament: true,
+      isInputOnly: true,
     },
     {
       name: "Heavy Javelin Missile",
@@ -195,6 +194,21 @@ const initRecipes = () => {
         "Ferrecium Alloy": 1,
         "Refined Zirathium": 1,
       },
+    },
+    {
+      name: "Tomahawk Missile",
+      ingredients: {},
+      isArmament: true,
+      isInputOnly: true,
+    },
+    {
+      name: "Heavy Tomahawk Missile",
+      ingredients: {
+        "Ferrecium Alloy": 1,
+        "Light Warhead": 1,
+        "Tomahawk Missile": 1,
+      },
+      isArmament: true,
     },
   ];
 

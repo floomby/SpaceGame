@@ -5,8 +5,7 @@
 
 ### Gameplay
 
-- Fix the recipes for the existing weapons (change price and prereqs and stuff so they make more sense)
-- Make some more tier 2 weapons
+- I should make a large weapon
 
 ### User Interface
 
@@ -30,6 +29,8 @@
 
 ### Ongoing
 
+- Make some more tier 2 weapons
+- Make more ships
 - Network optimizations
 
 ### Wishlist

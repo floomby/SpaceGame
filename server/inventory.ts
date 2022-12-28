@@ -323,7 +323,7 @@ const compositeManufacture = (
 
             let unknowledgeable = false;
             for (const recipe of recipesUsed) {
-              if (!user.recipesKnown.includes(recipe.recipe.name)) {
+              if (!user.recipesKnown.includes(recipe.recipe.name) && !recipe.recipe.isInputOnly) {
                 unknowledgeable = true;
                 break;
               }

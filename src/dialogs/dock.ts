@@ -287,6 +287,8 @@ const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: stri
   <tr><th>Health Regen</th><td>${maxDecimals(def.healthRegen * ticksPerSecond, 2)} Health/sec</td></tr>
   <tr><th>Cargo Capacity</th><td>${maxDecimals(def.cargoCapacity, 2)}</td></tr>
   <tr><th>Scanner Range</th><td>${maxDecimals(def.scanRange, 2)} Units</td></tr>
+  <tr><th>Mass</th><td>${maxDecimals(def.mass, 2)}</td></tr>
+  <tr><th>Cloak Optimized</th><td>${def.isCloaky ? "Yes" : "No"}</td></tr>
 </table>`;
   }
 };

@@ -2,6 +2,7 @@ import { rasterizePrompts } from "./2dDrawing";
 import { allowBackgroundFlash } from "./3dDrawing";
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
+import { redrawTip } from "./dialogs/dead";
 import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
 import { azertyBindings, dvorakBindings, KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
 import { tutorialPrompters } from "./tutorial";
@@ -92,6 +93,7 @@ const setKeybind = (newKeybind: KeyBindings) => {
   }
   keybind = newKeybind;
   rasterizePrompts();
+  redrawTip();
 };
 
 // The id that the players ship is

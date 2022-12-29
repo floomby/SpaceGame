@@ -163,7 +163,7 @@ const availableCargoCapacity = (player: Player) => {
     capacity = def.cargoCapacity;
   }
   const carrying = player.cargo?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
-  return capacity - carrying;
+  return Math.max(capacity - carrying, 0);
 };
 
 const addCargo = (player: Player, what: string, amount: number) => {

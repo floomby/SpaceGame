@@ -7,7 +7,8 @@ import { domFromRest } from "../rest";
 const inventoryTableHtml = () => {
   let html = `<table style="width: 100%; text-align: left;">`;
 
-  for (const [what, amount] of Object.entries(inventory)) {
+  for (const what of Array.from(Object.keys(inventory)).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))) {
+    const amount = inventory[what];
     html += `<tr>
   <td>${what}</td>
   <td>${amount}</td>

@@ -1,4 +1,4 @@
-import { Asteroid, EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Missile, Player } from "./game";
+import { Asteroid, Ballistic, EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Missile, Player } from "./game";
 // import { ctx, canvas, effectSprites, sprites } from "./drawing";
 import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound";
 import { maxMissileLifetime } from "./defs";
@@ -35,6 +35,14 @@ const resolveAnchor = (anchor: EffectAnchor, state: GlobalState) => {
       return [undefined, undefined];
     }
     return [missile.position, missile as Missile];
+  }
+  if (anchor.kind === EffectAnchorKind.Projectile) {
+    const projectile = state.projectiles.get(anchor.value as number);
+    if (!projectile) {
+      // console.log("Invalid projectile id during anchor resolution: ", anchor.value);
+      return [undefined, undefined];
+    }
+    return [projectile.position, projectile as Ballistic];
   }
 };
 
@@ -421,6 +429,17 @@ const initEffects = () => {
     frames: 10,
     draw3: (effect, self, state, framesLeft) => {
       pushTrailEmitter(effect.from);
+      effect.frame = 0;
+    },
+  });
+  // Plasma Primary Effect - 20
+  effectDefs.push({
+    frames: 15,
+    draw3: (effect, self, state, framesLeft) => {
+      const from = pushTrailEmitter(effect.from, TrailColors.YellowGreen);
+      if (from) {
+        play3dSound(plasmaLaunchSound, (from.x - self.position.x) / soundScale, (from.y - self.position.y) / soundScale, 1.0);
+      }
       effect.frame = 0;
     },
   });

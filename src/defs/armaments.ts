@@ -587,7 +587,7 @@ const initArmaments = () => {
           applyEffect({ effectIndex: 6, from: { kind: EffectAnchorKind.Projectile, value: state.projectileId } });
           state.projectileId++;
         }
-        applyEffect({ effectIndex: projectileDef.fireEffect, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+        applyEffect({ effectIndex: 13, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
       }
     },
     equipMutator: (player, slotIndex) => {

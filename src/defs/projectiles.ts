@@ -12,6 +12,7 @@ type ProjectileDef = {
   endMutator?: (ballistic: Ballistic, state: GlobalState) => void;
   hitEffect?: number;
   hitMutator?: (ballistic: Ballistic, state: GlobalState, player?: Player) => void;
+  additiveVelocity?: boolean;
 };
 
 const projectileDefs: ProjectileDef[] = [];
@@ -37,7 +38,7 @@ const initProjectileDefs = () => {
     // This energy cost is a redundant field if the weapon is not a primary weapon
     energy: 7.5,
     radius: 3,
-    fireEffect: 13,
+    fireEffect: 20,
     endEffect: 14,
     hitEffect: 14,
     hitMutator(ballistic, state) {
@@ -47,6 +48,7 @@ const initProjectileDefs = () => {
         players[i].health -= 30;
       }
     },
+    additiveVelocity: true,
   });
   projectileDefs[projectileDefs.length - 1].framesToExpire =
     projectileDefs[projectileDefs.length - 1].range / projectileDefs[projectileDefs.length - 1].speed;

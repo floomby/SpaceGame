@@ -429,6 +429,34 @@ const initShipsAndStations = () => {
     mass: 30,
     model: "enforcer",
   });
+  // Maintainer - 13
+  defs.push({
+    name: "Maintainer",
+    description: "An utility oriented ship that is poor at combat",
+    health: 1500,
+    speed: 9,
+    energy: 800,
+    energyRegen: 0.5,
+    primaryReloadTime: 40,
+    primaryDamage: 30,
+    radius: 33,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Utility, SlotKind.Utility, SlotKind.Utility, SlotKind.Utility, SlotKind.Mine, SlotKind.Mine],
+    cargoCapacity: 1300,
+    deathEffect: 4,
+    turnRate: 0.05,
+    acceleration: 0.06,
+    healthRegen: 0.1,
+    price: 5000,
+    warpTime: 180,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 2,
+    sideThrustAcceleration: 0.09,
+    scanRange: 13000,
+    primaryDefIndex: 1,
+    mass: 50,
+    model: "maintainer",
+  });
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];

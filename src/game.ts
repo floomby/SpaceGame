@@ -812,7 +812,7 @@ const update = (
             y: player.position.y + Math.sin(player.heading) * primaryDef.speed,
           },
           radius: primaryDef.radius,
-          speed: primaryDef.speed,
+          speed: primaryDef.speed + (primaryDef.additiveVelocity ? player.speed : 0),
           heading: player.heading,
           damage: def.primaryDamage,
           team: player.team,

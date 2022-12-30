@@ -16,6 +16,7 @@
 
 ### Misc
 
+- Get a name for the game
 - Fix how dark the tomahawk and emp missiles are (does not appear to be backwards normals)
 - Stat and bridge system
 

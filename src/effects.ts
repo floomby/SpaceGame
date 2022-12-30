@@ -1,4 +1,4 @@
-import { Asteroid, Ballistic, EffectAnchor, EffectAnchorKind, EffectTrigger, findHeadingBetween, GlobalState, Missile, Player } from "./game";
+import { Asteroid, Ballistic, EffectAnchor, EffectAnchorKind, effectiveInfinity, EffectTrigger, findHeadingBetween, GlobalState, Missile, Player } from "./game";
 // import { ctx, canvas, effectSprites, sprites } from "./drawing";
 import { getSound, play3dSound, playSound, soundMap, soundScale } from "./sound";
 import { maxMissileLifetime } from "./defs";
@@ -63,6 +63,15 @@ type Effect = {
   extra?: any;
 };
 
+let largeEMPPanners: PannerNode[] = [];
+
+const killEMPSound = () => {
+  for (const panner of largeEMPPanners) {
+    panner.positionZ.value = effectiveInfinity;
+  }
+  largeEMPPanners.length = 0;
+};
+
 const initEffects = () => {
   // Get the sounds we need
   const explosionSound = getSound("explosion0.wav");
@@ -80,6 +89,9 @@ const initEffects = () => {
   const impulseMissileHitSound = getSound("squishyPew0.wav");
   const disruptorLaunchSound = getSound("resonantPew0.wav");
   const tractorSound = getSound("tractor0.wav");
+  const largeEmpSound = getSound("empWindup.wav");
+  const largeEmpDetonationSound = getSound("empDetonation.wav");
+
 
   // Mining laser effect - 0
   effectDefs.push({
@@ -443,6 +455,32 @@ const initEffects = () => {
       effect.frame = 0;
     },
   });
+
+  // EMP (Large) - 21
+  effectDefs.push({
+    frames: 10,
+    draw3: (effect, self, state, framesLeft) => {
+      const [from] = resolveAnchor(effect.from, state);
+      if (!from) {
+        return;
+      }
+
+      largeEMPPanners.push(
+        play3dSound(largeEmpSound, ((from as Position).x - self.position.x) / soundScale, ((from as Position).y - self.position.y) / soundScale, 1.2)
+      );
+      effect.frame = 0;
+    },
+  });
+
+  // EMP (Large) Kill Sound - 22
+  effectDefs.push({
+    frames: 30,
+    draw3: (effect, self, state, framesLeft) => {
+      effect.frame = 0;
+      playSound(largeEmpDetonationSound, 1.2);
+      killEMPSound();
+    },
+  });
 };
 
 let effects: Effect[] = [];
@@ -505,6 +543,7 @@ const drawEffects = (sixtieths: number) => {
 
 const clearEffects = () => {
   effects.length = 0;
+  killEMPSound();
   clearEmitters();
   [];
 };

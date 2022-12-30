@@ -186,6 +186,7 @@ sectorList.forEach((sector) => {
     asteroidsDirty: false,
     mines: new Map(),
     projectileId: 1,
+    delayedActions: [],
   });
 });
 

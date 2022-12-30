@@ -269,6 +269,11 @@ type EffectTrigger = {
   to?: EffectAnchor;
 };
 
+type DelayedAction = {
+  frames: number;
+  action: (applyEffect: (trigger: EffectTrigger) => void) => void;
+};
+
 type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic>;
@@ -278,6 +283,7 @@ type GlobalState = {
   asteroidsDirty?: boolean;
   mines: Map<number, Mine>;
   projectileId?: number;
+  delayedActions?: DelayedAction[];
 };
 
 const setCanDockOrRepair = (player: Player, state: GlobalState) => {
@@ -577,6 +583,17 @@ const update = (
   secondariesToActivate: Map<number, number[]>
 ) => {
   const ret: Mutated = { asteroids: new Set(), collectables: [], mines: [] };
+
+  // Handle delayed actions
+  for (let i = 0; i < state.delayedActions.length; i++) {
+    const action = state.delayedActions[i];
+    action.frames--;
+    if (action.frames <= 0) {
+      action.action(applyEffect);
+      state.delayedActions.splice(i, 1);
+      i--;
+    }
+  }
 
   // Quadratic loop for the mines
   for (const mine of state.mines.values()) {

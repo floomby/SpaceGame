@@ -1207,7 +1207,8 @@ const randomAsteroids = (
   bounds: Rectangle,
   seed: number,
   uid: () => number,
-  typeDensities: { resource: string; density: number }[]
+  typeDensities: { resource: string; density: number }[],
+  stations: Player[]
 ) => {
   if (asteroidDefs.length === 0) {
     throw new Error("Asteroid defs not initialized");
@@ -1240,11 +1241,15 @@ const randomAsteroids = (
       index++;
     }
     const asteroidDef = mapping[index].def;
-    const asteroid: Asteroid = {
-      position: {
+    let position: Position;
+    do {
+      position = {
         x: prng() * bounds.width + bounds.x,
         y: prng() * bounds.height + bounds.y,
-      },
+      };
+    } while (stations.some((station) => l2NormSquared(position, station.position) < 600 * 600));
+    const asteroid: Asteroid = {
+      position,
       heading: prng() * 2 * Math.PI,
       resources: asteroidDef.resources,
       defIndex: mapping[index].index,

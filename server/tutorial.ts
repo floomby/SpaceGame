@@ -91,7 +91,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
               const player = state.players.get(client.id);
               if (player) {
                 const boundsAround = { x: player.position.x - 1000, y: player.position.y - 1000, width: 2000, height: 2000 };
-                const asteroids = randomAsteroids(20, boundsAround, client.currentSector, uid, [{ resource: "Prifecite", density: 1 }]);
+                const asteroids = randomAsteroids(20, boundsAround, client.currentSector, uid, [{ resource: "Prifecite", density: 1 }], []);
                 for (const asteroid of asteroids) {
                   state.asteroids.set(asteroid.id, asteroid);
                 }

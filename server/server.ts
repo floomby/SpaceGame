@@ -57,6 +57,7 @@ import {
   clients,
   friendlySectors,
   idToWebsocket,
+  initInitialAsteroids,
   knownRecipes,
   saveCheckpoint,
   secondaries,
@@ -83,10 +84,11 @@ mongoose
   .catch((err) => {
     console.log("Error connecting to database: " + err);
   })
-  .then(() => {
+  .then(async () => {
     console.log("Connected to database");
     // Initialize the server state stuff
-    initFromDatabase();
+    await initFromDatabase();
+    initInitialAsteroids();
   });
 
 Routes();
@@ -1283,7 +1285,11 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
       sectorBounds,
       Date.now(),
       uid,
-      sectorAsteroidResources[sectorList.findIndex((s) => s === sector)]
+      sectorAsteroidResources[sectorList.findIndex((s) => s === sector)],
+      Array.from(state.players.values()).filter((a) => {
+        const def = defs[a.defIndex];
+        return def.kind === UnitKind.Station;
+      })
     );
     for (const asteroid of newAsteroids) {
       state.asteroids.set(asteroid.id, asteroid);

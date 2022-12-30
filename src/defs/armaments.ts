@@ -673,13 +673,13 @@ const initArmaments = () => {
         }
         const heading = findHeadingBetween(missile.position, players[i].position);
         const dist = Math.max(l2Norm(missile.position, players[i].position) - player.radius, 11);
-        const impulse = 2500 / dist / def.mass * 2.0;
+        const impulse = (2500 / dist / def.mass) * 2.0;
         players[i].iv.x += impulse * Math.cos(heading);
         players[i].iv.y += impulse * Math.sin(heading);
         players[i].ir += Math.random() * 0.09;
         const headingDiff = canonicalizeAngle(heading - players[i].heading);
-        const pitch = Math.sin(headingDiff) / def.mass * 21.0;
-        const roll = Math.cos(headingDiff) / def.mass * 21.0;
+        const pitch = (Math.sin(headingDiff) / def.mass) * 21.0;
+        const roll = (Math.cos(headingDiff) / def.mass) * 21.0;
         if (players[i].p !== undefined) {
           players[i].ip += pitch;
         }
@@ -1023,6 +1023,40 @@ const initArmaments = () => {
     },
     cost: 5000,
     tier: 2,
+  });
+
+  // EMP = 21
+  armDefs.push({
+    name: "EMP",
+    description: "A powerful electromagnetic pulse which covers a large area",
+    kind: SlotKind.Large,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Untargeted,
+    maxAmmo: 1,
+    fireMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
+      const slotData = player.slotData[slotIndex];
+      if (slotData.ammo > 0) {
+        slotData.ammo--;
+        state.delayedActions.push({
+          frames: 140,
+          action: (applyEffect: (trigger: EffectTrigger) => void) => {
+            applyEffect({ effectIndex: 22 });
+            for (const otherPlayer of state.players.values()) {
+              if (otherPlayer === player) {
+                continue;
+              }
+              otherPlayer.disabled = (otherPlayer.disabled ?? 0) + 1200;
+            }
+          },
+        });
+        applyEffect({ effectIndex: 21, from: { kind: EffectAnchorKind.Player, value: player.id } });
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { ammo: 1 };
+    },
+    cost: 10000,
+    tier: 1,
   });
 
   for (let i = 0; i < armDefs.length; i++) {

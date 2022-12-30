@@ -22,6 +22,8 @@ const sounds = [
   "wigglyThud0.wav",
   "resonantPew0.wav",
   "tractor0.wav",
+  "empWindup.wav",
+  "empDetonation.wav",
   "music/combat.mp3",
   "music/peace.mp3",
   "music/peaceAlt.mp3",

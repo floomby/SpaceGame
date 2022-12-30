@@ -5,7 +5,6 @@
 
 ### Gameplay
 
-- I should make a large weapon
 
 ### User Interface
 
@@ -13,6 +12,7 @@
 
 ### Effects
 
+- Add graphical flash effect for large EMP
 - Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *
 
 ### Misc

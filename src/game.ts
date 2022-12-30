@@ -158,8 +158,12 @@ enum TargetKind {
 
 const removeCargoFractions = (player: Player) => {
   if (player.cargo) {
-    for (const c of player.cargo) {
-      c.amount = Math.floor(c.amount);
+    for (let i = 0; i < player.cargo.length; i++) {
+      player.cargo[i].amount = Math.floor(player.cargo[i].amount);
+      if (player.cargo[i].amount === 0) {
+        player.cargo.splice(i, 1);
+        i--;
+      }
     }
   }
 };

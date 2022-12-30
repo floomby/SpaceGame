@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage, copyPlayer } from "../src/game";
 import { WebSocket } from "ws";
-import { armDefs, defs, Faction, initDefs } from "../src/defs";
+import { armDefs, defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
 import { market } from "./market";
 import { NPC } from "../src/npc";
@@ -35,7 +35,7 @@ const uid = () => {
 // TODO Make the sector list have names like 1-1, 1-2, 2-1, 2-2, etc.
 const sectorList = new Array(mapSize * mapSize).fill(0).map((_, i) => i);
 const sectorAsteroidResources = sectorList.map((_) => [{ resource: "Prifecite", density: 1 }]);
-const sectorAsteroidCounts = sectorList.map((_) => 5);
+const sectorAsteroidCounts = sectorList.map((_) => 15);
 
 sectorAsteroidResources[0] = [
   { resource: "Russanite", density: 1 },
@@ -63,9 +63,12 @@ sectorAsteroidResources[6] = [
   { resource: "Russanite", density: 1 },
 ];
 
-sectorAsteroidCounts[6] = 20;
-sectorAsteroidCounts[1] = 12;
-sectorAsteroidCounts[2] = 12;
+sectorAsteroidCounts[6] = 35;
+sectorAsteroidCounts[1] = 22;
+sectorAsteroidCounts[2] = 22;
+
+sectorAsteroidCounts[12] = 30;
+sectorAsteroidCounts[15] = 30;
 
 const sectorFactions: (Faction | null)[] = sectorList.map((_) => null);
 sectorFactions[0] = Faction.Scourge;
@@ -203,13 +206,19 @@ const knownRecipes: Map<number, Set<string>> = new Map();
 
 // const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
-for (let i = 0; i < sectorList.length; i++) {
-  const sector = sectors.get(sectorList[i])!;
-  const asteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i]);
-  for (const asteroid of asteroids) {
-    sector.asteroids.set(asteroid.id, asteroid);
+const initInitialAsteroids = () => {
+  for (let i = 0; i < sectorList.length; i++) {
+    const sector = sectors.get(sectorList[i])!;
+    const stationsInSector = Array.from(sector.players.values()).filter((a) => {
+      const def = defs[a.defIndex];
+      return def.kind === UnitKind.Station;
+    });
+    const asteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i], stationsInSector);
+    for (const asteroid of asteroids) {
+      sector.asteroids.set(asteroid.id, asteroid);
+    }
   }
-}
+};
 
 const tutorialRespawnPoints = new Map<number, Player>();
 
@@ -257,4 +266,5 @@ export {
   sectorInDirection,
   saveCheckpoint,
   friendlySectors,
+  initInitialAsteroids,
 };

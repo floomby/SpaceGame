@@ -156,6 +156,14 @@ enum TargetKind {
   Asteroid,
 }
 
+const removeCargoFractions = (player: Player) => {
+  if (player.cargo) {
+    for (const c of player.cargo) {
+      c.amount = Math.floor(c.amount);
+    }
+  }
+};
+
 const availableCargoCapacity = (player: Player) => {
   const def = defs[player.defIndex];
   let capacity = 0;
@@ -1608,4 +1616,5 @@ export {
   randomNearbyPointInSector,
   applyUndockingOffset,
   gameToMacro,
+  removeCargoFractions,
 };

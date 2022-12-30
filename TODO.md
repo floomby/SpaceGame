@@ -5,7 +5,6 @@
 
 ### Gameplay
 
-
 ### User Interface
 
 - Readdress text selectability, upon more playing idk if even the tables should be selectable

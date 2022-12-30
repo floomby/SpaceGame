@@ -19,7 +19,7 @@ const initAsteroids = () => {
     sprite: { x: 256, y: 0, width: 64, height: 64 },
     radius: 40,
     mineral: "Prifecite",
-    difficulty: 1,
+    difficulty: 5,
     model: "prifecite",
   });
   asteroidDefs.push({
@@ -27,7 +27,7 @@ const initAsteroids = () => {
     sprite: { x: 320, y: 576, width: 64, height: 64 },
     radius: 40,
     mineral: "Russanite",
-    difficulty: 3,
+    difficulty: 12,
     model: "russanite",
   });
   asteroidDefs.push({
@@ -35,7 +35,7 @@ const initAsteroids = () => {
     sprite: { x: 256, y: 832, width: 64, height: 64 },
     radius: 40,
     mineral: "Hemacite",
-    difficulty: 2,
+    difficulty: 8,
     model: "hemacite",
   });
   asteroidDefs.push({
@@ -43,7 +43,7 @@ const initAsteroids = () => {
     sprite: { x: 384, y: 640, width: 64, height: 64 },
     radius: 40,
     mineral: "Aziracite",
-    difficulty: 2,
+    difficulty: 8,
     model: "aziracite",
   });
 

@@ -32,6 +32,7 @@ import {
   TutorialStage,
   mapSize,
   applyUndockingOffset,
+  removeCargoFractions,
 } from "../src/game";
 import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, clientUid } from "../src/defs";
 import { appendFile } from "fs";
@@ -464,6 +465,7 @@ wss.on("connection", (ws, req) => {
             if (player.docked) {
               return;
             }
+            removeCargoFractions(player);
             const station = state.players.get(data.payload.stationId);
             if (canDock(player, station, false)) {
               const def = defs[player.defIndex];

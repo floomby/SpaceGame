@@ -2,7 +2,7 @@ import { addCargo, availableCargoCapacity, Player, removeAtMostCargo } from "../
 import { User } from "./dataModels";
 import { WebSocket } from "ws";
 import { market } from "./market";
-import { computeUsedRequirementsShared, naturalResources, recipeDagMap, recipeMap } from "../src/recipes";
+import { computeUsedRequirementsShared, inputsOnly, naturalResources, recipeDagMap, recipeMap } from "../src/recipes";
 import { inspect } from "util";
 import { isFreeArm } from "../src/defs/armaments";
 
@@ -315,6 +315,16 @@ const compositeManufacture = (
               const use = usage.get(resource);
               if (use) {
                 if (use > (inventory[resource.recipe.name] || 0)) {
+                  unsatisfied = true;
+                  break;
+                }
+              }
+            }
+
+            for (const inputOnly of inputsOnly) {
+              const use = usage.get(inputOnly);
+              if (use) {
+                if (use > (inventory[inputOnly.recipe.name] || 0)) {
                   unsatisfied = true;
                   break;
                 }

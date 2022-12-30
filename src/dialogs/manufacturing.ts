@@ -14,6 +14,7 @@ import {
   setShowShips,
   setShowArmaments,
   computeLevels,
+  inputsOnly,
 } from "../recipes";
 
 const setupManufacturingBay = () => {
@@ -235,6 +236,16 @@ const drawDag = () => {
         if (inventoryUsage.get(resource) > (inventory[resource.recipe.name] || 0)) {
           if (!pure) {
             markUnsatisfied(resource);
+          } else {
+            return false;
+          }
+        }
+      }
+
+      for (const inputOnly of inputsOnly) {
+        if (inventoryUsage.get(inputOnly) > (inventory[inputOnly.recipe.name] || 0)) {
+          if (!pure) {
+            markUnsatisfied(inputOnly);
           } else {
             return false;
           }
@@ -513,6 +524,7 @@ const drawDag = () => {
     redrawInfo = () => {
       if (peekTag() === "manufacturing" && manufacturingPopup) {
         manufacturingTree.removeChild(manufacturingPopup);
+        manufactureQuantity = 1;
         manufacturingPopup = null;
       } else {
         manufacturingPopup = null;

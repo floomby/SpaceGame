@@ -27,6 +27,7 @@ const recipeDagMap = new Map<string, RecipeDag>();
 let recipeDagRoot: RecipeDag;
 let drawsPerLevel: number[];
 const naturalResources: RecipeDag[] = [];
+const inputsOnly: RecipeDag[] = [];
 const nodesAtBottom = new Set<RecipeDag>();
 
 const initRecipes = () => {
@@ -252,20 +253,23 @@ const initRecipes = () => {
     });
   });
 
-  // Attach ships and weapons to the root
   for (const recipeDag of recipeDagMap.values()) {
+    // Attach ships and weapons to the root
     if (recipeDag.recipe.isShip || recipeDag.recipe.isArmament) {
       recipeDag.above.push(recipeDagRoot);
       recipeDagRoot.below.push(recipeDag);
     }
-  }
 
-  // Find all nodes that are at the bottom of the graph
-  for (const recipeDag of recipeDagMap.values()) {
+    // Find all nodes that are at the bottom of the graph
     if (recipeDag.below.length === 0) {
       nodesAtBottom.add(recipeDag);
     }
     recipeDag.show = true;
+
+    // Add the correct recipes to the inputs only array
+    if (recipeDag.recipe.isInputOnly) {
+      inputsOnly.push(recipeDag);
+    }
   }
 
   const setMinHeight = (recipeDag: RecipeDag, height: number) => {
@@ -360,7 +364,7 @@ const computeUsedRequirementsShared = (
     if (inventoryObject[ingredient.recipe.name] === undefined) {
       inventoryObject[ingredient.recipe.name] = 0;
     }
-    if (ingredient.isNaturalResource) {
+    if (ingredient.isNaturalResource || ingredient.recipe.isInputOnly) {
       inventoryObject[ingredient.recipe.name] -= currentNode.recipe.ingredients[ingredient.recipe.name] * multiplier;
     } else {
       const amountToRemoveFromInventory = Math.min(
@@ -442,6 +446,7 @@ export {
   recipeDagMap,
   computeUsedRequirementsShared,
   naturalResources,
+  inputsOnly,
   markUnsatisfied,
   clearUnsatisfied,
   clearShow,

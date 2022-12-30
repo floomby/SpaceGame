@@ -1,27 +1,15 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage, copyPlayer } from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage, copyPlayer, removeCargoFractions } from "../src/game";
 import { WebSocket } from "ws";
 import { armDefs, defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
-import { market } from "./market";
+import { market, initMarket } from "./market";
 import { NPC } from "../src/npc";
 import { Checkpoint, User } from "./dataModels";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
-
-// Put the definition info into the marketplace
-for (let i = 0; i < defs.length; i++) {
-  const def = defs[i];
-  if (def.price !== undefined) {
-    market.set(def.name, Math.round(def.price * 0.8));
-  }
-}
-
-for (let i = 0; i < armDefs.length; i++) {
-  const def = armDefs[i];
-  market.set(def.name, Math.round(def.cost * 0.8));
-}
+initMarket();
 
 const uid = () => {
   let ret = 0;
@@ -227,6 +215,8 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
     console.log("Warning: attempt to save checkpoint of dead player");
     return;
   }
+  // Shouldn't be necessary, but I am nervous
+  removeCargoFractions(player);
   const data = JSON.stringify(player);
   Checkpoint.findOneAndUpdate({ id }, { id, sector, data }, { upsert: true }, (err) => {
     if (err) {

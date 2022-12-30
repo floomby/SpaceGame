@@ -16,10 +16,13 @@ const dumpCargoHtml = (cargo?: CargoEntry[]) => {
 </colgroup>`;
   let index = 0;
   for (const entry of cargo) {
+    if (Math.floor(entry.amount) <= 0) {
+      continue;
+    }
     html += `<tr>
   <td>${entry.what}</td>
-  <td>${entry.amount}</td>
-  <td><input type="text" id="dumpCargoAmount${index}" value="${entry.amount}" size="7" style="color: black;"/></td>
+  <td>${Math.floor(entry.amount)}</td>
+  <td><input type="text" id="dumpCargoAmount${index}" value="${Math.floor(entry.amount)}" size="7" style="color: black;"/></td>
   <td><button id="dumpCargo${index}">Dump</button></td></tr>`;
     index++;
   }
@@ -50,7 +53,7 @@ const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
       };
       amount.addEventListener("keyup", (e) => {
         const value = parseInt(amount.value);
-        if (amount.value === "" || isNaN(value) || value > cargo[i].amount || value <= 0) {
+        if (amount.value === "" || isNaN(value) || value > Math.floor(cargo[i].amount) || value <= 0) {
           amount.style.backgroundColor = "#ffaaaa";
           button.disabled = true;
         } else {

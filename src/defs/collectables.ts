@@ -119,7 +119,7 @@ const initCollectables = () => {
     },
     collectMutator: (player) => {
       const def = defs[player.defIndex];
-      player.health = Math.min(def.health, player.health + 80);
+      player.health = def.health;
     },
     model: "health",
     light: [2.0, 1.0, 1.0],

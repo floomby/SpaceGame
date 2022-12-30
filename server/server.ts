@@ -200,6 +200,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     asteroidsDirty: false,
     mines: new Map(),
     projectileId: 1,
+    delayedActions: [],
   };
 
   sectors.set(tutorialSector, state);

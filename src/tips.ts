@@ -28,6 +28,9 @@ tips.push(() => `The primary weapons damage is ship dependant. Larger and more a
 tips.push(() => `While your teams mine will not be detonated by you or your allies, they will still damage you if you are nearby when they explode.`);
 tips.push(() => `After a sector has been visited for the first time you can freely warp to it`);
 tips.push(() => `Specific minerals are only found certain sectors. Look at the sector info on the map to see if what you are seeking is present in a given sector.`);
+tips.push(() => `Warping requires energy. If your energy falls too low your warp sequence will be terminated.`);
+tips.push(() => `Even armaments that use ammo require a small amount of energy to fire.`);
+tips.push(() => `The hull regenerator uses energy to repair your hull, however it aggressively consumes energy. Consider toggling it off if your energy is low.`);
 }
 
 export { tips };

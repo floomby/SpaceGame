@@ -1,7 +1,10 @@
-import { horizontalCenter, pop } from "../dialog";
+import { horizontalCenter, pop, push } from "../dialog";
 import { currentSector, sectorData } from "../globals";
 import { sendWarp } from "../net";
 import { mapSize } from "../game";
+import { selectedMissionsDialog, setupSelectedMissionsDialog } from "./selectedMissions";
+import { abortWrapper } from "./abortMission";
+import { sideBySideDivs } from "./helpers";
 
 const populateSectorInfo = (sector: number) => {
   const sectorInfo = document.getElementById("sectorInfo") as HTMLDivElement;
@@ -13,17 +16,20 @@ const populateSectorInfo = (sector: number) => {
       if (data) {
         sectorInfo.innerHTML = `<h3>Sector Information</h3>Name: Sector ${sectorX}-${sectorY}<br/>Resources: <ul>${data.resources
           .map((resource) => `<li>${resource}</li>`)
-          .join("")}</ul><button id="warp-${sector}">Warp</button>`;
+          .join("")}</ul>`;
       }
     } else {
-      sectorInfo.innerHTML = `<h3>Sector Information</h3>Name: Sector ${sectorX}-${sectorY}<br/>Unknown<br/><button id="warp-${sector}">Warp</button>`;
+      sectorInfo.innerHTML = `<h3>Sector Information</h3>Name: Sector ${sectorX}-${sectorY}<br/>Unknown<br/>`;
     }
   }
-  const warpButton = document.getElementById(`warp-${sector}`) as HTMLButtonElement;
+  const warpButton = document.getElementById(`warpButton`) as HTMLButtonElement;
+  warpButton.disabled = sector === currentSector;
   if (warpButton) {
     warpButton.addEventListener("click", () => {
-      sendWarp(sector);
-      pop();
+      abortWrapper(() => {
+        sendWarp(sector);
+        pop();
+      });
     });
   }
 };
@@ -65,6 +71,10 @@ const mapDialog = () => {
   <div style="width: 4vw;"></div>
   <div id="sectorInfo" style="width: 30vw; text-align: left;"></div>
 </div>`,
+    sideBySideDivs([
+      `<button class="bottomButton" id="seeActiveMissions">See Active Missions</button>`,
+      `<button id="warpButton" class="bottomButton" disabled>Warp</button>`,
+    ], true),
     `<button class="bottomButton" id="closeMap">Close</button>`,
   ])}</div>`;
 };
@@ -72,6 +82,9 @@ const mapDialog = () => {
 const setupMapDialog = () => {
   document.getElementById("closeMap")?.addEventListener("click", () => {
     pop();
+  });
+  document.getElementById("seeActiveMissions")?.addEventListener("click", () => {
+    push(selectedMissionsDialog(), setupSelectedMissionsDialog, "selectedMissions");
   });
   for (let i = 0; i < mapSize * mapSize; i++) {
     document.getElementById(`sector-${i}`)?.addEventListener("click", () => {

@@ -12,6 +12,7 @@ import { manufacturingBay, setupManufacturingBay } from "./manufacturing";
 import { maxDecimals } from "../geometry";
 import { inventoryDialog, setupInventory } from "./inventory";
 import { requestShipPreview } from "../3dDrawing";
+import { missionsDialog, setupMissions } from "./missions";
 
 let docker = () => {};
 
@@ -366,8 +367,9 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     <h3  class="unselectable">Cargo</h3>
     <div id="cargo">${cargoHtml(self.cargo)}</div>
     <div style="display: flex; justify-content: center; flex-direction: row;">
-    <button id="openInventory" style="margin-top: 10px; margin-right: 10px;">Inventory</button>
-      <button id="openManufacturing" style="margin-top: 10px;">Manufacturing Bay</button>
+      <button id="openInventory" style="margin-top: 10px; margin-right: 10px;">Inventory</button>
+      <button id="openManufacturing" style="margin-top: 10px; margin-right: 10px;">Manufacturing Bay</button>
+      <button id="openMissions" style="margin-top: 10px;">Missions</button>
     </div>
   </div>
   <div style="width: 45%; float: right;">
@@ -401,7 +403,10 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
     push(manufacturingBay(), () => setupManufacturingBay(), "manufacturing");
   });
   document.getElementById("openInventory")?.addEventListener("click", () => {
-    push(inventoryDialog(), setupInventory);
+    push(inventoryDialog(), setupInventory, "inventory");
+  });
+  document.getElementById("openMissions")?.addEventListener("click", () => {
+    push(missionsDialog(), setupMissions, "missions");
   });
 };
 

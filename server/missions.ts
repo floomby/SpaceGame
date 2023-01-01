@@ -32,6 +32,8 @@ interface IMission {
   completed?: boolean;
   startDate?: Date;
   completedDate?: Date;
+  failed?: boolean;
+  failedDate?: Date;
 }
 
 const missionSchema = new Schema<IMission>({
@@ -47,6 +49,8 @@ const missionSchema = new Schema<IMission>({
   completed: { type: Boolean, required: false },
   startDate: { type: Date, required: false },
   completedDate: { type: Date, required: false },
+  failed: { type: Boolean, required: false },
+  failedDate: { type: Date, required: false },
 });
 
 const Mission = mongoose.model<IMission>("Mission", missionSchema);
@@ -67,33 +71,36 @@ const genMissions = async (assignee: number, forFaction: Faction, count: number,
   return missions;
 };
 
-const removeMissionSector = (sectorId: number) => {
+const missionSectorCleanupInterval = 1000 * 60 * 60 * 3; // 3 hours
+
+const removeMissionSector = (sectorId: number, missionId: number) => {
   const sectorNonNPCCount = Array.from(sectors.get(sectorId)?.players.values() || []).filter((p) => p.isPC).length;
   if (sectorNonNPCCount === 0) {
     sectors.delete(sectorId);
+    sectorTriggers.delete(sectorId);
+    failMissionIfIncomplete(missionId);
   } else {
     setTimeout(() => {
-      sectors.delete(sectorId);
-      sectorTriggers.delete(sectorId);
-    }, 1000 * 60 * 60 * 3);
+      removeMissionSector(sectorId, missionId);
+    }, missionSectorCleanupInterval);
   }
 };
 
-const createTutorialSector = () => {
+const createMissionSector = (missionId: number) => {
   let missionSector = uid();
   while (sectors.has(missionSector)) {
     missionSector = uid();
   }
 
   setTimeout(() => {
-    removeMissionSector(missionSector);
-  }, 1000 * 60 * 60 * 3);
+    removeMissionSector(missionSector, missionId);
+  }, missionSectorCleanupInterval);
 
   return missionSector;
 };
 
 const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>) => {
-  const missionSector = createTutorialSector();
+  const missionSector = createMissionSector(mission.id);
   player.warping = 1;
   player.warpTo = missionSector;
 
@@ -236,6 +243,15 @@ const completeMission = (id: number) => {
     }
     player.credits = player.credits ? player.credits + mission.reward : mission.reward;
     flashServerMessage(player.id, "You have completed mission: " + mission.name);
+  });
+};
+
+const failMissionIfIncomplete = (id: number) => {
+  Mission.findOneAndUpdate({ id, completed: { $ne: true } }, { failed: true, failedDate: new Date(), inProgress: false }, (err, mission: HydratedDocument<IMission>) => {
+    if (err) {
+      console.log(err);
+      return;
+    }
   });
 };
 

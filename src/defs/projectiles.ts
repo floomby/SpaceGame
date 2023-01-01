@@ -1,4 +1,5 @@
 import { Ballistic, findAllPlayersOverlappingCircle, GlobalState, Player } from "../game";
+import { UnitDefinition } from "./shipsAndStations";
 
 type ProjectileDef = {
   drawIndex: number;
@@ -83,4 +84,13 @@ const projectileLightColorUnnormed = (projectileIndex: number): [number, number,
   }
 };
 
-export { projectileDefs, initProjectileDefs, projectileLightColorUnnormed };
+const estimateEffectivePrimaryRange = (def: UnitDefinition) => {
+  const projectileDef = projectileDefs[def.primaryDefIndex];
+  let ret = projectileDef.range / 3;
+  if (projectileDef.additiveVelocity) {
+    ret += def.speed * 40;
+  }
+  return ret;
+};
+
+export { projectileDefs, initProjectileDefs, projectileLightColorUnnormed, estimateEffectivePrimaryRange };

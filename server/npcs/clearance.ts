@@ -1,5 +1,5 @@
 import { defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind } from "../../src/defs";
-import { projectileDefs } from "../../src/defs/projectiles";
+import { estimateEffectivePrimaryRange, projectileDefs } from "../../src/defs/projectiles";
 import { effectiveInfinity, equip, findClosestTarget, GlobalState, Input, Player, randomNearbyPointInSector } from "../../src/game";
 import { l2Norm } from "../../src/geometry";
 import {
@@ -146,23 +146,23 @@ class BasicSwarmer implements NPC {
       case 1:
       case 2:
         this.player = equip(this.player, 1, "Javelin Missile", true);
-        this.currentState = makeStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, isStrafer);
+        this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, isStrafer);
         break;
       case 3:
         this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        this.currentState = makeStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3, mineSlot, isStrafer);
+        this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 2500, 3, mineSlot, isStrafer);
         break;
       case 4:
         this.player = equip(this.player, 1, "Laser Beam", true);
-        this.currentState = makeStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38, mineSlot, isStrafer);
+        this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 38, mineSlot, isStrafer);
         break;
       case 5:
         this.player = equip(this.player, 1, "Disruptor Cannon", true);
-        this.currentState = makeStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 10, mineSlot, isStrafer);
+        this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), false, 350, 10, mineSlot, isStrafer);
         break;
       case 6:
         this.player = equip(this.player, 1, "Shotgun", true);
-        this.currentState = makeStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 1300, 13, mineSlot, isStrafer);
+        this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), false, 1300, 13, mineSlot, isStrafer);
         break;
     }
 

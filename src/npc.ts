@@ -1,6 +1,6 @@
 import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition, UnitKind } from "./defs";
 import { defaultLootTable, LootTable } from "./defs/collectables";
-import { projectileDefs } from "./defs/projectiles";
+import { estimateEffectivePrimaryRange, projectileDefs } from "./defs/projectiles";
 import {
   applyInputs,
   effectiveInfinity,
@@ -583,39 +583,39 @@ class ActiveSwarmer implements NPC {
       case 1:
       case 2:
         this.player = equip(this.player, 1, "Javelin Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 3:
       case 4:
         this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 2500, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 2500, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 5:
         this.player = equip(this.player, 1, "Laser Beam", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 38, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 38, mineSlot, friendlySectors, isStrafer);
         break;
       case 6:
         this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 700, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 700, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 7:
       case 8:
         if (isStrafer) {
           this.player = equip(this.player, 1, "Plasma Cannon", true);
-          this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot, friendlySectors, isStrafer);
+          this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, friendlySectors, isStrafer);
         } else {
           this.player = equip(this.player, 1, "Disruptor Cannon", true);
-          this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 350, 3, mineSlot, friendlySectors, isStrafer);
+          this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 350, 3, mineSlot, friendlySectors, isStrafer);
         }
         break;
       case 9:
       case 10:
         this.player = equip(this.player, 1, "Plasma Cannon", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, false, 800, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 11:
         this.player = equip(this.player, 1, "EMP Missile", true);
-        this.currentState = makeBasicStateGraph(projectileDefs[def.primaryDefIndex].range / 3, true, 3000, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, friendlySectors, isStrafer);
         break;
     }
 

@@ -573,7 +573,14 @@ app.get("/playerGraph", (req, res) => {
         return;
       }
       const data = generatePlayedIntervals(user).map(([start, end]) => (end.getTime() - start.getTime()) / 1000 / 60);
-      res.send(makeBarGraph(data.map((value) => ({ value, tooltip: maxDecimals(value, 2).toString() })), "Time Period", "Time Played", "Player Play Time Graph"));
+      res.send(
+        makeBarGraph(
+          data.map((value) => ({ value, tooltip: maxDecimals(value, 2).toString() })),
+          "Time Period",
+          "Time Played",
+          "Player Play Time Graph"
+        )
+      );
     });
   } catch (err) {
     console.log(err);
@@ -624,44 +631,38 @@ app.get("/changePassword", (req, res) => {
   });
 });
 
-app.get("/genMissions", async (req, res) => {
-  const password = req.query.password;
-  if (!password || typeof password !== "string") {
-    res.send("Invalid get parameters");
-    return;
-  }
-  const hashedPassword = hash(password);
-  if (hashedPassword !== adminHash) {
-    res.send("Invalid password");
-    return;
-  }
-  await genMissions();
-  res.send("true");
-});
-
 app.get("/getMissions", async (req, res) => {
-  const factionParam = req.query.faction;
-  if (!factionParam || typeof factionParam !== "string") {
-    res.send("Invalid get parameters");
-    return;
+  try {
+    const idPram = req.query.id;
+    if (!idPram || typeof idPram !== "string") {
+      res.send(JSON.stringify({ error: "Id missing or invalid" }));
+      return;
+    }
+    const id = parseInt(idPram);
+    const user = await User.findOne({ id });
+    if (!user) {
+      res.send(JSON.stringify({ error: "Invalid user" }));
+      return;
+    }
+    let missions = await Mission.find({ assignee: id, selected: { $ne: true } });
+    if (missions.length < 5) {
+      missions = await genMissions(id, user.faction, 5 - missions.length, missions);
+    }
+    res.send(JSON.stringify(missions));
+  } catch (err) {
+    res.send(JSON.stringify({ error: "Database interaction error" }));
+    console.log(err);
   }
-  const faction = parseInt(factionParam) as Faction;
-  if (!factionList.includes(faction)) {
-    res.send("Invalid faction");
-    return;
-  }
-  const missions = await Mission.find({ forFaction: faction, assignee: null });
-  res.send(JSON.stringify(missions));
 });
 
-app.get("/activeMissions", async (req, res) => {
+app.get("/selectedMissions", async (req, res) => {
   const idParam = req.query.id;
   if (!idParam || typeof idParam !== "string") {
     res.send("Invalid get parameters");
     return;
   }
   const id = parseInt(idParam);
-  const missions = await Mission.find({ assignee: id });
+  const missions = await Mission.find({ assignee: id, selected: true, inProgress: { $ne: true}, completed: { $ne: true } });
   res.send(JSON.stringify(missions));
 });
 

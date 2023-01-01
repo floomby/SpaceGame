@@ -270,10 +270,10 @@ const sendTutorialStageComplete = (stage: TutorialStage) => {
   }
 };
 
-const sendAssignMission = (missionId: number) => {
+const sendSelectMission = (missionId: number) => {
   serverSocket.send(
     JSON.stringify({
-      type: "assignMission",
+      type: "selectMission",
       payload: { missionId },
     })
   );
@@ -315,6 +315,6 @@ export {
   sendTransferToShip,
   sendSecondaryActivation,
   sendTutorialStageComplete,
-  sendAssignMission,
+  sendSelectMission,
   sendStartMission,
 };

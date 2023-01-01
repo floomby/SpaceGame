@@ -1,7 +1,7 @@
 import { horizontalCenter, pop } from "../dialog";
 import { MissionType } from "../game";
 import { lastSelf } from "../globals";
-import { sendAssignMission } from "../net";
+import { sendSelectMission } from "../net";
 import { getRestRaw } from "../rest";
 
 type ClientMission = { name: string; type: MissionType; reward: number; description: string; id: number };
@@ -27,16 +27,16 @@ const populateMissionTable = (value: ClientMission[]) => {
   <td>${mission.type}</td>
   <td>${mission.reward}</td>
   <td>${mission.description}</td>
-  <td><button id="assignMission${mission.id}">Select</button></td>
+  <td><button id="selectMission${mission.id}">Select</button></td>
 </tr>`;
   }
   html += "</table>";
   missionsTable.innerHTML = html;
   for (const mission of value) {
-    const button = document.getElementById(`assignMission${mission.id}`);
+    const button = document.getElementById(`selectMission${mission.id}`);
     if (button) {
       button.onclick = () => {
-        sendAssignMission(mission.id);
+        sendSelectMission(mission.id);
         pop();
       };
     }
@@ -44,7 +44,7 @@ const populateMissionTable = (value: ClientMission[]) => {
 };
 
 const setupMissions = () => {
-  getRestRaw(`/getMissions?faction=${lastSelf.team}`, populateMissionTable);
+  getRestRaw(`/getMissions?id=${lastSelf.id}`, populateMissionTable);
   const closeMissions = document.getElementById("closeMissions");
   closeMissions.onclick = () => {
     pop();

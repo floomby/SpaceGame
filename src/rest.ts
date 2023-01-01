@@ -75,7 +75,11 @@ const getRestRaw = (query: string, callback: (value: any) => void, cache = false
       if (cache) {
         restCache.set(query, data);
       }
-      callback(data);
+      if (data.error) {
+        console.error("Rest error: " + data.error);
+      } else {
+        callback(data);
+      }
     });
 };
 
@@ -97,7 +101,7 @@ const getNameOfPlayer = (player: Player) => {
   namesLookedUp.add(player.id);
   getRestRaw(`/${def.kind === UnitKind.Station ? "stationName" : "nameOf"}?id=${player.id}`, (data) => {
     if (data.error) {
-      console.log("Rest error: " + data.error);
+      console.error("Rest error: " + data.error);
     } else {
       nameMap.set(player.id, data.value);
     }

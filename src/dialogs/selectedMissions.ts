@@ -4,17 +4,17 @@ import { sendStartMission } from "../net";
 import { getRestRaw } from "../rest";
 import { ClientMission } from "./missions";
 
-const activeMissionsDialog = () => {
+const selectedMissionsDialog = () => {
   return `<div class="unselectable">${horizontalCenter([
-    `<h1>Active Missions</h1>`,
-    `<div id="activeMissionsTable"></div>`,
-    `<button class="bottomButton" id="closeActiveMissions">Close</button>`,
+    `<h1>Selected Missions</h1>`,
+    `<div id="selectedMissionsTable"></div>`,
+    `<button class="bottomButton" id="closeSelectedMissions">Close</button>`,
   ])}</div>`;
 };
 
-const populateActiveMissionTable = (value: ClientMission[]) => {
-  const activeMissionsTable = document.getElementById("activeMissionsTable");
-  if (!activeMissionsTable) {
+const populateSelectedMissionTable = (value: ClientMission[]) => {
+  const selectedMissionsTable = document.getElementById("selectedMissionsTable");
+  if (!selectedMissionsTable) {
     return;
   }
   let html = "<table>";
@@ -29,7 +29,7 @@ const populateActiveMissionTable = (value: ClientMission[]) => {
 </tr>`;
   }
   html += "</table>";
-  activeMissionsTable.innerHTML = html;
+  selectedMissionsTable.innerHTML = html;
   for (const mission of value) {
     const button = document.getElementById(`startMission${mission.id}`);
     if (button) {
@@ -41,11 +41,11 @@ const populateActiveMissionTable = (value: ClientMission[]) => {
   }
 };
 
-const setupActiveMissionsDialog = () => {
-  document.getElementById("closeActiveMissions")?.addEventListener("click", () => {
+const setupSelectedMissionsDialog = () => {
+  document.getElementById("closeSelectedMissions")?.addEventListener("click", () => {
     pop();
   });
-  getRestRaw(`/activeMissions?id=${lastSelf.id}`, populateActiveMissionTable);
+  getRestRaw(`/selectedMissions?id=${lastSelf.id}`, populateSelectedMissionTable);
 };
 
-export { activeMissionsDialog, setupActiveMissionsDialog };
+export { selectedMissionsDialog, setupSelectedMissionsDialog };

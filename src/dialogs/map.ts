@@ -2,7 +2,7 @@ import { horizontalCenter, pop, push } from "../dialog";
 import { currentSector, sectorData } from "../globals";
 import { sendWarp } from "../net";
 import { mapSize } from "../game";
-import { activeMissionsDialog, setupActiveMissionsDialog } from "./activeMissions";
+import { selectedMissionsDialog, setupSelectedMissionsDialog } from "./selectedMissions";
 
 const populateSectorInfo = (sector: number) => {
   const sectorInfo = document.getElementById("sectorInfo") as HTMLDivElement;
@@ -76,7 +76,7 @@ const setupMapDialog = () => {
     pop();
   });
   document.getElementById("seeActiveMissions")?.addEventListener("click", () => {
-    push(activeMissionsDialog(), setupActiveMissionsDialog, "activeMissions");
+    push(selectedMissionsDialog(), setupSelectedMissionsDialog, "selectedMissions");
   });
   for (let i = 0; i < mapSize * mapSize; i++) {
     document.getElementById(`sector-${i}`)?.addEventListener("click", () => {

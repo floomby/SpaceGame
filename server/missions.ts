@@ -1,3 +1,15 @@
+/* 
+Some words on how missions work:
+
+ - Missions are generated for every player and live in the database when the player wants to view their available missions.
+ - There will always be at least some number available (this number is currently in the routes file under the /getMissions endpoint).
+ - Once a player selects a mission it is marked as selected in the database.
+ - Once the player wants to start a mission the sector for the mission is created and added to the sector list for running the game update loop.
+ - At that point the mission is marked as in progress in the database.
+ - Upon mission completion the reward is given out and the mission is marked as completed in the database.
+
+*/
+
 import { clientUid, Faction } from "../src/defs";
 import { GlobalState, MissionType, Player } from "../src/game";
 import mongoose, { HydratedDocument } from "mongoose";
@@ -14,10 +26,11 @@ interface IMission {
   forFaction: Faction;
   reward: number;
   description: string;
+  assignee: number;
+  selected?: boolean;
   inProgress?: boolean;
-  assignee?: number;
   completed?: boolean;
-  assignedDate?: Date;
+  startDate?: Date;
   completedDate?: Date;
 }
 
@@ -28,29 +41,30 @@ const missionSchema = new Schema<IMission>({
   forFaction: { type: Number, required: true, min: 0, max: 2, validate: Number.isInteger },
   reward: { type: Number, required: true, min: 0 },
   description: { type: String, required: true },
+  assignee: { type: Number, required: true },
+  selected: { type: Boolean, required: false },
   inProgress: { type: Boolean, required: false },
-  assignee: { type: Number, required: false },
   completed: { type: Boolean, required: false },
-  assignedDate: { type: Date, required: false },
+  startDate: { type: Date, required: false },
   completedDate: { type: Date, required: false },
 });
 
 const Mission = mongoose.model<IMission>("Mission", missionSchema);
 
-const genMissions = async () => {
-  for (let fact of [Faction.Alliance, Faction.Confederation, Faction.Rogue]) {
-    for (let i = 0; i < 3; i++) {
-      const mission = new Mission({
-        name: "Clearance of sector " + i,
-        id: uid(),
-        type: MissionType.Clearance,
-        forFaction: fact,
-        reward: 1000 + i * 100,
-        description: "Clear out the sector of enemy ships",
-      });
-      await mission.save();
-    }
+const genMissions = async (assignee: number, forFaction: Faction, count: number, missions: HydratedDocument<IMission>[]) => {
+  for (let i = 0; i < count; i++) {
+    const mission = new Mission({
+      name: "Clearance #" + clientUid().toString(),
+      id: uid(),
+      type: MissionType.Clearance,
+      forFaction,
+      reward: 1000 + i * 100,
+      description: "Clear out the sector of enemy ships",
+      assignee,
+    });
+    missions.push(await mission.save());
   }
+  return missions;
 };
 
 const removeMissionSector = (sectorId: number) => {
@@ -71,7 +85,6 @@ const createTutorialSector = () => {
     missionSector = uid();
   }
 
-  // Idk the right way to handle this (still didn't figure a good way out for the tutorial either)
   setTimeout(() => {
     removeMissionSector(missionSector);
   }, 1000 * 60 * 60 * 3);
@@ -110,7 +123,7 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
 };
 
 const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashServerMessage: (id: number, message: string) => void) => {
-  const mission = Mission.findOne({ id }, (err, mission: HydratedDocument<IMission>) => {
+  Mission.findOne({ id }, (err, mission: HydratedDocument<IMission>) => {
     if (err) {
       console.log(err);
       try {
@@ -123,6 +136,14 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashSe
     if (!mission) {
       try {
         ws.send(JSON.stringify({ type: "error", payload: { message: "Mission not found" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+      return;
+    }
+    if (!mission.selected) {
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission has not yet been selected" } }));
       } catch (e) {
         console.trace(e);
       }
@@ -146,7 +167,7 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashSe
     }
     if (mission.assignee && mission.assignee !== player.id) {
       try {
-        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission already assigned to another player" } }));
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission assigned to another player" } }));
       } catch (e) {
         console.trace(e);
       }
@@ -161,8 +182,6 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashSe
       return;
     }
     mission.inProgress = true;
-    mission.assignee = player.id;
-    mission.assignedDate = new Date();
     flashServerMessage(player.id, "Starting mission: " + mission.name);
     mission
       .save()
@@ -175,10 +194,10 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashSe
   });
 };
 
-const assignMission = (ws: WebSocket, player: Player, missionId: number, flashServerMessage: (id: number, message: string) => void) => {
-  const mission = Mission.findOneAndUpdate(
-    { id: missionId, assignee: null, forFaction: player.team },
-    { assignee: player.id, assignedDate: new Date() },
+const selectMission = (ws: WebSocket, player: Player, missionId: number, flashServerMessage: (id: number, message: string) => void) => {
+  Mission.findOneAndUpdate(
+    { id: missionId, assignee: player.id, forFaction: player.team },
+    { selected: true },
     (err, mission: HydratedDocument<IMission>) => {
       if (err) {
         console.log(err);
@@ -191,19 +210,19 @@ const assignMission = (ws: WebSocket, player: Player, missionId: number, flashSe
       }
       if (!mission) {
         try {
-          ws.send(JSON.stringify({ type: "error", payload: { message: "Mission not found or no longer valid" } }));
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Valid mission not found" } }));
         } catch (e) {
           console.trace(e);
         }
         return;
       }
-      flashServerMessage(player.id, "You have been assigned mission: " + mission.name);
+      flashServerMessage(player.id, "You have been selected mission: " + mission.name);
     }
   );
 };
 
 const completeMission = (id: number) => {
-  Mission.findOneAndUpdate({ id }, { completed: true, completedDate: new Date() }, (err, mission: HydratedDocument<IMission>) => {
+  Mission.findOneAndUpdate({ id }, { completed: true, completedDate: new Date(), inProgress: false }, (err, mission: HydratedDocument<IMission>) => {
     if (err) {
       console.log(err);
       return;
@@ -220,6 +239,4 @@ const completeMission = (id: number) => {
   });
 };
 
-
-
-export { Mission, genMissions, MissionType, startPlayerInMission, assignMission };
+export { Mission, genMissions, MissionType, startPlayerInMission, selectMission };

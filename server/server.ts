@@ -79,7 +79,7 @@ import { credentials, hash, wsPort } from "./settings";
 import Routes from "./routes";
 import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
-import { assignMission, startPlayerInMission } from "./missions";
+import { selectMission, startPlayerInMission } from "./missions";
 import { enemyCount, allyCount, flashServerMessage } from "./stateHelpers";
 
 mongoose
@@ -796,14 +796,14 @@ wss.on("connection", (ws, req) => {
             sendTutorialStage(ws, client.inTutorial);
           }
         }
-      } else if (data.type === "assignMission") {
+      } else if (data.type === "selectMission") {
         const client = clients.get(ws);
         if (client) {
           const state = sectors.get(client.currentSector);
           if (state) {
             const player = state.players.get(client.id);
             if (player) {
-              assignMission(ws, player, data.payload.missionId, flashServerMessage);
+              selectMission(ws, player, data.payload.missionId, flashServerMessage);
             }
           }
         }

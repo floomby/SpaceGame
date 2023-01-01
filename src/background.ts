@@ -1,4 +1,4 @@
-import { gameToMacro } from "./game";
+import { gameToMacro, mapSize } from "./game";
 import { Position, positiveMod } from "./geometry";
 import { currentSector, lastSelf } from "./globals";
 
@@ -129,7 +129,7 @@ const doPrefetch = () => {
   preFetchChunks(x + 1, y);
   preFetchChunks(x + 1, y + 1);
 
-  if (lastSelf?.warping > 0) {
+  if (lastSelf?.warping > 0 && lastSelf?.warpTo < mapSize * mapSize) {
     const macro = gameToMacro(lastSelf.position, lastSelf.warpTo);
     const warpX = Math.floor(macro.x / 1024);
     const warpY = Math.floor(macro.y / 1024);

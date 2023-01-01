@@ -20,7 +20,6 @@ import {
   purchaseShip,
   effectiveInfinity,
   processAllNpcs,
-  serverMessagePersistTime,
   canRepair,
   removeAtMostCargo,
   isNearOperableEnemyStation,
@@ -69,6 +68,7 @@ import {
   sectorInDirection,
   sectorList,
   sectors,
+  sectorTriggers,
   targets,
   tutorialRespawnPoints,
   uid,
@@ -80,6 +80,7 @@ import Routes from "./routes";
 import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
 import { assignMission, startPlayerInMission } from "./missions";
+import { enemyCount, allyCount, flashServerMessage } from "./stateHelpers";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -913,25 +914,6 @@ const removeMine = (sector: number, id: number, detonated: boolean) => {
   }
 };
 
-const flashServerMessage = (id: number, message: string) => {
-  const ws = idToWebsocket.get(id);
-  if (ws) {
-    const client = clients.get(ws);
-    if (client && message.length > 0) {
-      if (message !== client.lastMessage) {
-        ws.send(JSON.stringify({ type: "serverMessage", payload: { message } }));
-        client.lastMessage = message;
-        client.lastMessageTime = Date.now();
-      } else {
-        if (Date.now() - client.lastMessageTime > serverMessagePersistTime) {
-          ws.send(JSON.stringify({ type: "serverMessage", payload: { message } }));
-          client.lastMessageTime = Date.now();
-        }
-      }
-    }
-  }
-};
-
 // To be changed once sectors are better understood
 // const isEnemySector = (team: Faction, sector: number) => {
 //   return team + 1 !== sector && sector < 4;
@@ -960,34 +942,6 @@ const flashServerMessage = (id: number, message: string) => {
 //       break;
 //   }
 // };
-
-const enemyCount = (team: Faction, sector: number) => {
-  const state = sectors.get(sector);
-  if (!state) {
-    return 0;
-  }
-  let count = 0;
-  for (const [id, player] of state.players) {
-    if (player.team !== team) {
-      count++;
-    }
-  }
-  return count;
-};
-
-const allyCount = (team: Faction, sector: number) => {
-  const state = sectors.get(sector);
-  if (!state) {
-    return 0;
-  }
-  let count = 0;
-  for (const [id, player] of state.players) {
-    if (player.team === team) {
-      count++;
-    }
-  }
-  return count;
-};
 
 let frame = 0;
 
@@ -1068,6 +1022,13 @@ setInterval(() => {
     }
     for (const player of state.players.values()) {
       player.npc = npcs.shift()!;
+    }
+
+    if (frame % 60 === 0) {
+      const trigger = sectorTriggers.get(sector);
+      if (trigger) {
+        trigger(state);
+      }
     }
   }
 

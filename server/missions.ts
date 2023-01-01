@@ -1,8 +1,9 @@
 import { clientUid, Faction } from "../src/defs";
-import { MissionType, Player } from "../src/game";
+import { GlobalState, MissionType, Player } from "../src/game";
 import mongoose, { HydratedDocument } from "mongoose";
-import { sectors, uid } from "./state";
+import { getPlayerFromId, sectors, sectorTriggers, uid } from "./state";
 import { WebSocket } from "ws";
+import { enemyCountState, flashServerMessage } from "./stateHelpers";
 
 const Schema = mongoose.Schema;
 
@@ -59,6 +60,7 @@ const removeMissionSector = (sectorId: number) => {
   } else {
     setTimeout(() => {
       sectors.delete(sectorId);
+      sectorTriggers.delete(sectorId);
     }, 1000 * 60 * 60 * 3);
   }
 };
@@ -95,6 +97,16 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
   };
 
   sectors.set(missionSector, state);
+  if (mission.type === MissionType.Clearance) {
+    sectorTriggers.set(missionSector, (state: GlobalState) => {
+      if (enemyCountState(mission.forFaction, state) === 0) {
+        completeMission(mission.id);
+        sectorTriggers.delete(missionSector);
+      }
+    });
+  } else {
+    console.log("Unsupported mission type: " + mission.type);
+  }
 };
 
 const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashServerMessage: (id: number, message: string) => void) => {
@@ -189,5 +201,25 @@ const assignMission = (ws: WebSocket, player: Player, missionId: number, flashSe
     }
   );
 };
+
+const completeMission = (id: number) => {
+  Mission.findOneAndUpdate({ id }, { completed: true, completedDate: new Date() }, (err, mission: HydratedDocument<IMission>) => {
+    if (err) {
+      console.log(err);
+      return;
+    }
+    if (!mission) {
+      return;
+    }
+    const player = getPlayerFromId(mission.assignee!);
+    if (!player) {
+      return;
+    }
+    player.credits = player.credits ? player.credits + mission.reward : mission.reward;
+    flashServerMessage(player.id, "You have completed mission: " + mission.name);
+  });
+};
+
+
 
 export { Mission, genMissions, MissionType, startPlayerInMission, assignMission };

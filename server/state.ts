@@ -175,7 +175,16 @@ const sectorInDirection = (sector: number, direction: CardinalDirection) => {
 const clients: Map<WebSocket, ClientData> = new Map();
 const idToWebsocket = new Map<number, WebSocket>();
 
+const getPlayerFromId = (id: number) => {
+  const ws = idToWebsocket.get(id);
+  if (!ws) return null;
+  const client = clients.get(ws);
+  if (!client) return null;
+  return sectors.get(client.currentSector)?.players.get(id);
+};
+
 const sectors: Map<number, GlobalState> = new Map();
+const sectorTriggers: Map<number, (state: GlobalState) => void> = new Map();
 const warpList: { player: Player; to: number }[] = [];
 
 sectorList.forEach((sector) => {
@@ -257,6 +266,7 @@ export {
   clients,
   idToWebsocket,
   sectors,
+  sectorTriggers,
   warpList,
   targets,
   secondaries,
@@ -268,4 +278,5 @@ export {
   saveCheckpoint,
   friendlySectors,
   initInitialAsteroids,
+  getPlayerFromId,
 };

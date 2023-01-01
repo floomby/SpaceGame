@@ -270,6 +270,24 @@ const sendTutorialStageComplete = (stage: TutorialStage) => {
   }
 };
 
+const sendSelectMission = (missionId: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "selectMission",
+      payload: { missionId },
+    })
+  );
+};
+
+const sendStartMission = (missionId: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "startMission",
+      payload: { missionId },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -297,4 +315,6 @@ export {
   sendTransferToShip,
   sendSecondaryActivation,
   sendTutorialStageComplete,
+  sendSelectMission,
+  sendStartMission,
 };

@@ -3,6 +3,7 @@ import { maxDecimals } from "../src/geometry";
 import { IUser, User } from "./dataModels";
 import { GraphData, makeBarGraph } from "./graphs";
 import { WebSocketConnection } from "./logging";
+import { sideBySideDivs, stackedDivs } from "../src/dialogs/helpers";
 
 const defaultPlayTimeIfUndefined = 1000 * 60;
 
@@ -68,12 +69,6 @@ const wrapReportHTML = (content: string) => `
   </body>
 </html>
 `;
-
-const sideBySideDivs = (content: string[]) => `<div style="display: flex; flex-direction: row; justify-content: left;">
-  ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
-
-const stackedDivs = (content: string[]) => `<div style="display: flex; flex-direction: column; justify-content: left;">
-  ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
 
 const totalPlayTimeByAllUsersInIntervals = async (intervals: [Date, Date][]) => {
   const users = await User.find({});

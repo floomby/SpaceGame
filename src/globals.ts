@@ -3,7 +3,7 @@ import { allowBackgroundFlash } from "./3dDrawing";
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { redrawTip } from "./dialogs/dead";
-import { GlobalState, Player, SectorInfo, TutorialStage } from "./game";
+import { GlobalState, mapSize, Player, SectorInfo, TutorialStage } from "./game";
 import { azertyBindings, dvorakBindings, KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
 import { tutorialPrompters } from "./tutorial";
 
@@ -166,6 +166,10 @@ const setTutorialStage = (newTutorialStage: TutorialStage) => {
   }
 };
 
+const isInMission = () => {
+  return tutorialStage === TutorialStage.Done && currentSector >= mapSize * mapSize;
+}
+
 let useAlternativeBackgrounds = false;
 
 const setUseAlternativeBackgrounds = (newUseAlternativeBackgrounds: boolean) => {
@@ -228,4 +232,5 @@ export {
   useAlternativeBackgrounds,
   setUseAlternativeBackgrounds,
   getUseAlternativeBackgroundsPref,
+  isInMission,
 };

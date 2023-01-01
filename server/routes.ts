@@ -1,7 +1,7 @@
 import { createServer } from "http";
 import { createServer as createSecureServer } from "https";
 import { maxNameLength } from "../src/game";
-import { armDefMap, asteroidDefMap, defMap, Faction, UnitKind } from "../src/defs";
+import { armDefMap, asteroidDefMap, defMap, Faction, factionList, UnitKind } from "../src/defs";
 import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
@@ -18,6 +18,7 @@ import { isFreeArm } from "../src/defs/armaments";
 import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "./reports";
 import { makeBarGraph } from "./graphs";
 import { maxDecimals } from "../src/geometry";
+import { genMissions, Mission } from "./missions";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -572,7 +573,14 @@ app.get("/playerGraph", (req, res) => {
         return;
       }
       const data = generatePlayedIntervals(user).map(([start, end]) => (end.getTime() - start.getTime()) / 1000 / 60);
-      res.send(makeBarGraph(data.map((value) => ({ value, tooltip: maxDecimals(value, 2).toString() })), "Time Period", "Time Played", "Player Play Time Graph"));
+      res.send(
+        makeBarGraph(
+          data.map((value) => ({ value, tooltip: maxDecimals(value, 2).toString() })),
+          "Time Period",
+          "Time Played",
+          "Player Play Time Graph"
+        )
+      );
     });
   } catch (err) {
     console.log(err);
@@ -621,6 +629,41 @@ app.get("/changePassword", (req, res) => {
     res.send(true);
     return;
   });
+});
+
+app.get("/getMissions", async (req, res) => {
+  try {
+    const idPram = req.query.id;
+    if (!idPram || typeof idPram !== "string") {
+      res.send(JSON.stringify({ error: "Id missing or invalid" }));
+      return;
+    }
+    const id = parseInt(idPram);
+    const user = await User.findOne({ id });
+    if (!user) {
+      res.send(JSON.stringify({ error: "Invalid user" }));
+      return;
+    }
+    let missions = await Mission.find({ assignee: id, selected: { $ne: true } });
+    if (missions.length < 5) {
+      missions = await genMissions(id, user.faction, 5 - missions.length, missions);
+    }
+    res.send(JSON.stringify(missions));
+  } catch (err) {
+    res.send(JSON.stringify({ error: "Database interaction error" }));
+    console.log(err);
+  }
+});
+
+app.get("/selectedMissions", async (req, res) => {
+  const idParam = req.query.id;
+  if (!idParam || typeof idParam !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const id = parseInt(idParam);
+  const missions = await Mission.find({ assignee: id, selected: true, inProgress: { $ne: true}, completed: { $ne: true } });
+  res.send(JSON.stringify(missions));
 });
 
 export default () => {

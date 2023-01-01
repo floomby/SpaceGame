@@ -1558,6 +1558,11 @@ const gameToMacro = (position: Position, sector: number) => {
   };
 };
 
+enum MissionType {
+  Clearance = "Clearance",
+  Assassination = "Assassination",
+}
+
 export {
   GlobalState,
   Input,
@@ -1579,6 +1584,7 @@ export {
   Entity,
   CloakedState,
   TutorialStage,
+  MissionType,
   update,
   applyInputs,
   processAllNpcs,

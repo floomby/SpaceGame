@@ -3,7 +3,7 @@ import { maxDecimals } from "../src/geometry";
 import { IUser, User } from "./dataModels";
 import { GraphData, makeBarGraph } from "./graphs";
 import { WebSocketConnection } from "./logging";
-import { sideBySideDivs, stackedDivs } from "../src/dialog";
+import { sideBySideDivs, stackedDivs } from "../src/dialogs/helpers";
 
 const defaultPlayTimeIfUndefined = 1000 * 60;
 

@@ -1,5 +1,6 @@
-import { clearStack, horizontalCenter, pop, push, sideBySideDivs } from "../dialog";
+import { clearStack, horizontalCenter, pop, push } from "../dialog";
 import { isInMission } from "../globals";
+import { sideBySideDivs } from "./helpers";
 
 const abortHtml = `<div class="unselectable">${horizontalCenter([
   "<h1>Abort Mission?</h1>",

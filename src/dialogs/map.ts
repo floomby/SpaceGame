@@ -1,9 +1,10 @@
-import { horizontalCenter, pop, push, sideBySideDivs } from "../dialog";
+import { horizontalCenter, pop, push } from "../dialog";
 import { currentSector, sectorData } from "../globals";
 import { sendWarp } from "../net";
 import { mapSize } from "../game";
 import { selectedMissionsDialog, setupSelectedMissionsDialog } from "./selectedMissions";
 import { abortWrapper } from "./abortMission";
+import { sideBySideDivs } from "./helpers";
 
 const populateSectorInfo = (sector: number) => {
   const sectorInfo = document.getElementById("sectorInfo") as HTMLDivElement;

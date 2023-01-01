@@ -650,7 +650,18 @@ app.get("/getMissions", async (req, res) => {
     res.send("Invalid faction");
     return;
   }
-  const missions = await Mission.find({ faction, completed: { $ne: true } });
+  const missions = await Mission.find({ forFaction: faction, assignee: null });
+  res.send(JSON.stringify(missions));
+});
+
+app.get("/activeMissions", async (req, res) => {
+  const idParam = req.query.id;
+  if (!idParam || typeof idParam !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const id = parseInt(idParam);
+  const missions = await Mission.find({ assignee: id });
   res.send(JSON.stringify(missions));
 });
 

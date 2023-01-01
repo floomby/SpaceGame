@@ -79,6 +79,7 @@ import { credentials, hash, wsPort } from "./settings";
 import Routes from "./routes";
 import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
+import { assignMission, startPlayerInMission } from "./missions";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -792,6 +793,28 @@ wss.on("connection", (ws, req) => {
             }
             client.inTutorial = advanceTutorialStage(client.id, data.payload.stage, ws);
             sendTutorialStage(ws, client.inTutorial);
+          }
+        }
+      } else if (data.type === "assignMission") {
+        const client = clients.get(ws);
+        if (client) {
+          const state = sectors.get(client.currentSector);
+          if (state) {
+            const player = state.players.get(client.id);
+            if (player) {
+              assignMission(ws, player, data.payload.missionId, flashServerMessage);
+            }
+          }
+        }
+      } else if (data.type === "startMission") {
+        const client = clients.get(ws);
+        if (client) {
+          const state = sectors.get(client.currentSector);
+          if (state) {
+            const player = state.players.get(client.id);
+            if (player) {
+              startPlayerInMission(ws, player, data.payload.missionId, flashServerMessage);
+            }
           }
         }
       } else {

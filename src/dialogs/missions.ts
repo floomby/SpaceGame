@@ -1,7 +1,10 @@
 import { horizontalCenter, pop } from "../dialog";
 import { MissionType } from "../game";
 import { lastSelf } from "../globals";
+import { sendAssignMission } from "../net";
 import { getRestRaw } from "../rest";
+
+type ClientMission = { name: string; type: MissionType; reward: number; description: string; id: number };
 
 const missionsDialog = () => {
   return `<div class="unselectable">${horizontalCenter([
@@ -11,18 +14,33 @@ const missionsDialog = () => {
   ])}</div>`;
 };
 
-const populateMissionTable = (value: { name: string; type: MissionType; reward: number; description: string }[]) => {
+const populateMissionTable = (value: ClientMission[]) => {
   const missionsTable = document.getElementById("missionsTable");
   if (!missionsTable) {
     return;
   }
   let html = "<table>";
-  html += "<tr><th>Name</th><th>Type</th><th>Reward</th><th>Description</th></tr>";
+  html += "<tr><th>Name</th><th>Type</th><th>Reward</th><th>Description</th><th></th></tr>";
   for (const mission of value) {
-    html += `<tr><td>${mission.name}</td><td>${mission.type}</td><td>${mission.reward}</td><td>${mission.description}</td></tr>`;
+    html += `<tr>
+  <td>${mission.name}</td>
+  <td>${mission.type}</td>
+  <td>${mission.reward}</td>
+  <td>${mission.description}</td>
+  <td><button id="assignMission${mission.id}">Select</button></td>
+</tr>`;
   }
   html += "</table>";
   missionsTable.innerHTML = html;
+  for (const mission of value) {
+    const button = document.getElementById(`assignMission${mission.id}`);
+    if (button) {
+      button.onclick = () => {
+        sendAssignMission(mission.id);
+        pop();
+      };
+    }
+  }
 };
 
 const setupMissions = () => {
@@ -33,4 +51,4 @@ const setupMissions = () => {
   };
 };
 
-export { missionsDialog, setupMissions };
+export { ClientMission, missionsDialog, setupMissions };

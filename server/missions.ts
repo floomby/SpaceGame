@@ -81,6 +81,20 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
   const missionSector = createTutorialSector();
   player.warping = 1;
   player.warpTo = missionSector;
+
+  const state = {
+    players: new Map(),
+    projectiles: new Map(),
+    asteroids: new Map(),
+    missiles: new Map(),
+    collectables: new Map(),
+    asteroidsDirty: false,
+    mines: new Map(),
+    projectileId: 1,
+    delayedActions: [],
+  };
+
+  sectors.set(missionSector, state);
 };
 
 const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashServerMessage: (id: number, message: string) => void) => {
@@ -138,12 +152,42 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashSe
     mission.assignee = player.id;
     mission.assignedDate = new Date();
     flashServerMessage(player.id, "Starting mission: " + mission.name);
-    mission.save().then(() => {
-      startMissionGameState(player, mission);
-    }).catch((e) => {
-      console.trace(e);
-    });
+    mission
+      .save()
+      .then(() => {
+        startMissionGameState(player, mission);
+      })
+      .catch((e) => {
+        console.trace(e);
+      });
   });
 };
 
-export { Mission, genMissions, MissionType, startPlayerInMission };
+const assignMission = (ws: WebSocket, player: Player, missionId: number, flashServerMessage: (id: number, message: string) => void) => {
+  const mission = Mission.findOneAndUpdate(
+    { id: missionId, assignee: null, forFaction: player.team },
+    { assignee: player.id, assignedDate: new Date() },
+    (err, mission: HydratedDocument<IMission>) => {
+      if (err) {
+        console.log(err);
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Error assigning mission" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+        return;
+      }
+      if (!mission) {
+        try {
+          ws.send(JSON.stringify({ type: "error", payload: { message: "Mission not found or no longer valid" } }));
+        } catch (e) {
+          console.trace(e);
+        }
+        return;
+      }
+      flashServerMessage(player.id, "You have been assigned mission: " + mission.name);
+    }
+  );
+};
+
+export { Mission, genMissions, MissionType, startPlayerInMission, assignMission };

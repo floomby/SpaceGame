@@ -77,6 +77,7 @@ const makeStateGraph = (
     state: run,
   });
   run.transitions.push({ trigger: () => Math.random() < 0.002, state: run });
+  run.transitions.push({ trigger: () => Math.random() < 0.01, state: swarm });
   return idle;
 };
 
@@ -174,7 +175,7 @@ class BasicSwarmer implements NPC {
   public process(state: GlobalState, sector: number) {
     let target: Player | undefined = undefined;
     const def = defs[this.player.defIndex];
-    const newTarget = findClosestTarget(this.player, state, def.scanRange!, true, true);
+    const newTarget = findClosestTarget(this.player, state, effectiveInfinity, true);
     this.targetId = newTarget?.id ?? 0;
     target = newTarget;
     if (!target && this.targetId) {

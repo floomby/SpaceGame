@@ -15,7 +15,7 @@ import { GlobalState, MissionType, Player } from "../src/game";
 import mongoose, { HydratedDocument } from "mongoose";
 import { getPlayerFromId, sectors, sectorTriggers, uid } from "./state";
 import { WebSocket } from "ws";
-import { enemyCountState, flashServerMessage } from "./stateHelpers";
+import { enemyCountState, flashServerMessage, sendMissionComplete } from "./stateHelpers";
 import { spawnClearanceNPCs } from "./npcs/clearance";
 
 const Schema = mongoose.Schema;
@@ -131,7 +131,7 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
   }
 };
 
-const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashServerMessage: (id: number, message: string) => void) => {
+const startPlayerInMission = (ws: WebSocket, player: Player, id: number) => {
   Mission.findOne({ id }, (err, mission: HydratedDocument<IMission>) => {
     if (err) {
       console.log(err);
@@ -191,7 +191,7 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashSe
       return;
     }
     mission.inProgress = true;
-    flashServerMessage(player.id, "Starting mission: " + mission.name);
+    flashServerMessage(player.id, "Starting mission: " + mission.name, [0.0, 1.0, 0.0, 1.0]);
     mission
       .save()
       .then(() => {
@@ -203,7 +203,7 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashSe
   });
 };
 
-const selectMission = (ws: WebSocket, player: Player, missionId: number, flashServerMessage: (id: number, message: string) => void) => {
+const selectMission = (ws: WebSocket, player: Player, missionId: number) => {
   Mission.findOneAndUpdate(
     { id: missionId, assignee: player.id, forFaction: player.team },
     { selected: true },
@@ -225,7 +225,7 @@ const selectMission = (ws: WebSocket, player: Player, missionId: number, flashSe
         }
         return;
       }
-      flashServerMessage(player.id, "You have been selected mission: " + mission.name);
+      flashServerMessage(player.id, "You have selected mission: " + mission.name);
     }
   );
 };
@@ -244,7 +244,7 @@ const completeMission = (id: number) => {
       return;
     }
     player.credits = player.credits ? player.credits + mission.reward : mission.reward;
-    flashServerMessage(player.id, "You have completed mission: " + mission.name);
+    sendMissionComplete(player.id, "You have completed mission: " + mission.name);
   });
 };
 

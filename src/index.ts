@@ -42,6 +42,7 @@ import { applyEffects, clearEffects } from "./effects";
 import {
   addLoadingText,
   clearInventory,
+  clearMissionStatus,
   currentSector,
   hideLoadingText,
   initBlankState,
@@ -55,6 +56,7 @@ import {
   setCurrentSector,
   setFaction,
   setLastSelf,
+  setMissionComplete,
   setOwnId,
   setSelectedSecondary,
   setTutorialStage,
@@ -536,6 +538,7 @@ const run = () => {
     }
     targetId = 0;
     targetAsteroidId = 0;
+    clearMissionStatus();
   });
 
   bindAction("chat", async (data: { id: number; message: string }) => {
@@ -547,8 +550,8 @@ const run = () => {
     });
   });
 
-  bindAction("serverMessage", (data: { message: string }) => {
-    pushMessage(data.message);
+  bindAction("serverMessage", (data: { message: string, color: [number, number, number, number] }) => {
+    pushMessage(data.message, 240, data.color);
   });
 
   bindAction("removeCollectable", (data: { id: number; collected: boolean }) => {
@@ -600,6 +603,11 @@ const run = () => {
 
   bindAction("tutorialStage", (stage: TutorialStage) => {
     setTutorialStage(stage);
+  });
+
+  bindAction("missionComplete", (message: string) => {
+    setMissionComplete();
+    pushMessage(message, 240, [0.0, 1.0, 0.0, 1.0]);
   });
 
   bindPostUpdater("arms", rasterizeWeaponText);

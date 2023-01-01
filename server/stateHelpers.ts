@@ -50,18 +50,18 @@ const allyCount = (team: Faction, sector: number) => {
   return count;
 };
 
-const flashServerMessage = (id: number, message: string) => {
+const flashServerMessage = (id: number, message: string, color: [number, number, number, number] = [1.0, 1.0, 1.0, 1.0]) => {
   const ws = idToWebsocket.get(id);
   if (ws) {
     const client = clients.get(ws);
     if (client && message.length > 0) {
       if (message !== client.lastMessage) {
-        ws.send(JSON.stringify({ type: "serverMessage", payload: { message } }));
+        ws.send(JSON.stringify({ type: "serverMessage", payload: { message, color } }));
         client.lastMessage = message;
         client.lastMessageTime = Date.now();
       } else {
         if (Date.now() - client.lastMessageTime > serverMessagePersistTime) {
-          ws.send(JSON.stringify({ type: "serverMessage", payload: { message } }));
+          ws.send(JSON.stringify({ type: "serverMessage", payload: { message, color } }));
           client.lastMessageTime = Date.now();
         }
       }
@@ -69,4 +69,11 @@ const flashServerMessage = (id: number, message: string) => {
   }
 };
 
-export { enemyCount, allyCount, enemyCountState, allyCountState, flashServerMessage };
+const sendMissionComplete = (id: number, message: string) => {
+  const ws = idToWebsocket.get(id);
+  if (ws) {
+    ws.send(JSON.stringify({ type: "missionComplete", payload: message }));
+  }
+};
+
+export { enemyCount, allyCount, enemyCountState, allyCountState, flashServerMessage, sendMissionComplete };

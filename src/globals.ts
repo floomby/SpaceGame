@@ -170,6 +170,16 @@ const isInMission = () => {
   return tutorialStage === TutorialStage.Done && currentSector >= mapSize * mapSize;
 }
 
+let missionComplete = false;
+
+const clearMissionStatus = () => {
+  missionComplete = false;
+}
+
+const setMissionComplete = () => {
+  missionComplete = true;
+}
+
 let useAlternativeBackgrounds = false;
 
 const setUseAlternativeBackgrounds = (newUseAlternativeBackgrounds: boolean) => {
@@ -233,4 +243,7 @@ export {
   setUseAlternativeBackgrounds,
   getUseAlternativeBackgroundsPref,
   isInMission,
+  missionComplete,
+  clearMissionStatus,
+  setMissionComplete,
 };

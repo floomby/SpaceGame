@@ -803,7 +803,7 @@ wss.on("connection", (ws, req) => {
           if (state) {
             const player = state.players.get(client.id);
             if (player) {
-              selectMission(ws, player, data.payload.missionId, flashServerMessage);
+              selectMission(ws, player, data.payload.missionId);
             }
           }
         }
@@ -814,7 +814,7 @@ wss.on("connection", (ws, req) => {
           if (state) {
             const player = state.players.get(client.id);
             if (player) {
-              startPlayerInMission(ws, player, data.payload.missionId, flashServerMessage);
+              startPlayerInMission(ws, player, data.payload.missionId);
             }
           }
         }

@@ -1,5 +1,5 @@
-import { clearStack, horizontalCenter, pop, push } from "../dialog";
-import { isInMission } from "../globals";
+import { horizontalCenter, pop, push } from "../dialog";
+import { isInMission, missionComplete } from "../globals";
 import { sideBySideDivs } from "./helpers";
 
 const abortHtml = `<div class="unselectable">${horizontalCenter([
@@ -28,7 +28,7 @@ const setupAbort = (action: () => void) => {
 };
 
 const abortWrapper = (action: () => void) => {
-  if (!isInMission()) {
+  if (!isInMission() || missionComplete) {
     action();
   } else {
     push(abortHtml, () => setupAbort(action), "abortMission");

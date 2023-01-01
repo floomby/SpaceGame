@@ -23,7 +23,7 @@ import { recipeMap } from "./recipes";
 interface NPC {
   player: Player;
   input: Input;
-  angle: number;
+  angle: number | undefined;
   selectedSecondary: number;
   secondariesToFire: number[];
   lootTable: LootTable;
@@ -624,8 +624,6 @@ class ActiveSwarmer implements NPC {
 
   private currentState: State;
 
-  private frame = Math.floor(Math.random() * 60);
-
   public process(state: GlobalState, sector: number) {
     let target: Player | undefined = undefined;
     const def = defs[this.player.defIndex];
@@ -636,181 +634,6 @@ class ActiveSwarmer implements NPC {
       target = state.players.get(this.targetId);
     }
     this.currentState = this.currentState.process(state, this, sector, target);
-  }
-}
-
-// Special ai for the strafer unit
-// TODO Rewrite this to use the new AI system
-class Strafer implements NPC {
-  public player: Player;
-
-  public input: Input = {
-    left: false,
-    right: false,
-    up: false,
-    down: false,
-    primary: false,
-    secondary: false,
-  };
-  public angle: number = undefined;
-
-  public selectedSecondary = 1;
-
-  public lootTable = defaultLootTable;
-
-  public secondariesToFire: number[] = [];
-
-  private guidedSecondary: boolean;
-  private usesAmmo: boolean;
-
-  constructor(what: string | number, team: number | Faction, id: number) {
-    let defIndex: number;
-    let def: UnitDefinition;
-    if (typeof what === "string") {
-      const value = defMap.get(what);
-      if (value) {
-        defIndex = value.index;
-        def = value.def;
-      } else {
-        throw new Error(`Unknown NPC type: ${what}`);
-      }
-    } else {
-      defIndex = what;
-      def = defs[defIndex];
-    }
-    this.player = {
-      position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
-      radius: defs[defIndex].radius,
-      speed: 0,
-      heading: Math.random() * 2 * Math.PI,
-      health: defs[defIndex].health,
-      id: id,
-      sinceLastShot: [effectiveInfinity],
-      energy: defs[defIndex].energy,
-      defIndex: defIndex,
-      arms: emptyLoadout(defIndex),
-      slotData: emptySlotData(def),
-      cargo: [],
-      credits: 500,
-      npc: this,
-      warping: -defs[defIndex].warpTime,
-      team,
-      side: 0,
-      v: { x: 0, y: 0 },
-      iv: { x: 0, y: 0 },
-      ir: 0,
-    };
-
-    this.usesAmmo = true;
-    switch (Math.floor(Math.random() * 5)) {
-      case 0:
-        this.player = equip(this.player, 1, "Javelin Missile", true);
-        this.guidedSecondary = false;
-        break;
-      case 1:
-        this.player = equip(this.player, 1, "Tomahawk Missile", true);
-        this.guidedSecondary = true;
-        break;
-      case 2:
-        this.player = equip(this.player, 1, "Laser Beam", true);
-        this.guidedSecondary = true;
-        this.usesAmmo = false;
-        break;
-      case 3:
-        this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
-        this.guidedSecondary = false;
-        break;
-      case 4:
-        this.player = equip(this.player, 1, "EMP Missile", true);
-        this.guidedSecondary = true;
-        break;
-    }
-  }
-
-  public targetId = 0;
-
-  private strafeDirection = true;
-
-  private frame = Math.floor(Math.random() * 60);
-
-  public process(state: GlobalState) {
-    let target: Player | undefined = undefined;
-    const def = defs[this.player.defIndex];
-    if (this.frame % 60 === 0) {
-      const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
-      this.targetId = newTarget?.id ?? 0;
-      target = newTarget;
-    }
-
-    if (this.targetId !== 0) {
-      if (!target) {
-        target = state.players.get(this.targetId);
-      }
-      if (target) {
-        const dist = l2Norm(this.player.position, target.position);
-        this.angle = findHeadingBetween(this.player.position, target.position);
-        if (dist < 200) {
-          this.input.primary = true;
-          this.input.down = true;
-          this.input.up = false;
-          this.input.right = !this.strafeDirection;
-          this.input.left = this.strafeDirection;
-        } else if (dist > 1000) {
-          this.input.primary = false;
-          this.input.down = false;
-          this.input.up = true;
-          this.input.left = false;
-          this.input.right = false;
-          this.input.left = false;
-        } else {
-          this.input.primary = true;
-          this.input.down = true;
-          this.input.up = false;
-          this.input.left = false;
-          this.input.right = !this.strafeDirection;
-          this.input.left = this.strafeDirection;
-        }
-        if (this.frame % 90 == 0 && dist < 400) {
-          if (Math.random() < 0.5) {
-            this.strafeDirection = !this.strafeDirection;
-          }
-        }
-        const targetDist = l2Norm(this.player.position, target.position);
-        const facing = currentlyFacing(this.player, target);
-        if ((targetDist < 500 || ((this.player.energy > 50 || this.usesAmmo) && targetDist < 1000)) && facing) {
-          this.input.primary = true;
-        } else {
-          this.input.primary = false;
-        }
-        this.input.secondary = (!this.guidedSecondary && targetDist < 1500 && facing) || (this.guidedSecondary && targetDist < 1500);
-      } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 2000) {
-        this.input.primary = false;
-        this.input.secondary = false;
-        this.angle = findHeadingBetween(this.player.position, { x: 0, y: 0 });
-        this.input.down = false;
-        this.input.up = true;
-        this.input.left = false;
-        this.input.right = false;
-      } else {
-        this.input.primary = false;
-        this.input.secondary = false;
-        stopPlayer(this.player, this.input);
-      }
-    } else if (l2Norm(this.player.position, { x: 0, y: 0 }) > 2000) {
-      this.input.primary = false;
-      this.input.secondary = false;
-      this.angle = findHeadingBetween(this.player.position, { x: 0, y: 0 });
-      this.input.down = false;
-      this.input.up = true;
-      this.input.left = false;
-      this.input.right = false;
-    } else {
-      this.input.primary = false;
-      this.input.secondary = false;
-      stopPlayer(this.player, this.input);
-    }
-    applyInputs(this.input, this.player, this.angle);
-    this.frame++;
   }
 }
 
@@ -1053,4 +876,18 @@ const addTutorialStrafer = (state: GlobalState, id: number, where: Position) => 
   return npc;
 };
 
-export { NPC, LootTable, addNpc, addTutorialRoamingVenture, addTutorialStrafer };
+export {
+  NPC,
+  LootTable,
+  addNpc,
+  addTutorialRoamingVenture,
+  addTutorialStrafer,
+  State,
+  idleState,
+  passiveGoToRandomPointInSector,
+  stupidSwarmCombat,
+  runAwayWithStrafing,
+  runAway,
+  randomCombatManeuver,
+  strafingSwarmCombat,
+};

@@ -10,12 +10,13 @@ Some words on how missions work:
 
 */
 
-import { clientUid, Faction } from "../src/defs";
+import { clientUid, Faction, randomDifferentFaction } from "../src/defs";
 import { GlobalState, MissionType, Player } from "../src/game";
 import mongoose, { HydratedDocument } from "mongoose";
 import { getPlayerFromId, sectors, sectorTriggers, uid } from "./state";
 import { WebSocket } from "ws";
 import { enemyCountState, flashServerMessage } from "./stateHelpers";
+import { spawnClearanceNPCs } from "./npcs/clearance";
 
 const Schema = mongoose.Schema;
 
@@ -86,7 +87,7 @@ const removeMissionSector = (sectorId: number, missionId: number) => {
   }
 };
 
-const createMissionSector = (missionId: number) => {
+const setupMissionSectorCleanup = (missionId) => {
   let missionSector = uid();
   while (sectors.has(missionSector)) {
     missionSector = uid();
@@ -100,7 +101,7 @@ const createMissionSector = (missionId: number) => {
 };
 
 const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>) => {
-  const missionSector = createMissionSector(mission.id);
+  const missionSector = setupMissionSectorCleanup(mission.id);
   player.warping = 1;
   player.warpTo = missionSector;
 
@@ -118,6 +119,7 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
 
   sectors.set(missionSector, state);
   if (mission.type === MissionType.Clearance) {
+    spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), ["Fighter", "Maintainer"]);
     sectorTriggers.set(missionSector, (state: GlobalState) => {
       if (enemyCountState(mission.forFaction, state) === 0) {
         completeMission(mission.id);
@@ -247,12 +249,16 @@ const completeMission = (id: number) => {
 };
 
 const failMissionIfIncomplete = (id: number) => {
-  Mission.findOneAndUpdate({ id, completed: { $ne: true } }, { failed: true, failedDate: new Date(), inProgress: false }, (err, mission: HydratedDocument<IMission>) => {
-    if (err) {
-      console.log(err);
-      return;
+  Mission.findOneAndUpdate(
+    { id, completed: { $ne: true } },
+    { failed: true, failedDate: new Date(), inProgress: false },
+    (err, mission: HydratedDocument<IMission>) => {
+      if (err) {
+        console.log(err);
+        return;
+      }
     }
-  });
+  );
 };
 
 export { Mission, genMissions, MissionType, startPlayerInMission, selectMission };

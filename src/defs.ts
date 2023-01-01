@@ -35,6 +35,14 @@ enum Faction {
 
 const factionList = [Faction.Alliance, Faction.Confederation, Faction.Rogue, Faction.Scourge];
 
+const randomDifferentFaction = (faction: Faction) => {
+  let ret = faction;
+  while (ret === faction) {
+    ret = Math.floor(Math.random() * Faction.Count);
+  }
+  return ret;
+};
+
 const getFactionString = (faction: Faction) => {
   switch (faction) {
     case Faction.Alliance:
@@ -86,4 +94,5 @@ export {
   createCollectableFromDef,
   uid as clientUid,
   emptySlotData,
+  randomDifferentFaction,
 };

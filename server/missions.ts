@@ -1,0 +1,149 @@
+import { clientUid, Faction } from "../src/defs";
+import { MissionType, Player } from "../src/game";
+import mongoose, { HydratedDocument } from "mongoose";
+import { sectors, uid } from "./state";
+import { WebSocket } from "ws";
+
+const Schema = mongoose.Schema;
+
+interface IMission {
+  name: string;
+  id: number;
+  type: MissionType;
+  forFaction: Faction;
+  reward: number;
+  description: string;
+  inProgress?: boolean;
+  assignee?: number;
+  completed?: boolean;
+  assignedDate?: Date;
+  completedDate?: Date;
+}
+
+const missionSchema = new Schema<IMission>({
+  name: { type: String, required: true },
+  id: { type: Number, required: true, min: 1, validate: Number.isInteger },
+  type: { type: String, required: true },
+  forFaction: { type: Number, required: true, min: 0, max: 2, validate: Number.isInteger },
+  reward: { type: Number, required: true, min: 0 },
+  description: { type: String, required: true },
+  inProgress: { type: Boolean, required: false },
+  assignee: { type: Number, required: false },
+  completed: { type: Boolean, required: false },
+  assignedDate: { type: Date, required: false },
+  completedDate: { type: Date, required: false },
+});
+
+const Mission = mongoose.model<IMission>("Mission", missionSchema);
+
+const genMissions = async () => {
+  for (let fact of [Faction.Alliance, Faction.Confederation, Faction.Rogue]) {
+    for (let i = 0; i < 3; i++) {
+      const mission = new Mission({
+        name: "Clearance of sector " + i,
+        id: uid(),
+        type: MissionType.Clearance,
+        forFaction: fact,
+        reward: 1000 + i * 100,
+        description: "Clear out the sector of enemy ships",
+      });
+      await mission.save();
+    }
+  }
+};
+
+const removeMissionSector = (sectorId: number) => {
+  const sectorNonNPCCount = Array.from(sectors.get(sectorId)?.players.values() || []).filter((p) => p.isPC).length;
+  if (sectorNonNPCCount === 0) {
+    sectors.delete(sectorId);
+  } else {
+    setTimeout(() => {
+      sectors.delete(sectorId);
+    }, 1000 * 60 * 60 * 3);
+  }
+};
+
+const createTutorialSector = () => {
+  let missionSector = uid();
+  while (sectors.has(missionSector)) {
+    missionSector = uid();
+  }
+
+  // Idk the right way to handle this (still didn't figure a good way out for the tutorial either)
+  setTimeout(() => {
+    removeMissionSector(missionSector);
+  }, 1000 * 60 * 60 * 3);
+
+  return missionSector;
+};
+
+const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>) => {
+  const missionSector = createTutorialSector();
+  player.warping = 1;
+  player.warpTo = missionSector;
+};
+
+const startPlayerInMission = (ws: WebSocket, player: Player, id: number, flashServerMessage: (id: number, message: string) => void) => {
+  const mission = Mission.findOne({ id }, (err, mission: HydratedDocument<IMission>) => {
+    if (err) {
+      console.log(err);
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Error starting mission" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+      return;
+    }
+    if (!mission) {
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission not found" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+      return;
+    }
+    if (mission.completed) {
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission already completed" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+      return;
+    }
+    if (mission.inProgress) {
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission already in progress" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+      return;
+    }
+    if (mission.assignee && mission.assignee !== player.id) {
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission already assigned to another player" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+      return;
+    }
+    if (mission.forFaction !== player.team) {
+      try {
+        ws.send(JSON.stringify({ type: "error", payload: { message: "Mission not for your faction" } }));
+      } catch (e) {
+        console.trace(e);
+      }
+      return;
+    }
+    mission.inProgress = true;
+    mission.assignee = player.id;
+    mission.assignedDate = new Date();
+    flashServerMessage(player.id, "Starting mission: " + mission.name);
+    mission.save().then(() => {
+      startMissionGameState(player, mission);
+    }).catch((e) => {
+      console.trace(e);
+    });
+  });
+};
+
+export { Mission, genMissions, MissionType, startPlayerInMission };

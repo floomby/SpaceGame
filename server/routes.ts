@@ -1,7 +1,7 @@
 import { createServer } from "http";
 import { createServer as createSecureServer } from "https";
 import { maxNameLength } from "../src/game";
-import { armDefMap, asteroidDefMap, defMap, Faction, UnitKind } from "../src/defs";
+import { armDefMap, asteroidDefMap, defMap, Faction, factionList, UnitKind } from "../src/defs";
 import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
@@ -18,6 +18,7 @@ import { isFreeArm } from "../src/defs/armaments";
 import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "./reports";
 import { makeBarGraph } from "./graphs";
 import { maxDecimals } from "../src/geometry";
+import { genMissions, Mission } from "./missions";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -621,6 +622,36 @@ app.get("/changePassword", (req, res) => {
     res.send(true);
     return;
   });
+});
+
+app.get("/genMissions", async (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const hashedPassword = hash(password);
+  if (hashedPassword !== adminHash) {
+    res.send("Invalid password");
+    return;
+  }
+  await genMissions();
+  res.send("true");
+});
+
+app.get("/getMissions", async (req, res) => {
+  const factionParam = req.query.faction;
+  if (!factionParam || typeof factionParam !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  const faction = parseInt(factionParam) as Faction;
+  if (!factionList.includes(faction)) {
+    res.send("Invalid faction");
+    return;
+  }
+  const missions = await Mission.find({ faction, completed: { $ne: true } });
+  res.send(JSON.stringify(missions));
 });
 
 export default () => {

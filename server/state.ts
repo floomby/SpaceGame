@@ -1,5 +1,16 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, mapSize, sectorBounds, TutorialStage, copyPlayer, removeCargoFractions } from "../src/game";
+import {
+  GlobalState,
+  Input,
+  Player,
+  randomAsteroids,
+  TargetKind,
+  mapSize,
+  sectorBounds,
+  TutorialStage,
+  copyPlayer,
+  removeCargoFractions,
+} from "../src/game";
 import { WebSocket } from "ws";
 import { armDefs, defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";

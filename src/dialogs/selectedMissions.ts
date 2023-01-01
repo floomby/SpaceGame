@@ -2,6 +2,7 @@ import { clearStack, horizontalCenter, pop } from "../dialog";
 import { lastSelf } from "../globals";
 import { sendStartMission } from "../net";
 import { getRestRaw } from "../rest";
+import { abortWrapper } from "./abortMission";
 import { ClientMission } from "./missions";
 
 const selectedMissionsDialog = () => {
@@ -17,7 +18,13 @@ const populateSelectedMissionTable = (value: ClientMission[]) => {
   if (!selectedMissionsTable) {
     return;
   }
-  let html = "<table>";
+  let html = `<table style="width: 80vw; text-align: left;" class="rowHoverNoHeading" cellspacing="0"><colgroup>
+  <col span="1" style="width: 15%;">
+  <col span="1" style="width: 10%;">
+  <col span="1" style="width: 10%;">
+  <col span="1" style="width: 55%;">
+  <col span="1" style="width: 10%;">
+</colgroup>`;
   html += "<tr><th>Name</th><th>Type</th><th>Reward</th><th>Description</th></tr>";
   for (const mission of value) {
     html += `<tr>
@@ -25,7 +32,7 @@ const populateSelectedMissionTable = (value: ClientMission[]) => {
   <td>${mission.type}</td>
   <td>${mission.reward}</td>
   <td>${mission.description}</td>
-  <td><button id="startMission${mission.id}">Start</button></td>
+  <td style="text-align: right;"><button id="startMission${mission.id}">Start</button></td>
 </tr>`;
   }
   html += "</table>";
@@ -34,8 +41,10 @@ const populateSelectedMissionTable = (value: ClientMission[]) => {
     const button = document.getElementById(`startMission${mission.id}`);
     if (button) {
       button.onclick = () => {
-        sendStartMission(mission.id);
-        clearStack();
+        abortWrapper(() => {
+          sendStartMission(mission.id)
+          clearStack();
+        });
       };
     }
   }

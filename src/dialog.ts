@@ -214,6 +214,19 @@ const addOnHide = (callback: () => void) => {
   onHideCallbacks.push(callback);
 };
 
+const sideBySideDivs = (content: string[], shrink = false) => {
+  let ret = `<div style="display: flex; flex-direction: row; justify-content: left;"> ${content
+    .map((c) => `<div style="flex: 1;">${c}</div>`)
+    .join("")}</div>`;
+  if (shrink) {
+    return `<div style="display: inline-block;">${ret}</div>`;
+  }
+  return ret;
+};
+
+const stackedDivs = (content: string[]) => `<div style="display: flex; flex-direction: column; justify-content: left;">
+  ${content.map((c) => `<div style="flex: 1;">${c}</div>`).join("")}</div>`;
+
 export {
   init,
   show,
@@ -234,5 +247,7 @@ export {
   addOnShow,
   addOnPush,
   addOnHide,
+  sideBySideDivs,
+  stackedDivs,
   shown,
 };

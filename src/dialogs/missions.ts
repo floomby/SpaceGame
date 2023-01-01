@@ -19,7 +19,13 @@ const populateMissionTable = (value: ClientMission[]) => {
   if (!missionsTable) {
     return;
   }
-  let html = "<table>";
+  let html = `<table style="width: 80vw; text-align: left;" class="rowHoverNoHeading" cellspacing="0"><colgroup>
+  <col span="1" style="width: 15%;">
+  <col span="1" style="width: 10%;">
+  <col span="1" style="width: 10%;">
+  <col span="1" style="width: 55%;">
+  <col span="1" style="width: 10%;">
+</colgroup>`;
   html += "<tr><th>Name</th><th>Type</th><th>Reward</th><th>Description</th><th></th></tr>";
   for (const mission of value) {
     html += `<tr>
@@ -27,7 +33,7 @@ const populateMissionTable = (value: ClientMission[]) => {
   <td>${mission.type}</td>
   <td>${mission.reward}</td>
   <td>${mission.description}</td>
-  <td><button id="selectMission${mission.id}">Select</button></td>
+  <td style="text-align: right;"><button id="selectMission${mission.id}">Select</button></td>
 </tr>`;
   }
   html += "</table>";

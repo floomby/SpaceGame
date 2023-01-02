@@ -306,6 +306,15 @@ const sendRevokeFriendRequest = (name: string) => {
   );
 };
 
+const sendUnfriend = (id: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "unfriend",
+      payload: { id },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -337,4 +346,5 @@ export {
   sendStartMission,
   sendFriendRequest,
   sendRevokeFriendRequest,
+  sendUnfriend,
 };

@@ -374,6 +374,7 @@ const run = () => {
     }) => {
       setOwnId(data.id);
       updateFriendList();
+      updateFriendRequests();
       setCurrentSector(data.sector);
       initSettings();
       initCargo();

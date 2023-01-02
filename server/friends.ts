@@ -94,9 +94,9 @@ const createFriendRequest = async (ws: WebSocket, id: number, to: string) => {
       const session = await mongoose.startSession();
       session.startTransaction();
       try {
-        await fromUser.save();
-        await user.save();
-        await friendRequest2.delete();
+        await fromUser.save({ session });
+        await user.save({ session });
+        await friendRequest2.delete({ session });
         await session.commitTransaction();
         try {
           notifyFriendRequestChanged(friendRequest2);
@@ -133,21 +133,21 @@ const revokeFriendRequest = async (ws: WebSocket, id: number, to: string) => {
   try {
     const toUser = await User.findOne({ name: to });
     if (!toUser) {
-      ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to revoke friend request (invalid user)" } }));
+      ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to rescind friend request (invalid user)" } }));
       return;
     }
     const friendRequest = await FriendRequest.findOne({ from: id, to: toUser.id });
     if (!friendRequest) {
-      ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to revoke friend request (no friend request)" } }));
+      ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to rescind friend request (no friend request)" } }));
       return;
     }
     await friendRequest.delete();
     notifyFriendRequestChanged(friendRequest);
-    flashServerMessage(id, "Friend request revoked");
+    flashServerMessage(id, `Friend request to ${toUser.name} rescinded`);
   } catch (err) {
     console.error(err);
     try {
-      ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to revoke friend request" } }));
+      ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to rescind friend request" } }));
     } catch (err) {
       console.error(err);
     }
@@ -173,4 +173,35 @@ const notifyFriendChanged = (id1: number, id2: number) => {
   }
 };
 
-export { FriendRequest, IFriendRequest, canFriendRequest, createFriendRequest, revokeFriendRequest };
+const unfriend = async (ws: WebSocket, id: number, friend: number) => {
+  try {
+    // start a transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const user1 = await User.findOneAndUpdate({ id }, { $pull: { friends: friend } }, { session });
+      const user2 = await User.findOneAndUpdate({ id: friend }, { $pull: { friends: id } }, { session });
+      if (!user1 || !user2) {
+        throw new Error("Failed to unfriend");
+      }
+      await session.commitTransaction();
+      notifyFriendChanged(id, friend);
+      flashServerMessage(id, "You are no longer friends with " + user2.name);
+      flashServerMessage(friend, "You are no longer friends with " + user1.name);
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
+  } catch (err) {
+    console.error(err);
+    try {
+      ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to unfriend" } }));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+};
+
+export { FriendRequest, IFriendRequest, canFriendRequest, createFriendRequest, revokeFriendRequest, unfriend };

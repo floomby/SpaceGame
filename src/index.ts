@@ -79,6 +79,7 @@ import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutC
 import { rasterizeText, rasterizeTextBitmap, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 import { setCurrentSectorText } from "./dialogs/map";
+import { initSocial } from "./dialogs/social";
 
 let chats: ChatMessage[] = [];
 
@@ -374,6 +375,7 @@ const run = () => {
       // initStars(data.sector);
       initSettings();
       initCargo();
+      initSocial();
       clearDialogStack();
       clearDialog();
       hideDialog();

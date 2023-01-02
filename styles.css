@@ -96,18 +96,24 @@ body {
   opacity: 0.8;
 }
 
-.cargo {
+#sideTray {
   z-index: 4;
   top: 40vh;
-  left: 15px;
   position: absolute;
-  height: 35px;
-  width: 35px;
+  left: 15px;
+  flex-direction: column;
+  display: flex;
+  justify-content: left;
+}
+
+#sideTray img {
+  height: 50px;
+  width: 50px;
   opacity: 0.4;
   cursor: pointer;
 }
 
-.cargo:hover {
+#sideTray img:hover {
   opacity: 0.8;
 }
 

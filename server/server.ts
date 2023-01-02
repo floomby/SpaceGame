@@ -800,6 +800,10 @@ wss.on("connection", (ws, req) => {
       } else if (data.type === "selectMission") {
         const client = clients.get(ws);
         if (client) {
+          if (client.inTutorial) {
+            flashServerMessage(client.id, "You cannot select a mission while in the tutorial", [1.0, 0.0, 0.0, 1.0]);
+            return;
+          }
           const state = sectors.get(client.currentSector);
           if (state) {
             const player = state.players.get(client.id);
@@ -811,6 +815,10 @@ wss.on("connection", (ws, req) => {
       } else if (data.type === "startMission") {
         const client = clients.get(ws);
         if (client) {
+          if (client.inTutorial) {
+            flashServerMessage(client.id, "You cannot start a mission while in the tutorial", [1.0, 0.0, 0.0, 1.0]);
+            return;
+          }
           const state = sectors.get(client.currentSector);
           if (state) {
             const player = state.players.get(client.id);

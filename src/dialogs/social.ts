@@ -87,7 +87,7 @@ const populateActiveFriendRequests = (requests: ClientFriendRequest[]) => {
 const setupFriendRequester = () => {
   const friendRequester = document.getElementById("friendRequester");
   if (friendRequester) {
-    friendRequester.innerHTML = `<input type="text" id="friendRequestInput" placeholder="Friend's name" style="margin-right: 10px;" />
+    friendRequester.innerHTML = `<input type="text" id="friendRequestInput" placeholder="Friend's name" style="margin-right: 10px; color: black;" />
     <button id="friendRequestButton" disabled>Send Friend Request</button>`;
     const friendRequestInput = document.getElementById("friendRequestInput") as HTMLInputElement;
     if (friendRequestInput) {

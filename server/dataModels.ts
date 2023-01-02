@@ -36,6 +36,7 @@ interface IUser {
   loginCount: number;
   loginTimes: Date[];
   logoffTimes: Date[];
+  friends: number[];
 }
 
 const userSchema = new Schema<IUser>({
@@ -100,6 +101,10 @@ const userSchema = new Schema<IUser>({
       validator: (v: Date[]) => v.every((item) => item instanceof Date),
       message: (props) => `${props.value} is not a valid date`,
     },
+  },
+  friends: {
+    type: [Number],
+    default: [],
   },
 });
 

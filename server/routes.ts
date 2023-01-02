@@ -19,6 +19,7 @@ import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "
 import { makeBarGraph } from "./graphs";
 import { maxDecimals } from "../src/geometry";
 import { genMissions, Mission } from "./missions";
+import { canFriendRequest } from "./friends";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -76,6 +77,21 @@ app.get("/available", (req, res) => {
     }
     res.send("true");
   });
+});
+
+app.get("/canFriendRequest", async (req, res) => {
+  const fromParam = req.query.from;
+  const to = req.query.to;
+  if (!fromParam || typeof fromParam !== "string" || !to || typeof to !== "string") {
+    res.send("false");
+    return;
+  }
+  const from = parseInt(fromParam);
+  if (isNaN(from)) {
+    res.send("false");
+    return;
+  }
+  res.send(JSON.stringify(await canFriendRequest(from, to)));
 });
 
 app.get("/nameOf", (req, res) => {

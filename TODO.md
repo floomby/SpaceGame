@@ -8,6 +8,7 @@
 ### User Interface
 
 - Readdress text selectability, upon more playing idk if even the tables should be selectable
+- Hiding messages while docked after time has elapsed is broken (I think I broke this with the switch to 3d somehow, have been vaugely aware of it for a while)
 
 ### Effects
 

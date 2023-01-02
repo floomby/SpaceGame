@@ -288,6 +288,24 @@ const sendStartMission = (missionId: number) => {
   );
 };
 
+const sendFriendRequest = (name: string) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "friendRequest",
+      payload: { name },
+    })
+  );
+};
+
+const sendRevokeFriendRequest = (name: string) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "revokeFriendRequest",
+      payload: { name },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -317,4 +335,6 @@ export {
   sendTutorialStageComplete,
   sendSelectMission,
   sendStartMission,
+  sendFriendRequest,
+  sendRevokeFriendRequest,
 };

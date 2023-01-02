@@ -13,6 +13,7 @@ import { maxDecimals } from "../geometry";
 import { inventoryDialog, setupInventory } from "./inventory";
 import { requestShipPreview } from "../3dDrawing";
 import { missionsDialog, setupMissions } from "./missions";
+import { showSocial } from "./social";
 
 let docker = () => {};
 
@@ -369,7 +370,8 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     <div style="display: flex; justify-content: center; flex-direction: row;">
       <button id="openInventory" style="margin-top: 10px; margin-right: 10px;">Inventory</button>
       <button id="openManufacturing" style="margin-top: 10px; margin-right: 10px;">Manufacturing Bay</button>
-      <button id="openMissions" style="margin-top: 10px;">Missions</button>
+      <button id="openMissions" style="margin-top: 10px; margin-right: 10px;">Missions</button>
+      <button id="openSocial" style="margin-top: 10px;">Social</button>
     </div>
   </div>
   <div style="width: 45%; float: right;">
@@ -407,6 +409,9 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   });
   document.getElementById("openMissions")?.addEventListener("click", () => {
     push(missionsDialog(), setupMissions, "missions");
+  });
+  document.getElementById("openSocial")?.addEventListener("click", () => {
+    showSocial(true);
   });
 };
 

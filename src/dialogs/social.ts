@@ -1,6 +1,6 @@
-import { addOnHide, addOnPush, addOnShow, horizontalCenter, peekTag, pop, push, shown } from "../dialog";
+import { addOnHide, addOnPush, addOnShow, bindPostUpdater, horizontalCenter, peekTag, pop, push, shown } from "../dialog";
 import { ClientFriendRequest } from "../game";
-import { lastSelf } from "../globals";
+import { ClientFriend, friendList, lastSelf } from "../globals";
 import { sendFriendRequest } from "../net";
 import { getRestRaw } from "../rest";
 import { sideBySideDivs, stackedDivs } from "./helpers";
@@ -9,9 +9,17 @@ let initialized = false;
 
 const friendRequestForm = `<div>${
   stackedDivs([
+    `<div id="friendList"></div>`,
     `<input type="text" id="friendRequestInput" placeholder="Friend's name" /><button id="friendRequestButton">Send</button>`,
     `<div id="activeFriendRequests"></div>`,
   ])}</div>`;
+
+const populateFriendList = (friends: ClientFriend[]) => {
+  const friendList = document.getElementById("friendList");
+  if (friendList) {
+    friendList.innerHTML = friends.map((friend) => `<div>${friend.name}</div>`).join("");
+  }
+};
 
 const populateActiveFriendRequests = (requests: ClientFriendRequest[]) => {
   const activeFriendRequests = document.getElementById("activeFriendRequests");
@@ -40,6 +48,10 @@ const setupFriendRequestForm = () => {
   getRestRaw(`/activeFriendRequests?id=${lastSelf.id}`, populateActiveFriendRequests);
 };
 
+const repopulateFriendRequests = () => {
+  getRestRaw(`/activeFriendRequests?id=${lastSelf.id}`, populateActiveFriendRequests);
+};
+
 const socialDialog = `<div class="unselectable">${horizontalCenter([
   "<h2>Social</h2>",
   sideBySideDivs([friendRequestForm]),
@@ -54,6 +66,7 @@ const setupSocialDialog = () => {
     };
   }
   setupFriendRequestForm();
+  populateFriendList(friendList);
 };
 
 const showSocial = (bypassCheck = false) => {
@@ -96,6 +109,7 @@ const initSocial = () => {
       socialIcon.style.display = "flex";
     }
   });
+  bindPostUpdater("friends", populateFriendList);
 };
 
-export { initSocial, showSocial };
+export { initSocial, showSocial, repopulateFriendRequests };

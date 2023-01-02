@@ -113,6 +113,40 @@ app.get("/activeFriendRequests", async (req, res) => {
   res.send(JSON.stringify(activeRequests));
 });
 
+app.get("/friendsOf", async (req, res) => {
+  const idParam = req.query.id;
+  if (!idParam || typeof idParam !== "string") {
+    res.send("[]");
+    return;
+  }
+  const id = parseInt(idParam);
+  // use $lookup to get the names of the friends
+  const friends = await User.aggregate([
+    { $match: { id } },
+    { $unwind: "$friends" },
+    { $lookup: { from: "users", localField: "friends", foreignField: "id", as: "friend" } },
+    { $unwind: "$friend" },
+    { $project: { _id: 0, name: "$friend.name", id: "$friend.id" } },
+  ]);
+  res.send(JSON.stringify(friends));
+});
+
+app.get("/clearAllFriendsAndRequests", async (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string" || hash(password) !== adminHash) {
+    res.send("false");
+    return;
+  }
+  try {
+    await User.updateMany({}, { $set: { friends: [] } });
+    await FriendRequest.deleteMany({});
+    res.send("true");
+  } catch (err) {
+    console.log(err);
+    res.send("false");
+  }
+});
+
 app.get("/nameOf", (req, res) => {
   const id = req.query.id;
   if (!id || typeof id !== "string") {

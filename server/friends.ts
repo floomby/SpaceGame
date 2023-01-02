@@ -2,6 +2,7 @@ import mongoose, { HydratedDocument } from "mongoose";
 import { IUser, User } from "./dataModels";
 import { WebSocket } from "ws";
 import { flashServerMessage } from "./stateHelpers";
+import { idToWebsocket } from "./state";
 
 const Schema = mongoose.Schema;
 
@@ -89,15 +90,34 @@ const createFriendRequest = async (ws: WebSocket, id: number, to: string) => {
       // accept friend request
       fromUser.friends.push(user.id);
       user.friends.push(id);
-      await fromUser.save();
-      await user.save();
-      await friendRequest2.delete();
-      flashServerMessage(id, "You are now friends with " + user.name);
+      // start a session
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        await fromUser.save();
+        await user.save();
+        await friendRequest2.delete();
+        await session.commitTransaction();
+        try {
+          notifyFriendRequestChanged(friendRequest2);
+          notifyFriendChanged(fromUser.id, user.id);
+          flashServerMessage(id, "You are now friends with " + user.name);
+          flashServerMessage(user.id, "You are now friends with " + fromUser.name);
+        } catch (err) {
+          console.error(err);
+        }
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        session.endSession();
+      }
       return;
     }
     // create friend request
     const newFriendRequest = new FriendRequest({ from: id, to: user.id });
     await newFriendRequest.save();
+    notifyFriendRequestChanged(newFriendRequest);
     flashServerMessage(id, "Friend request sent to " + user.name);
   } catch (err) {
     console.error(err);
@@ -122,6 +142,7 @@ const revokeFriendRequest = async (ws: WebSocket, id: number, to: string) => {
       return;
     }
     await friendRequest.delete();
+    notifyFriendRequestChanged(friendRequest);
     flashServerMessage(id, "Friend request revoked");
   } catch (err) {
     console.error(err);
@@ -129,6 +150,25 @@ const revokeFriendRequest = async (ws: WebSocket, id: number, to: string) => {
       ws.send(JSON.stringify({ type: "error", payload: { message: "Failed to revoke friend request" } }));
     } catch (err) {
       console.error(err);
+    }
+  }
+};
+
+const notifyFriendRequestChanged = (request: HydratedDocument<IFriendRequest>) => {
+  const { from, to } = request;
+  for (const id of [from, to]) {
+    const ws = idToWebsocket.get(id);
+    if (ws) {
+      ws.send(JSON.stringify({ type: "friendRequestChange" }));
+    }
+  }
+};
+
+const notifyFriendChanged = (id1: number, id2: number) => {
+  for (const id of [id1, id2]) {
+    const ws = idToWebsocket.get(id);
+    if (ws) {
+      ws.send(JSON.stringify({ type: "friendChange" }));
     }
   }
 };

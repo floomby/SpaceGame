@@ -2,9 +2,11 @@ import { rasterizePrompts } from "./2dDrawing";
 import { allowBackgroundFlash } from "./3dDrawing";
 import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
+import { runPostUpdaterOnly, updateDom } from "./dialog";
 import { redrawTip } from "./dialogs/dead";
 import { GlobalState, mapSize, Player, SectorInfo, TutorialStage } from "./game";
 import { azertyBindings, dvorakBindings, KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
+import { getRestRaw } from "./rest";
 import { tutorialPrompters } from "./tutorial";
 
 let faction: Faction = Faction.Alliance;
@@ -195,7 +197,23 @@ const getUseAlternativeBackgroundsPref = () => {
 
 const isFirefox = navigator.userAgent.toLowerCase().indexOf("firefox") > -1;
 
+type ClientFriend = {
+  name: string;
+  id: number;
+};
+
+let friendList: ClientFriend[] = [];
+
+const updateFriendList = () => {
+  getRestRaw(`/friendsOf?id=${ownId}`, (friends: ClientFriend[]) => {
+    friendList = friends;
+    console.log("Got friend list: ", friendList);
+    runPostUpdaterOnly("friends", friendList);
+  });
+};
+
 export {
+  ClientFriend,
   faction,
   setFaction,
   allianceColor,
@@ -246,4 +264,6 @@ export {
   missionComplete,
   clearMissionStatus,
   setMissionComplete,
+  updateFriendList,
+  friendList,
 };

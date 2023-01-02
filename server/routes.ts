@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import { createServer as createSecureServer } from "https";
-import { maxNameLength } from "../src/game";
+import { ClientFriendRequest, maxNameLength } from "../src/game";
 import { armDefMap, asteroidDefMap, defMap, Faction, factionList, UnitKind } from "../src/defs";
 import { useSsl } from "../src/config";
 import express from "express";
@@ -19,6 +19,7 @@ import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "
 import { makeBarGraph } from "./graphs";
 import { maxDecimals } from "../src/geometry";
 import { genMissions, Mission } from "./missions";
+import { canFriendRequest, FriendRequest } from "./friends";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -76,6 +77,74 @@ app.get("/available", (req, res) => {
     }
     res.send("true");
   });
+});
+
+app.get("/canFriendRequest", async (req, res) => {
+  const fromParam = req.query.from;
+  const to = req.query.to;
+  if (!fromParam || typeof fromParam !== "string" || !to || typeof to !== "string") {
+    res.send("false");
+    return;
+  }
+  const from = parseInt(fromParam);
+  if (isNaN(from)) {
+    res.send("false");
+    return;
+  }
+  res.send(JSON.stringify(await canFriendRequest(from, to)));
+});
+
+app.get("/activeFriendRequests", async (req, res) => {
+  const idParam = req.query.id;
+  if (!idParam || typeof idParam !== "string") {
+    res.send("[]");
+    return;
+  }
+  const id = parseInt(idParam);
+  const requests = await FriendRequest.find({ $or: [{ from: id }, { to: id }] });
+  const activeRequests: ClientFriendRequest[] = [];
+  for (const request of requests) {
+    const other = request.from === id ? request.to : request.from;
+    const user = await User.findOne({ id: other });
+    if (user) {
+      activeRequests.push({ name: user.name, outgoing: request.from === id });
+    }
+  }
+  res.send(JSON.stringify(activeRequests));
+});
+
+app.get("/friendsOf", async (req, res) => {
+  const idParam = req.query.id;
+  if (!idParam || typeof idParam !== "string") {
+    res.send("[]");
+    return;
+  }
+  const id = parseInt(idParam);
+  // use $lookup to get the names of the friends
+  const friends = await User.aggregate([
+    { $match: { id } },
+    { $unwind: "$friends" },
+    { $lookup: { from: "users", localField: "friends", foreignField: "id", as: "friend" } },
+    { $unwind: "$friend" },
+    { $project: { _id: 0, name: "$friend.name", id: "$friend.id" } },
+  ]);
+  res.send(JSON.stringify(friends));
+});
+
+app.get("/clearAllFriendsAndRequests", async (req, res) => {
+  const password = req.query.password;
+  if (!password || typeof password !== "string" || hash(password) !== adminHash) {
+    res.send("false");
+    return;
+  }
+  try {
+    await User.updateMany({}, { $set: { friends: [] } });
+    await FriendRequest.deleteMany({});
+    res.send("true");
+  } catch (err) {
+    console.log(err);
+    res.send("false");
+  }
 });
 
 app.get("/nameOf", (req, res) => {

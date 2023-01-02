@@ -7,12 +7,14 @@
 
 ### User Interface
 
+- Partial dialogs for in game?
 - Readdress text selectability, upon more playing idk if even the tables should be selectable
+- Hiding messages while docked after time has elapsed is broken (I think I broke this with the switch to 3d somehow, have been vaugely aware of it for a while)
 
 ### Effects
 
 - Add graphical flash effect for large EMP
-- Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something) *
+- Improve the beam effects (Need hit locations per model that are targeted based on which is closest or something)
 
 ### Misc
 

@@ -1,10 +1,28 @@
 import { addOnHide, addOnPush, addOnShow, horizontalCenter, peekTag, pop, push, shown } from "../dialog";
+import { ClientFriendRequest } from "../game";
+import { lastSelf } from "../globals";
 import { sendFriendRequest } from "../net";
-import { sideBySideDivs } from "./helpers";
+import { getRestRaw } from "../rest";
+import { sideBySideDivs, stackedDivs } from "./helpers";
 
 let initialized = false;
 
-const friendRequestForm = `<div><input type="text" id="friendRequestInput" placeholder="Friend's name" /><button id="friendRequestButton">Send</button></div>`;
+const friendRequestForm = `<div>${
+  stackedDivs([
+    `<input type="text" id="friendRequestInput" placeholder="Friend's name" /><button id="friendRequestButton">Send</button>`,
+    `<div id="activeFriendRequests"></div>`,
+  ])}</div>`;
+
+const populateActiveFriendRequests = (requests: ClientFriendRequest[]) => {
+  const activeFriendRequests = document.getElementById("activeFriendRequests");
+  if (activeFriendRequests) {
+    activeFriendRequests.innerHTML = requests
+      .map((request) => {
+        return `<div>${request.name} - ${request.outgoing ? "Outgoing" : "Incoming"}</div>`;
+      })
+      .join("");
+  }
+};
 
 const setupFriendRequestForm = () => {
   const friendRequestButton = document.getElementById("friendRequestButton");
@@ -19,6 +37,7 @@ const setupFriendRequestForm = () => {
       }
     };
   }
+  getRestRaw(`/activeFriendRequests?id=${lastSelf.id}`, populateActiveFriendRequests);
 };
 
 const socialDialog = `<div class="unselectable">${horizontalCenter([

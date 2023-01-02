@@ -1563,6 +1563,11 @@ enum MissionType {
   Assassination = "Assassination",
 }
 
+type ClientFriendRequest = {
+  name: string;
+  outgoing: boolean;
+};
+
 export {
   GlobalState,
   Input,
@@ -1585,6 +1590,7 @@ export {
   CloakedState,
   TutorialStage,
   MissionType,
+  ClientFriendRequest,
   update,
   applyInputs,
   processAllNpcs,

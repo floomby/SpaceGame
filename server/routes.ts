@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import { createServer as createSecureServer } from "https";
-import { maxNameLength } from "../src/game";
+import { ClientFriendRequest, maxNameLength } from "../src/game";
 import { armDefMap, asteroidDefMap, defMap, Faction, factionList, UnitKind } from "../src/defs";
 import { useSsl } from "../src/config";
 import express from "express";
@@ -19,7 +19,7 @@ import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "
 import { makeBarGraph } from "./graphs";
 import { maxDecimals } from "../src/geometry";
 import { genMissions, Mission } from "./missions";
-import { canFriendRequest } from "./friends";
+import { canFriendRequest, FriendRequest } from "./friends";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -92,6 +92,25 @@ app.get("/canFriendRequest", async (req, res) => {
     return;
   }
   res.send(JSON.stringify(await canFriendRequest(from, to)));
+});
+
+app.get("/activeFriendRequests", async (req, res) => {
+  const idParam = req.query.id;
+  if (!idParam || typeof idParam !== "string") {
+    res.send("[]");
+    return;
+  }
+  const id = parseInt(idParam);
+  const requests = await FriendRequest.find({ $or: [{ from: id }, { to: id }] });
+  const activeRequests: ClientFriendRequest[] = [];
+  for (const request of requests) {
+    const other = request.from === id ? request.to : request.from;
+    const user = await User.findOne({ id: other });
+    if (user) {
+      activeRequests.push({ name: user.name, outgoing: request.from === id });
+    }
+  }
+  res.send(JSON.stringify(activeRequests));
 });
 
 app.get("/nameOf", (req, res) => {

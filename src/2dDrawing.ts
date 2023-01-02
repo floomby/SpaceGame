@@ -778,10 +778,10 @@ const initDockingMessages = () => {
 let lastDockedMessage: Message | undefined = undefined;
 let dockingTextNotificationTimeout: number | undefined = undefined;
 
-const displayDockedMessages = (sixtieths) => {
+const displayDockedMessages = (sixtieths: number) => {
   const filteredMessages = messages.filter((message) => {
     message.framesRemaining -= sixtieths;
-    return message.whileDocked;
+    return message.whileDocked && message.framesRemaining > 0;
   });
 
   // No messages to display

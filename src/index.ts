@@ -63,6 +63,8 @@ import {
   state,
   teamColorsLight,
   tutorialStage,
+  updateFriendList,
+  updateFriendRequests,
 } from "./globals";
 import { initSettings } from "./dialogs/settings";
 import { deadDialog, setupDeadDialog } from "./dialogs/dead";
@@ -79,6 +81,7 @@ import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutC
 import { rasterizeText, rasterizeTextBitmap, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 import { setCurrentSectorText } from "./dialogs/map";
+import { initSocial } from "./dialogs/social";
 
 let chats: ChatMessage[] = [];
 
@@ -370,10 +373,12 @@ const run = () => {
       recipes: string[];
     }) => {
       setOwnId(data.id);
+      updateFriendList();
+      updateFriendRequests();
       setCurrentSector(data.sector);
-      // initStars(data.sector);
       initSettings();
       initCargo();
+      initSocial();
       clearDialogStack();
       clearDialog();
       hideDialog();
@@ -610,6 +615,14 @@ const run = () => {
     pushMessage(message, 240, [0.0, 1.0, 0.0, 1.0]);
   });
 
+  bindAction("friendRequestChange", () => {
+    updateFriendRequests();
+  });
+
+  bindAction("friendChange", () => {
+    updateFriendList();
+  });
+  
   bindPostUpdater("arms", rasterizeWeaponText);
 
   addLoadingText("Launching...");

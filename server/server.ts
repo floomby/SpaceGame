@@ -81,6 +81,7 @@ import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
 import { selectMission, startPlayerInMission } from "./missions";
 import { enemyCount, allyCount, flashServerMessage } from "./stateHelpers";
+import { createFriendRequest, revokeFriendRequest, unfriend } from "./friends";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -799,6 +800,10 @@ wss.on("connection", (ws, req) => {
       } else if (data.type === "selectMission") {
         const client = clients.get(ws);
         if (client) {
+          if (client.inTutorial) {
+            flashServerMessage(client.id, "You cannot select a mission while in the tutorial", [1.0, 0.0, 0.0, 1.0]);
+            return;
+          }
           const state = sectors.get(client.currentSector);
           if (state) {
             const player = state.players.get(client.id);
@@ -810,6 +815,10 @@ wss.on("connection", (ws, req) => {
       } else if (data.type === "startMission") {
         const client = clients.get(ws);
         if (client) {
+          if (client.inTutorial) {
+            flashServerMessage(client.id, "You cannot start a mission while in the tutorial", [1.0, 0.0, 0.0, 1.0]);
+            return;
+          }
           const state = sectors.get(client.currentSector);
           if (state) {
             const player = state.players.get(client.id);
@@ -817,6 +826,21 @@ wss.on("connection", (ws, req) => {
               startPlayerInMission(ws, player, data.payload.missionId);
             }
           }
+        }
+      } else if (data.type === "friendRequest") {
+        const client = clients.get(ws);
+        if (client) {
+          createFriendRequest(ws, client.id, data.payload.name);
+        }
+      } else if (data.type === "revokeFriendRequest") {
+        const client = clients.get(ws);
+        if (client) {
+          revokeFriendRequest(ws, client.id, data.payload.name);
+        }
+      } else if (data.type === "unfriend") {
+        const client = clients.get(ws);
+        if (client) {
+          unfriend(ws, client.id, data.payload.id);
         }
       } else {
         console.log("Unknown message from client: ", data);

@@ -3,7 +3,7 @@
 
 import { armDefs, defs, Faction, SlotKind, UnitDefinition, UnitKind } from "../defs";
 import { CargoEntry, Player, ticksPerSecond } from "../game";
-import { inventory, lastSelf, ownId, state } from "../globals";
+import { friendRequests, inventory, lastSelf, ownId, state } from "../globals";
 import { sendDepositCargo, sendEquip, sendPurchase, sendSellCargo, sendUndock } from "../net";
 import { bindPostUpdater, bindUpdater, horizontalCenter, pop, push, show as showDialog, shown as isDialogShown } from "../dialog";
 import { disableTooExpensive } from "./helpers";
@@ -13,6 +13,7 @@ import { maxDecimals } from "../geometry";
 import { inventoryDialog, setupInventory } from "./inventory";
 import { requestShipPreview } from "../3dDrawing";
 import { missionsDialog, setupMissions } from "./missions";
+import { showSocial } from "./social";
 
 let docker = () => {};
 
@@ -369,7 +370,8 @@ const dockDialog = (station: Player | undefined, self: Player) => {
     <div style="display: flex; justify-content: center; flex-direction: row;">
       <button id="openInventory" style="margin-top: 10px; margin-right: 10px;">Inventory</button>
       <button id="openManufacturing" style="margin-top: 10px; margin-right: 10px;">Manufacturing Bay</button>
-      <button id="openMissions" style="margin-top: 10px;">Missions</button>
+      <button id="openMissions" style="margin-top: 10px; margin-right: 10px;">Missions</button>
+      <button id="openSocial" style="margin-top: 10px;">Friends</button>
     </div>
   </div>
   <div style="width: 45%; float: right;">
@@ -408,6 +410,26 @@ const setupDockingUI = (station: Player | undefined, self: Player | undefined) =
   document.getElementById("openMissions")?.addEventListener("click", () => {
     push(missionsDialog(), setupMissions, "missions");
   });
+  const openSocial = document.getElementById("openSocial");
+  if (openSocial) {
+    openSocial.addEventListener("click", () => {
+      showSocial(true);
+    });
+    if (friendRequests.filter((req) => !req.outgoing).length > 0) {
+      openSocial.classList.add("decoratedButton");
+    }
+  }
+};
+
+const socialButtonDecorator = () => {
+  const openSocial = document.getElementById("openSocial");
+  if (openSocial) {
+    if (friendRequests.filter((req) => !req.outgoing).length > 0) {
+      openSocial.classList.add("decoratedButton");
+    } else {
+      openSocial.classList.remove("decoratedButton");
+    }
+  }
 };
 
 const setupEquipMenu = (kind: SlotKind, slotIndex: number) => {
@@ -458,6 +480,7 @@ const bindDockingUpdaters = () => {
   bindPostUpdater("inventory", armsPostUpdate);
   bindPostUpdater("ship", shipPostUpdate);
   bindPostUpdater("inventory", shipPostUpdate);
+  bindPostUpdater("friendRequests", socialButtonDecorator);
 };
 
 export { docker, setDocker, showDocked, setShowDocked, dockDialog, setupDockingUI, bindDockingUpdaters };

@@ -11,7 +11,7 @@ Some words on how missions work:
 */
 
 import { clientUid, Faction, randomDifferentFaction } from "../src/defs";
-import { GlobalState, MissionType, Player } from "../src/game";
+import { GlobalState, MissionType, Player, SectorKind } from "../src/game";
 import mongoose, { HydratedDocument } from "mongoose";
 import { getPlayerFromId, sectors, sectorTriggers, uid } from "./state";
 import { WebSocket } from "ws";
@@ -115,6 +115,7 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
     mines: new Map(),
     projectileId: 1,
     delayedActions: [],
+    sectorKind: SectorKind.Mission,
   };
 
   sectors.set(missionSector, state);

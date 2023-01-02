@@ -147,6 +147,27 @@ app.get("/clearAllFriendsAndRequests", async (req, res) => {
   }
 });
 
+app.get("/currentSectorOfPlayer", (req, res) => {
+  const idParam = req.query.id;
+  if (!idParam || typeof idParam !== "string") {
+    res.send(JSON.stringify({ error: "Invalid id" }));
+    return;
+  }
+  const id = parseInt(idParam);
+  for (const [sectorNumber, state] of sectors) {
+    if (state.players.has(id)) {
+      res.send(JSON.stringify({ value: { sectorNumber, sectorKind: state.sectorKind } }));
+      return;
+    }
+  }
+  // Should be safe to assume that if they are not in a sector, but connected they are respawning
+  if (idToWebsocket.has(id)) {
+    res.send(JSON.stringify({ value: "respawning" }));
+    return;
+  }
+  res.send(JSON.stringify({ value: null }));
+});
+
 app.get("/nameOf", (req, res) => {
   const id = req.query.id;
   if (!id || typeof id !== "string") {

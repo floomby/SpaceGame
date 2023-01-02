@@ -32,6 +32,7 @@ import {
   mapSize,
   applyUndockingOffset,
   removeCargoFractions,
+  SectorKind,
 } from "../src/game";
 import { defs, defMap, Faction, armDefs, ArmUsage, emptyLoadout, UnitKind, clientUid } from "../src/defs";
 import { appendFile } from "fs";
@@ -207,6 +208,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     mines: new Map(),
     projectileId: 1,
     delayedActions: [],
+    sectorKind: SectorKind.Tutorial,
   };
 
   sectors.set(tutorialSector, state);

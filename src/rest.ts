@@ -4,7 +4,7 @@ import { Player } from "./game";
 const restCache = new Map<string, any>();
 
 // This function has a potential race (however it is incredibly unlikely, it would require the rest api to beat the render to the dom)
-const domFromRest = (query: string, template: (value: string) => string, postCompletion?: () => void, cache = false) => {
+const domFromRest = (query: string, template: (value: any) => string, postCompletion?: () => void, cache = false) => {
   if ((window as any).restPostCallbacks === undefined) {
     (window as any).restPostCallbacks = new Map<number, () => void>();
   }

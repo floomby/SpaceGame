@@ -286,6 +286,12 @@ type DelayedAction = {
   action: (applyEffect: (trigger: EffectTrigger) => void) => void;
 };
 
+enum SectorKind {
+  Overworld = 0,
+  Tutorial = 1,
+  Mission = 2,
+}
+
 type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic>;
@@ -296,6 +302,7 @@ type GlobalState = {
   mines: Map<number, Mine>;
   projectileId?: number;
   delayedActions?: DelayedAction[];
+  sectorKind?: SectorKind;
 };
 
 const setCanDockOrRepair = (player: Player, state: GlobalState) => {
@@ -1568,6 +1575,11 @@ type ClientFriendRequest = {
   outgoing: boolean;
 };
 
+type SectorOfPlayerResult = {
+  sectorNumber: number;
+  sectorKind: SectorKind;
+} | "respawning" | null;
+
 export {
   GlobalState,
   Input,
@@ -1591,6 +1603,8 @@ export {
   TutorialStage,
   MissionType,
   ClientFriendRequest,
+  SectorKind,
+  SectorOfPlayerResult,
   update,
   applyInputs,
   processAllNpcs,

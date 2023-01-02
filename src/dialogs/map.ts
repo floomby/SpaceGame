@@ -1,5 +1,5 @@
 import { horizontalCenter, pop, push } from "../dialog";
-import { currentSector, sectorData } from "../globals";
+import { currentSector, isInMission, sectorData } from "../globals";
 import { sendWarp } from "../net";
 import { mapSize } from "../game";
 import { selectedMissionsDialog, setupSelectedMissionsDialog } from "./selectedMissions";
@@ -48,7 +48,7 @@ const mapHtml =
 
 const sectorNumberToXY = (sector: number) => {
   if (sector > mapSize * mapSize) {
-    return "Tutorial Sector";
+    return isInMission() ? "Mission Sector" : "Tutorial Sector";
   }
   const x = sector % mapSize;
   const y = Math.floor(sector / mapSize);

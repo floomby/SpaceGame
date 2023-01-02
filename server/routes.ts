@@ -20,6 +20,7 @@ import { makeBarGraph } from "./graphs";
 import { maxDecimals } from "../src/geometry";
 import { genMissions, Mission } from "./missions";
 import { canFriendRequest, FriendRequest } from "./friends";
+import { findPlayer } from "./stateHelpers";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -154,18 +155,7 @@ app.get("/currentSectorOfPlayer", (req, res) => {
     return;
   }
   const id = parseInt(idParam);
-  for (const [sectorNumber, state] of sectors) {
-    if (state.players.has(id)) {
-      res.send(JSON.stringify({ value: { sectorNumber, sectorKind: state.sectorKind } }));
-      return;
-    }
-  }
-  // Should be safe to assume that if they are not in a sector, but connected they are respawning
-  if (idToWebsocket.has(id)) {
-    res.send(JSON.stringify({ value: "respawning" }));
-    return;
-  }
-  res.send(JSON.stringify({ value: null }));
+  res.send(JSON.stringify({ value: findPlayer(id) }));
 });
 
 app.get("/nameOf", (req, res) => {

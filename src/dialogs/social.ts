@@ -1,8 +1,9 @@
 import { addOnHide, addOnPush, addOnShow, bindPostUpdater, horizontalCenter, peekTag, pop, push, shown } from "../dialog";
 import { ClientFriendRequest, SectorKind, SectorOfPlayerResult } from "../game";
-import { ClientFriend, friendList, friendRequests, ownId } from "../globals";
-import { sendFriendRequest, sendRevokeFriendRequest, sendUnfriend } from "../net";
+import { ClientFriend, friendList, friendRequests, lastSelf, ownId } from "../globals";
+import { sendFriendRequest, sendFriendWarp, sendRevokeFriendRequest, sendUnfriend } from "../net";
 import { domFromRest, getRestRaw } from "../rest";
+import { abortWrapper } from "./abortMission";
 import { confirmation } from "./confirm";
 import { Debouncer, sideBySideDivs, stackedDivs } from "./helpers";
 import { sectorNumberToXY } from "./map";
@@ -32,6 +33,31 @@ const sectorLocationTemplate = (value: SectorOfPlayerResult) => {
   return sectorNumberToXY(value.sectorNumber);
 };
 
+const warpIfNotDocked = (id: number) => {
+  if (lastSelf?.docked) {
+    return "";
+  }
+  return `<td style="text-align: right;"><button id="warpToFriend${id}">Warp to Friend</button></td>`;
+};
+
+const setupFriendWarp = (id: number) => {
+  const button = document.getElementById(`warpToFriend${id}`);
+  if (!button) {
+    return;
+  }
+  button.addEventListener("click", () => {
+    abortWrapper(() => {
+      sendFriendWarp(id);
+      pop();
+    });
+  });
+};
+
+const friendsColgroup = () =>
+  lastSelf?.docked
+    ? `<col style="width: 50%"><col style="width: 25%"><col style="width: 25%">`
+    : `<col style="width: 40%"><col style="width: 20%"><col style="width: 20%"><col style="width: 20%;">`;
+
 const populateFriendList = (friends: ClientFriend[]) => {
   const friendList = document.getElementById("friendList");
   if (friends.length === 0) {
@@ -42,13 +68,15 @@ const populateFriendList = (friends: ClientFriend[]) => {
   }
   if (friendList) {
     let html = `<table style="text-align: left; min-width: 40vw;" class="rowHoverNoHeading" cellspacing="0">
-    <colgroup><col style="width: 50%"><col style="width: 25%"><col style="width: 25%"></colgroup>
-    <tr><th>Name</th><th>Location</th><th></th></tr>`;
+    <colgroup>${friendsColgroup()}</colgroup>
+    <tr><th>Name</th><th>Location</th></tr>`;
     for (const friend of friends) {
       html += `<tr><td>${friend.name}</td><td>${domFromRest(
         `/currentSectorOfPlayer?id=${friend.id}`,
         sectorLocationTemplate
-      )}</td><td><button id="removeFriend${friend.id}">Unfriend</button></td></tr>`;
+      )}</td><td style="${
+        lastSelf?.docked ? "text-align: right;" : ""
+      }"><button id="removeFriend${friend.id}">Unfriend</button></td>${warpIfNotDocked(friend.id)}</tr>`;
     }
     html += `</table>`;
     friendList.innerHTML = html;
@@ -59,6 +87,7 @@ const populateFriendList = (friends: ClientFriend[]) => {
           confirmation(() => sendUnfriend(friend.id));
         };
       }
+      setupFriendWarp(friend.id);
     }
   }
 };

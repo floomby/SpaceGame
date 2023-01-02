@@ -4,7 +4,7 @@ import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { runPostUpdaterOnly, updateDom } from "./dialog";
 import { redrawTip } from "./dialogs/dead";
-import { GlobalState, mapSize, Player, SectorInfo, TutorialStage } from "./game";
+import { ClientFriendRequest, GlobalState, mapSize, Player, SectorInfo, TutorialStage } from "./game";
 import { azertyBindings, dvorakBindings, KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
 import { getRestRaw } from "./rest";
 import { tutorialPrompters } from "./tutorial";
@@ -207,8 +207,16 @@ let friendList: ClientFriend[] = [];
 const updateFriendList = () => {
   getRestRaw(`/friendsOf?id=${ownId}`, (friends: ClientFriend[]) => {
     friendList = friends;
-    console.log("Got friend list: ", friendList);
     runPostUpdaterOnly("friends", friendList);
+  });
+};
+
+let friendRequests: ClientFriendRequest[] = [];
+
+const updateFriendRequests = () => {
+  getRestRaw(`/activeFriendRequests?id=${ownId}`, (requests: ClientFriendRequest[]) => {
+    friendRequests = requests;
+    runPostUpdaterOnly("friendRequests", friendRequests);
   });
 };
 
@@ -266,4 +274,6 @@ export {
   setMissionComplete,
   updateFriendList,
   friendList,
+  updateFriendRequests,
+  friendRequests,
 };

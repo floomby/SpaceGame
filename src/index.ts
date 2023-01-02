@@ -64,6 +64,7 @@ import {
   teamColorsLight,
   tutorialStage,
   updateFriendList,
+  updateFriendRequests,
 } from "./globals";
 import { initSettings } from "./dialogs/settings";
 import { deadDialog, setupDeadDialog } from "./dialogs/dead";
@@ -80,7 +81,7 @@ import { init3dDrawing, drawEverything as drawEverything3, fadeOutMine, fadeOutC
 import { rasterizeText, rasterizeTextBitmap, rasterizeWeaponText, weaponTextInitialized } from "./2dDrawing";
 import { pushMessage } from "./2dDrawing";
 import { setCurrentSectorText } from "./dialogs/map";
-import { initSocial, repopulateFriendRequests } from "./dialogs/social";
+import { initSocial } from "./dialogs/social";
 
 let chats: ChatMessage[] = [];
 
@@ -614,7 +615,7 @@ const run = () => {
   });
 
   bindAction("friendRequestChange", () => {
-    repopulateFriendRequests();
+    updateFriendRequests();
   });
 
   bindAction("friendChange", () => {

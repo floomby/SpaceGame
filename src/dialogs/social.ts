@@ -1,6 +1,6 @@
 import { addOnHide, addOnPush, addOnShow, bindPostUpdater, horizontalCenter, peekTag, pop, push, shown } from "../dialog";
 import { ClientFriendRequest } from "../game";
-import { ClientFriend, friendList, lastSelf } from "../globals";
+import { ClientFriend, friendList, friendRequests, lastSelf } from "../globals";
 import { sendFriendRequest } from "../net";
 import { getRestRaw } from "../rest";
 import { sideBySideDivs, stackedDivs } from "./helpers";
@@ -45,11 +45,7 @@ const setupFriendRequestForm = () => {
       }
     };
   }
-  getRestRaw(`/activeFriendRequests?id=${lastSelf.id}`, populateActiveFriendRequests);
-};
-
-const repopulateFriendRequests = () => {
-  getRestRaw(`/activeFriendRequests?id=${lastSelf.id}`, populateActiveFriendRequests);
+  populateActiveFriendRequests(friendRequests);
 };
 
 const socialDialog = `<div class="unselectable">${horizontalCenter([
@@ -110,6 +106,7 @@ const initSocial = () => {
     }
   });
   bindPostUpdater("friends", populateFriendList);
+  bindPostUpdater("friendRequests", populateActiveFriendRequests);
 };
 
-export { initSocial, showSocial, repopulateFriendRequests };
+export { initSocial, showSocial };

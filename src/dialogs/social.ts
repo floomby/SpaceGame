@@ -1,10 +1,11 @@
 import { addOnHide, addOnPush, addOnShow, bindPostUpdater, horizontalCenter, peekTag, pop, push, shown } from "../dialog";
-import { ClientFriendRequest } from "../game";
-import { ClientFriend, friendList, friendRequests, lastSelf, ownId } from "../globals";
+import { ClientFriendRequest, SectorKind, SectorOfPlayerResult } from "../game";
+import { ClientFriend, friendList, friendRequests, ownId } from "../globals";
 import { sendFriendRequest, sendRevokeFriendRequest, sendUnfriend } from "../net";
-import { getRestRaw } from "../rest";
+import { domFromRest, getRestRaw } from "../rest";
 import { confirmation } from "./confirm";
 import { Debouncer, sideBySideDivs, stackedDivs } from "./helpers";
+import { sectorNumberToXY } from "./map";
 
 let initialized = false;
 
@@ -14,6 +15,22 @@ const friendRequestForm = `<div>${stackedDivs([
     </div>`,
   `<br/><div id="activeFriendRequests" style="width: 100%"></div>`,
 ])}</div>`;
+
+const sectorLocationTemplate = (value: SectorOfPlayerResult) => {
+  if (!value) {
+    return "Offline";
+  }
+  if (value === "respawning") {
+    return "Respawning";
+  }
+  if (value.sectorKind === SectorKind.Tutorial) {
+    return "In Tutorial";
+  }
+  if (value.sectorKind === SectorKind.Mission) {
+    return "In Mission";
+  }
+  return sectorNumberToXY(value.sectorNumber);
+};
 
 const populateFriendList = (friends: ClientFriend[]) => {
   const friendList = document.getElementById("friendList");
@@ -26,9 +43,12 @@ const populateFriendList = (friends: ClientFriend[]) => {
   if (friendList) {
     let html = `<table style="text-align: left; min-width: 40vw;" class="rowHoverNoHeading" cellspacing="0">
     <colgroup><col style="width: 50%"><col style="width: 25%"><col style="width: 25%"></colgroup>
-    <tr><th>Name</th><th></th></tr>`;
+    <tr><th>Name</th><th>Location</th><th></th></tr>`;
     for (const friend of friends) {
-      html += `<tr><td>${friend.name}</td><td><button id="removeFriend${friend.id}">Unfriend</button></td></tr>`;
+      html += `<tr><td>${friend.name}</td><td>${domFromRest(
+        `/currentSectorOfPlayer?id=${friend.id}`,
+        sectorLocationTemplate
+      )}</td><td><button id="removeFriend${friend.id}">Unfriend</button></td></tr>`;
     }
     html += `</table>`;
     friendList.innerHTML = html;
@@ -109,7 +129,7 @@ const setupFriendRequester = () => {
             }
           }
         });
-      }
+      };
 
       validator(friendRequestInput.value);
 

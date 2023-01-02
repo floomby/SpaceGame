@@ -7,6 +7,7 @@
 
 ### User Interface
 
+- I may want friend location/online notifications (idk if I should have a client subscribe model or just have the server figure it out and send it to the client)
 - Partial dialogs for in game?
 - Readdress text selectability, upon more playing idk if even the tables should be selectable
 - Hiding messages while docked after time has elapsed is broken (I think I broke this with the switch to 3d somehow, have been vaugely aware of it for a while)

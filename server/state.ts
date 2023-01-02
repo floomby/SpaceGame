@@ -10,6 +10,7 @@ import {
   TutorialStage,
   copyPlayer,
   removeCargoFractions,
+  SectorKind,
 } from "../src/game";
 import { WebSocket } from "ws";
 import { armDefs, defs, Faction, initDefs, UnitKind } from "../src/defs";
@@ -198,6 +199,7 @@ sectorList.forEach((sector) => {
     mines: new Map(),
     projectileId: 1,
     delayedActions: [],
+    sectorKind: SectorKind.Overworld,
   });
 });
 

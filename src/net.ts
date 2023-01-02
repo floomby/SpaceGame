@@ -315,6 +315,15 @@ const sendUnfriend = (id: number) => {
   );
 };
 
+const sendFriendWarp = (id: number) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "friendWarp",
+      payload: { id },
+    })
+  );
+};
+
 export {
   connect,
   bindAction,
@@ -347,4 +356,5 @@ export {
   sendFriendRequest,
   sendRevokeFriendRequest,
   sendUnfriend,
+  sendFriendWarp,
 };

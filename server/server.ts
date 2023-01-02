@@ -82,7 +82,7 @@ import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
 import { selectMission, startPlayerInMission } from "./missions";
 import { enemyCount, allyCount, flashServerMessage } from "./stateHelpers";
-import { createFriendRequest, revokeFriendRequest, unfriend } from "./friends";
+import { createFriendRequest, friendWarp, revokeFriendRequest, unfriend } from "./friends";
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -843,6 +843,14 @@ wss.on("connection", (ws, req) => {
         const client = clients.get(ws);
         if (client) {
           unfriend(ws, client.id, data.payload.id);
+        }
+      } else if (data.type === "friendWarp") {
+        const client = clients.get(ws);
+        if (client) {
+          const player = sectors.get(client.currentSector)?.players.get(client.id);
+          if (player) {
+            friendWarp(ws, player, data.payload.id);
+          }
         }
       } else {
         console.log("Unknown message from client: ", data);

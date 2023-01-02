@@ -1,8 +1,9 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { IUser, User } from "./dataModels";
 import { WebSocket } from "ws";
-import { flashServerMessage } from "./stateHelpers";
+import { findPlayer, flashServerMessage } from "./stateHelpers";
 import { idToWebsocket } from "./state";
+import { Player, SectorKind } from "../src/game";
 
 const Schema = mongoose.Schema;
 
@@ -204,4 +205,36 @@ const unfriend = async (ws: WebSocket, id: number, friend: number) => {
   }
 };
 
-export { FriendRequest, IFriendRequest, canFriendRequest, createFriendRequest, revokeFriendRequest, unfriend };
+const friendWarp = async (ws: WebSocket, player: Player, friend: number) => {
+  try {
+    // check if friends
+    const user = await User.findOne({ id: player.id });
+    if (!user) {
+      ws.send({ type: "error", payload: { message: "Failed to warp to friend (invalid user)" } });
+      throw new Error("Failed to warp to friend (invalid user)");
+    }
+    if (!user.friends.includes(friend)) {
+      ws.send({ type: "error", payload: { message: "Failed to warp to friend (not friends)" } });
+      throw new Error("Failed to warp to friend (not friends)");
+    }
+    const where = findPlayer(friend);
+    if (!where) {
+      flashServerMessage(player.id, "Failed to warp to friend (not online)", [1.0, 0.0, 0.0, 1.0]);
+      return;
+    }
+    if (where === "respawning") {
+      flashServerMessage(player.id, "Failed to warp to friend (respawning)", [1.0, 0.0, 0.0, 1.0]);
+      return;
+    }
+    if ((where as any).sectorKind === SectorKind.Tutorial) {
+      flashServerMessage(player.id, "Failed to warp to friend (cannot warp into tutorial)", [1.0, 0.0, 0.0, 1.0]);
+      return;
+    }
+    player.warping = 1;
+    player.warpTo = where.sectorNumber;
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+export { FriendRequest, IFriendRequest, canFriendRequest, createFriendRequest, revokeFriendRequest, unfriend, friendWarp };

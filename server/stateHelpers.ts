@@ -1,5 +1,5 @@
 import { Faction } from "../src/defs";
-import { GlobalState, serverMessagePersistTime } from "../src/game";
+import { GlobalState, SectorOfPlayerResult, serverMessagePersistTime } from "../src/game";
 import { clients, idToWebsocket, sectors } from "./state";
 
 const enemyCountState = (team: Faction, state: GlobalState) => {
@@ -76,4 +76,17 @@ const sendMissionComplete = (id: number, message: string) => {
   }
 };
 
-export { enemyCount, allyCount, enemyCountState, allyCountState, flashServerMessage, sendMissionComplete };
+const findPlayer = (id: number): SectorOfPlayerResult => {
+  for (const [sectorNumber, state] of sectors) {
+    if (state.players.has(id)) {
+      return { sectorNumber, sectorKind: state.sectorKind! };
+    }
+  }
+  // Should be safe to assume that if they are not in a sector, but connected they are respawning
+  if (idToWebsocket.has(id)) {
+    return "respawning";
+  }
+  return null;
+};
+
+export { enemyCount, allyCount, enemyCountState, allyCountState, flashServerMessage, sendMissionComplete, findPlayer };

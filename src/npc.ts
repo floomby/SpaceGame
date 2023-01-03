@@ -498,7 +498,7 @@ const makeBasicStateGraph = (
       const def = defs[npc.player.defIndex];
       return npc.player.health > def.health / 3;
     },
-    state: run,
+    state: swarm,
   });
   run.transitions.push({ trigger: () => Math.random() < 0.002, state: run });
   warpAway.transitions.push({ trigger: () => true, state: run });

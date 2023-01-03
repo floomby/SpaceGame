@@ -204,7 +204,7 @@ const shipViewer = () => {
   return `<div style="display: flex; flex-direction: row;">
   <div style="display: flex; flex-direction: column; margin-right: 5px;">
     <canvas id="shipView" width="800" height="800" style="width: 200px; height: 200px;"></canvas>
-    <button id="changeShip" style="top: 0;">Change</button>
+    <button id="changeShip" style="top: 0;">Change Ship</button>
   </div>
   <div style="width: 60vw;">
     <div id="shipStats" style="width: 100%">

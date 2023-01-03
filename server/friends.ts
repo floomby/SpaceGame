@@ -163,7 +163,7 @@ const notifyFriendRequestChanged = (request: HydratedDocument<IFriendRequest>) =
     if (ws) {
       try {
         ws.send(JSON.stringify({ type: "friendRequestChange" }));
-      } catch(err) {
+      } catch (err) {
         console.log(err);
       }
     }
@@ -176,7 +176,7 @@ const notifyFriendChanged = (id1: number, id2: number) => {
     if (ws) {
       try {
         ws.send(JSON.stringify({ type: "friendChange" }));
-      } catch(err) {
+      } catch (err) {
         console.log(err);
       }
     }
@@ -242,8 +242,11 @@ const friendWarp = async (ws: WebSocket, player: Player, friend: number) => {
     player.warping = 1;
     player.warpTo = where.sectorNumber;
     // Add the player to the mission
-    if ((where  as any).sectorKind === SectorKind.Mission) {
-      const mission = await Mission.findOneAndUpdate({ sectorNumber: where.sectorNumber, inProgress: true, assignee: { $ne: player.id } }, { $addToSet: { coAssignees: player.id } });
+    if ((where as any).sectorKind === SectorKind.Mission) {
+      const mission = await Mission.findOneAndUpdate(
+        { sectorNumber: where.sectorNumber, inProgress: true, assignee: { $ne: player.id }, forFaction: player.team },
+        { $addToSet: { coAssignees: player.id } }
+      );
       if (!mission) {
         flashServerMessage(player.id, "Unable to join mission", [1.0, 0.0, 0.0, 1.0]);
       }

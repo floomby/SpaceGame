@@ -4,6 +4,7 @@ import { WebSocket } from "ws";
 import { findPlayer, flashServerMessage } from "./stateHelpers";
 import { idToWebsocket } from "./state";
 import { Player, SectorKind } from "../src/game";
+import { Mission } from "./missions";
 
 const Schema = mongoose.Schema;
 
@@ -160,7 +161,11 @@ const notifyFriendRequestChanged = (request: HydratedDocument<IFriendRequest>) =
   for (const id of [from, to]) {
     const ws = idToWebsocket.get(id);
     if (ws) {
-      ws.send(JSON.stringify({ type: "friendRequestChange" }));
+      try {
+        ws.send(JSON.stringify({ type: "friendRequestChange" }));
+      } catch(err) {
+        console.log(err);
+      }
     }
   }
 };
@@ -169,7 +174,11 @@ const notifyFriendChanged = (id1: number, id2: number) => {
   for (const id of [id1, id2]) {
     const ws = idToWebsocket.get(id);
     if (ws) {
-      ws.send(JSON.stringify({ type: "friendChange" }));
+      try {
+        ws.send(JSON.stringify({ type: "friendChange" }));
+      } catch(err) {
+        console.log(err);
+      }
     }
   }
 };
@@ -232,6 +241,13 @@ const friendWarp = async (ws: WebSocket, player: Player, friend: number) => {
     }
     player.warping = 1;
     player.warpTo = where.sectorNumber;
+    // Add the player to the mission
+    if ((where  as any).sectorKind === SectorKind.Mission) {
+      const mission = await Mission.findOneAndUpdate({ sectorNumber: where.sectorNumber, inProgress: true, assignee: { $ne: player.id } }, { $addToSet: { coAssignees: player.id } });
+      if (!mission) {
+        flashServerMessage(player.id, "Unable to join mission", [1.0, 0.0, 0.0, 1.0]);
+      }
+    }
   } catch (err) {
     console.error(err);
   }

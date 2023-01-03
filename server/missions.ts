@@ -35,6 +35,8 @@ interface IMission {
   completedDate?: Date;
   failed?: boolean;
   failedDate?: Date;
+  coAssignees: number[];
+  sector?: number;
 }
 
 const missionSchema = new Schema<IMission>({
@@ -52,6 +54,8 @@ const missionSchema = new Schema<IMission>({
   completedDate: { type: Date, required: false },
   failed: { type: Boolean, required: false },
   failedDate: { type: Date, required: false },
+  coAssignees: { type: [Number], default: [] },
+  sector: { type: Number, required: false },
 });
 
 const Mission = mongoose.model<IMission>("Mission", missionSchema);
@@ -87,12 +91,7 @@ const removeMissionSector = (sectorId: number, missionId: number) => {
   }
 };
 
-const setupMissionSectorCleanup = (missionId) => {
-  let missionSector = uid();
-  while (sectors.has(missionSector)) {
-    missionSector = uid();
-  }
-
+const setupMissionSectorCleanup = (missionId: number, missionSector: number) => {
   setTimeout(() => {
     removeMissionSector(missionSector, missionId);
   }, missionSectorCleanupInterval);
@@ -100,8 +99,8 @@ const setupMissionSectorCleanup = (missionId) => {
   return missionSector;
 };
 
-const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>) => {
-  const missionSector = setupMissionSectorCleanup(mission.id);
+const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>, missionSectorId: number) => {  
+  const missionSector = setupMissionSectorCleanup(mission.id, missionSectorId);
   player.warping = 1;
   player.warpTo = missionSector;
 
@@ -193,10 +192,12 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number) => {
     }
     mission.inProgress = true;
     flashServerMessage(player.id, "Starting mission: " + mission.name, [0.0, 1.0, 0.0, 1.0]);
+    const missionSectorId = uid();
+    mission.sector = missionSectorId;
     mission
       .save()
       .then(() => {
-        startMissionGameState(player, mission);
+        startMissionGameState(player, mission, missionSectorId);
       })
       .catch((e) => {
         console.trace(e);
@@ -240,12 +241,13 @@ const completeMission = (id: number) => {
     if (!mission) {
       return;
     }
-    const player = getPlayerFromId(mission.assignee!);
-    if (!player) {
-      return;
+    for (const coAssignee of mission.coAssignees.concat([mission.assignee!])) {
+      const coPlayer = getPlayerFromId(coAssignee);
+      if (coPlayer) {
+        coPlayer.credits = coPlayer.credits ? coPlayer.credits + mission.reward : mission.reward;
+        sendMissionComplete(coPlayer.id, "You have completed mission: " + mission.name);
+      }
     }
-    player.credits = player.credits ? player.credits + mission.reward : mission.reward;
-    sendMissionComplete(player.id, "You have completed mission: " + mission.name);
   });
 };
 

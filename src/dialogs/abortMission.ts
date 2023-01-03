@@ -1,10 +1,11 @@
-import { horizontalCenter, pop, push } from "../dialog";
-import { isInMission, missionComplete } from "../globals";
+import { clearStack, horizontalCenter, peekTag, pop, push } from "../dialog";
+import { currentSector, isInMission, missionComplete, ownId } from "../globals";
+import { getRestRaw } from "../rest";
 import { sideBySideDivs } from "./helpers";
 
 const abortHtml = `<div class="unselectable">${horizontalCenter([
   "<h1>Abort Mission?</h1>",
-  "<p>Continuing will abort mission.</p>",
+  "<p>Continuing will potentially abort the mission.</p>",
   sideBySideDivs([
     "<button class='bottomButton' id='backButton'>Back</button>",
     "<button class='bottomButton' id='continueButton'>Continue</button>",
@@ -21,7 +22,7 @@ const setupAbort = (action: () => void) => {
   const continueButton = document.getElementById("continueButton");
   if (continueButton) {
     continueButton.onclick = () => {
-      pop();
+      clearStack();
       action();
     };
   }
@@ -31,7 +32,16 @@ const abortWrapper = (action: () => void) => {
   if (!isInMission() || missionComplete) {
     action();
   } else {
-    push(abortHtml, () => setupAbort(action), "abortMission");
+    const context = peekTag();
+    getRestRaw(`/missionAssigneesFromSector?sector=${currentSector}`, (assignees: number[]) => {
+      if (context === peekTag()) {
+        if (assignees.includes(ownId)) {
+          push(abortHtml, () => setupAbort(action), "abortMission");
+        } else {
+          action();
+        }
+      }
+    });
   }
 };
 

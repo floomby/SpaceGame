@@ -99,7 +99,7 @@ const setupMissionSectorCleanup = (missionId: number, missionSector: number) => 
   return missionSector;
 };
 
-const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>, missionSectorId: number) => {  
+const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>, missionSectorId: number) => {
   const missionSector = setupMissionSectorCleanup(mission.id, missionSectorId);
   player.warping = 1;
   player.warpTo = missionSector;
@@ -119,7 +119,7 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
 
   sectors.set(missionSector, state);
   if (mission.type === MissionType.Clearance) {
-    spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), ["Fighter", "Maintainer"]);
+    spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), ["Fighter"]);
     sectorTriggers.set(missionSector, (state: GlobalState) => {
       if (enemyCountState(mission.forFaction, state) === 0) {
         completeMission(mission.id);

@@ -735,6 +735,27 @@ app.get("/getMissions", async (req, res) => {
   }
 });
 
+app.get("/missionAssigneesFromSector", async (req, res) => {
+  try {
+    const sectorParam = req.query.sector;
+    if (!sectorParam || typeof sectorParam !== "string") {
+      res.send(JSON.stringify({ error: "Sector missing or invalid" }));
+      return;
+    }
+    const sector = parseInt(sectorParam);
+    const missions = await Mission.findOne({ sector, inProgress: true });
+    if (!missions) {
+      res.send("[]");
+      return;
+    }
+    const assignees = [missions.assignee].concat(missions.coAssignees);
+    res.send(JSON.stringify(assignees));
+  } catch (err) {
+    res.send(JSON.stringify({ error: "Database interaction error" }));
+    console.log(err);
+  }
+});
+
 app.get("/selectedMissions", async (req, res) => {
   const idParam = req.query.id;
   if (!idParam || typeof idParam !== "string") {

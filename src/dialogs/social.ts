@@ -107,8 +107,8 @@ const populateActiveFriendRequests = (requests: ClientFriendRequest[]) => {
     let index = 0;
     for (const request of requests) {
       const actionOn = request.outgoing
-        ? `<td><button id="actionOn${index}">Rescind</button></td>`
-        : `<td><button id="actionOn${index}">Accept</button></td>`;
+        ? `<td style="text-align: right;"><button id="actionOn${index}">Rescind</button></td>`
+        : `<td style="text-align: right;"><button id="actionOn${index}">Accept</button></td>`;
       html += `<tr><td>${request.name}</td><td>${request.outgoing ? "Outgoing" : "Incoming"}</td>${actionOn}</tr>`;
       index++;
     }

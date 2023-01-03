@@ -10,7 +10,7 @@ const enemyCountState = (team: Faction, state: GlobalState) => {
     }
   }
   return count;
-}
+};
 
 const allyCountState = (team: Faction, state: GlobalState) => {
   let count = 0;
@@ -20,7 +20,7 @@ const allyCountState = (team: Faction, state: GlobalState) => {
     }
   }
   return count;
-}
+};
 
 const enemyCount = (team: Faction, sector: number) => {
   const state = sectors.get(sector);
@@ -51,28 +51,36 @@ const allyCount = (team: Faction, sector: number) => {
 };
 
 const flashServerMessage = (id: number, message: string, color: [number, number, number, number] = [1.0, 1.0, 1.0, 1.0]) => {
-  const ws = idToWebsocket.get(id);
-  if (ws) {
-    const client = clients.get(ws);
-    if (client && message.length > 0) {
-      if (message !== client.lastMessage) {
-        ws.send(JSON.stringify({ type: "serverMessage", payload: { message, color } }));
-        client.lastMessage = message;
-        client.lastMessageTime = Date.now();
-      } else {
-        if (Date.now() - client.lastMessageTime > serverMessagePersistTime) {
+  try {
+    const ws = idToWebsocket.get(id);
+    if (ws) {
+      const client = clients.get(ws);
+      if (client && message.length > 0) {
+        if (message !== client.lastMessage) {
           ws.send(JSON.stringify({ type: "serverMessage", payload: { message, color } }));
+          client.lastMessage = message;
           client.lastMessageTime = Date.now();
+        } else {
+          if (Date.now() - client.lastMessageTime > serverMessagePersistTime) {
+            ws.send(JSON.stringify({ type: "serverMessage", payload: { message, color } }));
+            client.lastMessageTime = Date.now();
+          }
         }
       }
     }
+  } catch (err) {
+    console.log(err);
   }
 };
 
 const sendMissionComplete = (id: number, message: string) => {
   const ws = idToWebsocket.get(id);
   if (ws) {
-    ws.send(JSON.stringify({ type: "missionComplete", payload: message }));
+    try {
+      ws.send(JSON.stringify({ type: "missionComplete", payload: message }));
+    } catch (err) {
+      console.log(err);
+    }
   }
 };
 

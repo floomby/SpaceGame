@@ -12,7 +12,7 @@ import { User, Station } from "./dataModels";
 import { addNpc } from "../src/npc";
 import { market } from "./market";
 import { clients, friendlySectors, idToWebsocket, sectorFactions, sectorHasStarbase, sectorList, sectors, uid } from "./state";
-import { adminHash, credentials, hash, httpPort } from "./settings";
+import { adminHash, hash, httpPort, sniCallback } from "./settings";
 import { recipeMap, recipes } from "../src/recipes";
 import { isFreeArm } from "../src/defs/armaments";
 import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "./reports";
@@ -773,7 +773,9 @@ export default () => {
     app.use(express.static("resources"));
     app.use(express.static("shaders"));
 
-    const httpsServer = createSecureServer(credentials, app);
+    const httpsServer = createSecureServer({
+      SNICallback: sniCallback,
+    }, app);
     httpsServer.listen(httpPort, () => {
       console.log(`Running secure http server on port ${httpPort}`);
     });

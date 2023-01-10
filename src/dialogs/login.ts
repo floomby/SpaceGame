@@ -123,7 +123,7 @@ const setupRegisterDialog = (username: string, password: string) => {
 };
 
 const loginDialog = `<div class="center">${horizontalCenter([
-  "<h2>Login</h2>",
+  "<h1 class='title'>Space Quest</h1>",
   `<div id="errorSpot" class="error"></div>`,
   `<input type="text" placeholder="Username" id="username"/>`,
   `<input style="margin-top: 10px;" type="password" placeholder="Password" id="password"/>`,

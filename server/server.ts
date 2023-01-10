@@ -1,5 +1,5 @@
 import { createServer } from "http";
-import { createServer as createSecureServer } from "https";
+import https from "https";
 import { WebSocketServer, WebSocket } from "ws";
 import {
   GlobalState,
@@ -76,7 +76,7 @@ import {
   warpList,
 } from "./state";
 import { CardinalDirection, headingFromCardinalDirection, mirrorAngleHorizontally, mirrorAngleVertically } from "../src/geometry";
-import { credentials, hash, wsPort } from "./settings";
+import { hash, sniCallback, wsPort } from "./settings";
 import Routes from "./routes";
 import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
@@ -130,9 +130,9 @@ const initFromDatabase = async () => {
 };
 
 // Websocket server stuff
-let server: ReturnType<typeof createServer> | ReturnType<typeof createSecureServer>;
+let server: ReturnType<typeof createServer> | https.Server;
 if (useSsl) {
-  server = createSecureServer(credentials);
+  server = new https.Server({ SNICallback: sniCallback });
 } else {
   server = createServer();
 }

@@ -1,5 +1,5 @@
 import { createServer } from "http";
-import { createServer as createSecureServer } from "https";
+import https from "https";
 import { ClientFriendRequest, maxNameLength } from "../src/game";
 import { armDefMap, asteroidDefMap, defMap, Faction, factionList, UnitKind } from "../src/defs";
 import { useSsl } from "../src/config";
@@ -773,9 +773,8 @@ export default () => {
     app.use(express.static("resources"));
     app.use(express.static("shaders"));
 
-    const httpsServer = createSecureServer({
-      SNICallback: sniCallback,
-    }, app);
+    const httpsServer = new https.Server({ SNICallback: sniCallback}, app);
+
     httpsServer.listen(httpPort, () => {
       console.log(`Running secure http server on port ${httpPort}`);
     });

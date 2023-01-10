@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { readFileSync } from "fs";
 import { useSsl } from "../src/config";
+import * as tls from "tls";
 
 const credentials: { key?: string; cert?: string; ca?: string } = {};
 const oldCredentials: { key?: string; cert?: string; ca?: string } = {};
@@ -23,9 +24,9 @@ if (useSsl) {
 
 const sniCallback = (servername: string, cb: (err: Error | null, ctx: any) => void) => {
   if (servername === "spacequest.io") {
-    cb(null, credentials);
+    cb(null, tls.createSecureContext(credentials));
   } else if (servername === "inharmonious.floomby.us") {
-    cb(null, oldCredentials);
+    cb(null, tls.createSecureContext(oldCredentials));
   } else {
     cb(new Error("Unknown servername"), null);
   }

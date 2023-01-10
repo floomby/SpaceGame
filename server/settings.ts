@@ -5,9 +5,9 @@ import { useSsl } from "../src/config";
 const credentials: { key?: string; cert?: string; ca?: string } = {};
 
 if (useSsl) {
-  credentials.key = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/privkey.pem", "utf8");
-  credentials.cert = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/cert.pem", "utf8");
-  credentials.ca = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/chain.pem", "utf8");
+  credentials.key = readFileSync("/etc/letsencrypt/live/spacequest.io/privkey.pem", "utf8");
+  credentials.cert = readFileSync("/etc/letsencrypt/live/spacequest.io/cert.pem", "utf8");
+  credentials.ca = readFileSync("/etc/letsencrypt/live/spacequest.io/chain.pem", "utf8");
 }
 
 const wsPort = 8080;

@@ -7,11 +7,6 @@ const credentials: { key?: string; cert?: string; ca?: string } = {};
 const oldCredentials: { key?: string; cert?: string; ca?: string } = {};
 
 if (useSsl) {
-<<<<<<< HEAD
-  credentials.key = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/privkey.pem", "utf8");
-  credentials.cert = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/cert.pem", "utf8");
-  credentials.ca = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/chain.pem", "utf8");
-=======
   credentials.key = readFileSync("/etc/letsencrypt/live/spacequest.io/privkey.pem", "utf8");
   credentials.cert = readFileSync("/etc/letsencrypt/live/spacequest.io/cert.pem", "utf8");
   credentials.ca = readFileSync("/etc/letsencrypt/live/spacequest.io/chain.pem", "utf8");
@@ -19,7 +14,6 @@ if (useSsl) {
   oldCredentials.key = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/privkey.pem", "utf8");
   oldCredentials.cert = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/cert.pem", "utf8");
   oldCredentials.ca = readFileSync("/etc/letsencrypt/live/inharmonious.floomby.us/chain.pem", "utf8");
->>>>>>> 367de88 (Use SNI)
 }
 
 const sniCallback = (servername: string, cb: (err: Error | null, ctx: any) => void) => {

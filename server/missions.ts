@@ -16,7 +16,7 @@ import mongoose, { HydratedDocument } from "mongoose";
 import { getPlayerFromId, sectors, sectorTriggers, uid } from "./state";
 import { WebSocket } from "ws";
 import { enemyCountState, flashServerMessage, sendMissionComplete } from "./stateHelpers";
-import { spawnClearanceNPCs } from "./npcs/clearance";
+import { clearanceNPCsRewards, randomClearanceShip, spawnClearanceNPCs } from "./npcs/clearance";
 
 const Schema = mongoose.Schema;
 
@@ -37,6 +37,7 @@ interface IMission {
   failedDate?: Date;
   coAssignees: number[];
   sector?: number;
+  clearanceShips: string[];
 }
 
 const missionSchema = new Schema<IMission>({
@@ -56,20 +57,34 @@ const missionSchema = new Schema<IMission>({
   failedDate: { type: Date, required: false },
   coAssignees: { type: [Number], default: [] },
   sector: { type: Number, required: false },
+  clearanceShips: { type: [String], default: [] },
 });
 
 const Mission = mongoose.model<IMission>("Mission", missionSchema);
 
+// TODO This function does not do what it will need to do
 const genMissions = async (assignee: number, forFaction: Faction, count: number, missions: HydratedDocument<IMission>[]) => {
+  const shipCount = Math.floor(Math.random() * 3) + 1;
+
+  const ships: string[] = [];
+  let reward = 0;
+
+  for (let i = 0; i < shipCount; i++) {
+    const ship = randomClearanceShip();
+    ships.push(ship);
+    reward += clearanceNPCsRewards.get(ship) || 0;
+  }
+
   for (let i = 0; i < count; i++) {
     const mission = new Mission({
       name: "Clearance #" + clientUid().toString(),
       id: uid(),
       type: MissionType.Clearance,
       forFaction,
-      reward: 1000 + i * 100,
+      reward,
       description: "Clear out the sector of enemy ships",
       assignee,
+      clearanceShips: ships,
     });
     missions.push(await mission.save());
   }
@@ -119,7 +134,7 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
 
   sectors.set(missionSector, state);
   if (mission.type === MissionType.Clearance) {
-    spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), ["Fighter"]);
+    spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), mission.clearanceShips);
     sectorTriggers.set(missionSector, (state: GlobalState) => {
       if (enemyCountState(mission.forFaction, state) === 0) {
         completeMission(mission.id);

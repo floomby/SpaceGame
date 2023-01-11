@@ -195,4 +195,21 @@ const spawnClearanceNPCs = (state: GlobalState, npcFaction: Faction, shipList: s
   }
 };
 
-export { spawnClearanceNPCs };
+const clearanceNPCsRewards = new Map<string, number>([
+  ["Fighter", 175],
+  ["Drone", 175],
+  ["Advanced Fighter", 350],
+  ["Seeker", 350],
+  ["Strafer", 250],
+  ["Venture", 400],
+  ["Smasher", 550],
+  ["Enforcer", 550],
+  ["Maintainer", 600],
+]);
+
+const randomClearanceShip = () => {
+  const ships = Array.from(clearanceNPCsRewards.keys());
+  return ships[Math.floor(Math.random() * ships.length)];
+};
+
+export { spawnClearanceNPCs, clearanceNPCsRewards, randomClearanceShip };

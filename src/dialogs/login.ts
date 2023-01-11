@@ -7,8 +7,8 @@ import { getRestRaw } from "../rest";
 import { initSound } from "../sound";
 import { Debouncer } from "./helpers";
 
-const loggingInDialog = horizontalCenter(["<h3>Logging in...</h3>"]);
-const registeringDialog = horizontalCenter(["<h3>Registering...</h3>"]);
+const loggingInDialog = horizontalCenter(["<h3 class='unselectable'>Logging in...</h3>"]);
+const registeringDialog = horizontalCenter(["<h3 class='unselectable'>Registering...</h3>"]);
 
 const doRegister = (username: string, password: string) => {
   register(username, password, faction);
@@ -48,7 +48,7 @@ const enterKeyHandler = (f: () => void) => (e: KeyboardEvent) => {
   }
 };
 
-const registerDialog = horizontalCenter([
+const registerDialog = `<div class="unselectable">${horizontalCenter([
   "<h2>Register</h2>",
   `<div id="registerErrorSpot" class="error"></div>`,
   `<input type="text" placeholder="Username" id="registerUsername" style="color: black;"/>`,
@@ -65,7 +65,7 @@ const registerDialog = horizontalCenter([
 </fieldset>`,
   `<br/><button style="margin-top: 10px;" id="registerButton">Register</button>`,
   `<button style="margin-top: 10px;" id="backToLogin">Back</button>`,
-]);
+])}</div>`;
 
 const setupRegisterDialog = (username: string, password: string) => {
   const passwordInput = document.getElementById("registerPassword") as HTMLInputElement;
@@ -122,7 +122,7 @@ const setupRegisterDialog = (username: string, password: string) => {
   document.getElementById("backToLogin")?.addEventListener("click", () => popDialog());
 };
 
-const loginDialog = `<div class="center">${horizontalCenter([
+const loginDialog = `<div class="center unselectable">${horizontalCenter([
   "<h1 class='title'>Space Quest</h1>",
   `<div id="errorSpot" class="error"></div>`,
   `<input type="text" placeholder="Username" id="username"/>`,
@@ -161,7 +161,7 @@ const setupLoginDialog = () => {
   })
 };
 
-const changePasswordDialog = `<div class="center">${horizontalCenter([
+const changePasswordDialog = `<div class="center unselectable">${horizontalCenter([
   "<h2>Change Password</h2>",
   `<div id="changeErrorSpot" class="error"></div>`,
   `<input type="text" placeholder="Username" id="changeUsername"/>`,

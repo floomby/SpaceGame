@@ -70,11 +70,11 @@ const dumpCargoPostUpdate = (cargo?: CargoEntry[]) => {
   } 
 };
 
-const dumpCargoDialog = horizontalCenter([
+const dumpCargoDialog = `<div class="unselectable">${horizontalCenter([
   "<h2>Cargo</h2>",
   "<br/><div id='dumpCargo'></div>",
   "<button class='bottomButton' id='dumpCargoClose'>Close</button>",
-]);
+])}</div>`;
 
 const setupDumpCargoDialog = () => {
   dumpCargoPostUpdate(lastSelf?.cargo);

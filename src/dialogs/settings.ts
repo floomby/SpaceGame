@@ -23,8 +23,8 @@ const settingsDialog = () =>
     `<span class="labeledSlider unselectable"><label for="musicVolumeSlider">Music volume</label>
 <input type="range" min="0" max="1" value="${getMusicVolume()}" class="slider" id="musicVolumeSlider" step="0.05"></span>`,
     `<span style="padding-bottom: 15px;">Particle Count<input id="particleCount"></input></span>`,
-    `<span>Use alternate background (can cause pop-in)<input id="useAltBackground" type="checkbox" style="margin-top: 10px; margin-bot: 10px; margin-left: 25px;"></input></span>`,
-    `<div id="keyboardSelectorContainer">${keylayoutSelector()}</div>`,
+    `<span>Use experimental backgrounds (can be laggy)<input id="useAltBackground" type="checkbox" style="margin-top: 10px; margin-bot: 10px; margin-left: 25px;"></input></span>`,
+    `<div id="keyboardSelectorContainer" class="unselectable">${keylayoutSelector()}</div>`,
     `<button style="margin-top: 10px;" id="viewControls">View Controls</button>`,
     `<button style="margin-top: 10px;" class="bottomButton" id="closeSettings" class="secondary">Close</button>`,
   ])}<div>`;

@@ -16,7 +16,7 @@ import {
 import { armDefs, ArmUsage, defs, Faction, UnitKind } from "./defs";
 import { Asteroid, availableCargoCapacity, ChatMessage, CloakedState, Player, sectorBounds, TargetKind } from "./game";
 import { CardinalDirection, findHeadingBetween, l2Norm, Position, Position3, positiveMod, projectRayFromCenterOfRect, Rectangle } from "./geometry";
-import { keybind, lastSelf, selectedSecondary, state, teamColorsFloat, teamColorsOpaque } from "./globals";
+import { keybind, lastSelf, missionTargetId, selectedSecondary, state, teamColorsFloat, teamColorsOpaque } from "./globals";
 
 const canvasCoordsToNDC = (x: number, y: number) => {
   return {
@@ -245,7 +245,9 @@ const appendMinimap = (where: Rectangle, miniMapScaleFactor: number) => {
             y: playerCenter.y - playerX.y * 7 + playerY.y * 4,
           };
 
-          appendCanvasTriangle(p1, p2, p3, 0, [teamColor[0], teamColor[1], teamColor[2], 1]);
+          const color: [number, number, number, number] = id === missionTargetId ? [1, 1, 1, 1] : [teamColor[0], teamColor[1], teamColor[2], 1];
+
+          appendCanvasTriangle(p1, p2, p3, 0, color);
         } else {
           appendCanvasCircle(playerCenter, 5, 0, [teamColor[0], teamColor[1], teamColor[2], 1]);
         }
@@ -510,6 +512,7 @@ type ArrowData = {
   distance: number;
   depleted?: boolean;
   inoperable?: boolean;
+  missionTarget?: boolean;
 };
 
 const computeArrows = (target: Player, targetAsteroid: Asteroid) => {
@@ -542,7 +545,7 @@ const computeArrows = (target: Player, targetAsteroid: Asteroid) => {
     const playerDef = defs[player.defIndex];
     if (
       player.id !== lastSelf.id &&
-      (distance < def.scanRange || playerDef.kind === UnitKind.Station) &&
+      (distance < def.scanRange || playerDef.kind === UnitKind.Station || player.id === missionTargetId) &&
       (player.team === lastSelf.team || !player.cloak) &&
       !player.docked &&
       (player.position.x < canvasGameTopLeft.x ||
@@ -557,6 +560,7 @@ const computeArrows = (target: Player, targetAsteroid: Asteroid) => {
         target: target === player,
         distance,
         inoperable: player.inoperable,
+        missionTarget: player.id === missionTargetId,
       });
     }
   }
@@ -594,7 +598,12 @@ const drawArrow = (targetPosition: Position, fillStyle: string, highlight: boole
 const drawArrows = (arrows: ArrowData[]) => {
   for (const arrow of arrows) {
     if (arrow.team !== undefined) {
-      drawArrow(arrow.position, arrow.inoperable ? "grey" : teamColorsOpaque[arrow.team], arrow.target, arrow.distance);
+      drawArrow(
+        arrow.position,
+        arrow.inoperable ? "grey" : arrow.missionTarget ? "white" : teamColorsOpaque[arrow.team],
+        arrow.target,
+        arrow.distance
+      );
     } else {
       drawArrow(arrow.position, arrow.depleted ? "#331111" : "#662222", arrow.target, arrow.distance);
     }

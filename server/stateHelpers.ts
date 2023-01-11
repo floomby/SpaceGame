@@ -97,4 +97,15 @@ const findPlayer = (id: number): SectorOfPlayerResult => {
   return null;
 };
 
-export { enemyCount, allyCount, enemyCountState, allyCountState, flashServerMessage, sendMissionComplete, findPlayer };
+const setMissionTargetForId = (id: number, targetId: number) => {
+  const ws = idToWebsocket.get(id);
+  if (ws) {
+    try {
+      ws.send(JSON.stringify({ type: "setMissionTarget", payload: targetId }));
+    } catch (err) {
+      console.log(err);
+    }
+  }
+};
+
+export { enemyCount, allyCount, enemyCountState, allyCountState, flashServerMessage, sendMissionComplete, findPlayer, setMissionTargetForId };

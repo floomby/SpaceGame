@@ -220,6 +220,12 @@ const updateFriendRequests = () => {
   });
 };
 
+let missionTargetId: number | undefined;
+
+const setMissionTargetId = (newMissionTargetId: number | undefined) => {
+  missionTargetId = newMissionTargetId;
+}
+
 export {
   ClientFriend,
   faction,
@@ -276,4 +282,6 @@ export {
   friendList,
   updateFriendRequests,
   friendRequests,
+  missionTargetId,
+  setMissionTargetId,
 };

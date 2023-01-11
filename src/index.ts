@@ -57,6 +57,7 @@ import {
   setFaction,
   setLastSelf,
   setMissionComplete,
+  setMissionTargetId,
   setOwnId,
   setSelectedSecondary,
   setTutorialStage,
@@ -622,6 +623,10 @@ const run = () => {
   bindAction("friendChange", () => {
     updateFriendList();
   });
+
+  bindAction("setMissionTarget", (targetId) => {
+    setMissionTargetId(targetId);
+  });
   
   bindPostUpdater("arms", rasterizeWeaponText);
 
@@ -637,10 +642,6 @@ const toRun = () => {
   addLoadingText("Initializing game data");
   initDefs();
   addLoadingText("Initializing drawing subsystem");
-  // initDrawing(() => {
-  //   connect(run);
-  // });
-
   init3dDrawing(() => {
     connect(run);
   });

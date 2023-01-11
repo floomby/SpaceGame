@@ -7,6 +7,8 @@ Some words on how missions work:
  - Once the player wants to start a mission the sector for the mission is created and added to the sector list for running the game update loop.
  - At that point the mission is marked as in progress in the database.
  - Upon mission completion the reward is given out and the mission is marked as completed in the database.
+ - There is a cleanup timeout that periodically checks to see if the mission sector can be removed from the sector list.
+ - If the mission sector is no longer accessible then it is removed from the sector list and the mission is marked as failed in the database if it was not completed.
 
 */
 
@@ -15,8 +17,9 @@ import { GlobalState, MissionType, Player, SectorKind } from "../src/game";
 import mongoose, { HydratedDocument } from "mongoose";
 import { getPlayerFromId, sectors, sectorTriggers, uid } from "./state";
 import { WebSocket } from "ws";
-import { enemyCountState, flashServerMessage, sendMissionComplete } from "./stateHelpers";
+import { enemyCountState, flashServerMessage, sendMissionComplete, setMissionTargetForId } from "./stateHelpers";
 import { clearanceNPCsRewards, randomClearanceShip, spawnClearanceNPCs } from "./npcs/clearance";
+import { spawnAssassinationNPC } from "./npcs/assassination";
 
 const Schema = mongoose.Schema;
 
@@ -38,6 +41,7 @@ interface IMission {
   coAssignees: number[];
   sector?: number;
   clearanceShips: string[];
+  targetId?: number;
 }
 
 const missionSchema = new Schema<IMission>({
@@ -58,12 +62,12 @@ const missionSchema = new Schema<IMission>({
   coAssignees: { type: [Number], default: [] },
   sector: { type: Number, required: false },
   clearanceShips: { type: [String], default: [] },
+  targetId: { type: Number, required: false },
 });
 
 const Mission = mongoose.model<IMission>("Mission", missionSchema);
 
-// TODO This function does not do what it will need to do
-const genMissions = async (assignee: number, forFaction: Faction, count: number, missions: HydratedDocument<IMission>[]) => {
+const clearanceMission = (assignee: number, forFaction: Faction) => {
   const shipCount = Math.floor(Math.random() * 3) + 1;
 
   const ships: string[] = [];
@@ -75,17 +79,34 @@ const genMissions = async (assignee: number, forFaction: Faction, count: number,
     reward += clearanceNPCsRewards.get(ship) || 0;
   }
 
+  return new Mission({
+    name: "Clearance #" + clientUid().toString(),
+    id: uid(),
+    type: MissionType.Clearance,
+    forFaction,
+    reward,
+    description: "Clear out the sector of enemy ships",
+    assignee,
+    clearanceShips: ships,
+  });
+};
+
+const assassinationMission = (assignee: number, forFaction: Faction) => {
+  return new Mission({
+    name: "Assassination #" + clientUid().toString(),
+    id: uid(),
+    type: MissionType.Assassination,
+    forFaction,
+    reward: 1000,
+    description: "Eliminate the target",
+    assignee,
+    targetId: uid(),
+  });
+};
+
+const genMissions = async (assignee: number, forFaction: Faction, count: number, missions: HydratedDocument<IMission>[]) => {
   for (let i = 0; i < count; i++) {
-    const mission = new Mission({
-      name: "Clearance #" + clientUid().toString(),
-      id: uid(),
-      type: MissionType.Clearance,
-      forFaction,
-      reward,
-      description: "Clear out the sector of enemy ships",
-      assignee,
-      clearanceShips: ships,
-    });
+    const mission = Math.random() > 0.5 ? assassinationMission(assignee, forFaction) : clearanceMission(assignee, forFaction);
     missions.push(await mission.save());
   }
   return missions;
@@ -116,8 +137,6 @@ const setupMissionSectorCleanup = (missionId: number, missionSector: number) => 
 
 const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>, missionSectorId: number) => {
   const missionSector = setupMissionSectorCleanup(mission.id, missionSectorId);
-  player.warping = 1;
-  player.warpTo = missionSector;
 
   const state = {
     players: new Map(),
@@ -141,9 +160,25 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
         sectorTriggers.delete(missionSector);
       }
     });
+  } else if (mission.type === MissionType.Assassination) {
+    if (!mission.targetId) {
+      console.log("Target ID missing for assassination mission");
+      return;
+    }
+    spawnAssassinationNPC(state, randomDifferentFaction(mission.forFaction), mission.targetId!);
+    sectorTriggers.set(missionSector, (state: GlobalState) => {
+      if (!state.players.has(mission.targetId!)) {
+        completeMission(mission.id);
+        sectorTriggers.delete(missionSector);
+      }
+    });
   } else {
     console.log("Unsupported mission type: " + mission.type);
+    return;
   }
+
+  player.warping = 1;
+  player.warpTo = missionSector;
 };
 
 const startPlayerInMission = (ws: WebSocket, player: Player, id: number) => {
@@ -207,6 +242,9 @@ const startPlayerInMission = (ws: WebSocket, player: Player, id: number) => {
     }
     mission.inProgress = true;
     flashServerMessage(player.id, "Starting mission: " + mission.name, [0.0, 1.0, 0.0, 1.0]);
+    if (mission.targetId) {
+      setMissionTargetForId(player.id, mission.targetId);
+    }
     const missionSectorId = uid();
     mission.sector = missionSectorId;
     mission
@@ -259,6 +297,7 @@ const completeMission = (id: number) => {
     for (const coAssignee of mission.coAssignees.concat([mission.assignee!])) {
       const coPlayer = getPlayerFromId(coAssignee);
       if (coPlayer) {
+        console.log("Giving " + coPlayer.id + " " + mission.reward + " credits for completing mission: " + mission.name);
         coPlayer.credits = coPlayer.credits ? coPlayer.credits + mission.reward : mission.reward;
         sendMissionComplete(coPlayer.id, "You have completed mission: " + mission.name);
       }

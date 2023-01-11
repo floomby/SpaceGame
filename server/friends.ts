@@ -1,9 +1,9 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { IUser, User } from "./dataModels";
 import { WebSocket } from "ws";
-import { findPlayer, flashServerMessage } from "./stateHelpers";
+import { findPlayer, flashServerMessage, setMissionTargetForId } from "./stateHelpers";
 import { idToWebsocket } from "./state";
-import { Player, SectorKind } from "../src/game";
+import { MissionType, Player, SectorKind } from "../src/game";
 import { Mission } from "./missions";
 
 const Schema = mongoose.Schema;
@@ -249,6 +249,11 @@ const friendWarp = async (ws: WebSocket, player: Player, friend: number) => {
       );
       if (!mission) {
         flashServerMessage(player.id, "Unable to join mission", [1.0, 0.0, 0.0, 1.0]);
+      } else {
+        flashServerMessage(player.id, "Joined mission: " + mission.name, [0.0, 1.0, 0.0, 1.0]);
+        if (mission.targetId) {
+          setMissionTargetForId(player.id, mission.targetId);
+        }
       }
     }
   } catch (err) {

@@ -8,10 +8,6 @@
 ### User Interface
 
 - I may want friend location/online notifications (idk if I should have a client subscribe model or just have the server figure it out and send it to the client)
-- Partial dialogs for in game?
-- Add co-op mission logic (Idk what the desired behavior should be)
-- Readdress text selectability, upon more playing idk if even the tables should be selectable
-- Hiding messages while docked after time has elapsed is broken (I think I broke this with the switch to 3d somehow, have been vaugely aware of it for a while)
 
 ### Effects
 
@@ -20,9 +16,8 @@
 
 ### Misc
 
-- Get a name for the game
 - Fix how dark the tomahawk and emp missiles are (does not appear to be backwards normals)
-- Stat and bridge system
+- Make some nice images for banners and stuff
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

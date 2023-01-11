@@ -75,7 +75,7 @@ const showControls = () => {
   ]);
 
   push(
-    help,
+    `<div class="unselectable">${help}</div>`,
     () => {
       document.getElementById("closeControls").addEventListener("click", () => {
         pop();

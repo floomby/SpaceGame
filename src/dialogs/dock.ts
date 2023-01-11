@@ -38,7 +38,7 @@ const cargoHtml = (cargo?: CargoEntry[]) => {
   if (!cargo) {
     return "";
   }
-  let html = `<table style="width: 100%; text-align: left;">
+  let html = `<table style="width: 100%; text-align: left;" class="unselectable">
 <colgroup>
   <col span="1" style="width: 49%;">
   <col span="1" style="width: 17%;">
@@ -127,7 +127,7 @@ const cargoPostUpdate = (cargo?: CargoEntry[]) => {
 };
 
 const armsHtml = (armIndices: number[]) => {
-  let html = '<table style="width: 100%; text-align: left;" class="rowHover" cellspacing="0">';
+  let html = '<table style="width: 100%; text-align: left;" class="rowHover unselectable" cellspacing="0">';
   // html += "<tr><th>Item</th><th></th><th></th></tr>";
   let index = 0;
   for (const entry of armIndices) {
@@ -232,7 +232,7 @@ const shipShop = () => {
 const populateShipList = (availableShips: { def: UnitDefinition; index: number; atStation: boolean }[], self: Player) => {
   const shipList = document.getElementById("shipList");
   if (shipList) {
-    shipList.innerHTML = `<table style="width: 80vw; text-align: left;" class="rowHover" cellspacing="0">
+    shipList.innerHTML = `<table style="width: 80vw; text-align: left;" class="rowHover unselectable" cellspacing="0">
   <colgroup>
     <col span="1" style="width: 18vw;">
     <col span="1" style="width: 18vw;">
@@ -275,7 +275,7 @@ const shipViewerHelper = (defIndex: number, shipViewId: string, shipStatId: stri
     const mineSlotCount = def.slots.filter((kind) => kind === SlotKind.Mine).length;
     const largeSlotCount = def.slots.filter((kind) => kind === SlotKind.Large).length;
 
-    stats.innerHTML = `<table style="width: 100%; text-align: left;">
+    stats.innerHTML = `<table style="width: 100%; text-align: left;" class="unselectable">
   <tr><th>Name</th><td>${def.name}</td></tr>
   <tr><th>Speed</th><td>${maxDecimals(def.speed * ticksPerSecond, 2)} Units/sec</td></tr>
   <tr><th>Turn Rate</th><td>${maxDecimals(def.turnRate * ticksPerSecond, 2)} Radians/sec</td></tr>

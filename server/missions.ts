@@ -92,15 +92,27 @@ const clearanceMission = (assignee: number, forFaction: Faction) => {
 };
 
 const assassinationMission = (assignee: number, forFaction: Faction) => {
+  const shipCount = Math.floor(Math.random() * 3) + 1;
+
+  const ships: string[] = [];
+  let reward = 0;
+
+  for (let i = 0; i < shipCount; i++) {
+    const ship = randomClearanceShip();
+    ships.push(ship);
+    reward += clearanceNPCsRewards.get(ship) || 0;
+  }
+
   return new Mission({
     name: "Assassination #" + clientUid().toString(),
     id: uid(),
     type: MissionType.Assassination,
     forFaction,
-    reward: 1000,
+    reward: 2000 + Math.floor(reward / 2),
     description: "Eliminate the target",
     assignee,
     targetId: uid(),
+    clearanceShips: ships,
   });
 };
 
@@ -165,7 +177,9 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
       console.log("Target ID missing for assassination mission");
       return;
     }
-    spawnAssassinationNPC(state, randomDifferentFaction(mission.forFaction), mission.targetId!);
+    const faction = randomDifferentFaction(mission.forFaction);
+    spawnClearanceNPCs(state, faction, mission.clearanceShips);
+    spawnAssassinationNPC(state, faction, mission.targetId!);
     sectorTriggers.set(missionSector, (state: GlobalState) => {
       if (!state.players.has(mission.targetId!)) {
         completeMission(mission.id);
@@ -297,7 +311,6 @@ const completeMission = (id: number) => {
     for (const coAssignee of mission.coAssignees.concat([mission.assignee!])) {
       const coPlayer = getPlayerFromId(coAssignee);
       if (coPlayer) {
-        console.log("Giving " + coPlayer.id + " " + mission.reward + " credits for completing mission: " + mission.name);
         coPlayer.credits = coPlayer.credits ? coPlayer.credits + mission.reward : mission.reward;
         sendMissionComplete(coPlayer.id, "You have completed mission: " + mission.name);
       }

@@ -457,6 +457,35 @@ const initShipsAndStations = () => {
     mass: 50,
     model: "maintainer",
   });
+  // Infiltrator - 14
+  defs.push({
+    name: "Infiltrator",
+    description: "A tough cloaky ship that can rough up enemies",
+    health: 700,
+    speed: 8,
+    energy: 300,
+    energyRegen: 0.4,
+    primaryReloadTime: 10,
+    primaryDamage: 20,
+    radius: 23,
+    kind: UnitKind.Ship,
+    slots: [SlotKind.Mining, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Normal, SlotKind.Utility],
+    cargoCapacity: 200,
+    deathEffect: 3,
+    turnRate: 0.09,
+    acceleration: 0.07,
+    healthRegen: 0.06,
+    price: 9000,
+    warpTime: 120,
+    warpEffect: 7,
+    sideThrustMaxSpeed: 2.5,
+    sideThrustAcceleration: 0.09,
+    scanRange: 13000,
+    primaryDefIndex: 0,
+    mass: 35,
+    isCloaky: true,
+    model: "infiltrator",
+  });
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i];

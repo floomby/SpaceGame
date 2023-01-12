@@ -93,6 +93,16 @@ const initRecipes = () => {
       },
     },
     {
+      name: "Infiltrator",
+      ingredients: {
+        "Forward Fuselage": 1,
+        "Aft Fuselage": 1,
+        "Reinforced Plating": 3,
+        "Refractive Plating": 2,
+      },
+      isShip: true,
+    },
+    {
       name: "Spartan",
       ingredients: {
         "Forward Fuselage": 1,

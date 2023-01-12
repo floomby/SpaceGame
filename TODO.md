@@ -17,7 +17,7 @@
 ### Misc
 
 - Fix how dark the tomahawk and emp missiles are (does not appear to be backwards normals)
-- Make some nice images for banners and stuff
+- Work on discord integrations
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 

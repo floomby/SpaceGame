@@ -1,6 +1,6 @@
 import { clientUid, defMap, defs, emptyLoadout, Faction } from "../src/defs";
 import { effectiveInfinity, Player, SectorInfo, SectorKind, TargetKind, TutorialStage } from "../src/game";
-import { clients, knownRecipes, secondaries, secondariesToActivate, sectorAsteroidResources, sectors, targets, tutorialRespawnPoints } from "./state";
+import { clients, knownRecipes, secondaries, secondariesToActivate, sectors, targets, tutorialRespawnPoints } from "./state";
 import { WebSocket } from "ws";
 import { sendInventory } from "./inventory";
 import { sendTutorialStage } from "./tutorial";
@@ -95,7 +95,8 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   const sectorInfos: SectorInfo[] = [];
   sectorInfos.push({
     sector: sectorToWarpTo,
-    resources: sectorAsteroidResources[sectorToWarpTo].map((value) => value.resource),
+    // resources: sectorAsteroidResources[sectorToWarpTo].map((value) => value.resource),
+    resources: [],
   });
 
   ws.send(

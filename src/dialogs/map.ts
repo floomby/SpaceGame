@@ -58,7 +58,8 @@ const sectorNumberToXY = (sector: number) => {
 const setCurrentSectorText = () => {
   const currentSectorText = document.getElementById("currentSectorText");
   if (currentSectorText) {
-    currentSectorText.innerText = `Current Sector: ${sectorNumberToXY(currentSector)}`;
+    // currentSectorText.innerText = `Current Sector: ${sectorNumberToXY(currentSector)}`;
+    currentSectorText.innerText = `Current Sector: ${currentSector}`;
   }
 };
 
@@ -66,14 +67,10 @@ const mapDialog = () => {
   return `<div class="unselectable">${horizontalCenter([
     `<h1>Map</h1>`,
     `<h3 id="currentSectorText"></h3>`,
-    `<div style="display: flex; flex-direction: row;">
-  <div style="height: 50vh;">${mapHtml}</div>
-  <div style="width: 4vw;"></div>
-  <div id="sectorInfo" style="width: 30vw; text-align: left;"></div>
-</div>`,
+    `<input type="text" id="sectorInput" placeholder="Sector Number" />`,
     sideBySideDivs([
       `<button class="bottomButton" id="seeActiveMissions">See Active Missions</button>`,
-      `<button id="warpButton" class="bottomButton" disabled>Warp</button>`,
+      `<button id="warpButton" class="bottomButton">Warp</button>`,
     ], true),
     `<button class="bottomButton" id="closeMap">Close</button>`,
   ])}</div>`;
@@ -86,11 +83,23 @@ const setupMapDialog = () => {
   document.getElementById("seeActiveMissions")?.addEventListener("click", () => {
     push(selectedMissionsDialog(), setupSelectedMissionsDialog, "selectedMissions");
   });
-  for (let i = 0; i < mapSize * mapSize; i++) {
-    document.getElementById(`sector-${i}`)?.addEventListener("click", () => {
-      populateSectorInfo(i);
-    });
-  }
+  // for (let i = 0; i < mapSize * mapSize; i++) {
+  //   document.getElementById(`sector-${i}`)?.addEventListener("click", () => {
+  //     populateSectorInfo(i);
+  //   });
+  // }
+  document.getElementById("warpButton")?.addEventListener("click", () => {
+    try {
+      const toSector = parseInt((document.getElementById("sectorInput") as HTMLInputElement)?.value);
+      abortWrapper(() => {
+        sendWarp(toSector);
+        pop();
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  });
+
   setCurrentSectorText();
 };
 

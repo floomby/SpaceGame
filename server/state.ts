@@ -8,14 +8,13 @@ import {
   mapSize,
   sectorBounds,
   TutorialStage,
-  copyPlayer,
   removeCargoFractions,
   SectorKind,
 } from "../src/game";
 import { WebSocket } from "ws";
-import { armDefs, defs, Faction, initDefs, UnitKind } from "../src/defs";
+import { defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
-import { market, initMarket } from "./market";
+import { initMarket } from "./market";
 import { NPC } from "../src/npc";
 import { Checkpoint, User } from "./dataModels";
 
@@ -31,104 +30,110 @@ const uid = () => {
   return ret;
 };
 
-// This data will ultimately be stored in the database
-// TODO Make the sector list have names like 1-1, 1-2, 2-1, 2-2, etc.
 const sectorList = new Array(mapSize * mapSize).fill(0).map((_, i) => i);
-const sectorAsteroidResources = sectorList.map((_) => [{ resource: "Prifecite", density: 1 }]);
-const sectorAsteroidCounts = sectorList.map((_) => 15);
+// const sectorAsteroidResources = sectorList.map((_) => [{ resource: "Prifecite", density: 1 }]);
+// const sectorAsteroidCounts = sectorList.map((_) => 15);
 
-sectorAsteroidResources[0] = [
+// sectorAsteroidResources[0] = [
+//   { resource: "Russanite", density: 1 },
+//   { resource: "Hemacite", density: 1 },
+// ];
+// sectorAsteroidResources[1] = [
+//   { resource: "Aziracite", density: 1 },
+//   { resource: "Hemacite", density: 1 },
+// ];
+// sectorAsteroidResources[2] = [
+//   { resource: "Aziracite", density: 1 },
+//   { resource: "Hemacite", density: 1 },
+// ];
+// sectorAsteroidResources[3] = [
+//   { resource: "Russanite", density: 1 },
+//   { resource: "Hemacite", density: 1 },
+// ];
+
+// sectorAsteroidResources[5] = [
+//   { resource: "Prifecite", density: 1 },
+//   { resource: "Russanite", density: 1 },
+// ];
+// sectorAsteroidResources[6] = [
+//   { resource: "Prifecite", density: 1 },
+//   { resource: "Russanite", density: 1 },
+// ];
+
+// sectorAsteroidCounts[6] = 35;
+// sectorAsteroidCounts[1] = 22;
+// sectorAsteroidCounts[2] = 22;
+
+// sectorAsteroidCounts[12] = 30;
+// sectorAsteroidCounts[15] = 30;
+
+const allResources = [
+  { resource: "Prifecite", density: 1 },
   { resource: "Russanite", density: 1 },
-  { resource: "Hemacite", density: 1 },
-];
-sectorAsteroidResources[1] = [
   { resource: "Aziracite", density: 1 },
   { resource: "Hemacite", density: 1 },
 ];
-sectorAsteroidResources[2] = [
-  { resource: "Aziracite", density: 1 },
-  { resource: "Hemacite", density: 1 },
-];
-sectorAsteroidResources[3] = [
-  { resource: "Russanite", density: 1 },
-  { resource: "Hemacite", density: 1 },
-];
 
-sectorAsteroidResources[5] = [
-  { resource: "Prifecite", density: 1 },
-  { resource: "Russanite", density: 1 },
-];
-sectorAsteroidResources[6] = [
-  { resource: "Prifecite", density: 1 },
-  { resource: "Russanite", density: 1 },
-];
+// const sectorFactions: (Faction | null)[] = sectorList.map((_) => null);
+// sectorFactions[0] = Faction.Scourge;
+// sectorFactions[3] = Faction.Scourge;
 
-sectorAsteroidCounts[6] = 35;
-sectorAsteroidCounts[1] = 22;
-sectorAsteroidCounts[2] = 22;
+// sectorFactions[1] = Faction.Rogue;
+// sectorFactions[2] = Faction.Rogue;
+// sectorFactions[5] = Faction.Rogue;
+// sectorFactions[6] = Faction.Rogue;
 
-sectorAsteroidCounts[12] = 30;
-sectorAsteroidCounts[15] = 30;
+// sectorFactions[12] = Faction.Alliance;
+// sectorFactions[13] = Faction.Alliance;
+// sectorFactions[8] = Faction.Alliance;
+// sectorFactions[4] = Faction.Alliance;
+// sectorFactions[9] = Faction.Alliance;
 
-const sectorFactions: (Faction | null)[] = sectorList.map((_) => null);
-sectorFactions[0] = Faction.Scourge;
-sectorFactions[3] = Faction.Scourge;
-
-sectorFactions[1] = Faction.Rogue;
-sectorFactions[2] = Faction.Rogue;
-sectorFactions[5] = Faction.Rogue;
-sectorFactions[6] = Faction.Rogue;
-
-sectorFactions[12] = Faction.Alliance;
-sectorFactions[13] = Faction.Alliance;
-sectorFactions[8] = Faction.Alliance;
-sectorFactions[4] = Faction.Alliance;
-sectorFactions[9] = Faction.Alliance;
-
-sectorFactions[14] = Faction.Confederation;
-sectorFactions[15] = Faction.Confederation;
-sectorFactions[11] = Faction.Confederation;
-sectorFactions[7] = Faction.Confederation;
-sectorFactions[10] = Faction.Confederation;
+// sectorFactions[14] = Faction.Confederation;
+// sectorFactions[15] = Faction.Confederation;
+// sectorFactions[11] = Faction.Confederation;
+// sectorFactions[7] = Faction.Confederation;
+// sectorFactions[10] = Faction.Confederation;
 
 const friendlySectors = (faction: Faction) => {
   const ret: number[] = [];
-  for (let i = 0; i < sectorFactions.length; i++) {
-    if (sectorFactions[i] === faction) {
-      ret.push(i);
-    }
-  }
   return ret;
+  // for (let i = 0; i < sectorFactions.length; i++) {
+  //   if (sectorFactions[i] === faction) {
+  //     ret.push(i);
+  //   }
+  // }
+  // return ret;
 };
 
-const sectorGuardianCount = sectorList.map((_) => 0);
+// const sectorGuardianCount = sectorList.map((_) => 0);
 
-sectorGuardianCount[0] = 6;
-sectorGuardianCount[3] = 6;
+// sectorGuardianCount[0] = 6;
+// sectorGuardianCount[3] = 6;
 
-sectorGuardianCount[1] = 6;
-sectorGuardianCount[2] = 6;
-sectorGuardianCount[5] = 15;
-sectorGuardianCount[6] = 15;
+// sectorGuardianCount[1] = 6;
+// sectorGuardianCount[2] = 6;
+// sectorGuardianCount[5] = 15;
+// sectorGuardianCount[6] = 15;
 
-sectorGuardianCount[12] = 24;
-sectorGuardianCount[13] = 15;
-sectorGuardianCount[8] = 15;
-sectorGuardianCount[4] = 6;
-sectorGuardianCount[9] = 6;
+// sectorGuardianCount[12] = 24;
+// sectorGuardianCount[13] = 15;
+// sectorGuardianCount[8] = 15;
+// sectorGuardianCount[4] = 6;
+// sectorGuardianCount[9] = 6;
 
-sectorGuardianCount[14] = 15;
-sectorGuardianCount[15] = 24;
-sectorGuardianCount[11] = 15;
-sectorGuardianCount[7] = 6;
-sectorGuardianCount[10] = 6;
+// sectorGuardianCount[14] = 15;
+// sectorGuardianCount[15] = 24;
+// sectorGuardianCount[11] = 15;
+// sectorGuardianCount[7] = 6;
+// sectorGuardianCount[10] = 6;
 
-const sectorHasStarbase = sectorList.map((_) => false);
-sectorHasStarbase[5] = true;
+// const sectorHasStarbase = sectorList.map((_) => false);
+// sectorHasStarbase[5] = true;
 
-sectorHasStarbase[12] = true;
+// sectorHasStarbase[12] = true;
 
-sectorHasStarbase[15] = true;
+// sectorHasStarbase[15] = true;
 
 type ClientData = {
   id: number;
@@ -151,6 +156,7 @@ type ClientData = {
     12 13 14 15
 */
 
+// UNSAFE
 const sectorInDirection = (sector: number, direction: CardinalDirection) => {
   if (sector >= mapSize * mapSize) {
     return null;
@@ -223,7 +229,8 @@ const initInitialAsteroids = () => {
       const def = defs[a.defIndex];
       return def.kind === UnitKind.Station;
     });
-    const asteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i], stationsInSector);
+    // const asteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i], stationsInSector);
+    const asteroids = randomAsteroids(10, sectorBounds, Math.floor(Math.random() * 100), uid, allResources, stationsInSector);
     for (const asteroid of asteroids) {
       sector.asteroids.set(asteroid.id, asteroid);
     }
@@ -233,6 +240,9 @@ const initInitialAsteroids = () => {
 const tutorialRespawnPoints = new Map<number, Player>();
 
 const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisited: Set<number>, isLogoff = false) => {
+  console.log("Checkpoint saving is disabled due to server rework!");
+  return;
+
   if (player.health <= 0) {
     console.log("Warning: attempt to save checkpoint of dead player");
     return;
@@ -260,11 +270,12 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
 
 export {
   sectorList,
-  sectorAsteroidResources,
-  sectorAsteroidCounts,
-  sectorFactions,
-  sectorGuardianCount,
-  sectorHasStarbase,
+  // sectorAsteroidResources,
+  // sectorAsteroidCounts,
+  allResources,
+  // sectorFactions,
+  // sectorGuardianCount,
+  // sectorHasStarbase,
   clients,
   idToWebsocket,
   sectors,

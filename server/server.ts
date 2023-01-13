@@ -20,15 +20,16 @@ import { defs, Faction, UnitKind } from "../src/defs";
 import { addNpc, NPC } from "../src/npc";
 import { discoverRecipe } from "./inventory";
 import {
+  allResources,
   clients,
   friendlySectors,
   idToWebsocket,
   knownRecipes,
   secondaries,
   secondariesToActivate,
-  sectorAsteroidResources,
-  sectorFactions,
-  sectorGuardianCount,
+  // sectorAsteroidResources,
+  // sectorFactions,
+  // sectorGuardianCount,
   sectorInDirection,
   sectorList,
   sectors,
@@ -120,7 +121,8 @@ const spawnIncrementalGuardians = (sector: number) => {
     return;
   }
 
-  const faction = sectorFactions[sector];
+  // const faction = sectorFactions[sector];
+  const faction = (Math.floor(Math.random() * 4) as Faction);
   if (faction === null) {
     return;
   }
@@ -162,13 +164,15 @@ const spawnSectorGuardians = (sector: number) => {
     return;
   }
 
-  const faction = sectorFactions[sector];
+  // const faction = sectorFactions[sector];
+  const faction: Faction = Math.floor(Math.random() * 4) as Faction;
   if (faction === null) {
     return;
   }
 
   const allies = allyCount(faction, sector);
-  const count = sectorGuardianCount[sector] - allies;
+  // const count = sectorGuardianCount[sector] - allies;
+  const count = 0;
   if (count <= 0) {
     return;
   }
@@ -236,7 +240,8 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
       sectorBounds,
       Date.now(),
       uid,
-      sectorAsteroidResources[sectorList.findIndex((s) => s === sector)],
+      // sectorAsteroidResources[sectorList.findIndex((s) => s === sector)],
+      allResources,
       Array.from(state.players.values()).filter((a) => {
         const def = defs[a.defIndex];
         return def.kind === UnitKind.Station;
@@ -255,27 +260,27 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
 };
 
 const setupTimers = () => {
-  setInterval(() => {
-    for (let i = 0; i < sectorList.length; i++) {
-      spawnIncrementalGuardians(i);
-    }
-  }, 20 * 990);
+  // setInterval(() => {
+  //   for (let i = 0; i < sectorList.length; i++) {
+  //     spawnIncrementalGuardians(i);
+  //   }
+  // }, 20 * 990);
 
-  setInterval(() => {
-    for (let i = 0; i < sectorList.length; i++) {
-      spawnSectorGuardians(i);
-    }
-  }, 120 * 60 * 1000);
+  // setInterval(() => {
+  //   for (let i = 0; i < sectorList.length; i++) {
+  //     spawnSectorGuardians(i);
+  //   }
+  // }, 120 * 60 * 1000);
 
-  setInterval(() => {
-    for (const sector of sectorList) {
-      const faction = sectorFactions[sector];
-      if (faction === null) {
-        continue;
-      }
-      repairStationsInSectorForTeam(sector, faction);
-    }
-  }, 2 * 60 * 1000);
+  // setInterval(() => {
+  //   for (const sector of sectorList) {
+  //     const faction = sectorFactions[sector];
+  //     if (faction === null) {
+  //       continue;
+  //     }
+  //     repairStationsInSectorForTeam(sector, faction);
+  //   }
+  // }, 2 * 60 * 1000);
 
   setInterval(() => {
     for (const [sector, state] of sectors) {
@@ -388,7 +393,8 @@ const setupTimers = () => {
         const ws = idToWebsocket.get(transition.player.id);
         const sectorInfo = {
           sector: newSector,
-          resources: newSector < mapSize * mapSize ? sectorAsteroidResources[newSector].map((value) => value.resource) : [],
+          // resources: newSector < mapSize * mapSize ? sectorAsteroidResources[newSector].map((value) => value.resource) : [],
+          resources: [],
         };
         if (ws) {
           const client = clients.get(ws)!;

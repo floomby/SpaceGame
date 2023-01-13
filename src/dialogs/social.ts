@@ -30,7 +30,8 @@ const sectorLocationTemplate = (value: SectorOfPlayerResult) => {
   if (value.sectorKind === SectorKind.Mission) {
     return "In Mission";
   }
-  return sectorNumberToXY(value.sectorNumber);
+  // return sectorNumberToXY(value.sectorNumber);
+  return value.sectorNumber.toString();
 };
 
 const warpIfNotDocked = (id: number) => {

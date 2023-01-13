@@ -45,7 +45,7 @@ import {
   saveCheckpoint,
   secondaries,
   secondariesToActivate,
-  sectorAsteroidResources,
+  // sectorAsteroidResources,
   sectorList,
   sectors,
   targets,
@@ -123,7 +123,8 @@ export function startWebSocketServer() {
             for (const sector of sectorsVisited) {
               sectorInfos.push({
                 sector,
-                resources: sectorAsteroidResources[sector].map((value) => value.resource),
+                // resources: sectorAsteroidResources[sector].map((value) => value.resource),
+                resources: [],
               });
             }
 

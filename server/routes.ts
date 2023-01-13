@@ -6,12 +6,10 @@ import { useSsl } from "../src/config";
 import express from "express";
 import { resolve } from "path";
 import cors from "cors";
-
 import { User, Station } from "./dataModels";
-
 import { addNpc } from "../src/npc";
 import { market } from "./market";
-import { clients, friendlySectors, idToWebsocket, sectorFactions, sectorHasStarbase, sectorList, sectors, uid } from "./state";
+import { clients, friendlySectors, idToWebsocket, /* sectorFactions, sectorHasStarbase, */ sectorList, sectors, uid } from "./state";
 import { adminHash, hash, httpPort, sniCallback } from "./settings";
 import { recipeMap, recipes } from "../src/recipes";
 import { isFreeArm } from "../src/defs/armaments";
@@ -148,6 +146,7 @@ app.get("/clearAllFriendsAndRequests", async (req, res) => {
   }
 });
 
+// UNSAFE
 app.get("/currentSectorOfPlayer", (req, res) => {
   const idParam = req.query.id;
   if (!idParam || typeof idParam !== "string") {
@@ -271,11 +270,13 @@ app.get("/init", (req, res) => {
   // Create a bunch of stations
   const stationObjects = sectorList
     .map((sector) => {
-      if (!sectorHasStarbase[sector]) {
-        return [];
-      }
+      return [];
+      // if (!sectorHasStarbase[sector]) {
+      //   return [];
+      // }
 
-      const faction = sectorFactions[sector];
+      // const faction = sectorFactions[sector];
+      const faction: Faction = Faction.Alliance;
       switch (faction) {
         case Faction.Rogue:
           return [
@@ -324,35 +325,6 @@ app.get("/init", (req, res) => {
       return;
     }
     res.send("true");
-  });
-});
-
-// Probably don't need this anymore
-app.get("/resetEverything", (req, res) => {
-  const password = req.query.password;
-  if (!password || typeof password !== "string") {
-    res.send("Invalid get parameters");
-    return;
-  }
-  const hashedPassword = hash(password);
-  if (hashedPassword !== adminHash) {
-    res.send("Invalid password");
-    return;
-  }
-  // Delete all the stations
-  Station.deleteMany({}, (err) => {
-    if (err) {
-      res.send("Database error: " + err);
-      return;
-    }
-    // Delete all the users
-    User.deleteMany({}, (err) => {
-      if (err) {
-        res.send("Database error: " + err);
-        return;
-      }
-      res.send("true");
-    });
   });
 });
 
@@ -450,6 +422,7 @@ app.get("/unlockEverything", (req, res) => {
   });
 });
 
+// UNSAFE
 app.get("/addNPC", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {
@@ -520,6 +493,7 @@ app.get("/stopProfiling", (req, res) => {
   res.send("true");
 });
 
+// UNSAFE
 app.get("/totalPlayers", (req, res) => {
   const ret =
     `Total: ${Array.from(sectors.values())
@@ -532,32 +506,7 @@ app.get("/totalPlayers", (req, res) => {
   res.send(ret);
 });
 
-app.get("/fixDataBase", (req, res) => {
-  const password = req.query.password;
-  if (!password || typeof password !== "string") {
-    res.send("Invalid get parameters");
-    return;
-  }
-  const hashedPassword = hash(password);
-  if (hashedPassword !== adminHash) {
-    res.send("Invalid password");
-    return;
-  }
-  // Round all the inventory number to the nearest integer
-  User.find({}, (err, users) => {
-    if (err) {
-      res.send("Database error: " + err);
-      return;
-    }
-    users.forEach((user) => {
-      const newInventory = Object.fromEntries(Object.entries(user.inventory).map(([key, value]) => [key, Math.round(value as number)]));
-      user.inventory = newInventory;
-      user.save();
-    });
-    res.send("true");
-  });
-});
-
+// UNSAFE (sort of, market prices are fixed right now so it is really fine)
 app.get("/priceOf", (req, res) => {
   const what = req.query.what;
   if (!what || typeof what !== "string") {
@@ -572,6 +521,7 @@ app.get("/priceOf", (req, res) => {
   res.send(JSON.stringify({ value: price }));
 });
 
+// UNSAFE
 app.get("/kill", (req, res) => {
   const password = req.query.password;
   if (!password || typeof password !== "string") {
@@ -612,6 +562,7 @@ app.get("/kill", (req, res) => {
   res.send("true");
 });
 
+// UNSAFE
 app.get("/usersOnline", (req, res) => {
   res.send(JSON.stringify(Array.from(clients.values()).map((client) => client.name)));
 });

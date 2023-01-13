@@ -1516,6 +1516,7 @@ const randomNearbyPointInSector = (point: Position, distance: number) => {
   return ret;
 };
 
+// UNSAFE
 const isValidSectorInDirection = (sector: number, direction: CardinalDirection) => {
   if (direction === CardinalDirection.Up) {
     return sector >= mapSize;

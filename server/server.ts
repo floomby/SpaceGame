@@ -14,6 +14,7 @@ import {
   findSectorTransitions,
   sectorBounds,
   mapSize,
+  isNearOperableEnemyStation,
 } from "../src/game";
 import { defs, Faction, UnitKind } from "../src/defs";
 
@@ -30,19 +31,22 @@ import {
   // sectorAsteroidResources,
   // sectorFactions,
   // sectorGuardianCount,
-  sectorInDirection,
   sectorList,
   sectors,
   sectorTriggers,
   serializeAllClientData,
+  ServerChangeKind,
   serverChangePlayer,
   targets,
   uid,
   warpList,
 } from "./state";
 import { CardinalDirection, mirrorAngleHorizontally, mirrorAngleVertically } from "../src/geometry";
-import { allyCount, flashServerMessage } from "./stateHelpers";
+import { allyCount, enemyCount, flashServerMessage } from "./stateHelpers";
 import { serversForSectors } from "./peers";
+import { WebSocket } from "ws";
+import { User } from "./dataModels";
+import { mapGraph } from "../src/mapLayout";
 
 const informDead = (player: Player) => {
   if (player.npc) {
@@ -262,6 +266,82 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
   }
 };
 
+const warpNonNPCToSector = (ws: WebSocket, player: Player, sector: number) => {
+  User.findOneAndUpdate({ id: player.id }, { currentSector: sector }, (err, doc) => {
+    if (err) {
+      console.log("Warning: unable to update user sector", err);
+      return;
+    }
+  });
+  const state = sectors.get(sector);
+  if (state) {
+    ws.send(
+      JSON.stringify({
+        type: "warp",
+        payload: {
+          to: sector,
+          asteroids: Array.from(state.asteroids.values()),
+          collectables: Array.from(state.collectables.values()),
+          mines: Array.from(state.mines.values()),
+          sectorInfos: [],
+        },
+      })
+    );
+    state.players.set(player.id, player);
+  } else {
+    const serverName = serversForSectors.get(sector);
+    if (serverName) {
+      serverChangePlayer(ws, player, serverName);
+    } else {
+      flashServerMessage(player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
+    }
+  }
+};
+
+const insertRespawnedPlayer = (ws: WebSocket, player: Player, sector: number) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    ws.send(JSON.stringify({ type: "error", payload: { message: "Sector not found on server for respawn" } }));
+    console.log("Warning: Sector not found on server for respawn");
+    return;
+  }
+  // So I don't have to edit the checkpoints in the database right now
+  player.isPC = true;
+  if (isNearOperableEnemyStation(player, state.players.values()) || enemyCount(player.team, sector) - allyCount(player.team, sector) > 2) {
+    player.position.x = -5000;
+    player.position.y = 5000;
+  }
+  player.v = { x: 0, y: 0 };
+  player.iv = { x: 0, y: 0 };
+  player.ir = 0;
+  state.players.set(player.id, player);
+  ws.send(
+    JSON.stringify({
+      type: "warp",
+      payload: {
+        to: sector,
+        asteroids: Array.from(state.asteroids.values()),
+        collectables: Array.from(state.collectables.values()),
+        mines: Array.from(state.mines.values()),
+        sectorInfos: [],
+      },
+    })
+  );
+};
+
+const respawnPlayer = (ws: WebSocket, player: Player, sector: number) => {
+  if (sectors.has(sector)) {
+    insertRespawnedPlayer(ws, player, sector);
+  } else {
+    const newServerName = serversForSectors.get(sector);
+    if (newServerName) {
+      serverChangePlayer(ws, player, newServerName, ServerChangeKind.Respawn);
+    } else {
+      flashServerMessage(player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
+    }
+  }
+};
+
 const setupTimers = () => {
   // setInterval(() => {
   //   for (let i = 0; i < sectorList.length; i++) {
@@ -369,7 +449,8 @@ const setupTimers = () => {
 
     // Handle all sector transitions
     for (const transition of sectorTransitions) {
-      const newSector = sectorInDirection(transition.from, transition.direction) ?? transition.from;
+      const newSector = mapGraph.get(transition.from)?.out[transition.direction]?.to?.sector ?? transition.from;
+      // console.log("Transitioning player", transition.player.id, "from sector", transition.from, "to sector", newSector);
 
       if (newSector === transition.from) {
         if (transition.direction === CardinalDirection.Up) {
@@ -391,60 +472,18 @@ const setupTimers = () => {
         }
       }
 
-      const state = sectors.get(newSector);
-      if (state) {
-        const ws = idToWebsocket.get(transition.player.id);
-        const sectorInfo = {
-          sector: newSector,
-          // resources: newSector < mapSize * mapSize ? sectorAsteroidResources[newSector].map((value) => value.resource) : [],
-          resources: [],
-        };
-        if (ws) {
-          const client = clients.get(ws)!;
-          client.currentSector = newSector;
-          if (newSector < mapSize * mapSize) {
-            client.sectorsVisited.add(newSector);
-          }
-          // console.log(serializeAllClientData(ws, transition.player));
-          console.log("warping player", transition.player.id, "to sector", newSector);
-          if (sectorList.includes(newSector)) {
-            ws.send(
-              JSON.stringify({
-                type: "warp",
-                payload: {
-                  to: newSector,
-                  asteroids: Array.from(state.asteroids.values()),
-                  collectables: Array.from(state.collectables.values()),
-                  mines: Array.from(state.mines.values()),
-                  sectorInfos: [],
-                },
-              })
-            );
-            state.players.set(transition.player.id, transition.player);
-          } else {
-            const serverName = serversForSectors.get(newSector);
-            if (serverName) {
-              serverChangePlayer(ws, transition.player, serverName);
-            } else {
-              flashServerMessage(transition.player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
-            }
-          }
-          // ws.send(
-          //   JSON.stringify({
-          //     type: "warp",
-          //     payload: {
-          //       to: newSector,
-          //       asteroids: Array.from(state.asteroids.values()),
-          //       collectables: Array.from(state.collectables.values()),
-          //       mines: Array.from(state.mines.values()),
-          //       sectorInfos: [sectorInfo],
-          //     },
-          //   })
-          // );
+      const ws = idToWebsocket.get(transition.player.id);
+      transition.player.position = transition.coords;
+      if (ws) {
+        const client = clients.get(ws)!;
+        client.currentSector = newSector;
+        if (newSector < mapSize * mapSize) {
+          client.sectorsVisited.add(newSector);
         }
-        transition.player.position = transition.coords;
-        // transition.player.heading = headingFromCardinalDirection(transition.direction);
-        // state.players.set(transition.player.id, transition.player);
+        warpNonNPCToSector(ws, transition.player, newSector);
+      } else {
+        // Is npc
+        console.log("Sector transitions for NPCs is disabled currently");
       }
     }
 
@@ -455,48 +494,13 @@ const setupTimers = () => {
       if (ws) {
         const client = clients.get(ws)!;
         client.currentSector = to;
-
-        // console.log(serializeAllClientData(ws, player));
-        const state = sectors.get(to);
-        if (state) {
-          ws.send(
-            JSON.stringify({
-              type: "warp",
-              payload: {
-                to,
-                asteroids: Array.from(state.asteroids.values()),
-                collectables: Array.from(state.collectables.values()),
-                mines: Array.from(state.mines.values()),
-                sectorInfos: [],
-              },
-            })
-          );
-          state.players.set(player.id, player);
-        } else {
-          const serverName = serversForSectors.get(to);
-          if (serverName) {
-            serverChangePlayer(ws, player, serverName);
-          } else {
-            flashServerMessage(player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
-          }
-        }
-
-        // const enemies = enemyCount(player.team, to);
-        // const allies = allyCount(player.team, to);
-        // const count = enemies - allies;
-        // if (count > 3 && isEnemySector(player.team, to)) {
-        //   spawnAllyForces(player.team, to, count);
-        //   flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
-        // }
+        warpNonNPCToSector(ws, player, to);
+      } else {
+        // Is npc
+        console.log("NPC warping is disabled currently");
       }
-      // Lets just keep the coords and momentum of the player on warping
-      // player.position.x = Math.random() * 6000 - 3000;
-      // player.position.y = Math.random() * 6000 - 3000;
-      // player.heading = (3 * Math.PI) / 2;
-      // player.speed = 0;
-      // state.players.set(player.id, player);
     }
   }, 1000 / ticksPerSecond);
 };
 
-export { setupTimers };
+export { setupTimers, respawnPlayer, insertRespawnedPlayer };

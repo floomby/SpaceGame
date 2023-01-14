@@ -18,6 +18,7 @@ import { initMarket } from "./market";
 import { NPC } from "../src/npc";
 import { Checkpoint, User } from "./dataModels";
 import { peerMap, waitingData } from "./peers";
+import { insertRespawnedPlayer } from "./server";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
@@ -169,37 +170,6 @@ const repairClientData = (client: SerializableClientData): ClientData => {
   return ret;
 };
 
-/*
-    x ->  
-  y 0  1  2  3
-  | 4  5  6  7
-  v 8  9  10 11
-    12 13 14 15
-*/
-
-// UNSAFE
-const sectorInDirection = (sector: number, direction: CardinalDirection) => {
-  if (sector >= mapSize * mapSize) {
-    return null;
-  }
-  const x = sector % mapSize;
-  const y = Math.floor(sector / mapSize);
-  if (direction === CardinalDirection.Up) {
-    if (y === 0) return null;
-    return sector - mapSize;
-  } else if (direction === CardinalDirection.Down) {
-    if (y === mapSize - 1) return null;
-    return sector + mapSize;
-  } else if (direction === CardinalDirection.Left) {
-    if (x === 0) return null;
-    return sector - 1;
-  } else if (direction === CardinalDirection.Right) {
-    if (x === mapSize - 1) return null;
-    return sector + 1;
-  }
-  return null;
-};
-
 const clients: Map<WebSocket, ClientData> = new Map();
 const idToWebsocket = new Map<number, WebSocket>();
 // Targeting is handled by the clients, but the server needs to know
@@ -210,7 +180,12 @@ const secondaries: Map<number, number> = new Map();
 const secondariesToActivate: Map<number, number[]> = new Map();
 const knownRecipes: Map<number, Set<string>> = new Map();
 
-const serializeAllClientData = (ws: WebSocket, player: Player, key: string) => {
+enum ServerChangeKind {
+  Warp,
+  Respawn,
+}
+
+const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind: ServerChangeKind) => {
   const client = clients.get(ws);
   if (!client) return null;
   const target = targets.get(client.id);
@@ -226,6 +201,7 @@ const serializeAllClientData = (ws: WebSocket, player: Player, key: string) => {
     recipesKnown: Array.from(recipesKnown),
     player,
     key,
+    kind,
   });
 };
 
@@ -237,6 +213,7 @@ type SerializedClient = {
   recipesKnown: string[];
   player: Player;
   key: string;
+  kind: ServerChangeKind;
 };
 
 const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
@@ -268,31 +245,41 @@ const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
   } else {
     console.warn("Missing client recipesKnown");
   }
-  sector.players.set(client.id, data.player);
-  // BROKEN
-  const sectorInfo = {
-    sector: client.currentSector,
-    resources: [],
-  };
-  ws.send(
-    JSON.stringify({
-      type: "warp",
-      payload: {
-        to: client.currentSector,
-        asteroids: Array.from(sector.asteroids.values()),
-        collectables: Array.from(sector.collectables.values()),
-        mines: Array.from(sector.mines.values()),
-        sectorInfos: [sectorInfo],
-      },
-    })
-  );
+  switch (data.kind) {
+    case ServerChangeKind.Warp:
+      sector.players.set(client.id, data.player);
+      // BROKEN
+      const sectorInfo = {
+        sector: client.currentSector,
+        resources: [],
+      };
+      ws.send(
+        JSON.stringify({
+          type: "warp",
+          payload: {
+            to: client.currentSector,
+            asteroids: Array.from(sector.asteroids.values()),
+            collectables: Array.from(sector.collectables.values()),
+            mines: Array.from(sector.mines.values()),
+            sectorInfos: [sectorInfo],
+          },
+        })
+      );
+      break;
+    case ServerChangeKind.Respawn:
+      insertRespawnedPlayer(ws, data.player, client.currentSector);
+      break;
+    default:
+      throw new Error("Unknown server change kind");
+  }
 };
 
 const serverWarps = new Map<string, WebSocket>();
 
-const serverChangePlayer = (ws: WebSocket, player: Player, serverName: string) => {
+// Note: this does not remove the player from the GlobalState object for the current server
+const serverChangePlayer = (ws: WebSocket, player: Player, serverName: string, kind = ServerChangeKind.Warp) => {
   const key = uid().toString();
-  const serialized = serializeAllClientData(ws, player, key);
+  const serialized = serializeAllClientData(ws, player, key, kind);
   serverWarps.set(key, ws);
   const server = peerMap.get(serverName);
   if (!server) {
@@ -389,6 +376,7 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
 };
 
 export {
+  ServerChangeKind,
   // ClientData,
   // SerializableClientData,
   // serializableClientData,
@@ -413,7 +401,6 @@ export {
   knownRecipes,
   tutorialRespawnPoints,
   uid,
-  sectorInDirection,
   saveCheckpoint,
   friendlySectors,
   initInitialAsteroids,

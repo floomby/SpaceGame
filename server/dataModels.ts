@@ -37,6 +37,7 @@ interface IUser {
   loginTimes: Date[];
   logoffTimes: Date[];
   friends: number[];
+  currentSector: number;
 }
 
 const userSchema = new Schema<IUser>({
@@ -105,6 +106,14 @@ const userSchema = new Schema<IUser>({
   friends: {
     type: [Number],
     default: [],
+  },
+  currentSector: {
+    type: Number,
+    default: -1,
+    validate: {
+      validator: (x) => Number.isInteger(x) && x >= -1,
+      message: "{VALUE} is not an integer value",
+    },
   },
 });
 

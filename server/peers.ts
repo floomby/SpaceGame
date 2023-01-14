@@ -6,6 +6,8 @@ import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
 import { Player } from "../src/game";
+import { mapGraph, mapHeight, mapWidth, peerCount } from "../src/mapLayout";
+import assert from "assert";
 
 interface IPeer {
   name: string;
@@ -53,8 +55,19 @@ const port = process.argv[3];
 // For development
 const ip = "127.0.0.1";
 const wsPort = parseInt(process.argv[4]);
-// Will just keep using this port for now
-const sectors = JSON.parse(process.argv[5]) as number[];
+
+const peerNumber = parseInt(process.argv[5]);
+assert(peerNumber >= 0 && peerNumber < peerCount);
+
+const sectorCount = mapWidth * mapHeight;
+assert(sectorCount % peerCount === 0);
+const sectorsPerPeer = Math.floor(sectorCount / peerCount);
+const sectors: number[] = [];
+for (let i = 0; i < sectorsPerPeer; i++) {
+  sectors.push(peerNumber * sectorsPerPeer + i);
+}
+
+console.log(`Starting peer ${name} with sectors ${sectors} on port ${port} and wsPort ${wsPort}`);
 
 // Sets ourselves in the database
 const setPeer = async () => {

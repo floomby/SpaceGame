@@ -7,11 +7,15 @@ type Rectangle = { x: number; y: number; width: number; height: number };
 type Line = { from: Position; to: Position };
 
 enum CardinalDirection {
-  Up,
-  Right,
-  Down,
-  Left,
+  Up = 0,
+  Right = 1,
+  Down = 2,
+  Left = 3,
 }
+
+const oppositeDirection = (direction: CardinalDirection) => {
+  return (direction + 2) % 4;
+};
 
 const sumPositions = (...positions: Position[]) => {
   return positions.reduce(
@@ -198,6 +202,7 @@ export {
   Rectangle,
   Line,
   CardinalDirection,
+  oppositeDirection,
   positiveMod,
   maxDecimals,
   infinityNorm,

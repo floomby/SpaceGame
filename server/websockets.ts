@@ -38,6 +38,7 @@ import { market } from "./market";
 import { setupPlayer } from "./misc";
 import { selectMission, startPlayerInMission } from "./missions";
 import { waitingData } from "./peers";
+import { respawnPlayer } from "./server";
 import { hash, sniCallback, wsPort } from "./settings";
 import {
   clients,
@@ -394,39 +395,9 @@ export function startWebSocketServer(wsPort: number) {
                 console.log("Error loading checkpoint: " + err);
                 return;
               }
-              const state = sectors.get(checkpoint.sector);
-              if (!state) {
-                ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
-                console.log("Warning: Checkpoint sector not found (programming error)");
-                return;
-              }
-              const playerState = JSON.parse(checkpoint.data) as Player;
-              // So I don't have to edit the checkpoints in the database right now
-              playerState.isPC = true;
-              if (
-                isNearOperableEnemyStation(playerState, state.players.values()) ||
-                enemyCount(playerState.team, checkpoint.sector) - allyCount(playerState.team, checkpoint.sector) > 2
-              ) {
-                playerState.position.x = -5000;
-                playerState.position.y = 5000;
-              }
-              playerState.v = { x: 0, y: 0 };
-              playerState.iv = { x: 0, y: 0 };
-              playerState.ir = 0;
-              state.players.set(client.id, playerState);
-              ws.send(
-                JSON.stringify({
-                  type: "warp",
-                  payload: {
-                    to: checkpoint.sector,
-                    asteroids: Array.from(state.asteroids.values()),
-                    collectables: Array.from(state.collectables.values()),
-                    mines: Array.from(state.mines.values()),
-                    sectorInfos: [],
-                  },
-                })
-              );
               client.currentSector = checkpoint.sector;
+              const playerState = JSON.parse(checkpoint.data) as Player;
+              respawnPlayer(ws, playerState, checkpoint.sector);
             });
           }
         } else if (data.type === "target") {

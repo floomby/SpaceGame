@@ -147,13 +147,14 @@ app.get("/clearAllFriendsAndRequests", async (req, res) => {
 });
 
 // UNSAFE
-app.get("/currentSectorOfPlayer", (req, res) => {
+app.get("/currentSectorOfPlayer", async (req, res) => {
   const idParam = req.query.id;
   if (!idParam || typeof idParam !== "string") {
     res.send(JSON.stringify({ error: "Invalid id" }));
     return;
   }
   const id = parseInt(idParam);
+  const user = await User.findOne({ id });
   res.send(JSON.stringify({ value: findPlayer(id) }));
 });
 

@@ -363,9 +363,6 @@ const initInitialAsteroids = () => {
 const tutorialRespawnPoints = new Map<number, Player>();
 
 const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisited: Set<number>, isLogoff = false) => {
-  console.log("Checkpoint saving is disabled due to server rework!");
-  return;
-
   if (player.health <= 0) {
     console.log("Warning: attempt to save checkpoint of dead player");
     return;

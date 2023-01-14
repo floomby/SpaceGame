@@ -125,8 +125,8 @@ mongoose
   .then(async () => {
     console.log("Connected to database");
     await setupSelf();
-    await initFromDatabase();
     initSectors(sectors);
+    await initFromDatabase();
     initInitialAsteroids();
     setupTimers();
     startWebSocketServer(wsPort);

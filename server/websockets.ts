@@ -711,22 +711,21 @@ export function startWebSocketServer(wsPort: number) {
                 saveCheckpoint(removedClient.id, removedClient.currentSector, player, removedClient.sectorsVisited, true);
               }
             } else {
-              // UNSAFE
-              // User.findOneAndUpdate(
-              //   { id: removedClient.id },
-              //   {
-              //     $set: { sectorsVisited: Array.from(removedClient.sectorsVisited), currentSector: removedClient.currentSector },
-              //     $push: { logoffTimes: Date.now() },
-              //   },
-              //   (err) => {
-              //     if (err) {
-              //       console.log("Error saving user: " + err);
-              //     }
-              //   }
-              // );
+              User.findOneAndUpdate(
+                { id: removedClient.id },
+                {
+                  $set: { sectorsVisited: Array.from(removedClient.sectorsVisited), currentSector: removedClient.currentSector },
+                  $push: { logoffTimes: Date.now() },
+                },
+                (err) => {
+                  if (err) {
+                    console.log("Error saving user: " + err);
+                  }
+                }
+              );
             }
           } else if (!player) {
-            console.log("Warning: player not found on disconnect");
+            console.log("Warning: player not found on disconnect (this is normal for a server switch)");
           }
         }
       } catch (e) {

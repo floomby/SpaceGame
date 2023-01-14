@@ -31,7 +31,7 @@ const uid = () => {
   return ret;
 };
 
-const sectorList = new Array(mapSize * mapSize).fill(0).map((_, i) => i);
+const sectorList: number[] = [];
 // const sectorAsteroidResources = sectorList.map((_) => [{ resource: "Prifecite", density: 1 }]);
 // const sectorAsteroidCounts = sectorList.map((_) => 15);
 
@@ -240,8 +240,6 @@ type SerializedClient = {
 };
 
 const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
-  // console.log("Deserializing client data for key", data);
-  console.log(waitingData);
   const client = repairClientData(data.clientData);
   const sector = sectors.get(client.currentSector);
   if (!sector) {
@@ -292,12 +290,16 @@ const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
 
 const serverWarps = new Map<string, WebSocket>();
 
-const serverChangePlayer = (ws: WebSocket, player: Player) => {
+const serverChangePlayer = (ws: WebSocket, player: Player, serverName: string) => {
   const key = uid().toString();
   const serialized = serializeAllClientData(ws, player, key);
   serverWarps.set(key, ws);
-  console.log(peerMap);
-  peerMap.get("sheppard")!.send(serialized);
+  const server = peerMap.get(serverName);
+  if (!server) {
+    console.warn("No server for", serverName);
+    return;
+  }
+  server.send(serialized);
 };
 
 const sendServerWarp = (key: string, to: string) => {
@@ -325,20 +327,23 @@ const sectors: Map<number, GlobalState> = new Map();
 const sectorTriggers: Map<number, (state: GlobalState) => void> = new Map();
 const warpList: { player: Player; to: number }[] = [];
 
-sectorList.forEach((sector) => {
-  sectors.set(sector, {
-    players: new Map(),
-    projectiles: new Map(),
-    asteroids: new Map(),
-    missiles: new Map(),
-    collectables: new Map(),
-    asteroidsDirty: false,
-    mines: new Map(),
-    projectileId: 1,
-    delayedActions: [],
-    sectorKind: SectorKind.Overworld,
+const initSectors = (serverSectors: number[]) => {
+  sectorList.push(...serverSectors);
+  sectorList.forEach((sector) => {
+    sectors.set(sector, {
+      players: new Map(),
+      projectiles: new Map(),
+      asteroids: new Map(),
+      missiles: new Map(),
+      collectables: new Map(),
+      asteroidsDirty: false,
+      mines: new Map(),
+      projectileId: 1,
+      delayedActions: [],
+      sectorKind: SectorKind.Overworld,
+    });
   });
-});
+};
 
 const initInitialAsteroids = () => {
   for (let i = 0; i < sectorList.length; i++) {
@@ -419,4 +424,5 @@ export {
   serializeAllClientData,
   sendServerWarp,
   serverChangePlayer,
+  initSectors,
 };

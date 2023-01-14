@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Reply, Request } from "zeromq";
 import { initFromDatabase } from "./misc";
-import { deserializeClientData, initInitialAsteroids, sendServerWarp, SerializedClient } from "./state";
+import { initInitialAsteroids, initSectors, sendServerWarp, SerializedClient } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
@@ -78,6 +78,8 @@ const setupSelf = async () => {
   }, 20 * 1000);
 };
 
+const serversForSectors = new Map<number, string>();
+
 // Roughly keeps things synced
 const syncPeers = async () => {
   const peers = await Peer.find({ name: { $ne: name } });
@@ -89,6 +91,9 @@ const syncPeers = async () => {
     const peerSocket = new Request();
     peerSocket.connect(`tcp://${peer.ip}:${peer.port}`);
     peerMap.set(peer.name, peerSocket);
+    peer.sectors.forEach((sector) => {
+      serversForSectors.set(sector, peer.name);
+    });
     // dispatch messages from the socket
     for await (const [key] of peerSocket) {
       console.log(`Received data from ${peer.name}`, key.toString());
@@ -99,6 +104,12 @@ const syncPeers = async () => {
     if (!peers.find((peer) => peer.name === name)) {
       peerMap.get(name)?.close();
       peerMap.delete(name);
+      // remove from the map
+      serversForSectors.forEach((server, sector) => {
+        if (server === name) {
+          serversForSectors.delete(sector);
+        }
+      });
       console.log(`Disconnected from peer ${name}`);
     }
   }
@@ -115,6 +126,7 @@ mongoose
     console.log("Connected to database");
     await setupSelf();
     await initFromDatabase();
+    initSectors(sectors);
     initInitialAsteroids();
     setupTimers();
     startWebSocketServer(wsPort);
@@ -131,4 +143,4 @@ if (wsPort === 8080) {
   Routes();
 }
 
-export { peerMap, waitingData };
+export { peerMap, waitingData, serversForSectors };

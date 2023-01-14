@@ -42,6 +42,7 @@ import {
 } from "./state";
 import { CardinalDirection, mirrorAngleHorizontally, mirrorAngleVertically } from "../src/geometry";
 import { allyCount, flashServerMessage } from "./stateHelpers";
+import { serversForSectors } from "./peers";
 
 const informDead = (player: Player) => {
   if (player.npc) {
@@ -124,7 +125,7 @@ const spawnIncrementalGuardians = (sector: number) => {
   }
 
   // const faction = sectorFactions[sector];
-  const faction = (Math.floor(Math.random() * 4) as Faction);
+  const faction = Math.floor(Math.random() * 4) as Faction;
   if (faction === null) {
     return;
   }
@@ -405,7 +406,29 @@ const setupTimers = () => {
             client.sectorsVisited.add(newSector);
           }
           // console.log(serializeAllClientData(ws, transition.player));
-          serverChangePlayer(ws, transition.player);
+          console.log("warping player", transition.player.id, "to sector", newSector);
+          if (sectorList.includes(newSector)) {
+            ws.send(
+              JSON.stringify({
+                type: "warp",
+                payload: {
+                  to: newSector,
+                  asteroids: Array.from(state.asteroids.values()),
+                  collectables: Array.from(state.collectables.values()),
+                  mines: Array.from(state.mines.values()),
+                  sectorInfos: [],
+                },
+              })
+            );
+            state.players.set(transition.player.id, transition.player);
+          } else {
+            const serverName = serversForSectors.get(newSector);
+            if (serverName) {
+              serverChangePlayer(ws, transition.player, serverName);
+            } else {
+              flashServerMessage(transition.player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
+            }
+          }
           // ws.send(
           //   JSON.stringify({
           //     type: "warp",
@@ -418,7 +441,6 @@ const setupTimers = () => {
           //     },
           //   })
           // );
-          
         }
         transition.player.position = transition.coords;
         // transition.player.heading = headingFromCardinalDirection(transition.direction);
@@ -429,43 +451,50 @@ const setupTimers = () => {
     // Handle all warps
     while (warpList.length > 0) {
       const { player, to } = warpList.shift()!;
-      const state = sectors.get(to);
-      if (state) {
-        const ws = idToWebsocket.get(player.id);
-        if (ws) {
-          const client = clients.get(ws)!;
-          client.currentSector = to;
+      const ws = idToWebsocket.get(player.id);
+      if (ws) {
+        const client = clients.get(ws)!;
+        client.currentSector = to;
 
-          // console.log(serializeAllClientData(ws, player));
-          serverChangePlayer(ws, player);
-
-          // ws.send(
-          //   JSON.stringify({
-          //     type: "warp",
-          //     payload: {
-          //       to,
-          //       asteroids: Array.from(state.asteroids.values()),
-          //       collectables: Array.from(state.collectables.values()),
-          //       mines: Array.from(state.mines.values()),
-          //       sectorInfos: [],
-          //     },
-          //   })
-          // );
-          // const enemies = enemyCount(player.team, to);
-          // const allies = allyCount(player.team, to);
-          // const count = enemies - allies;
-          // if (count > 3 && isEnemySector(player.team, to)) {
-          //   spawnAllyForces(player.team, to, count);
-          //   flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
-          // }
+        // console.log(serializeAllClientData(ws, player));
+        const state = sectors.get(to);
+        if (state) {
+          ws.send(
+            JSON.stringify({
+              type: "warp",
+              payload: {
+                to,
+                asteroids: Array.from(state.asteroids.values()),
+                collectables: Array.from(state.collectables.values()),
+                mines: Array.from(state.mines.values()),
+                sectorInfos: [],
+              },
+            })
+          );
+          state.players.set(player.id, player);
+        } else {
+          const serverName = serversForSectors.get(to);
+          if (serverName) {
+            serverChangePlayer(ws, player, serverName);
+          } else {
+            flashServerMessage(player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
+          }
         }
-        // Lets just keep the coords and momentum of the player on warping
-        // player.position.x = Math.random() * 6000 - 3000;
-        // player.position.y = Math.random() * 6000 - 3000;
-        // player.heading = (3 * Math.PI) / 2;
-        // player.speed = 0;
-        // state.players.set(player.id, player);
+
+        // const enemies = enemyCount(player.team, to);
+        // const allies = allyCount(player.team, to);
+        // const count = enemies - allies;
+        // if (count > 3 && isEnemySector(player.team, to)) {
+        //   spawnAllyForces(player.team, to, count);
+        //   flashServerMessage(player.id, `${getFactionString(player.team)} forces have arrived to assist!`);
+        // }
       }
+      // Lets just keep the coords and momentum of the player on warping
+      // player.position.x = Math.random() * 6000 - 3000;
+      // player.position.y = Math.random() * 6000 - 3000;
+      // player.heading = (3 * Math.PI) / 2;
+      // player.speed = 0;
+      // state.players.set(player.id, player);
     }
   }, 1000 / ticksPerSecond);
 };

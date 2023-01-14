@@ -602,11 +602,11 @@ export function startWebSocketServer(wsPort: number) {
         } else if (data.type === "warp") {
           const client = clients.get(ws);
           if (client) {
-            if (client.currentSector !== data.payload.warpTo && sectorList.includes(data.payload.warpTo)) {
-              if (!client.sectorsVisited.has(data.payload.warpTo)) {
-                flashServerMessage(client.id, "You must visit a sector before you can warp to it");
-                return;
-              }
+            if (client.currentSector !== data.payload.warpTo) {
+              // if (!client.sectorsVisited.has(data.payload.warpTo)) {
+              //   flashServerMessage(client.id, "You must visit a sector before you can warp to it");
+              //   return;
+              // }
               const state = sectors.get(client.currentSector)!;
               const player = state.players.get(client.id);
               if (player) {
@@ -693,40 +693,49 @@ export function startWebSocketServer(wsPort: number) {
     });
 
     ws.on("close", () => {
-      const removedClient = clients.get(ws);
-      if (removedClient) {
-        const player = sectors.get(removedClient.currentSector)?.players.get(removedClient.id);
-        const state = sectors.get(removedClient.currentSector)!;
-        state.players.delete(removedClient.id);
-        targets.delete(removedClient.id);
-        secondaries.delete(removedClient.id);
-        secondariesToActivate.delete(removedClient.id);
-        clients.delete(ws);
-        idToWebsocket.delete(removedClient.id);
-        knownRecipes.delete(removedClient.id);
-        if (player) {
-          if (player.docked) {
-            if (!removedClient.inTutorial) {
-              saveCheckpoint(removedClient.id, removedClient.currentSector, player, removedClient.sectorsVisited, true);
+      try {
+        const removedClient = clients.get(ws);
+        if (removedClient) {
+          clients.delete(ws);
+          const player = sectors.get(removedClient.currentSector)?.players.get(removedClient.id);
+          const state = sectors.get(removedClient.currentSector);
+          targets.delete(removedClient.id);
+          secondaries.delete(removedClient.id);
+          secondariesToActivate.delete(removedClient.id);
+          idToWebsocket.delete(removedClient.id);
+          knownRecipes.delete(removedClient.id);
+          state?.players.delete(removedClient.id);
+          if (player) {
+            if (player.docked) {
+              if (!removedClient.inTutorial) {
+                saveCheckpoint(removedClient.id, removedClient.currentSector, player, removedClient.sectorsVisited, true);
+              }
+            } else {
+              // UNSAFE
+              // User.findOneAndUpdate(
+              //   { id: removedClient.id },
+              //   {
+              //     $set: { sectorsVisited: Array.from(removedClient.sectorsVisited), currentSector: removedClient.currentSector },
+              //     $push: { logoffTimes: Date.now() },
+              //   },
+              //   (err) => {
+              //     if (err) {
+              //       console.log("Error saving user: " + err);
+              //     }
+              //   }
+              // );
             }
-          } else {
-            // UNSAFE
-            // User.findOneAndUpdate(
-            //   { id: removedClient.id },
-            //   {
-            //     $set: { sectorsVisited: Array.from(removedClient.sectorsVisited), currentSector: removedClient.currentSector },
-            //     $push: { logoffTimes: Date.now() },
-            //   },
-            //   (err) => {
-            //     if (err) {
-            //       console.log("Error saving user: " + err);
-            //     }
-            //   }
-            // );
+          } else if (!player) {
+            console.log("Warning: player not found on disconnect");
           }
-        } else if (!player) {
-          console.log("Warning: player not found on disconnect");
         }
+      } catch (e) {
+        console.log("Error in close handler: " + e);
+        appendFile("errorlog", `Error: ${e}\n${inspect(clients, { depth: null })}\n${Array.from(sectors.values())}\n`, (err) => {
+          if (err) {
+            console.log("Error writing to log: " + err);
+          }
+        });
       }
     });
   });

@@ -38,7 +38,7 @@ import { market } from "./market";
 import { setupPlayer } from "./misc";
 import { selectMission, startPlayerInMission } from "./missions";
 import { waitingData } from "./peers";
-import { respawnPlayer } from "./server";
+import { respawnPlayer, spawnPlayer } from "./server";
 import { hash, sniCallback, wsPort } from "./settings";
 import {
   clients,
@@ -146,18 +146,23 @@ export function startWebSocketServer(wsPort: number) {
               if (!checkpoint) {
                 setupPlayer(user.id, ws, name, user.faction);
               } else {
-                const state = sectors.get(checkpoint.sector);
-                if (!state) {
-                  ws.send(JSON.stringify({ type: "error", payload: { message: "Bad checkpoint sector" } }));
-                  console.log("Warning: Checkpoint sector not found");
-                  setupPlayer(user.id, ws, name, user.faction);
-                  return;
-                }
+                clients.set(ws, {
+                  id: user.id,
+                  name,
+                  input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
+                  angle: 0,
+                  currentSector: checkpoint.sector,
+                  lastMessage: "",
+                  lastMessageTime: Date.now(),
+                  sectorsVisited,
+                  inTutorial: TutorialStage.Done,
+                });
+                targets.set(user.id, [TargetKind.None, 0]);
+                secondaries.set(user.id, 0);
+                secondariesToActivate.set(user.id, []);
+                knownRecipes.set(user.id, new Set(user.recipesKnown));
+
                 const playerState = JSON.parse(checkpoint.data) as Player;
-                if (isNearOperableEnemyStation(playerState, state.players.values()) || enemyCount(playerState.team, checkpoint.sector) > 2) {
-                  playerState.position.x = -5000;
-                  playerState.position.y = 5000;
-                }
                 // All these "fixes" are for making old checkpoints work with new code
                 // Update the player on load to match what is expected
                 if (playerState.defIndex === undefined) {
@@ -199,40 +204,9 @@ export function startWebSocketServer(wsPort: number) {
                   playerState.arms = (playerState as any).armIndices;
                   (playerState as any).armIndices = undefined;
                 }
-
                 playerState.v = { x: 0, y: 0 };
-                state.players.set(user.id, playerState);
-                clients.set(ws, {
-                  id: user.id,
-                  name,
-                  input: { up: false, down: false, primary: false, secondary: false, right: false, left: false },
-                  angle: 0,
-                  currentSector: checkpoint.sector,
-                  lastMessage: "",
-                  lastMessageTime: Date.now(),
-                  sectorsVisited,
-                  inTutorial: TutorialStage.Done,
-                });
-                targets.set(user.id, [TargetKind.None, 0]);
-                secondaries.set(user.id, 0);
-                secondariesToActivate.set(user.id, []);
-                knownRecipes.set(user.id, new Set(user.recipesKnown));
-                ws.send(
-                  JSON.stringify({
-                    type: "init",
-                    payload: {
-                      id: user.id,
-                      sector: checkpoint.sector,
-                      faction: playerState.team,
-                      asteroids: Array.from(state.asteroids.values()),
-                      collectables: Array.from(state.collectables.values()),
-                      mines: Array.from(state.mines.values()),
-                      sectorInfos,
-                      recipes: user.recipesKnown,
-                    },
-                  })
-                );
-                sendInventory(ws, user.id);
+
+                spawnPlayer(ws, playerState, checkpoint.sector);
                 // log to file
                 appendFile("log", `${new Date().toISOString()} ${name} logged in\n`, (err) => {
                   if (err) {

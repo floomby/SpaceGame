@@ -18,7 +18,7 @@ import { initMarket } from "./market";
 import { NPC } from "../src/npc";
 import { Checkpoint, User } from "./dataModels";
 import { peerMap, waitingData } from "./peers";
-import { insertRespawnedPlayer } from "./server";
+import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
@@ -183,6 +183,7 @@ const knownRecipes: Map<number, Set<string>> = new Map();
 enum ServerChangeKind {
   Warp,
   Respawn,
+  Spawn,
 }
 
 const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind: ServerChangeKind) => {
@@ -268,6 +269,9 @@ const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
       break;
     case ServerChangeKind.Respawn:
       insertRespawnedPlayer(ws, data.player, client.currentSector);
+      break;
+    case ServerChangeKind.Spawn:
+      insertSpawnedPlayer(ws, data.player, client.currentSector);
       break;
     default:
       throw new Error("Unknown server change kind");

@@ -19,7 +19,7 @@ import {
 import { defs, Faction, UnitKind } from "../src/defs";
 
 import { addNpc, NPC } from "../src/npc";
-import { discoverRecipe } from "./inventory";
+import { discoverRecipe, sendInventory } from "./inventory";
 import {
   allResources,
   clients,
@@ -342,6 +342,50 @@ const respawnPlayer = (ws: WebSocket, player: Player, sector: number) => {
   }
 };
 
+const insertSpawnedPlayer = (ws: WebSocket, player: Player, sector: number) => {
+  const state = sectors.get(sector);
+  if (!state) {
+    ws.send(JSON.stringify({ type: "error", payload: { message: "Sector missing from server for spawn" } }));
+    console.log("Warning: Sector missing from server for spawn");
+    return;
+  }
+  if (isNearOperableEnemyStation(player, state.players.values()) || enemyCount(player.team, sector) > 2) {
+    player.position.x = -5000;
+    player.position.y = 5000;
+  }
+  state.players.set(player.id, player);
+
+  ws.send(
+    JSON.stringify({
+      type: "init",
+      payload: {
+        id: player.id,
+        sector: sector,
+        faction: player.team,
+        asteroids: Array.from(state.asteroids.values()),
+        collectables: Array.from(state.collectables.values()),
+        mines: Array.from(state.mines.values()),
+        sectorInfos: [],
+        recipes: Array.from(knownRecipes.get(player.id) || []),
+      },
+    })
+  );
+  sendInventory(ws, player.id);
+};
+
+const spawnPlayer = (ws: WebSocket, player: Player, sector: number) => {
+  if (sectors.has(sector)) {
+    insertSpawnedPlayer(ws, player, sector);
+  } else {
+    const newServerName = serversForSectors.get(sector);
+    if (newServerName) {
+      serverChangePlayer(ws, player, newServerName, ServerChangeKind.Spawn);
+    } else {
+      flashServerMessage(player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
+    }
+  }
+};
+
 const setupTimers = () => {
   // setInterval(() => {
   //   for (let i = 0; i < sectorList.length; i++) {
@@ -503,4 +547,4 @@ const setupTimers = () => {
   }, 1000 / ticksPerSecond);
 };
 
-export { setupTimers, respawnPlayer, insertRespawnedPlayer };
+export { setupTimers, respawnPlayer, insertRespawnedPlayer, spawnPlayer, insertSpawnedPlayer };

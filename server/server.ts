@@ -34,6 +34,8 @@ import {
   sectorList,
   sectors,
   sectorTriggers,
+  serializeAllClientData,
+  serverChangePlayer,
   targets,
   uid,
   warpList,
@@ -402,22 +404,25 @@ const setupTimers = () => {
           if (newSector < mapSize * mapSize) {
             client.sectorsVisited.add(newSector);
           }
-          ws.send(
-            JSON.stringify({
-              type: "warp",
-              payload: {
-                to: newSector,
-                asteroids: Array.from(state.asteroids.values()),
-                collectables: Array.from(state.collectables.values()),
-                mines: Array.from(state.mines.values()),
-                sectorInfos: [sectorInfo],
-              },
-            })
-          );
+          // console.log(serializeAllClientData(ws, transition.player));
+          serverChangePlayer(ws, transition.player);
+          // ws.send(
+          //   JSON.stringify({
+          //     type: "warp",
+          //     payload: {
+          //       to: newSector,
+          //       asteroids: Array.from(state.asteroids.values()),
+          //       collectables: Array.from(state.collectables.values()),
+          //       mines: Array.from(state.mines.values()),
+          //       sectorInfos: [sectorInfo],
+          //     },
+          //   })
+          // );
+          
         }
         transition.player.position = transition.coords;
         // transition.player.heading = headingFromCardinalDirection(transition.direction);
-        state.players.set(transition.player.id, transition.player);
+        // state.players.set(transition.player.id, transition.player);
       }
     }
 
@@ -430,18 +435,22 @@ const setupTimers = () => {
         if (ws) {
           const client = clients.get(ws)!;
           client.currentSector = to;
-          ws.send(
-            JSON.stringify({
-              type: "warp",
-              payload: {
-                to,
-                asteroids: Array.from(state.asteroids.values()),
-                collectables: Array.from(state.collectables.values()),
-                mines: Array.from(state.mines.values()),
-                sectorInfos: [],
-              },
-            })
-          );
+
+          // console.log(serializeAllClientData(ws, player));
+          serverChangePlayer(ws, player);
+
+          // ws.send(
+          //   JSON.stringify({
+          //     type: "warp",
+          //     payload: {
+          //       to,
+          //       asteroids: Array.from(state.asteroids.values()),
+          //       collectables: Array.from(state.collectables.values()),
+          //       mines: Array.from(state.mines.values()),
+          //       sectorInfos: [],
+          //     },
+          //   })
+          // );
           // const enemies = enemyCount(player.team, to);
           // const allies = allyCount(player.team, to);
           // const count = enemies - allies;
@@ -455,7 +464,7 @@ const setupTimers = () => {
         // player.position.y = Math.random() * 6000 - 3000;
         // player.heading = (3 * Math.PI) / 2;
         // player.speed = 0;
-        state.players.set(player.id, player);
+        // state.players.set(player.id, player);
       }
     }
   }, 1000 / ticksPerSecond);

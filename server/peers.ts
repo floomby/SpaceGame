@@ -1,15 +1,17 @@
 import mongoose from "mongoose";
 import { Reply, Request } from "zeromq";
 import { initFromDatabase } from "./misc";
-import { initInitialAsteroids } from "./state";
+import { deserializeClientData, initInitialAsteroids, sendServerWarp, SerializedClient } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
+import { Player } from "../src/game";
 
 interface IPeer {
   name: string;
   ip: string;
   port: number;
+  wsPort: number;
   updated: Date;
   sectors: number[];
 }
@@ -24,6 +26,10 @@ const peerSchema = new mongoose.Schema<IPeer>({
     required: true,
   },
   port: {
+    type: Number,
+    required: true,
+  },
+  wsPort: {
     type: Number,
     required: true,
   },
@@ -46,12 +52,13 @@ const name = process.argv[2];
 const port = process.argv[3];
 // For development
 const ip = "127.0.0.1";
+const wsPort = parseInt(process.argv[4]);
 // Will just keep using this port for now
-const sectors = JSON.parse(process.argv[4]) as number[];
+const sectors = JSON.parse(process.argv[5]) as number[];
 
 // Sets ourselves in the database
 const setPeer = async () => {
-  await Peer.findOneAndUpdate({ name }, { ip, port, updated: Date.now(), sectors }, { upsert: true });
+  await Peer.findOneAndUpdate({ name }, { ip, port, updated: Date.now(), sectors, wsPort }, { upsert: true });
 };
 
 // Global stuff
@@ -74,7 +81,7 @@ const setupSelf = async () => {
 // Roughly keeps things synced
 const syncPeers = async () => {
   const peers = await Peer.find({ name: { $ne: name } });
-  peers.forEach((peer) => {
+  peers.forEach(async (peer) => {
     if (peerMap.has(peer.name)) {
       return;
     }
@@ -82,6 +89,11 @@ const syncPeers = async () => {
     const peerSocket = new Request();
     peerSocket.connect(`tcp://${peer.ip}:${peer.port}`);
     peerMap.set(peer.name, peerSocket);
+    // dispatch messages from the socket
+    for await (const [key] of peerSocket) {
+      console.log(`Received data from ${peer.name}`, key.toString());
+      sendServerWarp(key.toString(), `ws://${peer.ip}:${peer.wsPort}`);
+    }
   });
   for (const name of peerMap.keys()) {
     if (!peers.find((peer) => peer.name === name)) {
@@ -91,6 +103,8 @@ const syncPeers = async () => {
     }
   }
 };
+
+const waitingData = new Map<string, SerializedClient>();
 
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
@@ -103,7 +117,18 @@ mongoose
     await initFromDatabase();
     initInitialAsteroids();
     setupTimers();
-    startWebSocketServer();
+    startWebSocketServer(wsPort);
+    for await (const [msg] of socket) {
+      const data = JSON.parse(msg.toString()) as SerializedClient;
+      // console.log("Received data from client", data?.key, name);
+      // console.log(data);
+      waitingData.set(data.key, data);
+      await socket.send(data.key);
+    }
   });
 
-Routes();
+if (wsPort === 8080) {
+  Routes();
+}
+
+export { peerMap, waitingData };

@@ -17,6 +17,7 @@ import { CardinalDirection } from "../src/geometry";
 import { initMarket } from "./market";
 import { NPC } from "../src/npc";
 import { Checkpoint, User } from "./dataModels";
+import { peerMap, waitingData } from "./peers";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
@@ -148,6 +149,26 @@ type ClientData = {
   tutorialNpc?: NPC;
 };
 
+type SerializableClientData = Omit<ClientData, "sectorsVisited" | "tutorialNPC"> & {
+  sectorsVisited: number[];
+};
+
+const serializableClientData = (client: ClientData): SerializableClientData => {
+  if (client.inTutorial) {
+    throw new Error("Cannot serialize client data while in tutorial");
+  }
+  client = { ...client };
+  client.tutorialNpc = undefined;
+  (client as any).sectorsVisited = Array.from(client.sectorsVisited);
+  return client as unknown as SerializableClientData;
+};
+
+const repairClientData = (client: SerializableClientData): ClientData => {
+  const ret = { ...client } as unknown as ClientData;
+  ret.sectorsVisited = new Set(client.sectorsVisited);
+  return ret;
+};
+
 /*
     x ->  
   y 0  1  2  3
@@ -181,6 +202,116 @@ const sectorInDirection = (sector: number, direction: CardinalDirection) => {
 
 const clients: Map<WebSocket, ClientData> = new Map();
 const idToWebsocket = new Map<number, WebSocket>();
+// Targeting is handled by the clients, but the server needs to know
+// Same pattern with secondaries
+// BTW I do not like this design
+const targets: Map<number, [TargetKind, number]> = new Map();
+const secondaries: Map<number, number> = new Map();
+const secondariesToActivate: Map<number, number[]> = new Map();
+const knownRecipes: Map<number, Set<string>> = new Map();
+
+const serializeAllClientData = (ws: WebSocket, player: Player, key: string) => {
+  const client = clients.get(ws);
+  if (!client) return null;
+  const target = targets.get(client.id);
+  const secondary = secondaries.get(client.id);
+  const toActivate = secondariesToActivate.get(client.id);
+  const recipesKnown = knownRecipes.get(client.id) || new Set();
+
+  return JSON.stringify({
+    clientData: serializableClientData(client),
+    target,
+    secondary,
+    toActivate,
+    recipesKnown: Array.from(recipesKnown),
+    player,
+    key,
+  });
+};
+
+type SerializedClient = {
+  clientData: SerializableClientData;
+  target: [TargetKind, number] | undefined;
+  secondary: number | undefined;
+  toActivate: number[] | undefined;
+  recipesKnown: string[];
+  player: Player;
+  key: string;
+};
+
+const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
+  // console.log("Deserializing client data for key", data);
+  console.log(waitingData);
+  const client = repairClientData(data.clientData);
+  const sector = sectors.get(client.currentSector);
+  if (!sector) {
+    console.warn("Missing sector", client.currentSector);
+    return;
+  }
+  clients.set(ws, client);
+  idToWebsocket.set(client.id, ws);
+  if (data.target) {
+    targets.set(client.id, data.target);
+  } else {
+    console.warn("Missing client target");
+  }
+  if (data.secondary) {
+    secondaries.set(client.id, data.secondary);
+  } else {
+    console.warn("Missing client secondary");
+  }
+  if (data.toActivate) {
+    secondariesToActivate.set(client.id, data.toActivate);
+  } else {
+    console.warn("Missing client toActivate");
+  }
+  if (data.recipesKnown) {
+    knownRecipes.set(client.id, new Set(data.recipesKnown));
+  } else {
+    console.warn("Missing client recipesKnown");
+  }
+  sector.players.set(client.id, data.player);
+  // BROKEN
+  const sectorInfo = {
+    sector: client.currentSector,
+    resources: [],
+  };
+  ws.send(
+    JSON.stringify({
+      type: "warp",
+      payload: {
+        to: client.currentSector,
+        asteroids: Array.from(sector.asteroids.values()),
+        collectables: Array.from(sector.collectables.values()),
+        mines: Array.from(sector.mines.values()),
+        sectorInfos: [sectorInfo],
+      },
+    })
+  );
+};
+
+const serverWarps = new Map<string, WebSocket>();
+
+const serverChangePlayer = (ws: WebSocket, player: Player) => {
+  const key = uid().toString();
+  const serialized = serializeAllClientData(ws, player, key);
+  serverWarps.set(key, ws);
+  console.log(peerMap);
+  peerMap.get("sheppard")!.send(serialized);
+};
+
+const sendServerWarp = (key: string, to: string) => {
+  if (!serverWarps.has(key)) {
+    console.warn("No server warp for key", key);
+    return;
+  }
+  try {
+    const ws = serverWarps.get(key)!;
+    ws.send(JSON.stringify({ type: "changeServers", payload: { to, key } }));
+  } catch (e) {
+    console.error("Error sending server warp", e);
+  }
+};
 
 const getPlayerFromId = (id: number) => {
   const ws = idToWebsocket.get(id);
@@ -208,19 +339,6 @@ sectorList.forEach((sector) => {
     sectorKind: SectorKind.Overworld,
   });
 });
-
-// Server state
-
-// Targeting is handled by the clients, but the server needs to know
-// Same pattern with secondaries
-// BTW I do not like this design
-const targets: Map<number, [TargetKind, number]> = new Map();
-const secondaries: Map<number, number> = new Map();
-const secondariesToActivate: Map<number, number[]> = new Map();
-
-const knownRecipes: Map<number, Set<string>> = new Map();
-
-// const asteroidBounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
 const initInitialAsteroids = () => {
   for (let i = 0; i < sectorList.length; i++) {
@@ -269,6 +387,12 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
 };
 
 export {
+  // ClientData,
+  // SerializableClientData,
+  // serializableClientData,
+  // repairClientData,
+  SerializedClient,
+  deserializeClientData,
   sectorList,
   // sectorAsteroidResources,
   // sectorAsteroidCounts,
@@ -292,4 +416,7 @@ export {
   friendlySectors,
   initInitialAsteroids,
   getPlayerFromId,
+  serializeAllClientData,
+  sendServerWarp,
+  serverChangePlayer,
 };

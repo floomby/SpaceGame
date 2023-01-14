@@ -37,9 +37,11 @@ import { assignPlayerIdToConnection, logWebSocketConnection } from "./logging";
 import { market } from "./market";
 import { setupPlayer } from "./misc";
 import { selectMission, startPlayerInMission } from "./missions";
+import { waitingData } from "./peers";
 import { hash, sniCallback, wsPort } from "./settings";
 import {
   clients,
+  deserializeClientData,
   idToWebsocket,
   knownRecipes,
   saveCheckpoint,
@@ -55,7 +57,7 @@ import {
 import { allyCount, enemyCount, flashServerMessage } from "./stateHelpers";
 import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
 
-export function startWebSocketServer() {
+export function startWebSocketServer(wsPort: number) {
   // Websocket server stuff
   let server: ReturnType<typeof createServer> | https.Server;
   if (useSsl) {
@@ -73,6 +75,7 @@ export function startWebSocketServer() {
 
     const ipAddr = req.socket.remoteAddress;
 
+    // BROKEN
     logWebSocketConnection(ipAddr);
 
     ws.on("message", (msg) => {
@@ -81,6 +84,9 @@ export function startWebSocketServer() {
         if (data.type === "heartbeat") {
           (ws as any).isAlive = true;
           return;
+        } else if (data.type === "serverHopKey") {
+          const key = data.payload.key;
+          deserializeClientData(ws, waitingData.get(key)!);
         } else if (data.type === "login") {
           const name = data.payload.name;
           const password = data.payload.password;
@@ -105,6 +111,8 @@ export function startWebSocketServer() {
             }
 
             idToWebsocket.set(user.id, ws);
+
+            // BROKEN
             assignPlayerIdToConnection(ipAddr, user.id);
 
             const sectorInfos: SectorInfo[] = [];
@@ -261,6 +269,8 @@ export function startWebSocketServer() {
               }
               setupPlayer(user.id, ws, name, faction);
               idToWebsocket.set(user.id, ws);
+
+              // BROKEN
               assignPlayerIdToConnection(ipAddr, user.id);
             });
           });
@@ -700,18 +710,19 @@ export function startWebSocketServer() {
               saveCheckpoint(removedClient.id, removedClient.currentSector, player, removedClient.sectorsVisited, true);
             }
           } else {
-            User.findOneAndUpdate(
-              { id: removedClient.id },
-              {
-                $set: { sectorsVisited: Array.from(removedClient.sectorsVisited), currentSector: removedClient.currentSector },
-                $push: { logoffTimes: Date.now() },
-              },
-              (err) => {
-                if (err) {
-                  console.log("Error saving user: " + err);
-                }
-              }
-            );
+            // UNSAFE
+            // User.findOneAndUpdate(
+            //   { id: removedClient.id },
+            //   {
+            //     $set: { sectorsVisited: Array.from(removedClient.sectorsVisited), currentSector: removedClient.currentSector },
+            //     $push: { logoffTimes: Date.now() },
+            //   },
+            //   (err) => {
+            //     if (err) {
+            //       console.log("Error saving user: " + err);
+            //     }
+            //   }
+            // );
           }
         } else if (!player) {
           console.log("Warning: player not found on disconnect");

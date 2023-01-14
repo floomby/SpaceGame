@@ -5,40 +5,22 @@ import { addLoadingText } from "./globals";
 
 let serverSocket: WebSocket;
 
-const login = (name: string, password: string) => {
-  serverSocket.send(
-    JSON.stringify({
-      type: "login",
-      payload: { name, password },
-    })
-  );
-};
-
-const register = (name: string, password: string, faction: Faction) => {
-  serverSocket.send(
-    JSON.stringify({
-      type: "register",
-      payload: { name, password, faction },
-    })
-  );
-};
-
 const bindings: Map<string, (data: any) => void> = new Map();
 
 let heartbeatInterval: number;
 
 // Client connection code
-const connect = (callback: (socket: WebSocket) => void) => {
+const connect = (callback: () => void, to: string = wsUrl) => {
   addLoadingText("Connecting to server...");
-  const socket = new WebSocket(wsUrl);
+  const socket = new WebSocket(to);
   socket.onopen = () => {
-    console.log(`Connected to the server at ${wsUrl}`);
+    console.log(`Connected to the server at ${to}`);
     serverSocket = socket;
     addLoadingText("Connected to server!");
     heartbeatInterval = window.setInterval(() => {
       socket.send(JSON.stringify({ type: "heartbeat" }));
     }, 25 * 1000);
-    callback(socket);
+    callback();
   };
   socket.onclose = () => {
     console.log("Disconnected from the server");
@@ -55,12 +37,36 @@ const connect = (callback: (socket: WebSocket) => void) => {
   };
 };
 
+const changeServers = (url: string, callback: () => void) => {
+  serverSocket.close();
+  clearInterval(heartbeatInterval);
+  connect(callback, url);
+};
+
 const bindAction = (action: string, callback: (data: any) => void) => {
   bindings.set(action, callback);
 };
 
 const unbindAllActions = () => {
   serverSocket.onmessage = null;
+};
+
+const login = (name: string, password: string) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "login",
+      payload: { name, password },
+    })
+  );
+};
+
+const register = (name: string, password: string, faction: Faction) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "register",
+      payload: { name, password, faction },
+    })
+  );
 };
 
 const sendInput = (input: Input) => {
@@ -324,8 +330,19 @@ const sendFriendWarp = (id: number) => {
   );
 };
 
+const sendServerHopKey = (key: string) => {
+  serverSocket.send(
+    JSON.stringify({
+      type: "serverHopKey",
+      payload: { key },
+    })
+  );
+};
+
 export {
   connect,
+  changeServers,
+  sendServerHopKey,
   bindAction,
   unbindAllActions,
   login,

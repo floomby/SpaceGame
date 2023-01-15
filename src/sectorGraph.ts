@@ -115,14 +115,12 @@ const createTorus = (width: number, height: number) => {
   return graph;
 };
 
-const mergeDisjointSubgraphs = (...graphs: SectorGraph[]) => {
-  const merged = new Map<number, SectorGraphNode>();
+const mergeDisjointSubgraphs = (into: Map<number, SectorGraphNode>, ...graphs: SectorGraph[]) => {
   for (const graph of graphs) {
     for (const [sector, node] of graph) {
-      merged.set(sector, node);
+      into.set(sector, node);
     }
   }
-  return merged;
 };
 
 export {

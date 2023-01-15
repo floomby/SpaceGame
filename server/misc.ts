@@ -6,6 +6,8 @@ import { sendInventory } from "./inventory";
 import { sendTutorialStage } from "./tutorial";
 import { Station } from "./dataModels";
 import { makeNetworkAware, removeNetworkAwareness } from "./peers";
+import { createIsolatedSector, removeContiguousSubgraph } from "../src/sectorGraph";
+import { mapGraph } from "../src/mapLayout";
 
 const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) => {
   let defIndex: number;
@@ -79,6 +81,8 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   };
 
   makeNetworkAware(tutorialSector, SectorKind.Tutorial);
+  // I don't need to add topology for single isolated sectors (will want to though if I go to torus wrapping single sectors)
+  // createIsolatedSector(mapGraph, tutorialSector);
   sectors.set(tutorialSector, state);
   state.players.set(id, player);
 
@@ -86,6 +90,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   setTimeout(() => {
     sectors.delete(tutorialSector);
     removeNetworkAwareness(tutorialSector);
+    // removeContiguousSubgraph(mapGraph, tutorialSector);
     tutorialRespawnPoints.delete(tutorialSector);
   }, 1000 * 60 * 60 * 3);
 

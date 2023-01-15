@@ -22,6 +22,7 @@ import {
   TargetKind,
   TutorialStage,
 } from "../src/game";
+import { mapHeight, mapWidth } from "../src/mapLayout";
 import { Checkpoint, Station, User } from "./dataModels";
 import { createFriendRequest, friendWarp, revokeFriendRequest, unfriend } from "./friends";
 import {
@@ -76,7 +77,6 @@ export function startWebSocketServer(wsPort: number) {
 
     const ipAddr = req.socket.remoteAddress;
 
-    // BROKEN
     logWebSocketConnection(ipAddr);
 
     ws.on("message", (msg) => {
@@ -113,12 +113,20 @@ export function startWebSocketServer(wsPort: number) {
 
             idToWebsocket.set(user.id, ws);
 
-            // BROKEN
             assignPlayerIdToConnection(ipAddr, user.id);
-
+            
             if (!user.sectorsVisited) {
-              user.sectorsVisited = [user.currentSector];
+              if (user.currentSector >= 0 && user.currentSector < mapWidth * mapHeight) {
+                user.sectorsVisited = [user.currentSector];
+              } else {
+                user.sectorsVisited = [];
+              }
             }
+            const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
+            if (user.currentSector >= 0 && user.currentSector < mapWidth * mapHeight) {
+              sectorsVisited.add(user.currentSector);
+            }
+
             user.loginCount++;
             user.loginTimes.push(Date.now());
             try {
@@ -126,9 +134,6 @@ export function startWebSocketServer(wsPort: number) {
             } catch (err) {
               console.log(err);
             }
-
-            const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
-            sectorsVisited.add(user.currentSector);
 
             Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
               if (err) {
@@ -238,7 +243,6 @@ export function startWebSocketServer(wsPort: number) {
               setupPlayer(user.id, ws, name, faction);
               idToWebsocket.set(user.id, ws);
 
-              // BROKEN
               assignPlayerIdToConnection(ipAddr, user.id);
             });
           });

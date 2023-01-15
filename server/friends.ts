@@ -226,25 +226,17 @@ const friendWarp = async (ws: WebSocket, player: Player, friend: number) => {
       ws.send({ type: "error", payload: { message: "Failed to warp to friend (not friends)" } });
       throw new Error("Failed to warp to friend (not friends)");
     }
-    const where = findPlayer(friend);
+    const where = user.currentSector;
     if (!where) {
       flashServerMessage(player.id, "Failed to warp to friend (not online)", [1.0, 0.0, 0.0, 1.0]);
       return;
     }
-    if (where === "respawning") {
-      flashServerMessage(player.id, "Failed to warp to friend (respawning)", [1.0, 0.0, 0.0, 1.0]);
-      return;
-    }
-    if ((where as any).sectorKind === SectorKind.Tutorial) {
-      flashServerMessage(player.id, "Failed to warp to friend (cannot warp into tutorial)", [1.0, 0.0, 0.0, 1.0]);
-      return;
-    }
     player.warping = 1;
-    player.warpTo = where.sectorNumber;
+    player.warpTo = where;
     // Add the player to the mission
     if ((where as any).sectorKind === SectorKind.Mission) {
       const mission = await Mission.findOneAndUpdate(
-        { sectorNumber: where.sectorNumber, inProgress: true, assignee: { $ne: player.id }, forFaction: player.team },
+        { sectorNumber: where, inProgress: true, assignee: { $ne: player.id }, forFaction: player.team },
         { $addToSet: { coAssignees: player.id } }
       );
       if (!mission) {

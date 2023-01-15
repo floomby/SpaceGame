@@ -3,7 +3,7 @@ import { addLoadingText, currentSector, getUseAlternativeBackgroundsPref, isFire
 import { glMatrix, mat2, mat4, vec3, vec4 } from "gl-matrix";
 import { loadObj, Model, modelMap, models } from "./modelLoader";
 import { asteroidDefs, collectableDefs, defs, mineDefs, missileDefs } from "./defs";
-import { Asteroid, Ballistic, ChatMessage, CloakedState, Collectable, mapSize, Mine, Missile, Player, sectorBounds } from "./game";
+import { Asteroid, Ballistic, ChatMessage, CloakedState, Collectable, Mine, Missile, Player, sectorBounds } from "./game";
 import { infinityNorm, l2NormSquared, Position, Rectangle } from "./geometry";
 import {
   appendBottomBars,
@@ -42,6 +42,7 @@ import { createParticleBuffers, drawParticles, initParticleTextures } from "./pa
 import { drawProjectile } from "./3dProjectileDrawing";
 import { projectileLightColorUnnormed } from "./defs/projectiles";
 import { Debouncer, EagerDebouncer } from "./dialogs/helpers";
+import { mapHeight, mapWidth } from "./mapLayout";
 
 let canvas: HTMLCanvasElement;
 let overlayCanvas: HTMLCanvasElement;
@@ -1578,8 +1579,8 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
 
   canvasGameTopLeft = canvasCoordsToGameCoords(0, 0);
   canvasGameBottomRight = canvasCoordsToGameCoords(canvas.width, canvas.height);
-  const sectorX = currentSector % mapSize;
-  const sectorY = Math.floor(currentSector / mapSize);
+  const sectorX = currentSector % mapWidth;
+  const sectorY = Math.floor(currentSector / mapWidth);
   // Macro origin is at the top left of sector 0,0
   canvasMacroTopLeft.x = ((sectorX + 0.5) * sectorBounds.width + canvasGameTopLeft.x) / 2;
   canvasMacroTopLeft.y = ((sectorY + 0.5) * sectorBounds.width + canvasGameTopLeft.y) / 2;

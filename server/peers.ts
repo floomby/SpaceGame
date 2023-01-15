@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Reply, Request } from "zeromq";
 import { initFromDatabase } from "./misc";
-import { initInitialAsteroids, initSectors, sendServerWarp, SerializedClient } from "./state";
+import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, sendServerWarp, SerializedClient } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
@@ -140,6 +140,8 @@ mongoose
     await setupSelf();
     initSectors(sectors);
     await initFromDatabase();
+    await initSectorResourceData();
+    await initStationTeams();
     initInitialAsteroids();
     setupTimers();
     startWebSocketServer(wsPort);

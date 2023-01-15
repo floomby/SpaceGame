@@ -9,14 +9,13 @@ import {
   findHeadingBetween,
   GlobalState,
   Input,
-  isValidSectorInDirection,
-  mapSize,
   Player,
   randomNearbyPointInSector,
   sectorBounds,
   sectorDelta,
 } from "./game";
 import { findInterceptAimingHeading, findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "./geometry";
+import { mapHeight, mapWidth } from "./mapLayout";
 import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
 import { recipeMap } from "./recipes";
 
@@ -102,6 +101,7 @@ const passiveGoToRandomValidNeighboringSector = () => {
     process = (state: GlobalState, npc: NPC, sector: number, target: Player | undefined) => {
       if (this.memory.startSector === undefined) {
         this.memory.startSector = sector;
+        // ???? Brain tired, fix later
         let valid = false;
         while (!valid) {
           if (Math.random() < 0.5) {
@@ -113,7 +113,7 @@ const passiveGoToRandomValidNeighboringSector = () => {
           if (direction === null) {
             continue;
           }
-          valid = isValidSectorInDirection(sector, direction);
+          valid = true;
         }
       }
       const newState = this.checkTransitions(state, npc, target);
@@ -448,7 +448,7 @@ const makeBasicStateGraph = (
     ? runAwayWithStrafing(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot)
     : runAway(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
   const warpAway = warpTo(friendlySectors);
-  const randomWarp = warpTo(new Array(mapSize * mapSize).fill(0).map((_, i) => i));
+  const randomWarp = warpTo(new Array(mapWidth * mapHeight).fill(0).map((_, i) => i));
   idle.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoTo });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoToSector });

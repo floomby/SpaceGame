@@ -116,7 +116,6 @@ export function startWebSocketServer(wsPort: number) {
             // BROKEN
             assignPlayerIdToConnection(ipAddr, user.id);
 
-            const sectorInfos: SectorInfo[] = [];
             if (!user.sectorsVisited) {
               user.sectorsVisited = [user.currentSector];
             }
@@ -129,13 +128,7 @@ export function startWebSocketServer(wsPort: number) {
             }
 
             const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
-            for (const sector of sectorsVisited) {
-              sectorInfos.push({
-                sector,
-                // resources: sectorAsteroidResources[sector].map((value) => value.resource),
-                resources: [],
-              });
-            }
+            sectorsVisited.add(user.currentSector);
 
             Checkpoint.findOne({ id: user.id }, (err, checkpoint) => {
               if (err) {

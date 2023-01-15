@@ -7,4 +7,6 @@ const mapGraph = createTorus(width, height);
 
 const peerCount = 3;
 
-export { mapGraph, width as mapWidth, height as mapHeight, peerCount };
+type ResourceDensity = { resource: string; density: number };
+
+export { ResourceDensity, mapGraph, width as mapWidth, height as mapHeight, peerCount };

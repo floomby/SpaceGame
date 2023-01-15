@@ -187,19 +187,19 @@ body {
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 3%;
+  display: inline-grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1%;
 }
 
 .square {
   aspect-ratio: 1/ 1;
   display: flex;
   align-items: center;
-  padding: 2%;
+  padding: 1%;
   background-color: #1e1e1e;
   color: #fff;
-  height: 10vh;
+  height: 6.67vh;
   justify-content: center;
 }
 

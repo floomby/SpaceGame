@@ -13,7 +13,6 @@ import {
   SectorTransition,
   findSectorTransitions,
   sectorBounds,
-  mapSize,
   isNearOperableEnemyStation,
 } from "../src/game";
 import { defs, Faction, UnitKind } from "../src/defs";
@@ -28,6 +27,7 @@ import {
   knownRecipes,
   secondaries,
   secondariesToActivate,
+  sectorAsteroidResources,
   // sectorAsteroidResources,
   // sectorFactions,
   // sectorGuardianCount,
@@ -37,6 +37,7 @@ import {
   serializeAllClientData,
   ServerChangeKind,
   serverChangePlayer,
+  stationIdToDefaultTeam,
   targets,
   uid,
   warpList,
@@ -46,7 +47,7 @@ import { allyCount, enemyCount, flashServerMessage } from "./stateHelpers";
 import { serversForSectors } from "./peers";
 import { WebSocket } from "ws";
 import { User } from "./dataModels";
-import { mapGraph } from "../src/mapLayout";
+import { mapGraph, mapHeight, mapWidth } from "../src/mapLayout";
 
 const informDead = (player: Player) => {
   if (player.npc) {
@@ -218,13 +219,14 @@ const spawnSectorGuardians = (sector: number) => {
   }
 };
 
-const repairStationsInSectorForTeam = (sector: number, team: Faction) => {
+const repairStationsInSector = (sector: number) => {
   const state = sectors.get(sector);
   if (!state) {
     return;
   }
   for (const player of state.players.values()) {
-    if (player.inoperable) {
+    if (player.inoperable && stationIdToDefaultTeam.has(player.id)) {
+      const team = stationIdToDefaultTeam.get(player.id)!;
       player.repairs![team] += 1;
     }
   }
@@ -355,6 +357,19 @@ const insertSpawnedPlayer = (ws: WebSocket, player: Player, sector: number) => {
   }
   state.players.set(player.id, player);
 
+  const client = clients.get(ws);
+  if (!client) {
+    console.log("Warning: Client not found for spawn");
+    return;
+  }
+
+  const sectorInfos = Array.from(client.sectorsVisited).map((sector) => ({
+    sector,
+    resources: sectorAsteroidResources[sector].map((r) => r.resource),
+  }));
+
+  // console.log("Sector info for player is ", sectorInfos, client.sectorsVisited);
+
   ws.send(
     JSON.stringify({
       type: "init",
@@ -365,7 +380,7 @@ const insertSpawnedPlayer = (ws: WebSocket, player: Player, sector: number) => {
         asteroids: Array.from(state.asteroids.values()),
         collectables: Array.from(state.collectables.values()),
         mines: Array.from(state.mines.values()),
-        sectorInfos: [],
+        sectorInfos,
         recipes: Array.from(knownRecipes.get(player.id) || []),
       },
     })
@@ -399,15 +414,11 @@ const setupTimers = () => {
   //   }
   // }, 120 * 60 * 1000);
 
-  // setInterval(() => {
-  //   for (const sector of sectorList) {
-  //     const faction = sectorFactions[sector];
-  //     if (faction === null) {
-  //       continue;
-  //     }
-  //     repairStationsInSectorForTeam(sector, faction);
-  //   }
-  // }, 2 * 60 * 1000);
+  setInterval(() => {
+    for (const sector of sectorList) {
+      repairStationsInSector(sector);
+    }
+  }, 20 * 1000);
 
   setInterval(() => {
     for (const [sector, state] of sectors) {
@@ -521,7 +532,7 @@ const setupTimers = () => {
       if (ws) {
         const client = clients.get(ws)!;
         client.currentSector = newSector;
-        if (newSector < mapSize * mapSize) {
+        if (newSector < mapWidth * mapHeight) {
           client.sectorsVisited.add(newSector);
         }
         warpNonNPCToSector(ws, transition.player, newSector);

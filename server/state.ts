@@ -1,24 +1,16 @@
 import { randomUUID } from "crypto";
-import {
-  GlobalState,
-  Input,
-  Player,
-  randomAsteroids,
-  TargetKind,
-  mapSize,
-  sectorBounds,
-  TutorialStage,
-  removeCargoFractions,
-  SectorKind,
-} from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, sectorBounds, TutorialStage, removeCargoFractions, SectorKind } from "../src/game";
 import { WebSocket } from "ws";
 import { defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
 import { initMarket } from "./market";
 import { NPC } from "../src/npc";
-import { Checkpoint, User } from "./dataModels";
+import { Checkpoint, Station, User } from "./dataModels";
 import { peerMap, waitingData } from "./peers";
 import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
+import { ISector, Sector } from "./sector";
+import { HydratedDocument } from "mongoose";
+import { mapHeight, mapWidth, ResourceDensity } from "../src/mapLayout";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
@@ -33,41 +25,8 @@ const uid = () => {
 };
 
 const sectorList: number[] = [];
-// const sectorAsteroidResources = sectorList.map((_) => [{ resource: "Prifecite", density: 1 }]);
-// const sectorAsteroidCounts = sectorList.map((_) => 15);
-
-// sectorAsteroidResources[0] = [
-//   { resource: "Russanite", density: 1 },
-//   { resource: "Hemacite", density: 1 },
-// ];
-// sectorAsteroidResources[1] = [
-//   { resource: "Aziracite", density: 1 },
-//   { resource: "Hemacite", density: 1 },
-// ];
-// sectorAsteroidResources[2] = [
-//   { resource: "Aziracite", density: 1 },
-//   { resource: "Hemacite", density: 1 },
-// ];
-// sectorAsteroidResources[3] = [
-//   { resource: "Russanite", density: 1 },
-//   { resource: "Hemacite", density: 1 },
-// ];
-
-// sectorAsteroidResources[5] = [
-//   { resource: "Prifecite", density: 1 },
-//   { resource: "Russanite", density: 1 },
-// ];
-// sectorAsteroidResources[6] = [
-//   { resource: "Prifecite", density: 1 },
-//   { resource: "Russanite", density: 1 },
-// ];
-
-// sectorAsteroidCounts[6] = 35;
-// sectorAsteroidCounts[1] = 22;
-// sectorAsteroidCounts[2] = 22;
-
-// sectorAsteroidCounts[12] = 30;
-// sectorAsteroidCounts[15] = 30;
+const sectorAsteroidResources: ResourceDensity[][] = [];
+const sectorAsteroidCounts: number[] = [];
 
 const allResources = [
   { resource: "Prifecite", density: 1 },
@@ -249,10 +208,9 @@ const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
   switch (data.kind) {
     case ServerChangeKind.Warp:
       sector.players.set(client.id, data.player);
-      // BROKEN
       const sectorInfo = {
         sector: client.currentSector,
-        resources: [],
+        resources: sectorAsteroidResources[client.currentSector].map((resDen) => resDen.resource),
       };
       ws.send(
         JSON.stringify({
@@ -336,6 +294,17 @@ const initSectors = (serverSectors: number[]) => {
   });
 };
 
+const initSectorResourceData = async () => {
+  for (let i = 0; i < mapWidth * mapHeight; i++) {
+    const sectorInfo = await Sector.findOne({ sector: i });
+    if (!sectorInfo) {
+      throw new Error("Missing sector info");
+    }
+    sectorAsteroidResources.push(sectorInfo.resources);
+    sectorAsteroidCounts.push(sectorInfo.count);
+  }
+};
+
 const initInitialAsteroids = () => {
   for (let i = 0; i < sectorList.length; i++) {
     const sector = sectors.get(sectorList[i])!;
@@ -343,11 +312,27 @@ const initInitialAsteroids = () => {
       const def = defs[a.defIndex];
       return def.kind === UnitKind.Station;
     });
-    // const asteroids = randomAsteroids(sectorAsteroidCounts[i], sectorBounds, sectorList[i], uid, sectorAsteroidResources[i], stationsInSector);
-    const asteroids = randomAsteroids(10, sectorBounds, Math.floor(Math.random() * 100), uid, allResources, stationsInSector);
+
+    const asteroids = randomAsteroids(
+      sectorAsteroidCounts[sectorList[i]],
+      sectorBounds,
+      sectorList[i],
+      uid,
+      sectorAsteroidResources[sectorList[i]],
+      stationsInSector
+    );
     for (const asteroid of asteroids) {
       sector.asteroids.set(asteroid.id, asteroid);
     }
+  }
+};
+
+const stationIdToDefaultTeam = new Map<number, Faction>();
+
+const initStationTeams = async () => {
+  const stations = await Station.find({});
+  for (const station of stations) {
+    stationIdToDefaultTeam.set(station.id, station.team);
   }
 };
 
@@ -388,8 +373,8 @@ export {
   SerializedClient,
   deserializeClientData,
   sectorList,
-  // sectorAsteroidResources,
-  // sectorAsteroidCounts,
+  sectorAsteroidResources,
+  sectorAsteroidCounts,
   allResources,
   // sectorFactions,
   // sectorGuardianCount,
@@ -413,4 +398,7 @@ export {
   sendServerWarp,
   serverChangePlayer,
   initSectors,
+  initSectorResourceData,
+  initStationTeams,
+  stationIdToDefaultTeam,
 };

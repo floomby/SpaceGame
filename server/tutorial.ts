@@ -1,9 +1,10 @@
-import { copyPlayer, effectiveInfinity, equip, mapSize, Player, randomAsteroids, sectorBounds, TutorialStage } from "../src/game";
+import { copyPlayer, effectiveInfinity, equip, Player, randomAsteroids, sectorBounds, TutorialStage } from "../src/game";
 import { WebSocket } from "ws";
 import { clients, saveCheckpoint, sectors, tutorialRespawnPoints, uid } from "./state";
 import { defMap, Faction } from "../src/defs";
 import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
 import { discoverRecipe, updateClientRecipes } from "./inventory";
+import { mapHeight, mapWidth } from "../src/mapLayout";
 
 const spawnTutorialStation = (ws: WebSocket) => {
   const client = clients.get(ws);
@@ -177,7 +178,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
     case TutorialStage.Map:
       {
         const client = clients.get(ws);
-        if (client && client.currentSector < mapSize * mapSize) {
+        if (client && client.currentSector < mapWidth * mapHeight) {
           const state = sectors.get(client.currentSector);
           if (state) {
             const player = state.players.get(client.id);

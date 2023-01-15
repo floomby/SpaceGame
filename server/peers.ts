@@ -120,6 +120,9 @@ const syncPeers = async () => {
     // dispatch messages from the socket
     for await (const [key] of peerSocket) {
       console.log(`Received data from ${peer.name}`, key.toString());
+      if (key.toString() === "OK") {
+        continue;
+      }
       sendServerWarp(key.toString(), `ws://${peer.ip}:${peer.wsPort}`);
     }
   });
@@ -145,14 +148,14 @@ const awareSectors = new Map<number, SectorKind>();
 const makeNetworkAware = (sector: number, kind: SectorKind) => {
   awareSectors.set(sector, kind);
   for (const peer of peerMap.values()) {
-    // peer.send(JSON.stringify({ action: ZMQAction.SectorNotification, sector, sectorKind: kind }));
+    peer.send(JSON.stringify({ action: ZMQAction.SectorNotification, sector, sectorKind: kind, server: name }));
   }
 };
 
 const removeNetworkAwareness = (sector: number) => {
   awareSectors.delete(sector);
   for (const peer of peerMap.values()) {
-    // peer.send(JSON.stringify({ action: ZMQAction.SectorRemoval, sector }));
+    peer.send(JSON.stringify({ action: ZMQAction.SectorRemoval, sector }));
   }
 };
 
@@ -180,9 +183,13 @@ mongoose
           break;
         case ZMQAction.SectorNotification:
           awareSectors.set(data.sector, data.sectorKind);
+          serversForSectors.set(data.sector, data.server);
+          await socket.send("OK");
           break;
         case ZMQAction.SectorRemoval:
           awareSectors.delete(data.sector);
+          serversForSectors.delete(data.sector);
+          await socket.send("OK");
           break;
         default:
           console.log("Unknown action", data);

@@ -185,6 +185,7 @@ type SerializedClient = {
 type SectorNotification = {
   sector: number;
   sectorKind: SectorKind;
+  server: string;
 } & {
   action: ZMQAction.SectorNotification;
 };

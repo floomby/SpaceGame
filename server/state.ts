@@ -6,7 +6,7 @@ import { CardinalDirection } from "../src/geometry";
 import { initMarket } from "./market";
 import { NPC } from "../src/npc";
 import { Checkpoint, Station, User } from "./dataModels";
-import { peerMap, waitingData } from "./peers";
+import { awareSectors, peerMap, waitingData } from "./peers";
 import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
 import { ISector, Sector } from "./sector";
 import { HydratedDocument } from "mongoose";
@@ -114,9 +114,6 @@ type SerializableClientData = Omit<ClientData, "sectorsVisited" | "tutorialNPC">
 };
 
 const serializableClientData = (client: ClientData): SerializableClientData => {
-  if (client.inTutorial) {
-    throw new Error("Cannot serialize client data while in tutorial");
-  }
   client = { ...client };
   client.tutorialNpc = undefined;
   (client as any).sectorsVisited = Array.from(client.sectorsVisited);
@@ -138,6 +135,12 @@ const targets: Map<number, [TargetKind, number]> = new Map();
 const secondaries: Map<number, number> = new Map();
 const secondariesToActivate: Map<number, number[]> = new Map();
 const knownRecipes: Map<number, Set<string>> = new Map();
+
+enum ZMQAction {
+  ServerChange,
+  SectorNotification,
+  SectorRemoval,
+}
 
 enum ServerChangeKind {
   Warp,
@@ -162,6 +165,7 @@ const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind
     player,
     key,
     kind,
+    action: ZMQAction.ServerChange,
   });
 };
 
@@ -174,6 +178,21 @@ type SerializedClient = {
   player: Player;
   key: string;
   kind: ServerChangeKind;
+} & {
+  action: ZMQAction.ServerChange;
+};
+
+type SectorNotification = {
+  sector: number;
+  sectorKind: SectorKind;
+} & {
+  action: ZMQAction.SectorNotification;
+};
+
+type SectorRemoval = {
+  sector: number;
+} & {
+  action: ZMQAction.SectorRemoval;
 };
 
 const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
@@ -291,6 +310,7 @@ const initSectors = (serverSectors: number[]) => {
       delayedActions: [],
       sectorKind: SectorKind.Overworld,
     });
+    awareSectors.set(sector, SectorKind.Overworld);
   });
 };
 
@@ -365,7 +385,10 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
 };
 
 export {
+  ZMQAction,
   ServerChangeKind,
+  SectorNotification,
+  SectorRemoval,
   // ClientData,
   // SerializableClientData,
   // serializableClientData,

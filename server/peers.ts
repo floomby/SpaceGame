@@ -1,11 +1,21 @@
 import mongoose from "mongoose";
 import { Reply, Request } from "zeromq";
 import { initFromDatabase } from "./misc";
-import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, sendServerWarp, SerializedClient } from "./state";
+import {
+  initInitialAsteroids,
+  initSectorResourceData,
+  initSectors,
+  initStationTeams,
+  SectorNotification,
+  SectorRemoval,
+  sendServerWarp,
+  SerializedClient,
+  ZMQAction,
+} from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
-import { Player } from "../src/game";
+import { Player, SectorKind } from "../src/game";
 import { mapGraph, mapHeight, mapWidth, peerCount } from "../src/mapLayout";
 import assert from "assert";
 
@@ -130,6 +140,22 @@ const syncPeers = async () => {
 
 const waitingData = new Map<string, SerializedClient>();
 
+const awareSectors = new Map<number, SectorKind>();
+
+const makeNetworkAware = (sector: number, kind: SectorKind) => {
+  awareSectors.set(sector, kind);
+  for (const peer of peerMap.values()) {
+    // peer.send(JSON.stringify({ action: ZMQAction.SectorNotification, sector, sectorKind: kind }));
+  }
+};
+
+const removeNetworkAwareness = (sector: number) => {
+  awareSectors.delete(sector);
+  for (const peer of peerMap.values()) {
+    // peer.send(JSON.stringify({ action: ZMQAction.SectorRemoval, sector }));
+  }
+};
+
 mongoose
   .connect("mongodb://127.0.0.1:27017/SpaceGame", {})
   .catch((err) => {
@@ -146,11 +172,21 @@ mongoose
     setupTimers();
     startWebSocketServer(wsPort);
     for await (const [msg] of socket) {
-      const data = JSON.parse(msg.toString()) as SerializedClient;
-      // console.log("Received data from client", data?.key, name);
-      // console.log(data);
-      waitingData.set(data.key, data);
-      await socket.send(data.key);
+      const data = JSON.parse(msg.toString()) as SerializedClient | SectorNotification | SectorRemoval;
+      switch (data.action) {
+        case ZMQAction.ServerChange:
+          waitingData.set(data.key, data);
+          await socket.send(data.key);
+          break;
+        case ZMQAction.SectorNotification:
+          awareSectors.set(data.sector, data.sectorKind);
+          break;
+        case ZMQAction.SectorRemoval:
+          awareSectors.delete(data.sector);
+          break;
+        default:
+          console.log("Unknown action", data);
+      }
     }
   });
 
@@ -158,4 +194,4 @@ if (wsPort === 8080) {
   Routes();
 }
 
-export { peerMap, waitingData, serversForSectors };
+export { peerMap, waitingData, serversForSectors, awareSectors, makeNetworkAware, removeNetworkAwareness };

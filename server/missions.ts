@@ -20,6 +20,7 @@ import { WebSocket } from "ws";
 import { enemyCountState, flashServerMessage, sendMissionComplete, setMissionTargetForId } from "./stateHelpers";
 import { clearanceNPCsRewards, randomClearanceShip, spawnClearanceNPCs } from "./npcs/clearance";
 import { spawnAssassinationNPC } from "./npcs/assassination";
+import { awareSectors, makeNetworkAware, removeNetworkAwareness } from "./peers";
 
 const Schema = mongoose.Schema;
 
@@ -130,6 +131,7 @@ const removeMissionSector = (sectorId: number, missionId: number) => {
   const sectorNonNPCCount = Array.from(sectors.get(sectorId)?.players.values() || []).filter((p) => p.isPC).length;
   if (sectorNonNPCCount === 0) {
     sectors.delete(sectorId);
+    removeNetworkAwareness(sectorId);
     sectorTriggers.delete(sectorId);
     failMissionIfIncomplete(missionId);
   } else {
@@ -162,7 +164,8 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
     delayedActions: [],
     sectorKind: SectorKind.Mission,
   };
-
+  
+  makeNetworkAware(missionSectorId, SectorKind.Mission);
   sectors.set(missionSector, state);
   if (mission.type === MissionType.Clearance) {
     spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), mission.clearanceShips);

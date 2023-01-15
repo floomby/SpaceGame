@@ -5,6 +5,7 @@ import { WebSocket } from "ws";
 import { sendInventory } from "./inventory";
 import { sendTutorialStage } from "./tutorial";
 import { Station } from "./dataModels";
+import { makeNetworkAware, removeNetworkAwareness } from "./peers";
 
 const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) => {
   let defIndex: number;
@@ -77,13 +78,14 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     sectorKind: SectorKind.Tutorial,
   };
 
+  makeNetworkAware(tutorialSector, SectorKind.Tutorial);
   sectors.set(tutorialSector, state);
   state.players.set(id, player);
 
-  // Idk the right way to handle this right now
-  // Just delete the tutorial sector after a while
+  // This should be refactored a bit to match how mission sectors are cleaned up
   setTimeout(() => {
     sectors.delete(tutorialSector);
+    removeNetworkAwareness(tutorialSector);
     tutorialRespawnPoints.delete(tutorialSector);
   }, 1000 * 60 * 60 * 3);
 

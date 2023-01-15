@@ -18,6 +18,7 @@ import { setupTimers } from "./server";
 import { Player, SectorKind } from "../src/game";
 import { mapGraph, mapHeight, mapWidth, peerCount } from "../src/mapLayout";
 import assert from "assert";
+import { sectors as serverSectors } from "./state";
 
 interface IPeer {
   name: string;
@@ -144,6 +145,10 @@ const syncPeers = async () => {
 const waitingData = new Map<string, SerializedClient>();
 
 const awareSectors = new Map<number, SectorKind>();
+
+for (let i = 0; i < mapWidth * mapHeight; i++) {
+  awareSectors.set(i, SectorKind.Overworld);
+}
 
 const makeNetworkAware = (sector: number, kind: SectorKind) => {
   awareSectors.set(sector, kind);

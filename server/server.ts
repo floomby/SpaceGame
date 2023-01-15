@@ -295,7 +295,7 @@ const warpNonNPCToSector = (ws: WebSocket, player: Player, sector: number) => {
     if (serverName) {
       serverChangePlayer(ws, player, serverName);
     } else {
-      flashServerMessage(player.id, "Server not found for this sector!", [1.0, 0.0, 0.0, 1.0]);
+      flashServerMessage(player.id, `Server not found for this sector! (${sector})`, [1.0, 0.0, 0.0, 1.0]);
     }
   }
 };

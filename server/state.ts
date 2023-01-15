@@ -311,7 +311,6 @@ const initSectors = (serverSectors: number[]) => {
       delayedActions: [],
       sectorKind: SectorKind.Overworld,
     });
-    awareSectors.set(sector, SectorKind.Overworld);
   });
 };
 

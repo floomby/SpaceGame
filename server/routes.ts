@@ -19,6 +19,7 @@ import { maxDecimals } from "../src/geometry";
 import { genMissions, Mission } from "./missions";
 import { canFriendRequest, FriendRequest } from "./friends";
 import { findPlayer } from "./stateHelpers";
+import { awareSectors } from "./peers";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -155,7 +156,12 @@ app.get("/currentSectorOfPlayer", async (req, res) => {
   }
   const id = parseInt(idParam);
   const user = await User.findOne({ id });
-  res.send(JSON.stringify({ value: findPlayer(id) }));
+  const awareness = awareSectors.get(user?.currentSector ?? -1);
+  if (awareness === undefined) {
+    res.send(JSON.stringify({ value: null }));
+    return;
+  }
+  res.send(JSON.stringify({ value: { sectorNumber: user?.currentSector, sectorKind: awareness } }));
 });
 
 app.get("/nameOf", (req, res) => {

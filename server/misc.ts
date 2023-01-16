@@ -144,7 +144,6 @@ const initFromDatabase = async () => {
       slotData: [],
       team: station.team,
       side: 0,
-      isPC: true,
       v: { x: 0, y: 0 },
       iv: { x: 0, y: 0 },
       ir: 0,

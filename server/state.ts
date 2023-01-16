@@ -142,7 +142,7 @@ enum ServerChangeKind {
   Spawn,
 }
 
-const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind: ServerChangeKind): SerializedClient | null => {
+const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind: ServerChangeKind): SerializableClient | null => {
   const client = clients.get(ws);
   if (!client) return null;
   const target = targets.get(client.id);
@@ -162,7 +162,7 @@ const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind
   };
 };
 
-type SerializedClient = {
+type SerializableClient = {
   clientData: SerializableClientData;
   target: [TargetKind, number] | undefined;
   secondary: number | undefined;
@@ -173,7 +173,7 @@ type SerializedClient = {
   kind: ServerChangeKind;
 };
 
-const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
+const deserializeClientData = (ws: WebSocket, data: SerializableClient) => {
   const client = repairClientData(data.clientData);
   const sector = sectors.get(client.currentSector);
   if (!sector) {
@@ -439,6 +439,7 @@ const transferSectorToPeer = (sector: number, peer: string) => {
       if (success === "OK") {
         resolve();
         sectors.delete(sector);
+        console.log("Number of players in sector is now: " + state.players.size);
         while (state.players.size > 0) {
           const player = state.players.values().next().value;
           state.players.delete(player.id);
@@ -447,7 +448,21 @@ const transferSectorToPeer = (sector: number, peer: string) => {
               const ws = idToWebsocket.get(player.id);
               if (ws) {
                 serverChangePlayer(ws, player, peerSockets.name);
+              } else {
+                console.log("Missing websocket for player: " + player.id);
               }
+              continue;
+            }
+            console.log("Transferring station: " + player.id);
+            const def = defs[player.defIndex];
+            if (def.kind === UnitKind.Station) {
+              player.sector = sector;
+              peerSockets.request.send("station-transfer", player, (success: string) => {
+                if (success !== "OK") {
+                  console.log("Error transferring station: " + success);
+                }
+              });
+              continue;
             }
           }
         }
@@ -459,14 +474,28 @@ const transferSectorToPeer = (sector: number, peer: string) => {
   return promise;
 };
 
+type SerializablePlayer = Player & { sector: number }
+
+const insertStation = (station: SerializablePlayer) => {
+  console.log("Inserting station: " + station.id);
+  const state = sectors.get(station.sector);
+  if (!state) {
+    return "Sector not on this server: " + station.sector;
+  }
+  delete (station as any).sector;
+  state.players.set(station.id, station);
+  return "OK";
+}
+
 export {
   ServerChangeKind,
   // ClientData,
   // SerializableClientData,
   // serializableClientData,
   // repairClientData,
-  SerializedClient,
+  SerializableClient,
   SerializableGlobalState,
+  SerializablePlayer,
   deserializeClientData,
   sectorList,
   sectorAsteroidResources,
@@ -499,4 +528,5 @@ export {
   stationIdToDefaultTeam,
   insertSector,
   transferSectorToPeer,
+  insertStation,
 };

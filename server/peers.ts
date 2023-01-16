@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { initFromDatabase } from "./misc";
-import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, insertSector, sendServerWarp, SerializableGlobalState, SerializedClient } from "./state";
+import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, insertSector, sendServerWarp, SerializableGlobalState, SerializableClient, SerializablePlayer, insertStation } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
@@ -173,7 +173,7 @@ const syncPeers = async () => {
   }
 };
 
-const waitingData = new Map<string, SerializedClient>();
+const waitingData = new Map<string, SerializableClient>();
 
 const awareSectors = new Map<number, SectorKind>();
 const playerSectors = new Map<number, number>();
@@ -212,9 +212,10 @@ mongoose
     initInitialAsteroids();
     setupTimers();
     startWebSocketServer(wsPort);
-    repSocket.on("message", async (topic: string, data: SerializedClient | SerializableGlobalState, reply: (data: any) => void) => {
+    repSocket.on("message", async (topic: string, data: SerializableClient | SerializableGlobalState | SerializablePlayer, reply: (data: any) => void) => {
+      console.log("Got message: " + topic);
       if (topic === "player-transfer") {
-        data = data as SerializedClient;
+        data = data as SerializableClient;
         waitingData.set(data.key, data);
         reply(data.key);
         return;
@@ -222,6 +223,11 @@ mongoose
       if (topic === "sector-transfer") {
         console.log("Sector transfer");
         reply(insertSector(data as SerializableGlobalState));
+        return;
+      }
+      if (topic === "station-transfer") {
+        console.log("Station transfer");
+        reply(insertStation(data as SerializablePlayer));
         return;
       }
       console.log("Unknown topic: " + topic);

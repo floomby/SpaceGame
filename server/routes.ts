@@ -19,7 +19,7 @@ import { maxDecimals } from "../src/geometry";
 import { genMissions, Mission } from "./missions";
 import { canFriendRequest, FriendRequest } from "./friends";
 import { findPlayer } from "./stateHelpers";
-import { awareSectors } from "./peers";
+import { awareSectors, playerSectors } from "./peers";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -148,20 +148,24 @@ app.get("/clearAllFriendsAndRequests", async (req, res) => {
 });
 
 // UNSAFE
-app.get("/currentSectorOfPlayer", async (req, res) => {
+app.get("/currentSectorOfPlayer", (req, res) => {
   const idParam = req.query.id;
   if (!idParam || typeof idParam !== "string") {
     res.send(JSON.stringify({ error: "Invalid id" }));
     return;
   }
   const id = parseInt(idParam);
-  const user = await User.findOne({ id });
-  const awareness = awareSectors.get(user?.currentSector ?? -1);
+  const sector = playerSectors.get(id);
+  if (sector === undefined) {
+    res.send(JSON.stringify({ value: null }));
+    return;
+  }
+  const awareness = awareSectors.get(sector);
   if (awareness === undefined) {
     res.send(JSON.stringify({ value: null }));
     return;
   }
-  res.send(JSON.stringify({ value: { sectorNumber: user?.currentSector, sectorKind: awareness } }));
+  res.send(JSON.stringify({ value: { sectorNumber: sector, sectorKind: awareness } }));
 });
 
 app.get("/nameOf", (req, res) => {

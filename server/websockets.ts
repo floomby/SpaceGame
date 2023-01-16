@@ -114,18 +114,6 @@ export function startWebSocketServer(wsPort: number) {
             idToWebsocket.set(user.id, ws);
 
             assignPlayerIdToConnection(ipAddr, user.id);
-            
-            if (!user.sectorsVisited) {
-              if (user.currentSector >= 0 && user.currentSector < mapWidth * mapHeight) {
-                user.sectorsVisited = [user.currentSector];
-              } else {
-                user.sectorsVisited = [];
-              }
-            }
-            const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
-            if (user.currentSector >= 0 && user.currentSector < mapWidth * mapHeight) {
-              sectorsVisited.add(user.currentSector);
-            }
 
             user.loginCount++;
             user.loginTimes.push(Date.now());
@@ -144,6 +132,18 @@ export function startWebSocketServer(wsPort: number) {
               if (!checkpoint) {
                 setupPlayer(user.id, ws, name, user.faction);
               } else {
+                if (!user.sectorsVisited) {
+                  if (checkpoint.sector >= 0 && checkpoint.sector < mapWidth * mapHeight) {
+                    user.sectorsVisited = [checkpoint.sector];
+                  } else {
+                    user.sectorsVisited = [];
+                  }
+                }
+                const sectorsVisited: Set<number> = new Set(user.sectorsVisited);
+                if (checkpoint.sector >= 0 && checkpoint.sector < mapWidth * mapHeight) {
+                  sectorsVisited.add(checkpoint.sector);
+                }
+
                 clients.set(ws, {
                   id: user.id,
                   name,

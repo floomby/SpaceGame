@@ -5,6 +5,7 @@ import { findPlayer, flashServerMessage, setMissionTargetForId } from "./stateHe
 import { idToWebsocket } from "./state";
 import { MissionType, Player, SectorKind } from "../src/game";
 import { Mission } from "./missions";
+import { playerSectors } from "./peers";
 
 const Schema = mongoose.Schema;
 
@@ -226,7 +227,7 @@ const friendWarp = async (ws: WebSocket, player: Player, friend: number) => {
       ws.send({ type: "error", payload: { message: "Failed to warp to friend (not friends)" } });
       throw new Error("Failed to warp to friend (not friends)");
     }
-    const where = user.currentSector;
+    const where = playerSectors.get(friend);
     if (!where) {
       flashServerMessage(player.id, "Failed to warp to friend (not online)", [1.0, 0.0, 0.0, 1.0]);
       return;

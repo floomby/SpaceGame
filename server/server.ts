@@ -44,7 +44,7 @@ import {
 } from "./state";
 import { CardinalDirection, mirrorAngleHorizontally, mirrorAngleVertically } from "../src/geometry";
 import { allyCount, enemyCount, flashServerMessage } from "./stateHelpers";
-import { serversForSectors } from "./peers";
+import { serversForSectors, setPlayerSector } from "./peers";
 import { WebSocket } from "ws";
 import { User } from "./dataModels";
 import { mapGraph, mapHeight, mapWidth } from "../src/mapLayout";
@@ -269,12 +269,7 @@ const respawnEmptyAsteroids = (state: GlobalState, sector: number) => {
 };
 
 const warpNonNPCToSector = (ws: WebSocket, player: Player, sector: number) => {
-  User.findOneAndUpdate({ id: player.id }, { currentSector: sector }, (err, doc) => {
-    if (err) {
-      console.log("Warning: unable to update user sector", err);
-      return;
-    }
-  });
+  setPlayerSector(player.id, sector);
   const state = sectors.get(sector);
   if (state) {
     ws.send(
@@ -332,6 +327,7 @@ const insertRespawnedPlayer = (ws: WebSocket, player: Player, sector: number) =>
 };
 
 const respawnPlayer = (ws: WebSocket, player: Player, sector: number) => {
+  setPlayerSector(player.id, sector);
   if (sectors.has(sector)) {
     insertRespawnedPlayer(ws, player, sector);
   } else {
@@ -389,6 +385,7 @@ const insertSpawnedPlayer = (ws: WebSocket, player: Player, sector: number) => {
 };
 
 const spawnPlayer = (ws: WebSocket, player: Player, sector: number) => {
+  setPlayerSector(player.id, sector);
   if (sectors.has(sector)) {
     insertSpawnedPlayer(ws, player, sector);
   } else {

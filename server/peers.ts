@@ -129,18 +129,24 @@ const syncPeers = async () => {
     subscriber.connect(`tcp://${peer.ip}:${peer.pubPort}`);
     subscriber.subscribe("sector-notification");
     subscriber.subscribe("sector-removal");
+    subscriber.subscribe("player-sector");
     subscriber.on("message", (topic, data) => {
       if (topic === "sector-notification") {
         const sector = data.sector;
         const server = data.server;
         serversForSectors.set(sector, server);
-        awareSectors.set(sector, data.kind);
+        awareSectors.set(sector, data.sectorKind);
         return;
       }
       if (topic === "sector-removal") {
         const sector = data.sector;
         serversForSectors.delete(sector);
         awareSectors.delete(sector);
+        return;
+      }
+      if (topic === "player-sector") {
+        console.log("Got player sector", data);
+        playerSectors.set(data.id, data.sector);
         return;
       }
     });
@@ -172,6 +178,7 @@ const syncPeers = async () => {
 const waitingData = new Map<string, SerializedClient>();
 
 const awareSectors = new Map<number, SectorKind>();
+const playerSectors = new Map<number, number>();
 
 for (let i = 0; i < mapWidth * mapHeight; i++) {
   awareSectors.set(i, SectorKind.Overworld);
@@ -185,6 +192,12 @@ const makeNetworkAware = (sector: number, kind: SectorKind) => {
 const removeNetworkAwareness = (sector: number) => {
   awareSectors.delete(sector);
   pubSocket.send("sector-removal", { sector });
+};
+
+const setPlayerSector = (id: number, sector: number) => {
+  // console.log("Setting player sector", id, sector);
+  playerSectors.set(id, sector);
+  pubSocket.send("player-sector", { id, sector });
 };
 
 mongoose
@@ -212,8 +225,4 @@ if (wsPort === 8080) {
   Routes();
 }
 
-setInterval(() => {
-  console.log(`${name} knows about `, Array.from(awareSectors.keys()));
-}, 30 * 1000);
-
-export { peerMap, waitingData, serversForSectors, awareSectors, makeNetworkAware, removeNetworkAwareness };
+export { peerMap, waitingData, serversForSectors, awareSectors, playerSectors, makeNetworkAware, removeNetworkAwareness, setPlayerSector };

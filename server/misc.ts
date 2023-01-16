@@ -5,7 +5,7 @@ import { WebSocket } from "ws";
 import { sendInventory } from "./inventory";
 import { sendTutorialStage } from "./tutorial";
 import { Station } from "./dataModels";
-import { makeNetworkAware, removeNetworkAwareness } from "./peers";
+import { makeNetworkAware, removeNetworkAwareness, setPlayerSector } from "./peers";
 import { createIsolatedSector, removeContiguousSubgraph } from "../src/sectorGraph";
 import { mapGraph } from "../src/mapLayout";
 
@@ -85,6 +85,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   // createIsolatedSector(mapGraph, tutorialSector);
   sectors.set(tutorialSector, state);
   state.players.set(id, player);
+  setPlayerSector(id, tutorialSector);
 
   // This should be refactored a bit to match how mission sectors are cleaned up
   setTimeout(() => {

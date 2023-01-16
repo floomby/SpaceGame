@@ -1,12 +1,12 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, sectorBounds, TutorialStage, removeCargoFractions, SectorKind } from "../src/game";
+import { GlobalState, Input, Player, randomAsteroids, TargetKind, sectorBounds, TutorialStage, removeCargoFractions, SectorKind, Ballistic, Asteroid, Missile, Collectable, Mine } from "../src/game";
 import { WebSocket } from "ws";
 import { defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
 import { initMarket } from "./market";
 import { NPC } from "../src/npc";
 import { Checkpoint, Station, User } from "./dataModels";
-import { awareSectors, peerMap, waitingData } from "./peers";
+import { awareSectors, peerMap, PeerSockets, waitingData } from "./peers";
 import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
 import { ISector, Sector } from "./sector";
 import { HydratedDocument } from "mongoose";
@@ -249,7 +249,7 @@ const serverChangePlayer = (ws: WebSocket, player: Player, serverName: string, k
     console.warn("No server for", serverName);
     return;
   }
-  server.request.send("player-transfer", serialized, (key) => {
+  server.request.send("player-transfer", serialized, (key: string) => {
     console.log(`Received key from ${server.name}`, key);
     sendServerWarp(key, `ws://${server.ip}:${server.port}`);
   });
@@ -368,6 +368,84 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
   });
 };
 
+type SerializableGlobalState = {
+  // Players handled separately
+  projectiles: Ballistic[];
+  asteroids: Asteroid[];
+  missiles: Missile[];
+  collectables: Collectable[];
+  mines: Mine[];
+  asteroidsDirty?: boolean;
+  projectileId?: number;
+  // delayedActions?: DelayedAction[];
+  sectorKind?: SectorKind;
+  sectorNumber: number;
+};
+
+const serializeGlobalState = (state: GlobalState, sectorNumber: number): SerializableGlobalState => {
+  return {
+    projectiles: Array.from(state.projectiles.values()),
+    asteroids: Array.from(state.asteroids.values()),
+    missiles: Array.from(state.missiles.values()),
+    collectables: Array.from(state.collectables.values()),
+    mines: Array.from(state.mines.values()),
+    asteroidsDirty: state.asteroidsDirty,
+    projectileId: state.projectileId,
+    // delayedActions: state.delayedActions,
+    sectorKind: state.sectorKind,
+    sectorNumber,
+  };
+};
+
+const deserializeGlobalState = (state: SerializableGlobalState): GlobalState => {
+  return {
+    players: new Map(),
+    projectiles: new Map(state.projectiles.map((p) => [p.id, p])),
+    asteroids: new Map(state.asteroids.map((a) => [a.id, a])),
+    missiles: new Map(state.missiles.map((m) => [m.id, m])),
+    collectables: new Map(state.collectables.map((c) => [c.id, c])),
+    mines: new Map(state.mines.map((m) => [m.id, m])),
+    asteroidsDirty: state.asteroidsDirty || false,
+    projectileId: state.projectileId || 1,
+    delayedActions: [],
+    sectorKind: state.sectorKind || SectorKind.Overworld,
+  };
+};
+
+const insertSector = (state: SerializableGlobalState) => {
+  if (sectors.has(state.sectorNumber)) {
+    return "Sector already exists on this server";
+  }
+  const repairedState = deserializeGlobalState(state);
+  sectors.set(state.sectorNumber, repairedState);
+  return "OK";
+};
+
+const transferSectorToPeer = (sector: number, peer: string) => {
+  const promise = new Promise<void>((resolve, reject) => {
+    const state = sectors.get(sector);
+    if (!state) {
+      // TODO: We can handle this problem better
+      reject("Sector not on this server");
+      return;
+    }
+    const serializableState = serializeGlobalState(state, sector);
+    const peerSockets = peerMap.get(peer);
+    if (!peerSockets) {
+      reject("Peer not found");
+      return;
+    }
+    peerSockets.request.send("sector-transfer", serializableState, (success: string) => {
+      if (success === "OK") {
+        resolve();
+      } else {
+        reject("Transfer failed: " + success);
+      }
+    });
+  });
+  return promise;
+};
+
 export {
   ServerChangeKind,
   // ClientData,
@@ -375,6 +453,7 @@ export {
   // serializableClientData,
   // repairClientData,
   SerializedClient,
+  SerializableGlobalState,
   deserializeClientData,
   sectorList,
   sectorAsteroidResources,
@@ -405,4 +484,6 @@ export {
   initSectorResourceData,
   initStationTeams,
   stationIdToDefaultTeam,
+  insertSector,
+  transferSectorToPeer,
 };

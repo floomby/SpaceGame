@@ -9,8 +9,8 @@ import cors from "cors";
 import { User, Station } from "./dataModels";
 import { addNpc } from "../src/npc";
 import { market } from "./market";
-import { clients, friendlySectors, idToWebsocket, /* sectorFactions, sectorHasStarbase, */ sectorList, sectors, uid } from "./state";
-import { adminHash, hash, httpPort, sniCallback } from "./settings";
+import { clients, friendlySectors, idToWebsocket, /* sectorFactions, sectorHasStarbase, */ sectorList, sectors, transferSectorToPeer, uid } from "./state";
+import { adminHash, hash, sniCallback } from "./settings";
 import { recipeMap, recipes } from "../src/recipes";
 import { isFreeArm } from "../src/defs/armaments";
 import { createReport, generatePlayedIntervals, statEpoch, sumIntervals } from "./reports";
@@ -19,7 +19,7 @@ import { maxDecimals } from "../src/geometry";
 import { genMissions, Mission } from "./missions";
 import { canFriendRequest, FriendRequest } from "./friends";
 import { findPlayer } from "./stateHelpers";
-import { awareSectors, playerSectors } from "./peers";
+import { awareSectors, peerMap, playerSectors } from "./peers";
 
 // Http server stuff
 const root = resolve(__dirname + "/..");
@@ -729,7 +729,21 @@ app.get("/selectedMissions", async (req, res) => {
   res.send(JSON.stringify(missions));
 });
 
-export default () => {
+app.get("/transferSector", (req, res) => {
+  const sectorParam = req.query.sector;
+  const toParam = req.query.to;
+  if (!sectorParam || typeof sectorParam !== "string" || !toParam || typeof toParam !== "string") {
+    res.send("Invalid get parameters");
+    return;
+  }
+  transferSectorToPeer(parseInt(sectorParam), toParam).then(() => {
+    res.send("Transfer complete");
+  }).catch((err) => {
+    res.send("Transfer failed: " + err);
+  });
+});
+
+export default (port: number) => {
   app.use(cors());
   if (useSsl) {
     app.use(express.static("resources"));
@@ -737,15 +751,15 @@ export default () => {
 
     const httpsServer = new https.Server({ SNICallback: sniCallback}, app);
 
-    httpsServer.listen(httpPort, () => {
-      console.log(`Running secure http server on port ${httpPort}`);
+    httpsServer.listen(port, () => {
+      console.log(`Running secure http server on port ${port}`);
     });
   } else {
     app.use(express.static(".."));
 
     const httpServer = createServer(app);
-    httpServer.listen(httpPort, () => {
-      console.log(`Running unsecure http server on port ${httpPort}`);
+    httpServer.listen(port, () => {
+      console.log(`Running unsecure http server on port ${port}`);
     });
   }
 };

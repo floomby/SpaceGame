@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { initFromDatabase } from "./misc";
-import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, sendServerWarp, SerializedClient } from "./state";
+import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, insertSector, sendServerWarp, SerializableGlobalState, SerializedClient } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
@@ -58,6 +58,7 @@ const pubPort = process.argv[4];
 // For development
 const ip = "127.0.0.1";
 const wsPort = parseInt(process.argv[5]);
+const httpPort = wsPort + 1;
 
 const peerNumber = parseInt(process.argv[6]);
 assert(peerNumber >= 0 && peerNumber < peerCount);
@@ -192,7 +193,6 @@ const removeNetworkAwareness = (sector: number) => {
 };
 
 const setPlayerSector = (id: number, sector: number) => {
-  // console.log("Setting player sector", id, sector);
   playerSectors.set(id, sector);
   pubSocket.send("player-sector", { id, sector });
 };
@@ -212,17 +212,21 @@ mongoose
     initInitialAsteroids();
     setupTimers();
     startWebSocketServer(wsPort);
-    repSocket.on("message", async (topic: string, data: SerializedClient, reply: (data: string) => void) => {
+    repSocket.on("message", async (topic: string, data: SerializedClient | SerializableGlobalState, reply: (data: any) => void) => {
       if (topic === "player-transfer") {
+        data = data as SerializedClient;
         waitingData.set(data.key, data);
         reply(data.key);
         return;
       }
+      if (topic === "sector-transfer") {
+        console.log("Sector transfer");
+        reply(insertSector(data as SerializableGlobalState));
+      }
+      console.log("Unknown topic: " + topic);
     });
   });
 
-if (wsPort === 8080) {
-  Routes();
-}
+Routes(httpPort);
 
-export { peerMap, waitingData, serversForSectors, awareSectors, playerSectors, makeNetworkAware, removeNetworkAwareness, setPlayerSector };
+export { PeerSockets, peerMap, waitingData, serversForSectors, awareSectors, playerSectors, makeNetworkAware, removeNetworkAwareness, setPlayerSector };

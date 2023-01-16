@@ -249,7 +249,7 @@ const serverChangePlayer = (ws: WebSocket, player: Player, serverName: string, k
     console.warn("No server for", serverName);
     return;
   }
-  server.request.send(serialized, (key) => {
+  server.request.send("player-transfer", serialized, (key) => {
     console.log(`Received key from ${server.name}`, key);
     sendServerWarp(key, `ws://${server.ip}:${server.port}`);
   });

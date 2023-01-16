@@ -1,7 +1,7 @@
 ### Broken by new multi server system
 
-- Current player information
-- NPCs
+- Current player information (works except logout)
+- NPC sector changing
 - Guardians
 - Deployment
 - Alternative background

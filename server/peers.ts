@@ -18,7 +18,6 @@ interface IPeer {
   pubPort: number;
   wsPort: number;
   updated: Date;
-  sectors: number[];
 }
 
 const peerSchema = new mongoose.Schema<IPeer>({
@@ -47,10 +46,6 @@ const peerSchema = new mongoose.Schema<IPeer>({
     type: Date,
     expires: "2m",
     default: Date.now,
-  },
-  sectors: {
-    type: [Number],
-    default: [],
   },
 });
 
@@ -105,6 +100,9 @@ const setupSelf = async () => {
   pubSocket.bind(`tcp://0.0.0.0:${pubPort}`);
 
   syncPeers();
+  setTimeout(() => {
+    syncPeers();
+  }, 4 * 1000);
   interval = setInterval(() => {
     setPeer();
     syncPeers();
@@ -116,6 +114,9 @@ const serversForSectors = new Map<number, string>();
 // Roughly keeps things synced
 const syncPeers = async () => {
   const peers = await Peer.find({ name: { $ne: name } });
+  for (const [sector, state] of serverSectors) {
+    makeNetworkAware(sector, state.sectorKind!);
+  }
   peers.forEach(async (peer) => {
     if (peerMap.has(peer.name)) {
       return;
@@ -145,16 +146,12 @@ const syncPeers = async () => {
         return;
       }
       if (topic === "player-sector") {
-        console.log("Got player sector", data);
         playerSectors.set(data.id, data.sector);
         return;
       }
     });
 
     peerMap.set(peer.name, { request, subscriber, ip: peer.ip, port: peer.wsPort, name: peer.name });
-    peer.sectors.forEach((sector) => {
-      serversForSectors.set(sector, peer.name);
-    });
   });
   for (const name of peerMap.keys()) {
     if (!peers.find((peer) => peer.name === name)) {
@@ -215,9 +212,12 @@ mongoose
     initInitialAsteroids();
     setupTimers();
     startWebSocketServer(wsPort);
-    repSocket.on("message", async (data: SerializedClient, reply: (data: string) => void) => {
-      waitingData.set(data.key, data);
-      reply(data.key);
+    repSocket.on("message", async (topic: string, data: SerializedClient, reply: (data: string) => void) => {
+      if (topic === "player-transfer") {
+        waitingData.set(data.key, data);
+        reply(data.key);
+        return;
+      }
     });
   });
 

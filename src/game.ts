@@ -18,6 +18,7 @@ import {
   mineDefs,
   AsteroidDef,
 } from "./defs";
+import { DelayedAction, delayedActionDefMap } from "./defs/delayedAction";
 import { projectileDefs } from "./defs/projectiles";
 import {
   Circle,
@@ -39,6 +40,7 @@ import {
   pointInRectangle,
   canonicalizeAngle,
 } from "./geometry";
+import { ResourceDensity } from "./mapLayout";
 import { NPC } from "./npc";
 import { seek } from "./pathing";
 import { sfc32 } from "./prng";
@@ -279,11 +281,6 @@ type EffectTrigger = {
   effectIndex: number;
   from?: EffectAnchor;
   to?: EffectAnchor;
-};
-
-type DelayedAction = {
-  frames: number;
-  action: (applyEffect: (trigger: EffectTrigger) => void) => void;
 };
 
 enum SectorKind {
@@ -608,7 +605,7 @@ const update = (
     const action = state.delayedActions[i];
     action.frames--;
     if (action.frames <= 0) {
-      action.action(applyEffect);
+      delayedActionDefMap.get(action.action)(state, applyEffect, action.data);
       state.delayedActions.splice(i, 1);
       i--;
     }
@@ -1226,7 +1223,7 @@ const randomAsteroids = (
   bounds: Rectangle,
   seed: number,
   uid: () => number,
-  typeDensities: { resource: string; density: number }[],
+  typeDensities: ResourceDensity[],
   stations: Player[]
 ) => {
   if (asteroidDefs.length === 0) {
@@ -1516,19 +1513,6 @@ const randomNearbyPointInSector = (point: Position, distance: number) => {
   return ret;
 };
 
-const isValidSectorInDirection = (sector: number, direction: CardinalDirection) => {
-  if (direction === CardinalDirection.Up) {
-    return sector >= mapSize;
-  } else if (direction === CardinalDirection.Down) {
-    return sector < mapSize * (mapSize - 1);
-  } else if (direction === CardinalDirection.Left) {
-    return sector % mapSize !== 0;
-  } else if (direction === CardinalDirection.Right) {
-    return sector % mapSize !== mapSize - 1;
-  }
-  return false;
-};
-
 type SectorInfo = {
   sector: number;
   resources: string[];
@@ -1639,7 +1623,6 @@ export {
   effectiveInfinity,
   serverMessagePersistTime,
   // clientMineDeploymentUpdater,
-  isValidSectorInDirection,
   sectorBounds,
   sectorDelta,
   mapSize,

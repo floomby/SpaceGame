@@ -1,4 +1,4 @@
-import { connect, bindAction, sendDock, sendTarget, sendSecondary, sendAngle, sendRepair, sendTutorialStageComplete } from "./net";
+import { connect, bindAction, sendDock, sendTarget, sendSecondary, sendAngle, sendRepair, sendTutorialStageComplete, changeServers, sendServerHopKey } from "./net";
 import {
   Player,
   Ballistic,
@@ -355,12 +355,7 @@ const initMine = (mine: Mine) => {
   mine.pitch = Math.random();
 };
 
-const run = () => {
-  addLoadingText("Initializing client game state");
-  initBlankState();
-
-  addLoadingText("Binding network handlers");
-
+const bindAllActions = () => {
   bindAction(
     "init",
     (data: {
@@ -432,8 +427,6 @@ const run = () => {
   bindAction("error", (data: { message: string }) => {
     console.error("Error from server: " + data.message);
   });
-
-  bindDockingUpdaters();
 
   bindAction("state", (data: any) => {
     state.players.clear();
@@ -533,7 +526,6 @@ const run = () => {
         initMine(mine);
         state.mines.set(mine.id, mine);
       }
-      // initStars(data.to);
       clearEffects();
       setCurrentSector(data.to);
       setCurrentSectorText();
@@ -582,9 +574,6 @@ const run = () => {
     }
   });
 
-  bindManufacturingUpdaters();
-  bindInventoryUpdaters();
-
   bindAction("inventory", (entries: CargoEntry[]) => {
     clearInventory();
     for (const entry of entries) {
@@ -627,8 +616,28 @@ const run = () => {
   bindAction("setMissionTarget", (targetId) => {
     setMissionTargetId(targetId);
   });
+
+  bindAction("changeServers", (data: { to: string, key: string }) => {
+    changeServers(data.to, () => {
+      bindAllActions();
+      sendServerHopKey(data.key);
+    });
+  });
+};
+
+const run = () => {
+  addLoadingText("Initializing client game state");
+  initBlankState();
+
+  addLoadingText("Binding network handlers");
+  bindAllActions();
   
+  bindDockingUpdaters();
+
   bindPostUpdater("arms", rasterizeWeaponText);
+
+  bindManufacturingUpdaters();
+  bindInventoryUpdaters();
 
   addLoadingText("Launching...");
   displayLoginDialog();

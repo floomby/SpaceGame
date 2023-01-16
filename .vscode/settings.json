@@ -15,9 +15,12 @@
     "Prifecite",
     "Prifetium",
     "rasterization",
+    "Reconstructors",
+    "Respawned",
     "Russanite",
     "Russium",
     "unselectable",
+    "websockets",
     "Zirathium"
   ],
   "files.associations": {

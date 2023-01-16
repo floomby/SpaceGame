@@ -3,9 +3,10 @@ import { hasArm } from "./defs/armaments";
 import { peekTag } from "./dialog";
 import { sectorNumberToXY } from "./dialogs/map";
 import { pushMessage, rasterizeWeaponText } from "./2dDrawing";
-import { availableCargoCapacity, mapSize, TutorialStage } from "./game";
+import { availableCargoCapacity, TutorialStage } from "./game";
 import { currentSector, faction, inventory, keybind, lastSelf, selectedSecondary, state } from "./globals";
 import { targetAsteroidId, targetId } from "./index";
+import { mapHeight, mapWidth } from "./mapLayout";
 
 let promptInterval: number;
 let promptTimeout: number;
@@ -58,7 +59,7 @@ tutorialCheckers.set(TutorialStage.LaserBeam, () => {
 });
 
 tutorialCheckers.set(TutorialStage.Map, () => {
-  return currentSector < mapSize * mapSize;
+  return currentSector < mapWidth * mapHeight;
 });
 
 tutorialCheckers.set(TutorialStage.Dock, () => {

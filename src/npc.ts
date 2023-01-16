@@ -9,16 +9,18 @@ import {
   findHeadingBetween,
   GlobalState,
   Input,
-  isValidSectorInDirection,
-  mapSize,
   Player,
   randomNearbyPointInSector,
   sectorBounds,
   sectorDelta,
 } from "./game";
 import { findInterceptAimingHeading, findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "./geometry";
+import { mapHeight, mapWidth } from "./mapLayout";
 import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
+import { sfc32 } from "./prng";
 import { recipeMap } from "./recipes";
+
+const npcReconstructors: Map<string, (player: Player) => NPC> = new Map();
 
 interface NPC {
   player: Player;
@@ -102,6 +104,7 @@ const passiveGoToRandomValidNeighboringSector = () => {
     process = (state: GlobalState, npc: NPC, sector: number, target: Player | undefined) => {
       if (this.memory.startSector === undefined) {
         this.memory.startSector = sector;
+        // ???? Brain tired, fix later
         let valid = false;
         while (!valid) {
           if (Math.random() < 0.5) {
@@ -113,7 +116,7 @@ const passiveGoToRandomValidNeighboringSector = () => {
           if (direction === null) {
             continue;
           }
-          valid = isValidSectorInDirection(sector, direction);
+          valid = true;
         }
       }
       const newState = this.checkTransitions(state, npc, target);
@@ -448,7 +451,7 @@ const makeBasicStateGraph = (
     ? runAwayWithStrafing(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot)
     : runAway(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
   const warpAway = warpTo(friendlySectors);
-  const randomWarp = warpTo(new Array(mapSize * mapSize).fill(0).map((_, i) => i));
+  const randomWarp = warpTo(new Array(mapWidth * mapHeight).fill(0).map((_, i) => i));
   idle.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoTo });
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoToSector });
@@ -531,90 +534,122 @@ class ActiveSwarmer implements NPC {
 
   public friendlySectors: number[] = [];
 
-  constructor(what: string | number, team: number | Faction, id: number, friendlySectors: number[]) {
-    let defIndex: number;
+  constructor(what: string | number | Player, team?: number | Faction, id?: number, friendlySectors?: number[]) {
+    let noEquip = false;
     let def: UnitDefinition;
-    if (typeof what === "string") {
-      const value = defMap.get(what);
-      if (value) {
-        defIndex = value.index;
-        def = value.def;
-      } else {
-        throw new Error(`Unknown NPC type: ${what}`);
-      }
+    if (typeof what === "object") {
+      this.player = what;
+      noEquip = true;
+      def = defs[what.defIndex];
     } else {
-      defIndex = what;
-      def = defs[defIndex];
+      let defIndex: number;
+      if (typeof what === "string") {
+        const value = defMap.get(what);
+        if (value) {
+          defIndex = value.index;
+          def = value.def;
+        } else {
+          throw new Error(`Unknown NPC type: ${what}`);
+        }
+      } else {
+        defIndex = what;
+        def = defs[defIndex];
+      }
+      this.player = {
+        position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
+        radius: defs[defIndex].radius,
+        speed: 0,
+        heading: Math.random() * 2 * Math.PI,
+        health: defs[defIndex].health,
+        id: id,
+        sinceLastShot: [effectiveInfinity],
+        energy: defs[defIndex].energy,
+        defIndex: defIndex,
+        arms: emptyLoadout(defIndex),
+        slotData: emptySlotData(def),
+        cargo: [],
+        credits: 500,
+        npc: this,
+        warping: -defs[defIndex].warpTime,
+        team,
+        v: { x: 0, y: 0 },
+        iv: { x: 0, y: 0 },
+        ir: 0,
+        side: 0,
+      };
     }
-    this.player = {
-      position: { x: Math.random() * 5000 - 2500, y: Math.random() * 5000 - 2500 },
-      radius: defs[defIndex].radius,
-      speed: 0,
-      heading: Math.random() * 2 * Math.PI,
-      health: defs[defIndex].health,
-      id: id,
-      sinceLastShot: [effectiveInfinity],
-      energy: defs[defIndex].energy,
-      defIndex: defIndex,
-      arms: emptyLoadout(defIndex),
-      slotData: emptySlotData(def),
-      cargo: [],
-      credits: 500,
-      npc: this,
-      warping: -defs[defIndex].warpTime,
-      team,
-      v: { x: 0, y: 0 },
-      iv: { x: 0, y: 0 },
-      ir: 0,
-      side: 0,
-    };
+
+    let prng = sfc32(id % 10000, 4398, this.player.defIndex, 6987);
 
     let mineSlot = def.slots.indexOf(SlotKind.Mine);
     if (mineSlot === -1) {
       mineSlot = null;
     } else {
-      this.player = equip(this.player, mineSlot, "Proximity Mine", true);
+      if (!noEquip) {
+        this.player = equip(this.player, mineSlot, "Proximity Mine", true);
+      }
     }
 
     const isStrafer = def.name === "Strafer";
 
-    switch (Math.floor(Math.random() * 12)) {
+    // TEMPORARY
+    if (!friendlySectors) {
+      friendlySectors = [0, 1];
+    }
+
+    switch (Math.floor(prng() * 12)) {
       case 0:
       case 1:
       case 2:
-        this.player = equip(this.player, 1, "Javelin Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Javelin Missile", true);
+        }
         this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 3:
       case 4:
-        this.player = equip(this.player, 1, "Tomahawk Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Tomahawk Missile", true);
+        }
         this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 2500, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 5:
-        this.player = equip(this.player, 1, "Laser Beam", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Laser Beam", true);
+        }
         this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 38, mineSlot, friendlySectors, isStrafer);
         break;
       case 6:
-        this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
+        }
         this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 700, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 7:
       case 8:
         if (isStrafer) {
-          this.player = equip(this.player, 1, "Plasma Cannon", true);
+          if (!noEquip) {
+            this.player = equip(this.player, 1, "Plasma Cannon", true);
+          }
           this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, friendlySectors, isStrafer);
         } else {
-          this.player = equip(this.player, 1, "Disruptor Cannon", true);
+          if (!noEquip) {
+            this.player = equip(this.player, 1, "Disruptor Cannon", true);
+          }
           this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 350, 3, mineSlot, friendlySectors, isStrafer);
         }
         break;
       case 9:
       case 10:
-        this.player = equip(this.player, 1, "Plasma Cannon", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Plasma Cannon", true);
+        }
         this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, friendlySectors, isStrafer);
         break;
       case 11:
-        this.player = equip(this.player, 1, "EMP Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "EMP Missile", true);
+        }
         this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, friendlySectors, isStrafer);
         break;
     }
@@ -638,7 +673,8 @@ class ActiveSwarmer implements NPC {
 }
 
 const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number, friendlySectors: number[]) => {
-  const npc = new ActiveSwarmer(what, team, id, friendlySectors);
+  // const npc = new ActiveSwarmer(what, team, id, friendlySectors);
+  const npc = new ActiveSwarmer(what, team, id, [0, 1]);
   state.players.set(npc.player.id, npc.player);
 };
 
@@ -674,34 +710,41 @@ class TutorialRoamingVenture implements NPC {
 
   public targetId: number;
 
-  constructor(id: number, where: Position) {
-    this.lootTable = new LootTable();
-
-    const { def, index } = defMap.get("Venture");
-
+  constructor(idOrPlayer: number | Player, where?: Position) {
+    let id: number;
+    if (typeof idOrPlayer === "number") {
+      id = idOrPlayer;
+      const { def, index } = defMap.get("Venture");
+  
+      
+      this.player = {
+        position: randomNearbyPointInSector(where, 1500),
+        radius: def.radius,
+        speed: 0,
+        heading: Math.random() * 2 * Math.PI,
+        health: def.health,
+        id: id,
+        sinceLastShot: [effectiveInfinity],
+        energy: def.energy,
+        defIndex: index,
+        arms: emptyLoadout(index),
+        slotData: emptySlotData(def),
+        cargo: [],
+        credits: 500,
+        npc: this,
+        team: Faction.Rogue,
+        side: 0,
+        v: { x: 0, y: 0 },
+        iv: { x: 0, y: 0 },
+        ir: 0,
+      };
+    } else {
+      id = idOrPlayer.id;
+    }
+    
     const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
-    this.player = {
-      position: randomNearbyPointInSector(where, 1500),
-      radius: def.radius,
-      speed: 0,
-      heading: Math.random() * 2 * Math.PI,
-      health: def.health,
-      id: id,
-      sinceLastShot: [effectiveInfinity],
-      energy: def.energy,
-      defIndex: index,
-      arms: emptyLoadout(index),
-      slotData: emptySlotData(def),
-      cargo: [],
-      credits: 500,
-      npc: this,
-      team: Faction.Rogue,
-      side: 0,
-      v: { x: 0, y: 0 },
-      iv: { x: 0, y: 0 },
-      ir: 0,
-    };
+    this.lootTable = new LootTable();
 
     this.currentState = aimlessPassiveRoaming(bounds);
 
@@ -745,36 +788,47 @@ class TutorialStrafer implements NPC {
 
   public doNotShootYet: boolean = true;
 
-  constructor(id: number, where: Position) {
+  constructor(idOrPlayer: number | Player, where?: Position) {
+    let noEquip = false;
+    let id: number;
+    if (typeof idOrPlayer === "number") {
+      id = idOrPlayer;
+
+      const { def, index } = defMap.get("Strafer");
+  
+      this.player = {
+        position: randomNearbyPointInSector(where, 4000),
+        radius: def.radius,
+        speed: 0,
+        heading: Math.random() * 2 * Math.PI,
+        health: def.health,
+        id: id,
+        sinceLastShot: [effectiveInfinity],
+        energy: def.energy,
+        defIndex: index,
+        arms: emptyLoadout(index),
+        slotData: emptySlotData(def),
+        cargo: [],
+        credits: 500,
+        npc: this,
+        team: Faction.Rogue,
+        side: 0,
+        v: { x: 0, y: 0 },
+        iv: { x: 0, y: 0 },
+        ir: 0,
+      };
+    } else {
+      id = idOrPlayer.id;
+      noEquip = true;
+    }
+
     this.lootTable = new LootTable();
-
-    const { def, index } = defMap.get("Strafer");
-
-    this.player = {
-      position: randomNearbyPointInSector(where, 4000),
-      radius: def.radius,
-      speed: 0,
-      heading: Math.random() * 2 * Math.PI,
-      health: def.health,
-      id: id,
-      sinceLastShot: [effectiveInfinity],
-      energy: def.energy,
-      defIndex: index,
-      arms: emptyLoadout(index),
-      slotData: emptySlotData(def),
-      cargo: [],
-      credits: 500,
-      npc: this,
-      team: Faction.Rogue,
-      side: 0,
-      v: { x: 0, y: 0 },
-      iv: { x: 0, y: 0 },
-      ir: 0,
-    };
 
     this.usesAmmo = true;
     this.guidedSecondary = false;
-    this.player = equip(this.player, 1, "Javelin Missile", true);
+    if (!noEquip) {
+      this.player = equip(this.player, 1, "Javelin Missile", true);
+    }
   }
 
   public targetId = 0;
@@ -876,6 +930,10 @@ const addTutorialStrafer = (state: GlobalState, id: number, where: Position) => 
   return npc;
 };
 
+npcReconstructors.set("ActiveSwarmer", (player: Player) => new ActiveSwarmer(player));
+npcReconstructors.set("TutorialRoamingVenture", (player: Player) => new TutorialRoamingVenture(player));
+npcReconstructors.set("TutorialStrafer", (player: Player) => new TutorialStrafer(player));
+
 export {
   NPC,
   LootTable,
@@ -890,4 +948,5 @@ export {
   runAway,
   randomCombatManeuver,
   strafingSwarmCombat,
+  npcReconstructors,
 };

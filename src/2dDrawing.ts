@@ -852,7 +852,6 @@ const weaponTexts: WeaponTextData[] = [];
 let weaponTextInitialized = false;
 
 const rasterizeWeaponText = () => {
-  console.log("rasterizing weapon text");
   if (!lastSelf) {
     return;
   }

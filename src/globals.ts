@@ -4,8 +4,9 @@ import { defaultKeyLayout } from "./config";
 import { Faction } from "./defs";
 import { runPostUpdaterOnly, updateDom } from "./dialog";
 import { redrawTip } from "./dialogs/dead";
-import { ClientFriendRequest, GlobalState, mapSize, Player, SectorInfo, TutorialStage } from "./game";
+import { ClientFriendRequest, GlobalState, Player, SectorInfo, TutorialStage } from "./game";
 import { azertyBindings, dvorakBindings, KeyBindings, KeyLayouts, qwertyBindings, useKeybindings } from "./keybindings";
+import { mapHeight, mapWidth } from "./mapLayout";
 import { getRestRaw } from "./rest";
 import { tutorialPrompters } from "./tutorial";
 
@@ -169,7 +170,7 @@ const setTutorialStage = (newTutorialStage: TutorialStage) => {
 };
 
 const isInMission = () => {
-  return tutorialStage === TutorialStage.Done && currentSector >= mapSize * mapSize;
+  return tutorialStage === TutorialStage.Done && currentSector >= mapWidth * mapHeight;
 }
 
 let missionComplete = false;

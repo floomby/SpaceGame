@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "es2017"
+    ],
+    "downlevelIteration": true,
+    "esModuleInterop": true,
+    "typeRoots": [
+      "../server/node_modules/@types"
+    ]
+  }
+}

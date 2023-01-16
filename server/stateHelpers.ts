@@ -84,6 +84,7 @@ const sendMissionComplete = (id: number, message: string) => {
   }
 };
 
+// BROKEN (sort of)
 const findPlayer = (id: number): SectorOfPlayerResult => {
   for (const [sectorNumber, state] of sectors) {
     if (state.players.has(id)) {

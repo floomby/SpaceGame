@@ -20,6 +20,9 @@ import { WebSocket } from "ws";
 import { enemyCountState, flashServerMessage, sendMissionComplete, setMissionTargetForId } from "./stateHelpers";
 import { clearanceNPCsRewards, randomClearanceShip, spawnClearanceNPCs } from "./npcs/clearance";
 import { spawnAssassinationNPC } from "./npcs/assassination";
+import { awareSectors, makeNetworkAware, removeNetworkAwareness } from "./peers";
+import { createIsolatedSector, removeContiguousSubgraph } from "../src/sectorGraph";
+import { mapGraph } from "../src/mapLayout";
 
 const Schema = mongoose.Schema;
 
@@ -130,6 +133,8 @@ const removeMissionSector = (sectorId: number, missionId: number) => {
   const sectorNonNPCCount = Array.from(sectors.get(sectorId)?.players.values() || []).filter((p) => p.isPC).length;
   if (sectorNonNPCCount === 0) {
     sectors.delete(sectorId);
+    removeNetworkAwareness(sectorId);
+    // removeContiguousSubgraph(mapGraph, sectorId);
     sectorTriggers.delete(sectorId);
     failMissionIfIncomplete(missionId);
   } else {
@@ -162,7 +167,11 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
     delayedActions: [],
     sectorKind: SectorKind.Mission,
   };
-
+  
+  makeNetworkAware(missionSectorId, SectorKind.Mission);
+  // I don't need to add topology for single isolated sectors (will want to though if I go to torus wrapping single sectors)
+  // createIsolatedSector(mapGraph, missionSectorId);
+  
   sectors.set(missionSector, state);
   if (mission.type === MissionType.Clearance) {
     spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), mission.clearanceShips);

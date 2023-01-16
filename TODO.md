@@ -1,3 +1,12 @@
+### Broken by new multi server system
+
+- Current player information (works except logout)
+- NPC sector changing
+- Guardians
+- Deployment
+- Alternative background
+- Some admin routes
+
 ### Server stuff
 
 - Anti chat spam (low priority)
@@ -7,6 +16,7 @@
 
 ### User Interface
 
+- Map css grid is being janky
 - I may want friend location/online notifications (idk if I should have a client subscribe model or just have the server figure it out and send it to the client)
 
 ### Effects

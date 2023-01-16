@@ -1039,15 +1039,8 @@ const initArmaments = () => {
         slotData.ammo--;
         state.delayedActions.push({
           frames: 140,
-          action: (applyEffect: (trigger: EffectTrigger) => void) => {
-            applyEffect({ effectIndex: 22 });
-            for (const otherPlayer of state.players.values()) {
-              if (otherPlayer === player) {
-                continue;
-              }
-              otherPlayer.disabled = (otherPlayer.disabled ?? 0) + 1200;
-            }
-          },
+          action: "emp",
+          data: player.id,
         });
         applyEffect({ effectIndex: 21, from: { kind: EffectAnchorKind.Player, value: player.id } });
       }

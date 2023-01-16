@@ -18,6 +18,7 @@ import {
   mineDefs,
   AsteroidDef,
 } from "./defs";
+import { DelayedAction, delayedActionDefMap } from "./defs/delayedAction";
 import { projectileDefs } from "./defs/projectiles";
 import {
   Circle,
@@ -280,11 +281,6 @@ type EffectTrigger = {
   effectIndex: number;
   from?: EffectAnchor;
   to?: EffectAnchor;
-};
-
-type DelayedAction = {
-  frames: number;
-  action: (applyEffect: (trigger: EffectTrigger) => void) => void;
 };
 
 enum SectorKind {
@@ -609,7 +605,7 @@ const update = (
     const action = state.delayedActions[i];
     action.frames--;
     if (action.frames <= 0) {
-      action.action(applyEffect);
+      delayedActionDefMap.get(action.action)(state, applyEffect, action.data);
       state.delayedActions.splice(i, 1);
       i--;
     }

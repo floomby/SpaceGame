@@ -11,6 +11,7 @@ import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
 import { ISector, Sector } from "./sector";
 import { HydratedDocument } from "mongoose";
 import { mapHeight, mapWidth, ResourceDensity } from "../src/mapLayout";
+import { DelayedAction } from "../src/defs/delayedAction";
 
 // Initialize the definitions (Do this before anything else to avoid problems)
 initDefs();
@@ -377,7 +378,7 @@ type SerializableGlobalState = {
   mines: Mine[];
   asteroidsDirty?: boolean;
   projectileId?: number;
-  // delayedActions?: DelayedAction[];
+  delayedActions?: DelayedAction[];
   sectorKind?: SectorKind;
   sectorNumber: number;
 };
@@ -391,7 +392,7 @@ const serializeGlobalState = (state: GlobalState, sectorNumber: number): Seriali
     mines: Array.from(state.mines.values()),
     asteroidsDirty: state.asteroidsDirty,
     projectileId: state.projectileId,
-    // delayedActions: state.delayedActions,
+    delayedActions: state.delayedActions,
     sectorKind: state.sectorKind,
     sectorNumber,
   };
@@ -407,7 +408,7 @@ const deserializeGlobalState = (state: SerializableGlobalState): GlobalState => 
     mines: new Map(state.mines.map((m) => [m.id, m])),
     asteroidsDirty: state.asteroidsDirty || false,
     projectileId: state.projectileId || 1,
-    delayedActions: [],
+    delayedActions: state.delayedActions || [],
     sectorKind: state.sectorKind || SectorKind.Overworld,
   };
 };

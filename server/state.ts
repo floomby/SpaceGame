@@ -136,19 +136,13 @@ const secondaries: Map<number, number> = new Map();
 const secondariesToActivate: Map<number, number[]> = new Map();
 const knownRecipes: Map<number, Set<string>> = new Map();
 
-enum ZMQAction {
-  ServerChange,
-  SectorNotification,
-  SectorRemoval,
-}
-
 enum ServerChangeKind {
   Warp,
   Respawn,
   Spawn,
 }
 
-const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind: ServerChangeKind) => {
+const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind: ServerChangeKind): SerializedClient | null => {
   const client = clients.get(ws);
   if (!client) return null;
   const target = targets.get(client.id);
@@ -156,7 +150,7 @@ const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind
   const toActivate = secondariesToActivate.get(client.id);
   const recipesKnown = knownRecipes.get(client.id) || new Set();
 
-  return JSON.stringify({
+  return {
     clientData: serializableClientData(client),
     target,
     secondary,
@@ -165,8 +159,7 @@ const serializeAllClientData = (ws: WebSocket, player: Player, key: string, kind
     player,
     key,
     kind,
-    action: ZMQAction.ServerChange,
-  });
+  };
 };
 
 type SerializedClient = {
@@ -178,22 +171,6 @@ type SerializedClient = {
   player: Player;
   key: string;
   kind: ServerChangeKind;
-} & {
-  action: ZMQAction.ServerChange;
-};
-
-type SectorNotification = {
-  sector: number;
-  sectorKind: SectorKind;
-  server: string;
-} & {
-  action: ZMQAction.SectorNotification;
-};
-
-type SectorRemoval = {
-  sector: number;
-} & {
-  action: ZMQAction.SectorRemoval;
 };
 
 const deserializeClientData = (ws: WebSocket, data: SerializedClient) => {
@@ -262,13 +239,20 @@ const serverWarps = new Map<string, WebSocket>();
 const serverChangePlayer = (ws: WebSocket, player: Player, serverName: string, kind = ServerChangeKind.Warp) => {
   const key = uid().toString();
   const serialized = serializeAllClientData(ws, player, key, kind);
+  if (!serialized) {
+    console.warn("No serialized client data");
+    return;
+  }
   serverWarps.set(key, ws);
   const server = peerMap.get(serverName);
   if (!server) {
     console.warn("No server for", serverName);
     return;
   }
-  server.send(serialized);
+  server.request.send(serialized, (key) => {
+    console.log(`Received key from ${server.name}`, key);
+    sendServerWarp(key, `ws://${server.ip}:${server.port}`);
+  });
 };
 
 const sendServerWarp = (key: string, to: string) => {
@@ -385,10 +369,7 @@ const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisit
 };
 
 export {
-  ZMQAction,
   ServerChangeKind,
-  SectorNotification,
-  SectorRemoval,
   // ClientData,
   // SerializableClientData,
   // serializableClientData,

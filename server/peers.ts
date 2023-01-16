@@ -1,17 +1,6 @@
 import mongoose from "mongoose";
-import { Reply, Request } from "zeromq";
 import { initFromDatabase } from "./misc";
-import {
-  initInitialAsteroids,
-  initSectorResourceData,
-  initSectors,
-  initStationTeams,
-  SectorNotification,
-  SectorRemoval,
-  sendServerWarp,
-  SerializedClient,
-  ZMQAction,
-} from "./state";
+import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, sendServerWarp, SerializedClient } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
@@ -19,11 +8,14 @@ import { Player, SectorKind } from "../src/game";
 import { mapGraph, mapHeight, mapWidth, peerCount } from "../src/mapLayout";
 import assert from "assert";
 import { sectors as serverSectors } from "./state";
+import { inspect } from "util";
+import axon from "axon";
 
 interface IPeer {
   name: string;
   ip: string;
   port: number;
+  pubPort: number;
   wsPort: number;
   updated: Date;
   sectors: number[];
@@ -39,6 +31,10 @@ const peerSchema = new mongoose.Schema<IPeer>({
     required: true,
   },
   port: {
+    type: Number,
+    required: true,
+  },
+  pubPort: {
     type: Number,
     required: true,
   },
@@ -63,11 +59,12 @@ const Peer = mongoose.model<IPeer>("Peer", peerSchema);
 // Get our name from the command line options
 const name = process.argv[2];
 const port = process.argv[3];
+const pubPort = process.argv[4];
 // For development
 const ip = "127.0.0.1";
-const wsPort = parseInt(process.argv[4]);
+const wsPort = parseInt(process.argv[5]);
 
-const peerNumber = parseInt(process.argv[5]);
+const peerNumber = parseInt(process.argv[6]);
 assert(peerNumber >= 0 && peerNumber < peerCount);
 
 const sectorCount = mapWidth * mapHeight;
@@ -82,19 +79,31 @@ console.log(`Starting peer ${name} with sectors ${sectors} on port ${port} and w
 
 // Sets ourselves in the database
 const setPeer = async () => {
-  await Peer.findOneAndUpdate({ name }, { ip, port, updated: Date.now(), sectors, wsPort }, { upsert: true });
+  await Peer.findOneAndUpdate({ name }, { ip, port, updated: Date.now(), sectors, wsPort, pubPort }, { upsert: true });
+};
+
+type PeerSockets = {
+  request: axon.ReqSocket;
+  subscriber: axon.SubSocket;
+  // Websocket ip and port
+  ip: string;
+  port: number;
+  name: string;
 };
 
 // Global stuff
-const peerMap = new Map<string, Request>();
-const socket = new Reply();
+const peerMap = new Map<string, PeerSockets>();
+const repSocket = axon.socket("rep") as axon.RepSocket;
+const pubSocket = axon.socket("pub") as axon.PubSocket;
 
 let interval: NodeJS.Timer | null = null;
 
 const setupSelf = async () => {
   await setPeer();
   // Probably will just protect this with iptables
-  await socket.bind(`tcp://${ip}:${port}`);
+  repSocket.bind(`tcp://${ip}:${port}`);
+  pubSocket.bind(`tcp://0.0.0.0:${pubPort}`);
+
   syncPeers();
   interval = setInterval(() => {
     setPeer();
@@ -111,25 +120,43 @@ const syncPeers = async () => {
     if (peerMap.has(peer.name)) {
       return;
     }
-    console.log(`Connecting to peer ${peer.name} at ${peer.ip}:${peer.port}`);
-    const peerSocket = new Request();
-    peerSocket.connect(`tcp://${peer.ip}:${peer.port}`);
-    peerMap.set(peer.name, peerSocket);
+    console.log(`Connecting to peer ${peer.name} at ${peer.ip}:${peer.port} and ${peer.ip}:${peer.pubPort}`);
+
+    const request = axon.socket("req") as axon.ReqSocket;
+    request.connect(`tcp://${peer.ip}:${peer.port}`);
+
+    const subscriber = axon.socket("sub") as axon.SubSocket;
+    subscriber.connect(`tcp://${peer.ip}:${peer.pubPort}`);
+    subscriber.subscribe("sector-notification");
+    subscriber.subscribe("sector-removal");
+    subscriber.on("message", (topic, data) => {
+      if (topic === "sector-notification") {
+        const sector = data.sector;
+        const server = data.server;
+        serversForSectors.set(sector, server);
+        awareSectors.set(sector, data.kind);
+        return;
+      }
+      if (topic === "sector-removal") {
+        const sector = data.sector;
+        serversForSectors.delete(sector);
+        awareSectors.delete(sector);
+        return;
+      }
+    });
+
+    peerMap.set(peer.name, { request, subscriber, ip: peer.ip, port: peer.wsPort, name: peer.name });
     peer.sectors.forEach((sector) => {
       serversForSectors.set(sector, peer.name);
     });
-    // dispatch messages from the socket
-    for await (const [key] of peerSocket) {
-      console.log(`Received data from ${peer.name}`, key.toString());
-      if (key.toString() === "OK") {
-        continue;
-      }
-      sendServerWarp(key.toString(), `ws://${peer.ip}:${peer.wsPort}`);
-    }
   });
   for (const name of peerMap.keys()) {
     if (!peers.find((peer) => peer.name === name)) {
-      peerMap.get(name)?.close();
+      const sockets = peerMap.get(name);
+      if (sockets) {
+        sockets.request.close();
+        sockets.subscriber.close();
+      }
       peerMap.delete(name);
       // remove from the map
       serversForSectors.forEach((server, sector) => {
@@ -152,16 +179,12 @@ for (let i = 0; i < mapWidth * mapHeight; i++) {
 
 const makeNetworkAware = (sector: number, kind: SectorKind) => {
   awareSectors.set(sector, kind);
-  for (const peer of peerMap.values()) {
-    peer.send(JSON.stringify({ action: ZMQAction.SectorNotification, sector, sectorKind: kind, server: name }));
-  }
+  pubSocket.send("sector-notification", { sector, sectorKind: kind, server: name });
 };
 
 const removeNetworkAwareness = (sector: number) => {
   awareSectors.delete(sector);
-  for (const peer of peerMap.values()) {
-    peer.send(JSON.stringify({ action: ZMQAction.SectorRemoval, sector }));
-  }
+  pubSocket.send("sector-removal", { sector });
 };
 
 mongoose
@@ -179,31 +202,18 @@ mongoose
     initInitialAsteroids();
     setupTimers();
     startWebSocketServer(wsPort);
-    for await (const [msg] of socket) {
-      const data = JSON.parse(msg.toString()) as SerializedClient | SectorNotification | SectorRemoval;
-      switch (data.action) {
-        case ZMQAction.ServerChange:
-          waitingData.set(data.key, data);
-          await socket.send(data.key);
-          break;
-        case ZMQAction.SectorNotification:
-          awareSectors.set(data.sector, data.sectorKind);
-          serversForSectors.set(data.sector, data.server);
-          await socket.send("OK");
-          break;
-        case ZMQAction.SectorRemoval:
-          awareSectors.delete(data.sector);
-          serversForSectors.delete(data.sector);
-          await socket.send("OK");
-          break;
-        default:
-          console.log("Unknown action", data);
-      }
-    }
+    repSocket.on("message", async (data: SerializedClient, reply: (data: string) => void) => {
+      waitingData.set(data.key, data);
+      reply(data.key);
+    });
   });
 
 if (wsPort === 8080) {
   Routes();
 }
+
+setInterval(() => {
+  console.log(`${name} knows about `, Array.from(awareSectors.keys()));
+}, 30 * 1000);
 
 export { peerMap, waitingData, serversForSectors, awareSectors, makeNetworkAware, removeNetworkAwareness };

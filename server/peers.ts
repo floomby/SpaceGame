@@ -222,6 +222,7 @@ mongoose
       if (topic === "sector-transfer") {
         console.log("Sector transfer");
         reply(insertSector(data as SerializableGlobalState));
+        return;
       }
       console.log("Unknown topic: " + topic);
     });

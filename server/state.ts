@@ -438,6 +438,19 @@ const transferSectorToPeer = (sector: number, peer: string) => {
     peerSockets.request.send("sector-transfer", serializableState, (success: string) => {
       if (success === "OK") {
         resolve();
+        sectors.delete(sector);
+        while (state.players.size > 0) {
+          const player = state.players.values().next().value;
+          state.players.delete(player.id);
+          if (player) {
+            if (player.isPC) {
+              const ws = idToWebsocket.get(player.id);
+              if (ws) {
+                serverChangePlayer(ws, player, peerSockets.name);
+              }
+            }
+          }
+        }
       } else {
         reject("Transfer failed: " + success);
       }

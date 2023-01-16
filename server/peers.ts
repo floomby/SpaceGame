@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { initFromDatabase } from "./misc";
-import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, insertSector, sendServerWarp, SerializableGlobalState, SerializableClient, SerializablePlayer, insertStation } from "./state";
+import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, insertSector, sendServerWarp, SerializableGlobalState, SerializableClient, SerializablePlayer, insertStation, insertNPC } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
@@ -230,6 +230,13 @@ mongoose
         reply(insertStation(data as SerializablePlayer));
         return;
       }
+      if (topic === "npc-transfer") {
+        console.log("NPC transfer");
+        data = data as SerializablePlayer;
+        console.log(data.npcReconstructionKey);
+        reply(insertNPC(data));
+        return;
+      };
       console.log("Unknown topic: " + topic);
     });
   });

@@ -1,10 +1,25 @@
 import { randomUUID } from "crypto";
-import { GlobalState, Input, Player, randomAsteroids, TargetKind, sectorBounds, TutorialStage, removeCargoFractions, SectorKind, Ballistic, Asteroid, Missile, Collectable, Mine } from "../src/game";
+import {
+  GlobalState,
+  Input,
+  Player,
+  randomAsteroids,
+  TargetKind,
+  sectorBounds,
+  TutorialStage,
+  removeCargoFractions,
+  SectorKind,
+  Ballistic,
+  Asteroid,
+  Missile,
+  Collectable,
+  Mine,
+} from "../src/game";
 import { WebSocket } from "ws";
 import { defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
 import { initMarket } from "./market";
-import { NPC } from "../src/npc";
+import { NPC, npcReconstructors } from "../src/npc";
 import { Checkpoint, Station, User } from "./dataModels";
 import { awareSectors, peerMap, PeerSockets, waitingData } from "./peers";
 import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
@@ -454,7 +469,18 @@ const transferSectorToPeer = (sector: number, peer: string) => {
               }
               continue;
             }
-            console.log("Transferring station: " + player.id);
+            if (player.npc) {
+              player.sector = sector;
+              player.npcReconstructionKey = Object.getPrototypeOf(player.npc).constructor.name;
+              player.input = player.npc.input;
+              player.npc = undefined;
+              peerSockets.request.send("npc-transfer", player, (success: string) => {
+                if (success !== "OK") {
+                  console.log("Error transferring npc: " + success);
+                }
+              });
+              continue;
+            }
             const def = defs[player.defIndex];
             if (def.kind === UnitKind.Station) {
               player.sector = sector;
@@ -475,7 +501,7 @@ const transferSectorToPeer = (sector: number, peer: string) => {
   return promise;
 };
 
-type SerializablePlayer = Player & { sector: number }
+type SerializablePlayer = Player & { sector: number, npcReconstructionKey?: string, input?: Input };
 
 const insertStation = (station: SerializablePlayer) => {
   console.log("Inserting station: " + station.id);
@@ -486,7 +512,34 @@ const insertStation = (station: SerializablePlayer) => {
   delete (station as any).sector;
   state.players.set(station.id, station);
   return "OK";
-}
+};
+
+const insertNPC = (npc: SerializablePlayer) => {
+  console.log("Inserting npc: " + npc.id);
+  const state = sectors.get(npc.sector);
+  if (!state) {
+    return "Sector not on this server: " + npc.sector;
+  }
+  delete (npc as any).sector;
+  const npcReconstructionKey = npc.npcReconstructionKey;
+  delete (npc as any).npcReconstructionKey;
+  if (!npcReconstructionKey) {
+    return "Missing npcReconstructionKey";
+  }
+  const constructor = npcReconstructors.get(npcReconstructionKey);
+  if (!constructor) {
+    return "Bad npcReconstructionKey: " + npcReconstructionKey;
+  }
+  const input = npc.input;
+  delete (npc as any).input;
+  if (!input) {
+    return "Missing input";
+  }
+  npc.npc = constructor(npc);
+  npc.npc.input = input;
+  state.players.set(npc.id, npc);
+  return "OK";
+};
 
 export {
   ServerChangeKind,
@@ -530,4 +583,5 @@ export {
   insertSector,
   transferSectorToPeer,
   insertStation,
+  insertNPC,
 };

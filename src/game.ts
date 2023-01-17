@@ -129,6 +129,8 @@ type Player = Entity & {
   modelMatrix?: any;
   // Delayed damage
   dd?: DelayedDamage[];
+  // For the tutorial only
+  doNotShootYet?: boolean;
 };
 
 type Asteroid = Circle & {

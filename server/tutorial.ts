@@ -1,6 +1,6 @@
 import { copyPlayer, effectiveInfinity, equip, Player, randomAsteroids, sectorBounds, TutorialStage } from "../src/game";
 import { WebSocket } from "ws";
-import { clients, saveCheckpoint, sectors, tutorialRespawnPoints, uid } from "./state";
+import { clients, getTutorialNpc, saveCheckpoint, sectors, tutorialRespawnPoints, uid } from "./state";
 import { defMap, Faction } from "../src/defs";
 import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
 import { discoverRecipe, updateClientRecipes } from "./inventory";
@@ -53,7 +53,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
           if (state) {
             const player = state.players.get(id);
             if (player) {
-              const npc = addTutorialRoamingVenture(state, uid(), player.position);
+              addTutorialRoamingVenture(state, uid(), player.position);
               state.sectorChecks?.push({ index: transferableActionsMap.get("tutorialVenture")!, data: { id } });
             }
           }
@@ -101,17 +101,9 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
             const player = state.players.get(client.id);
             if (player) {
               const npc = addTutorialStrafer(state, uid(), player.position);
-              // (npc as NPC).killed = () => {
-              //   {
-              //     const client = clients.get(ws);
-              //     if (client) {
-              //       client.inTutorial = TutorialStage.Dock;
-              //       sendTutorialStage(ws, TutorialStage.Dock);
-              //       spawnTutorialStation(ws);
-              //     }
-              //   }
-              // };
               client.tutorialNpc = npc;
+              npc.player.doNotShootYet = true;
+              state.sectorChecks?.push({ index: transferableActionsMap.get("tutorialStrafer")!, data: { id } });
               const equippedPlayer = equip(player, 2, "Laser Beam", true);
               state.players.set(client.id, equippedPlayer);
               tutorialRespawnPoints.set(client.id, copyPlayer(equippedPlayer));
@@ -124,7 +116,13 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
       {
         const client = clients.get(ws);
         if (client) {
-          (client.tutorialNpc as any).doNotShootYet = false;
+          const state = sectors.get(client.currentSector);
+          if (state) {
+            const npc = getTutorialNpc(client, state);
+            if (npc) {
+              npc.player.doNotShootYet = false;
+            }
+          }
         }
       }
       return TutorialStage.LaserBeam;
@@ -189,4 +187,4 @@ const sendTutorialStage = (ws: WebSocket, stage: TutorialStage) => {
   ws.send(JSON.stringify({ type: "tutorialStage", payload: stage }));
 };
 
-export { advanceTutorialStage, sendTutorialStage };
+export { advanceTutorialStage, sendTutorialStage, spawnTutorialStation };

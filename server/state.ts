@@ -128,12 +128,14 @@ type ClientData = {
 
 type SerializableClientData = Omit<ClientData, "sectorsVisited" | "tutorialNPC"> & {
   sectorsVisited: number[];
+  tutorialNpcId?: number;
 };
 
 const serializableClientData = (client: ClientData): SerializableClientData => {
   client = { ...client };
+  (client as unknown as SerializableClientData).tutorialNpcId = client.tutorialNpc?.player.id;
   client.tutorialNpc = undefined;
-  (client as any).sectorsVisited = Array.from(client.sectorsVisited);
+  (client as unknown as SerializableClientData).sectorsVisited = Array.from(client.sectorsVisited);
   return client as unknown as SerializableClientData;
 };
 
@@ -141,6 +143,13 @@ const repairClientData = (client: SerializableClientData): ClientData => {
   const ret = { ...client } as unknown as ClientData;
   ret.sectorsVisited = new Set(client.sectorsVisited);
   return ret;
+};
+
+const getTutorialNpc = (client: ClientData, state: GlobalState): NPC | undefined => {
+  if (client.tutorialNpc) return client.tutorialNpc;
+  const id = (client as unknown as SerializableClientData).tutorialNpcId;
+  if (id === undefined) return undefined;
+  return state.players.get(id)?.npc;
 };
 
 const clients: Map<WebSocket, ClientData> = new Map();
@@ -589,4 +598,5 @@ export {
   transferSectorToPeer,
   insertStation,
   insertNPC,
+  getTutorialNpc,
 };

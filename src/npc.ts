@@ -785,8 +785,6 @@ class TutorialStrafer implements NPC {
   private guidedSecondary: boolean;
   private usesAmmo: boolean;
 
-  public doNotShootYet: boolean = true;
-
   constructor(idOrPlayer: number | Player, where?: Position) {
     let noEquip = false;
     let id: number;
@@ -815,9 +813,11 @@ class TutorialStrafer implements NPC {
         v: { x: 0, y: 0 },
         iv: { x: 0, y: 0 },
         ir: 0,
+        doNotShootYet: true,
       };
     } else {
       id = idOrPlayer.id;
+      this.player = idOrPlayer;
       noEquip = true;
     }
 
@@ -913,7 +913,7 @@ class TutorialStrafer implements NPC {
       stopPlayer(this.player, this.input);
     }
 
-    if (this.doNotShootYet) {
+    if (this.player.doNotShootYet) {
       this.input.primary = false;
       this.input.secondary = false;
     }

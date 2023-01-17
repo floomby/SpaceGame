@@ -48,6 +48,7 @@ import { serversForSectors, setPlayerSector } from "./peers";
 import { WebSocket } from "ws";
 import { User } from "./dataModels";
 import { mapGraph, mapHeight, mapWidth } from "../src/mapLayout";
+import { transferableActions } from "./transferableActions";
 
 const informDead = (player: Player) => {
   if (player.npc) {
@@ -449,7 +450,9 @@ const setupTimers = () => {
         (id, detonated) => removeMine(sector, id, detonated),
         knownRecipes,
         discoverer,
-        secondariesToActivate
+        secondariesToActivate,
+        transferableActions,
+        sector
       );
       processAllNpcs(state, sector);
       findSectorTransitions(state, sector, sectorTransitions);

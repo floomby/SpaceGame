@@ -14,6 +14,7 @@ import {
   Missile,
   Collectable,
   Mine,
+  TransferableAction,
 } from "../src/game";
 import { WebSocket } from "ws";
 import { defs, Faction, initDefs, UnitKind } from "../src/defs";
@@ -310,6 +311,7 @@ const initSectors = (serverSectors: number[]) => {
       projectileId: 1,
       delayedActions: [],
       sectorKind: SectorKind.Overworld,
+      sectorChecks: [],
     });
   });
 };
@@ -396,6 +398,7 @@ type SerializableGlobalState = {
   delayedActions?: DelayedAction[];
   sectorKind?: SectorKind;
   sectorNumber: number;
+  sectorChecks?: TransferableAction[];
 };
 
 const serializeGlobalState = (state: GlobalState, sectorNumber: number): SerializableGlobalState => {
@@ -410,6 +413,7 @@ const serializeGlobalState = (state: GlobalState, sectorNumber: number): Seriali
     delayedActions: state.delayedActions,
     sectorKind: state.sectorKind,
     sectorNumber,
+    sectorChecks: state.sectorChecks,
   };
 };
 
@@ -425,6 +429,7 @@ const deserializeGlobalState = (state: SerializableGlobalState): GlobalState => 
     projectileId: state.projectileId || 1,
     delayedActions: state.delayedActions || [],
     sectorKind: state.sectorKind || SectorKind.Overworld,
+    sectorChecks: state.sectorChecks || [],
   };
 };
 

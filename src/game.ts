@@ -289,6 +289,11 @@ enum SectorKind {
   Mission = 2,
 }
 
+type TransferableAction = {
+  index: number;
+  data: any;
+};
+
 type GlobalState = {
   players: Map<number, Player>;
   projectiles: Map<number, Ballistic>;
@@ -300,6 +305,7 @@ type GlobalState = {
   projectileId?: number;
   delayedActions?: DelayedAction[];
   sectorKind?: SectorKind;
+  sectorChecks?: TransferableAction[];
 };
 
 const setCanDockOrRepair = (player: Player, state: GlobalState) => {
@@ -484,15 +490,6 @@ const kill = (
       if (toDrop !== null) {
         collectables.push(createCollectableFromDef(toDrop, player.position));
       }
-      if (player.npc.killed) {
-        // This should be protected with a try/catch because the killed handler can interact with anything
-        // and the game update loop is not protected against exceptions
-        try {
-          player.npc.killed();
-        } catch (e) {
-          console.error(e);
-        }
-      }
     }
   }
 };
@@ -596,7 +593,9 @@ const update = (
   removeMine: (id: number, detonated: boolean) => void,
   knownRecipes: Map<number, Set<string>>,
   discoverRecipe: (id: number, recipe: string) => void,
-  secondariesToActivate: Map<number, number[]>
+  secondariesToActivate: Map<number, number[]>,
+  transferableActions: ((state: GlobalState, sector: number, data: any) => boolean)[],
+  sectorNumber: number
 ) => {
   const ret: Mutated = { asteroids: new Set(), collectables: [], mines: [] };
 
@@ -1067,6 +1066,17 @@ const update = (
   for (const collectable of ret.collectables) {
     state.collectables.set(collectable.id, collectable);
   }
+  // Sector checks
+  if (frameNumber % 60 === 0) {
+    for (let i = 0; i < state.sectorChecks.length; i++) {
+      const action = state.sectorChecks[i];
+      const toRemove = transferableActions[action.index](state, sectorNumber, action.data);
+      if (toRemove) {
+        state.sectorChecks.splice(i, 1);
+        i--;
+      }
+    }
+  }
   return ret;
 };
 
@@ -1218,14 +1228,7 @@ const applyInputs = (input: Input, player: Player, angle?: number) => {
   player.omega = player.heading - (player.omega % (2 * Math.PI));
 };
 
-const randomAsteroids = (
-  count: number,
-  bounds: Rectangle,
-  seed: number,
-  uid: () => number,
-  typeDensities: ResourceDensity[],
-  stations: Player[]
-) => {
+const randomAsteroids = (count: number, bounds: Rectangle, seed: number, uid: () => number, typeDensities: ResourceDensity[], stations: Player[]) => {
   if (asteroidDefs.length === 0) {
     throw new Error("Asteroid defs not initialized");
   }
@@ -1559,10 +1562,13 @@ type ClientFriendRequest = {
   outgoing: boolean;
 };
 
-type SectorOfPlayerResult = {
-  sectorNumber: number;
-  sectorKind: SectorKind;
-} | "respawning" | null;
+type SectorOfPlayerResult =
+  | {
+      sectorNumber: number;
+      sectorKind: SectorKind;
+    }
+  | "respawning"
+  | null;
 
 export {
   GlobalState,
@@ -1589,6 +1595,7 @@ export {
   ClientFriendRequest,
   SectorKind,
   SectorOfPlayerResult,
+  TransferableAction,
   update,
   applyInputs,
   processAllNpcs,

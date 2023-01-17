@@ -7,6 +7,7 @@ import {
   idleState,
   LootTable,
   NPC,
+  npcReconstructors,
   passiveGoToRandomPointInSector,
   randomCombatManeuver,
   runAway,
@@ -15,6 +16,7 @@ import {
   strafingSwarmCombat,
   stupidSwarmCombat,
 } from "../../src/npc";
+import { sfc32 } from "../../src/prng";
 import { uid } from "../state";
 
 const makeStateGraph = (
@@ -141,64 +143,84 @@ class CloakyAnnoying implements NPC {
 
   public targetId: number;
 
-  constructor(ship: string, team: Faction, id: number) {
+  constructor(ship: string | Player, team?: Faction, id?: number) {
     this.lootTable = new LootTable();
 
-    const { def, index } = defMap.get(ship)!;
+    let noEquip = false;
+    if (typeof ship === "string") {
+      const { def, index } = defMap.get(ship)!;
 
-    assert(!!def.isCloaky);
+      assert(!!def.isCloaky);
 
-    this.player = {
-      position: randomNearbyPointInSector({ x: 0, y: 0 }, 6000),
-      radius: def.radius,
-      speed: 0,
-      heading: Math.random() * 2 * Math.PI,
-      health: def.health,
-      id,
-      sinceLastShot: [effectiveInfinity],
-      energy: def.energy,
-      defIndex: index,
-      arms: emptyLoadout(index),
-      slotData: emptySlotData(def),
-      cargo: [],
-      credits: 500,
-      npc: this,
-      team,
-      side: 0,
-      v: { x: 0, y: 0 },
-      iv: { x: 0, y: 0 },
-      ir: 0,
-      cloak: 1,
-    };
+      this.player = {
+        position: randomNearbyPointInSector({ x: 0, y: 0 }, 6000),
+        radius: def.radius,
+        speed: 0,
+        heading: Math.random() * 2 * Math.PI,
+        health: def.health,
+        id: id!,
+        sinceLastShot: [effectiveInfinity],
+        energy: def.energy,
+        defIndex: index,
+        arms: emptyLoadout(index),
+        slotData: emptySlotData(def),
+        cargo: [],
+        credits: 500,
+        npc: this,
+        team: team!,
+        side: 0,
+        v: { x: 0, y: 0 },
+        iv: { x: 0, y: 0 },
+        ir: 0,
+        cloak: 1,
+      };
+    } else {
+      this.player = ship;
+      noEquip = true;
+    }
+
+    const def = defs[this.player.defIndex];
 
     // The striker does not have a mine slot, but I am leaving this check here anyways (I want this to work with other cloaky ships in the future)
     let mineSlot: number | null = def.slots.indexOf(SlotKind.Mine);
     if (mineSlot === -1) {
       mineSlot = null;
     } else {
-      this.player = equip(this.player, mineSlot, "Proximity Mine", true);
+      if (!noEquip) {
+        this.player = equip(this.player, mineSlot, "Proximity Mine", true);
+      }
     }
 
     const utilityIndices = def.slots.map((slot, i) => (slot === SlotKind.Utility ? i : -1)).filter((i) => i !== -1);
 
     let impulseSlot: null | number = null;
     if (utilityIndices.length > 0) {
-      this.player = equip(this.player, utilityIndices[0], "Cloaking Generator", true);
+      if (!noEquip) {
+        this.player = equip(this.player, utilityIndices[0], "Cloaking Generator", true);
+      }
     }
     if (utilityIndices.length > 1) {
-      this.player = equip(this.player, utilityIndices[1], "Impulse Missile", true);
+      if (!noEquip) {
+        this.player = equip(this.player, utilityIndices[1], "Impulse Missile", true);
+      }
       impulseSlot = utilityIndices[1];
     }
 
-    switch (Math.floor(Math.random() * 4)) {
+    const prng = sfc32(this.player.id % 10000, 4398, this.player.defIndex, 6987);
+
+    switch (Math.floor(prng() * 4)) {
       case 0:
       case 1:
-        this.player = equip(this.player, 1, "Javelin Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Javelin Missile", true);
+        }
         this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 3000, mineSlot, impulseSlot);
         break;
       case 2:
       case 3:
-        this.player = equip(this.player, 1, "Tomahawk Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Tomahawk Missile", true);
+        }
         this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 2500, mineSlot, impulseSlot);
         break;
     }
@@ -220,6 +242,8 @@ class CloakyAnnoying implements NPC {
     this.currentState = this.currentState.process(state, this, sector, target);
   }
 }
+
+npcReconstructors.set("CloakyAnnoying", (player: Player) => new CloakyAnnoying(player));
 
 const spawnAssassinationNPC = (state: GlobalState, npcFaction: Faction, targetId: number) => {
   const npc = new CloakyAnnoying("Striker", npcFaction, targetId);

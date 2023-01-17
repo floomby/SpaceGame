@@ -5,6 +5,7 @@ import { defMap, Faction } from "../src/defs";
 import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
 import { discoverRecipe, updateClientRecipes } from "./inventory";
 import { mapHeight, mapWidth } from "../src/mapLayout";
+import { transferableActionsMap } from "./transferableActions";
 
 const spawnTutorialStation = (ws: WebSocket) => {
   const client = clients.get(ws);
@@ -53,20 +54,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
             const player = state.players.get(id);
             if (player) {
               const npc = addTutorialRoamingVenture(state, uid(), player.position);
-              (npc as NPC).killed = () => {
-                const client = clients.get(ws);
-                if (client) {
-                  client.inTutorial = TutorialStage.SwitchSecondary;
-                  sendTutorialStage(ws, TutorialStage.SwitchSecondary);
-                  const state = sectors.get(client.currentSector);
-                  if (state) {
-                    const player = state.players.get(client.id);
-                    if (player) {
-                      state.players.set(client.id, equip(player, 1, "Javelin Missile", true));
-                    }
-                  }
-                }
-              };
+              state.sectorChecks?.push({ index: transferableActionsMap.get("tutorialVenture")!, data: { id } });
             }
           }
         }
@@ -113,16 +101,16 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
             const player = state.players.get(client.id);
             if (player) {
               const npc = addTutorialStrafer(state, uid(), player.position);
-              (npc as NPC).killed = () => {
-                {
-                  const client = clients.get(ws);
-                  if (client) {
-                    client.inTutorial = TutorialStage.Dock;
-                    sendTutorialStage(ws, TutorialStage.Dock);
-                    spawnTutorialStation(ws);
-                  }
-                }
-              };
+              // (npc as NPC).killed = () => {
+              //   {
+              //     const client = clients.get(ws);
+              //     if (client) {
+              //       client.inTutorial = TutorialStage.Dock;
+              //       sendTutorialStage(ws, TutorialStage.Dock);
+              //       spawnTutorialStation(ws);
+              //     }
+              //   }
+              // };
               client.tutorialNpc = npc;
               const equippedPlayer = equip(player, 2, "Laser Beam", true);
               state.players.set(client.id, equippedPlayer);

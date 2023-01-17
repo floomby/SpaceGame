@@ -1,4 +1,4 @@
-import { defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind } from "../../src/defs";
+import { defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition } from "../../src/defs";
 import { estimateEffectivePrimaryRange, projectileDefs } from "../../src/defs/projectiles";
 import { effectiveInfinity, equip, findClosestTarget, GlobalState, Input, Player, randomNearbyPointInSector } from "../../src/game";
 import { l2Norm } from "../../src/geometry";
@@ -6,6 +6,7 @@ import {
   idleState,
   LootTable,
   NPC,
+  npcReconstructors,
   passiveGoToRandomPointInSector,
   randomCombatManeuver,
   runAway,
@@ -14,6 +15,7 @@ import {
   strafingSwarmCombat,
   stupidSwarmCombat,
 } from "../../src/npc";
+import { sfc32 } from "../../src/prng";
 import { uid } from "../state";
 
 const makeStateGraph = (
@@ -103,65 +105,86 @@ class BasicSwarmer implements NPC {
 
   public targetId: number;
 
-  constructor(ship: string, team: Faction) {
+  constructor(ship: string | Player, team?: Faction) {
     this.lootTable = new LootTable();
-
-    const { def, index } = defMap.get(ship)!;
 
     const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
-    this.player = {
-      position: randomNearbyPointInSector({ x: 0, y: 0 }, 6000),
-      radius: def.radius,
-      speed: 0,
-      heading: Math.random() * 2 * Math.PI,
-      health: def.health,
-      id: uid(),
-      sinceLastShot: [effectiveInfinity],
-      energy: def.energy,
-      defIndex: index,
-      arms: emptyLoadout(index),
-      slotData: emptySlotData(def),
-      cargo: [],
-      credits: 500,
-      npc: this,
-      team,
-      side: 0,
-      v: { x: 0, y: 0 },
-      iv: { x: 0, y: 0 },
-      ir: 0,
-    };
+    let noEquip = false;
+    if (typeof ship === "string") {
+      const { def, index } = defMap.get(ship)!;
 
+      this.player = {
+        position: randomNearbyPointInSector({ x: 0, y: 0 }, 6000),
+        radius: def.radius,
+        speed: 0,
+        heading: Math.random() * 2 * Math.PI,
+        health: def.health,
+        id: uid(),
+        sinceLastShot: [effectiveInfinity],
+        energy: def.energy,
+        defIndex: index,
+        arms: emptyLoadout(index),
+        slotData: emptySlotData(def),
+        cargo: [],
+        credits: 500,
+        npc: this,
+        team: team!,
+        side: 0,
+        v: { x: 0, y: 0 },
+        iv: { x: 0, y: 0 },
+        ir: 0,
+      };
+    } else {
+      this.player = ship;
+      noEquip = true;
+    }
+    
+    const def = defs[this.player.defIndex];
     let mineSlot: number | null = def.slots.indexOf(SlotKind.Mine);
     if (mineSlot === -1) {
       mineSlot = null;
     } else {
-      this.player = equip(this.player, mineSlot, "Proximity Mine", true);
+      if (!noEquip) {
+        this.player = equip(this.player, mineSlot, "Proximity Mine", true);
+      }
     }
 
     const isStrafer = def.name === "Strafer";
 
-    switch (Math.floor(Math.random() * 7)) {
+    const prng = sfc32(this.player.id % 10000, 4398, this.player.defIndex, 6987);
+
+    switch (Math.floor(prng() * 7)) {
       case 0:
       case 1:
       case 2:
-        this.player = equip(this.player, 1, "Javelin Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Javelin Missile", true);
+        }
         this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, isStrafer);
         break;
       case 3:
-        this.player = equip(this.player, 1, "Tomahawk Missile", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Tomahawk Missile", true);
+        }
         this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 2500, 3, mineSlot, isStrafer);
         break;
       case 4:
-        this.player = equip(this.player, 1, "Laser Beam", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Laser Beam", true);
+        }
         this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 38, mineSlot, isStrafer);
         break;
       case 5:
-        this.player = equip(this.player, 1, "Disruptor Cannon", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Disruptor Cannon", true);
+        }
         this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), false, 350, 10, mineSlot, isStrafer);
         break;
       case 6:
-        this.player = equip(this.player, 1, "Shotgun", true);
+        if (!noEquip) {
+          this.player = equip(this.player, 1, "Shotgun", true);
+        }
         this.currentState = makeStateGraph(estimateEffectivePrimaryRange(def), false, 1300, 13, mineSlot, isStrafer);
         break;
     }
@@ -183,6 +206,8 @@ class BasicSwarmer implements NPC {
     this.currentState = this.currentState.process(state, this, sector, target);
   }
 }
+
+npcReconstructors.set("BasicSwarmer", (player: Player) => new BasicSwarmer(player));
 
 const spawnClearanceNPCs = (state: GlobalState, npcFaction: Faction, shipList: string[]) => {
   for (const ship of shipList) {

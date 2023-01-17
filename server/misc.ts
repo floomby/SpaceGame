@@ -78,6 +78,7 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     projectileId: 1,
     delayedActions: [],
     sectorKind: SectorKind.Tutorial,
+    sectorChecks: [],
   };
 
   makeNetworkAware(tutorialSector, SectorKind.Tutorial);

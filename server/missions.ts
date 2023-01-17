@@ -166,6 +166,7 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
     projectileId: 1,
     delayedActions: [],
     sectorKind: SectorKind.Mission,
+    sectorChecks: [],
   };
   
   makeNetworkAware(missionSectorId, SectorKind.Mission);

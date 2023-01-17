@@ -31,7 +31,6 @@ interface NPC {
   lootTable: LootTable;
   targetId: number;
   process: (state: GlobalState, sector: number) => void;
-  killed?: () => void;
 }
 
 type Completed = {
@@ -579,7 +578,7 @@ class ActiveSwarmer implements NPC {
       };
     }
 
-    let prng = sfc32(id % 10000, 4398, this.player.defIndex, 6987);
+    const prng = sfc32(id % 10000, 4398, this.player.defIndex, 6987);
 
     let mineSlot = def.slots.indexOf(SlotKind.Mine);
     if (mineSlot === -1) {
@@ -715,7 +714,6 @@ class TutorialRoamingVenture implements NPC {
     if (typeof idOrPlayer === "number") {
       id = idOrPlayer;
       const { def, index } = defMap.get("Venture");
-  
       
       this.player = {
         position: randomNearbyPointInSector(where, 1500),
@@ -740,6 +738,7 @@ class TutorialRoamingVenture implements NPC {
       };
     } else {
       id = idOrPlayer.id;
+      this.player = idOrPlayer;
     }
     
     const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };

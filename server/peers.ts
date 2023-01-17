@@ -215,6 +215,7 @@ mongoose
     repSocket.on("message", async (topic: string, data: SerializableClient | SerializableGlobalState | SerializablePlayer, reply: (data: any) => void) => {
       console.log("Got message: " + topic);
       if (topic === "player-transfer") {
+        console.log("Player transfer");
         data = data as SerializableClient;
         waitingData.set(data.key, data);
         reply(data.key);

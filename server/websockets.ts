@@ -1,6 +1,7 @@
 import { appendFile } from "fs";
 import { createServer } from "http";
 import https from "https";
+import { HydratedDocument } from "mongoose";
 import { inspect } from "util";
 import { WebSocketServer, WebSocket } from "ws";
 import { useSsl } from "../src/config";
@@ -53,11 +54,10 @@ import {
   sectorList,
   sectors,
   targets,
-  tutorialRespawnPoints,
   uid,
 } from "./state";
 import { allyCount, enemyCount, flashServerMessage } from "./stateHelpers";
-import { advanceTutorialStage, sendTutorialStage } from "./tutorial";
+import { advanceTutorialStage, ITutorialRespawn, saveTutorialRespawn, sendTutorialStage, TutorialRespawn } from "./tutorial";
 
 export function startWebSocketServer(wsPort: number) {
   // Websocket server stuff
@@ -297,7 +297,7 @@ export function startWebSocketServer(wsPort: number) {
                 if (!client.inTutorial) {
                   saveCheckpoint(client.id, client.currentSector, player, client.sectorsVisited);
                 } else {
-                  tutorialRespawnPoints.set(client.id, copyPlayer(player));
+                  saveTutorialRespawn(player);
                 }
               }
             }
@@ -315,7 +315,7 @@ export function startWebSocketServer(wsPort: number) {
               if (!client.inTutorial) {
                 saveCheckpoint(client.id, client.currentSector, player, client.sectorsVisited);
               } else {
-                tutorialRespawnPoints.set(client.id, copyPlayer(player));
+                saveTutorialRespawn(player);
               }
             }
           }
@@ -344,14 +344,23 @@ export function startWebSocketServer(wsPort: number) {
             if (client.inTutorial) {
               const state = sectors.get(client.currentSector);
               if (state) {
-                const playerState = tutorialRespawnPoints.get(client.id);
-                if (playerState) {
-                  state.players.set(client.id, copyPlayer(playerState));
-                } else {
-                  ws.send(JSON.stringify({ type: "error", payload: { message: "Missing tutorial respawn checkpoint" } }));
-                }
-              } else {
-                ws.send(JSON.stringify({ type: "error", payload: { message: "Tutorial sector invalid" } }));
+                TutorialRespawn.findOne({ id: client.id }, (err, tutorialRespawn: HydratedDocument<ITutorialRespawn>) => {
+                  if (err) {
+                    ws.send(JSON.stringify({ type: "error", payload: { message: "Server error loading tutorial respawn checkpoint" } }));
+                    console.log("Error loading tutorial respawn checkpoint: " + err);
+                    return;
+                  }
+                  if (tutorialRespawn) {
+                    const playerState = JSON.parse(tutorialRespawn.data);
+                    if (playerState) {
+                      respawnPlayer(ws, playerState, tutorialRespawn.sector);
+                    } else {
+                      ws.send(JSON.stringify({ type: "error", payload: { message: "Missing tutorial respawn checkpoint" } }));
+                    }
+                  } else {
+                    ws.send(JSON.stringify({ type: "error", payload: { message: "Missing tutorial respawn checkpoint" } }));
+                  }
+                });
               }
               return;
             }

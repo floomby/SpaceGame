@@ -9,6 +9,7 @@
 
 ### Server stuff
 
+- The tutorial respawn breaks if the tutorial sector is transferred while the player is dead in the tutorial (low priority)
 - Anti chat spam (low priority)
 - Killed/killed by messages??
 

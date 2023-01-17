@@ -367,8 +367,6 @@ const initStationTeams = async () => {
   }
 };
 
-const tutorialRespawnPoints = new Map<number, Player>();
-
 const saveCheckpoint = (id: number, sector: number, player: Player, sectorsVisited: Set<number>, isLogoff = false) => {
   if (player.health <= 0) {
     console.log("Warning: attempt to save checkpoint of dead player");
@@ -581,7 +579,6 @@ export {
   secondaries,
   secondariesToActivate,
   knownRecipes,
-  tutorialRespawnPoints,
   uid,
   saveCheckpoint,
   friendlySectors,

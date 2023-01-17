@@ -1,19 +1,63 @@
 import { copyPlayer, effectiveInfinity, equip, Player, randomAsteroids, sectorBounds, TutorialStage } from "../src/game";
 import { WebSocket } from "ws";
-import { clients, getTutorialNpc, saveCheckpoint, sectors, tutorialRespawnPoints, uid } from "./state";
+import { clients, getTutorialNpc, saveCheckpoint, sectors, uid } from "./state";
 import { defMap, Faction } from "../src/defs";
 import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
 import { discoverRecipe, updateClientRecipes } from "./inventory";
 import { mapHeight, mapWidth } from "../src/mapLayout";
 import { transferableActionsMap } from "./transferableActions";
+import mongoose from "mongoose";
+import { playerSectors } from "./peers";
 
-const spawnTutorialStation = (ws: WebSocket) => {
+interface ITutorialRespawn {
+  id: number;
+  data: string;
+  time: Date;
+  sector: number;
+}
+
+const TutorialRespawn = mongoose.model<ITutorialRespawn>(
+  "TutorialRespawn",
+  new mongoose.Schema({
+    id: {
+      type: Number,
+      required: true,
+    },
+    data: {
+      type: String,
+      required: true,
+    },
+    time: {
+      type: Date,
+      required: true,
+      expires: "1d",
+    },
+    sector: {
+      type: Number,
+      required: true,
+    },
+  })
+);
+
+const saveTutorialRespawn = (player: Player) => {
+  const id = player.id;
+  const data = JSON.stringify(player);
+  const sector = playerSectors.get(id);
+  TutorialRespawn.findOneAndUpdate({ id }, { id, data, time: new Date(), sector }, { upsert: true }, (err) => {
+    if (err) {
+      console.error("Unable to save tutorial respawn point", err);
+    }
+  });
+};
+
+const spawnTutorialStation = async (ws: WebSocket) => {
   const client = clients.get(ws);
   if (client) {
     const sector = sectors.get(client.currentSector);
     if (sector) {
-      const player = tutorialRespawnPoints.get(client.id);
-      if (player) {
+      const save = await TutorialRespawn.findOne({ id: client.id });
+      if (save) {
+        const player = JSON.parse(save.data);
         const def = (player.team === Faction.Alliance ? defMap.get("Alliance Starbase") : defMap.get("Confederacy Starbase"))!;
         const station: Player = {
           position: { x: 0, y: 0 },
@@ -106,7 +150,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
               state.sectorChecks?.push({ index: transferableActionsMap.get("tutorialStrafer")!, data: { id } });
               const equippedPlayer = equip(player, 2, "Laser Beam", true);
               state.players.set(client.id, equippedPlayer);
-              tutorialRespawnPoints.set(client.id, copyPlayer(equippedPlayer));
+              saveTutorialRespawn(equippedPlayer);
             }
           }
         }
@@ -131,11 +175,7 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
         const client = clients.get(ws);
         if (client) {
           updateClientRecipes(ws, client.id);
-          const player = tutorialRespawnPoints.get(id);
           discoverRecipe(ws, client.id, "Refined Prifetium");
-          if (player) {
-            client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
-          }
         }
       }
       return TutorialStage.Deposit;
@@ -153,9 +193,12 @@ const advanceTutorialStage = (id: number, stage: TutorialStage, ws: WebSocket) =
       {
         const client = clients.get(ws);
         if (client) {
-          const player = tutorialRespawnPoints.get(id);
-          if (player) {
-            client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+          const state = sectors.get(client.currentSector);
+          if (state) {
+            const player = state.players.get(client.id);
+            if (player) {
+              client.sectorsVisited.add(player.team === Faction.Alliance ? 12 : 15);
+            }
           }
         }
       }
@@ -187,4 +230,4 @@ const sendTutorialStage = (ws: WebSocket, stage: TutorialStage) => {
   ws.send(JSON.stringify({ type: "tutorialStage", payload: stage }));
 };
 
-export { advanceTutorialStage, sendTutorialStage, spawnTutorialStation };
+export { advanceTutorialStage, sendTutorialStage, spawnTutorialStation, saveTutorialRespawn, TutorialRespawn, ITutorialRespawn };

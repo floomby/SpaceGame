@@ -67,7 +67,7 @@ tutorialCheckers.set(TutorialStage.Dock, () => {
 });
 
 tutorialCheckers.set(TutorialStage.Deposit, () => {
-  return inventory["Prifecite"] > 50;
+  return inventory["Prifecite"] > 45;
 });
 
 tutorialCheckers.set(TutorialStage.Manufacture1, () => {

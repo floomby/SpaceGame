@@ -1,6 +1,6 @@
 import { clientUid, defMap, defs, emptyLoadout, Faction } from "../src/defs";
 import { effectiveInfinity, Player, SectorInfo, SectorKind, TargetKind, TutorialStage } from "../src/game";
-import { clients, knownRecipes, secondaries, secondariesToActivate, sectorAsteroidResources, sectors, targets, tutorialRespawnPoints } from "./state";
+import { clients, knownRecipes, secondaries, secondariesToActivate, sectorAsteroidResources, sectors, targets } from "./state";
 import { WebSocket } from "ws";
 import { sendInventory } from "./inventory";
 import { sendTutorialStage } from "./tutorial";
@@ -24,10 +24,11 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
 
   const sectorToWarpTo = faction === Faction.Alliance ? 12 : 15;
 
-  let tutorialSector = clientUid();
-  while (sectors.has(tutorialSector)) {
-    tutorialSector = clientUid();
-  }
+  // let tutorialSector = clientUid();
+  // while (sectors.has(tutorialSector)) {
+  //   tutorialSector = clientUid();
+  // }
+  let tutorialSector = 111222;
 
   clients.set(ws, {
     id: id,
@@ -93,7 +94,6 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     sectors.delete(tutorialSector);
     removeNetworkAwareness(tutorialSector);
     // removeContiguousSubgraph(mapGraph, tutorialSector);
-    tutorialRespawnPoints.delete(tutorialSector);
   }, 1000 * 60 * 60 * 3);
 
   targets.set(id, [TargetKind.None, 0]);

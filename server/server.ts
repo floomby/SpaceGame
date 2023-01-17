@@ -33,7 +33,6 @@ import {
   // sectorGuardianCount,
   sectorList,
   sectors,
-  sectorTriggers,
   serializeAllClientData,
   ServerChangeKind,
   serverChangePlayer,
@@ -495,9 +494,13 @@ const setupTimers = () => {
       }
 
       if (frame % 60 === 0) {
-        const trigger = sectorTriggers.get(sector);
-        if (trigger) {
-          trigger(state);
+        for (let i = 0; i < state.sectorChecks!.length; i++) {
+          const check = state.sectorChecks![i];
+          const toRemove = transferableActions[check.index](state, sector, check.data);
+          if (toRemove) {
+            state.sectorChecks!.splice(i, 1);
+            i--;
+          }
         }
       }
     }

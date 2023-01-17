@@ -7,15 +7,13 @@ Some words on how missions work:
  - Once the player wants to start a mission the sector for the mission is created and added to the sector list for running the game update loop.
  - At that point the mission is marked as in progress in the database.
  - Upon mission completion the reward is given out and the mission is marked as completed in the database.
- - There is a cleanup timeout that periodically checks to see if the mission sector can be removed from the sector list.
- - If the mission sector is no longer accessible then it is removed from the sector list and the mission is marked as failed in the database if it was not completed.
 
 */
 
 import { clientUid, Faction, randomDifferentFaction } from "../src/defs";
 import { GlobalState, MissionType, Player, SectorKind } from "../src/game";
 import mongoose, { HydratedDocument } from "mongoose";
-import { getPlayerFromId, sectors, sectorTriggers, uid } from "./state";
+import { getPlayerFromId, sectors, uid } from "./state";
 import { WebSocket } from "ws";
 import { enemyCountState, flashServerMessage, sendMissionComplete, setMissionTargetForId } from "./stateHelpers";
 import { clearanceNPCsRewards, randomClearanceShip, spawnClearanceNPCs } from "./npcs/clearance";
@@ -23,6 +21,7 @@ import { spawnAssassinationNPC } from "./npcs/assassination";
 import { awareSectors, makeNetworkAware, removeNetworkAwareness } from "./peers";
 import { createIsolatedSector, removeContiguousSubgraph } from "../src/sectorGraph";
 import { mapGraph } from "../src/mapLayout";
+import { transferableActionsMap } from "./transferableActions";
 
 const Schema = mongoose.Schema;
 
@@ -127,34 +126,29 @@ const genMissions = async (assignee: number, forFaction: Faction, count: number,
   return missions;
 };
 
-const missionSectorCleanupInterval = 1000 * 60 * 60 * 3; // 3 hours
+// const removeMissionSector = (sectorId: number, missionId: number) => {
+//   const sectorNonNPCCount = Array.from(sectors.get(sectorId)?.players.values() || []).filter((p) => p.isPC).length;
+//   if (sectorNonNPCCount === 0) {
+//     sectors.delete(sectorId);
+//     removeNetworkAwareness(sectorId);
+//     // removeContiguousSubgraph(mapGraph, sectorId);
+//     failMissionIfIncomplete(missionId);
+//   } else {
+//     setTimeout(() => {
+//       removeMissionSector(sectorId, missionId);
+//     }, missionSectorCleanupInterval);
+//   }
+// };
 
-const removeMissionSector = (sectorId: number, missionId: number) => {
-  const sectorNonNPCCount = Array.from(sectors.get(sectorId)?.players.values() || []).filter((p) => p.isPC).length;
-  if (sectorNonNPCCount === 0) {
-    sectors.delete(sectorId);
-    removeNetworkAwareness(sectorId);
-    // removeContiguousSubgraph(mapGraph, sectorId);
-    sectorTriggers.delete(sectorId);
-    failMissionIfIncomplete(missionId);
-  } else {
-    setTimeout(() => {
-      removeMissionSector(sectorId, missionId);
-    }, missionSectorCleanupInterval);
-  }
-};
+// const setupMissionSectorCleanup = (missionId: number, missionSector: number) => {
+//   setTimeout(() => {
+//     removeMissionSector(missionSector, missionId);
+//   }, missionSectorCleanupInterval);
 
-const setupMissionSectorCleanup = (missionId: number, missionSector: number) => {
-  setTimeout(() => {
-    removeMissionSector(missionSector, missionId);
-  }, missionSectorCleanupInterval);
-
-  return missionSector;
-};
+//   return missionSector;
+// };
 
 const startMissionGameState = (player: Player, mission: HydratedDocument<IMission>, missionSectorId: number) => {
-  const missionSector = setupMissionSectorCleanup(mission.id, missionSectorId);
-
   const state = {
     players: new Map(),
     projectiles: new Map(),
@@ -167,21 +161,18 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
     delayedActions: [],
     sectorKind: SectorKind.Mission,
     sectorChecks: [],
-  };
+    dynamic: true,
+    creationTime: Date.now(),
+  } as GlobalState;
   
   makeNetworkAware(missionSectorId, SectorKind.Mission);
   // I don't need to add topology for single isolated sectors (will want to though if I go to torus wrapping single sectors)
   // createIsolatedSector(mapGraph, missionSectorId);
   
-  sectors.set(missionSector, state);
+  sectors.set(missionSectorId, state);
   if (mission.type === MissionType.Clearance) {
     spawnClearanceNPCs(state, randomDifferentFaction(mission.forFaction), mission.clearanceShips);
-    sectorTriggers.set(missionSector, (state: GlobalState) => {
-      if (enemyCountState(mission.forFaction, state) === 0) {
-        completeMission(mission.id);
-        sectorTriggers.delete(missionSector);
-      }
-    });
+    state.sectorChecks!.push({ index: transferableActionsMap.get("clearance")!, data: { missionId: mission.id, forFaction: mission.forFaction } });
   } else if (mission.type === MissionType.Assassination) {
     if (!mission.targetId) {
       console.log("Target ID missing for assassination mission");
@@ -190,19 +181,14 @@ const startMissionGameState = (player: Player, mission: HydratedDocument<IMissio
     const faction = randomDifferentFaction(mission.forFaction);
     spawnClearanceNPCs(state, faction, mission.clearanceShips);
     spawnAssassinationNPC(state, faction, mission.targetId!);
-    sectorTriggers.set(missionSector, (state: GlobalState) => {
-      if (!state.players.has(mission.targetId!)) {
-        completeMission(mission.id);
-        sectorTriggers.delete(missionSector);
-      }
-    });
+    state.sectorChecks!.push({ index: transferableActionsMap.get("assassination")!, data: { missionId: mission.id, targetId: mission.targetId } });
   } else {
     console.log("Unsupported mission type: " + mission.type);
     return;
   }
 
   player.warping = 1;
-  player.warpTo = missionSector;
+  player.warpTo = missionSectorId;
 };
 
 const startPlayerInMission = (ws: WebSocket, player: Player, id: number) => {
@@ -341,4 +327,4 @@ const failMissionIfIncomplete = (id: number) => {
   );
 };
 
-export { Mission, genMissions, MissionType, startPlayerInMission, selectMission };
+export { Mission, genMissions, MissionType, startPlayerInMission, selectMission, completeMission };

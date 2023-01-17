@@ -80,6 +80,8 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
     delayedActions: [],
     sectorKind: SectorKind.Tutorial,
     sectorChecks: [],
+    dynamic: true,
+    creationTime: Date.now(),
   };
 
   makeNetworkAware(tutorialSector, SectorKind.Tutorial);
@@ -88,13 +90,6 @@ const setupPlayer = (id: number, ws: WebSocket, name: string, faction: Faction) 
   sectors.set(tutorialSector, state);
   state.players.set(id, player);
   setPlayerSector(id, tutorialSector);
-
-  // This should be refactored a bit to match how mission sectors are cleaned up
-  setTimeout(() => {
-    sectors.delete(tutorialSector);
-    removeNetworkAwareness(tutorialSector);
-    // removeContiguousSubgraph(mapGraph, tutorialSector);
-  }, 1000 * 60 * 60 * 3);
 
   targets.set(id, [TargetKind.None, 0]);
   secondaries.set(id, 0);

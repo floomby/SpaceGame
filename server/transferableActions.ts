@@ -1,5 +1,8 @@
+import { Faction } from "../src/defs";
 import { equip, GlobalState, TutorialStage } from "../src/game";
+import { completeMission } from "./missions";
 import { clients, idToWebsocket, sectors } from "./state";
+import { enemyCountState } from "./stateHelpers";
 import { sendTutorialStage, spawnTutorialStation } from "./tutorial";
 
 const transferableActionsMap = new Map<string, number>();
@@ -62,5 +65,23 @@ transferableActions.push((state: GlobalState, sector: number, data: { id: number
   return false;
 });
 transferableActionsMap.set("tutorialStrafer", transferableActions.length - 1);
+
+transferableActions.push((state: GlobalState, sector: number, data: { missionId: number, forFaction: Faction }) => {
+  if (enemyCountState(data.forFaction, state) === 0) {
+    completeMission(data.missionId);
+    return true;
+  }
+  return false;
+});
+transferableActionsMap.set("clearance", transferableActions.length - 1);
+
+transferableActions.push((state: GlobalState, sector: number, data: { missionId: number, targetId: number }) => {
+  if (!state.players.has(data.targetId!)) {
+    completeMission(data.missionId);
+    return true;
+  }
+  return false;
+});
+transferableActionsMap.set("assassination", transferableActions.length - 1);
 
 export { transferableActions, transferableActionsMap };

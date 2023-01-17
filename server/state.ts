@@ -22,7 +22,7 @@ import { CardinalDirection } from "../src/geometry";
 import { initMarket } from "./market";
 import { NPC, npcReconstructors } from "../src/npc";
 import { Checkpoint, Station, User } from "./dataModels";
-import { awareSectors, peerMap, PeerSockets, waitingData } from "./peers";
+import { awareSectors, peerMap, PeerSockets, removeNetworkAwareness, waitingData } from "./peers";
 import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
 import { ISector, Sector } from "./sector";
 import { HydratedDocument } from "mongoose";
@@ -303,7 +303,25 @@ const getPlayerFromId = (id: number) => {
 };
 
 const sectors: Map<number, GlobalState> = new Map();
-const sectorTriggers: Map<number, (state: GlobalState) => void> = new Map();
+
+setInterval(() => {
+  for (const [sectorId, sector] of sectors) {
+    if (sector.dynamic && (sector.creationTime || 0) + 1000 * 60 * 60 * 3 < Date.now()) {
+      let hasPC = false;
+      for (const player of sector.players.values()) {
+        if (player.isPC) {
+          hasPC = true;
+          break;
+        }
+      }
+      if (!hasPC) {
+        sectors.delete(sectorId);
+        removeNetworkAwareness(sectorId);
+      }
+    }
+  }
+}, 1000 * 60 * 60 * 30);
+
 const warpList: { player: Player; to: number }[] = [];
 
 const initSectors = (serverSectors: number[]) => {
@@ -321,6 +339,8 @@ const initSectors = (serverSectors: number[]) => {
       delayedActions: [],
       sectorKind: SectorKind.Overworld,
       sectorChecks: [],
+      dynamic: false,
+      creationTime: Date.now(),
     });
   });
 };
@@ -406,6 +426,8 @@ type SerializableGlobalState = {
   sectorKind?: SectorKind;
   sectorNumber: number;
   sectorChecks?: TransferableAction[];
+  dynamic?: boolean;
+  creationTime?: number;
 };
 
 const serializeGlobalState = (state: GlobalState, sectorNumber: number): SerializableGlobalState => {
@@ -421,6 +443,8 @@ const serializeGlobalState = (state: GlobalState, sectorNumber: number): Seriali
     sectorKind: state.sectorKind,
     sectorNumber,
     sectorChecks: state.sectorChecks,
+    dynamic: state.dynamic,
+    creationTime: state.creationTime,
   };
 };
 
@@ -437,6 +461,8 @@ const deserializeGlobalState = (state: SerializableGlobalState): GlobalState => 
     delayedActions: state.delayedActions || [],
     sectorKind: state.sectorKind || SectorKind.Overworld,
     sectorChecks: state.sectorChecks || [],
+    dynamic: state.dynamic || false,
+    creationTime: state.creationTime || Date.now(),
   };
 };
 
@@ -573,7 +599,6 @@ export {
   clients,
   idToWebsocket,
   sectors,
-  sectorTriggers,
   warpList,
   targets,
   secondaries,

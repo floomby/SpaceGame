@@ -308,6 +308,8 @@ type GlobalState = {
   delayedActions?: DelayedAction[];
   sectorKind?: SectorKind;
   sectorChecks?: TransferableAction[];
+  dynamic?: boolean;
+  creationTime?: number;
 };
 
 const setCanDockOrRepair = (player: Player, state: GlobalState) => {

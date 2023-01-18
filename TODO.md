@@ -21,7 +21,6 @@
 
 ### WebGL optimizations that can be done (in estimated order of performance gain)
 
-- move a bunch of the vbos into vaos to avoid setting the attributes over and over
 - instanced rendering for projectiles
 - instanced rendering for other things
 - use ubos for the lights and particle emitters

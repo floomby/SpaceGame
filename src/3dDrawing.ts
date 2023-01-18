@@ -428,41 +428,42 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
     }
   }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  // gl.bindVertexArray(bufferData.vertexArrayObject);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  gl.bindVertexArray(bufferData.vertexArrayObject);
 
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
@@ -527,6 +528,8 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
 
   {
     const numComponents = 3;
@@ -618,40 +621,42 @@ const drawTarget = (target: Player, where: Rectangle) => {
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, targetDisplayProjectionMatrix);
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  gl.bindVertexArray(bufferData.vertexArrayObject);
 
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
@@ -681,6 +686,8 @@ const drawTarget = (target: Player, where: Rectangle) => {
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
 
   // Draw the players status bars
   gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -802,47 +809,46 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[], isHigh
   const def = asteroidDefs[asteroid.defIndex];
   let bufferData = models[def.modelIndex];
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
-
+  gl.bindVertexArray(bufferData.vertexArrayObject);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, bufferData.texture);
   gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-
-  // gl.uniform3fv(programInfo.uniformLocations.baseColor, teamColorsFloat[player.team]);
 
   // find the closest lights
   let lights: [number, PointLightData][] = [];
@@ -898,6 +904,8 @@ const drawAsteroid = (asteroid: Asteroid, lightSources: PointLightData[], isHigh
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
 
+  gl.bindVertexArray(null);
+
   // Draw the resource bar
   const resources = Math.max(asteroid.resources, 0) / def.resources;
   gl.uniform3fv(programInfo.uniformLocations.healthAndEnergyAndScale, [resources, 0, def.radius / 10]);
@@ -922,40 +930,42 @@ const drawCollectable = (collectable: Collectable, lightSources: PointLightData[
   const def = collectableDefs[collectable.index];
   const bufferData = models[def.modelIndex];
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  gl.bindVertexArray(bufferData.vertexArrayObject);
 
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
@@ -1016,6 +1026,8 @@ const drawCollectable = (collectable: Collectable, lightSources: PointLightData[
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
 };
 
 const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
@@ -1052,40 +1064,42 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, targetDisplayProjectionMatrix);
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  gl.bindVertexArray(bufferData.vertexArrayObject);
 
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
@@ -1116,6 +1130,8 @@ const drawTargetAsteroid = (asteroid: Asteroid, where: Rectangle) => {
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
 
   // Draw the resource bar
   const resources = Math.max(asteroid.resources, 0) / def.resources;
@@ -1209,40 +1225,42 @@ const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) 
   const def = mineDefs[mine.defIndex];
   let bufferData = models[def.modelIndex];
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  gl.bindVertexArray(bufferData.vertexArrayObject);
 
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
@@ -1298,6 +1316,8 @@ const drawMine = (mine: Mine, lightSources: PointLightData[], desaturation = 0) 
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
 };
 
 const clientMissileUpdate = (missile: Missile) => {
@@ -1315,40 +1335,42 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   const def = missileDefs[missile.defIndex];
   let bufferData = models[def.modelIndex];
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  gl.bindVertexArray(bufferData.vertexArrayObject);
 
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
@@ -1404,6 +1426,8 @@ const drawMissile = (missile: Missile, lightSources: PointLightData[]) => {
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
 };
 
 const setLineUniforms = () => {
@@ -1473,40 +1497,42 @@ const doPreviewRendering = (previewRequest: PreviewRequest) => {
 
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, targetDisplayProjectionMatrix);
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, bufferData.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferData.indexBuffer);
+
+  gl.bindVertexArray(bufferData.vertexArrayObject);
 
   // Uniforms
   gl.activeTexture(gl.TEXTURE0);
@@ -1536,6 +1562,9 @@ const doPreviewRendering = (previewRequest: PreviewRequest) => {
   const pixelData = new Uint8Array(4 * 800 * 800);
 
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
+
   gl.readPixels(0, canvas.height - 800, 800, 800, gl.RGBA, gl.UNSIGNED_BYTE, pixelData);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 

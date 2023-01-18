@@ -197,6 +197,17 @@ class Model {
     this.indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+    // find the max index
+    // let maxIndex = 0;
+    // for (const index of this.indices) {
+    //   if (index > maxIndex) {
+    //     maxIndex = index;
+    //   }
+    // }
+
+    // console.log(`Max index: ${maxIndex}, num vertices: ${this.vertices.length / 3}, num indices: ${this.indices.length}`);
 
     this.texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -245,6 +256,8 @@ class Model {
       gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
     }
 
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+
     gl.bindVertexArray(null);
   }
 }
@@ -264,7 +277,6 @@ const loadObj = (file: string, gl: WebGL2RenderingContext, programInfo: any) => 
   });
 };
 
-// Shouldn't be in this file, but it is
 const loadTexture = (file: string, gl: WebGL2RenderingContext) => {
   return new Promise<WebGLTexture>((resolve, reject) => {
     const texture = gl.createTexture();

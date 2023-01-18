@@ -6,40 +6,42 @@ import { Ballistic } from "./game";
 import { Model, modelMap } from "./modelLoader";
 
 const drawer = (projectile: Ballistic, model: Model, randomizeMatrix = false) => {
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  // }
 
-  {
-    const numComponents = 2;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexTextureCoordBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
-  }
+  // {
+  //   const numComponents = 2;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexTextureCoordBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+  // }
 
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexNormalBuffer);
-    gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
-    gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-  }
+  // {
+  //   const numComponents = 3;
+  //   const type = gl.FLOAT;
+  //   const normalize = false;
+  //   const stride = 0;
+  //   const offset = 0;
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexNormalBuffer);
+  //   gl.vertexAttribPointer(programInfo.attribLocations.vertexNormal, numComponents, type, normalize, stride, offset);
+  //   gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
+  // }
 
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.indexBuffer);
+  // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.indexBuffer);
+
+  gl.bindVertexArray(model.vertexArrayObject);
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, model.texture);
@@ -70,6 +72,8 @@ const drawer = (projectile: Ballistic, model: Model, randomizeMatrix = false) =>
   const type = gl.UNSIGNED_SHORT;
   const offset = 0;
   gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+
+  gl.bindVertexArray(null);
 };
 
 const drawPrimary = (projectile: Ballistic) => {

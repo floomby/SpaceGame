@@ -414,7 +414,7 @@ const warpTo = (sectorList: number[]) => {
   return new (class extends State {
     process = (state: GlobalState, npc: NPC, sector: number, target) => {
       if (this.memory.needWarp) {
-        const sectors = sectorList.filter((sector) => sector !== sector);
+        const sectors = sectorList.filter((sec) => sec !== sector);
         if (npc.player.warping < 1) {
           npc.player.warping = 1;
         }

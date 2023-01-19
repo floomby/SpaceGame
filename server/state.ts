@@ -20,7 +20,7 @@ import { WebSocket } from "ws";
 import { defs, Faction, initDefs, UnitKind } from "../src/defs";
 import { CardinalDirection } from "../src/geometry";
 import { initMarket } from "./market";
-import { NPC, npcReconstructors } from "../src/npc";
+import { NPC, npcReconstructors } from "./npcs/npc";
 import { Checkpoint, Station, User } from "./dataModels";
 import { awareSectors, peerMap, PeerSockets, removeNetworkAwareness, waitingData } from "./peers";
 import { insertRespawnedPlayer, insertSpawnedPlayer } from "./server";
@@ -51,67 +51,6 @@ const allResources = [
   { resource: "Aziracite", density: 1 },
   { resource: "Hemacite", density: 1 },
 ];
-
-// const sectorFactions: (Faction | null)[] = sectorList.map((_) => null);
-// sectorFactions[0] = Faction.Scourge;
-// sectorFactions[3] = Faction.Scourge;
-
-// sectorFactions[1] = Faction.Rogue;
-// sectorFactions[2] = Faction.Rogue;
-// sectorFactions[5] = Faction.Rogue;
-// sectorFactions[6] = Faction.Rogue;
-
-// sectorFactions[12] = Faction.Alliance;
-// sectorFactions[13] = Faction.Alliance;
-// sectorFactions[8] = Faction.Alliance;
-// sectorFactions[4] = Faction.Alliance;
-// sectorFactions[9] = Faction.Alliance;
-
-// sectorFactions[14] = Faction.Confederation;
-// sectorFactions[15] = Faction.Confederation;
-// sectorFactions[11] = Faction.Confederation;
-// sectorFactions[7] = Faction.Confederation;
-// sectorFactions[10] = Faction.Confederation;
-
-const friendlySectors = (faction: Faction) => {
-  const ret: number[] = [];
-  return ret;
-  // for (let i = 0; i < sectorFactions.length; i++) {
-  //   if (sectorFactions[i] === faction) {
-  //     ret.push(i);
-  //   }
-  // }
-  // return ret;
-};
-
-// const sectorGuardianCount = sectorList.map((_) => 0);
-
-// sectorGuardianCount[0] = 6;
-// sectorGuardianCount[3] = 6;
-
-// sectorGuardianCount[1] = 6;
-// sectorGuardianCount[2] = 6;
-// sectorGuardianCount[5] = 15;
-// sectorGuardianCount[6] = 15;
-
-// sectorGuardianCount[12] = 24;
-// sectorGuardianCount[13] = 15;
-// sectorGuardianCount[8] = 15;
-// sectorGuardianCount[4] = 6;
-// sectorGuardianCount[9] = 6;
-
-// sectorGuardianCount[14] = 15;
-// sectorGuardianCount[15] = 24;
-// sectorGuardianCount[11] = 15;
-// sectorGuardianCount[7] = 6;
-// sectorGuardianCount[10] = 6;
-
-// const sectorHasStarbase = sectorList.map((_) => false);
-// sectorHasStarbase[5] = true;
-
-// sectorHasStarbase[12] = true;
-
-// sectorHasStarbase[15] = true;
 
 type ClientData = {
   id: number;
@@ -345,14 +284,29 @@ const initSectors = (serverSectors: number[]) => {
   });
 };
 
-const initSectorResourceData = async () => {
+const sectorFactions: (Faction | null)[] = new Array(mapWidth * mapHeight).fill(null);
+const sectorGuardianCount = new Array(mapWidth * mapHeight).fill(0);
+const sectorHasStarbase = sectorList.map((_) => false);
+const factionSectors: number[][] = new Array(Faction.Count).fill([]);
+
+const initSectorData = async () => {
   for (let i = 0; i < mapWidth * mapHeight; i++) {
     const sectorInfo = await Sector.findOne({ sector: i });
     if (!sectorInfo) {
       throw new Error("Missing sector info");
     }
     sectorAsteroidResources.push(sectorInfo.resources);
-    sectorAsteroidCounts.push(sectorInfo.count);
+    sectorAsteroidCounts.push(sectorInfo.asteroidCount);
+    sectorFactions[i] = sectorInfo.faction;
+    sectorGuardianCount[i] = sectorInfo.guardianCount;
+
+    if (sectorInfo.faction !== null) {
+      factionSectors[sectorInfo.faction].push(i);
+    }
+  }
+  const stations = await Station.find();
+  for (const station of stations) {
+    sectorHasStarbase[station.sector] = true;
   }
 };
 
@@ -539,7 +493,7 @@ const transferSectorToPeer = (sector: number, peer: string) => {
   return promise;
 };
 
-type SerializablePlayer = Player & { sector: number, npcReconstructionKey?: string, input?: Input };
+type SerializablePlayer = Player & { sector: number; npcReconstructionKey?: string; input?: Input };
 
 const insertStation = (station: SerializablePlayer) => {
   console.log("Inserting station: " + station.id);
@@ -593,9 +547,9 @@ export {
   sectorAsteroidResources,
   sectorAsteroidCounts,
   allResources,
-  // sectorFactions,
-  // sectorGuardianCount,
-  // sectorHasStarbase,
+  sectorFactions,
+  sectorGuardianCount,
+  sectorHasStarbase,
   clients,
   idToWebsocket,
   sectors,
@@ -606,14 +560,14 @@ export {
   knownRecipes,
   uid,
   saveCheckpoint,
-  friendlySectors,
+  factionSectors,
   initInitialAsteroids,
   getPlayerFromId,
   serializeAllClientData,
   sendServerWarp,
   serverChangePlayer,
   initSectors,
-  initSectorResourceData,
+  initSectorData,
   initStationTeams,
   stationIdToDefaultTeam,
   insertSector,

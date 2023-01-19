@@ -41,11 +41,9 @@ import {
   canonicalizeAngle,
 } from "./geometry";
 import { ResourceDensity } from "./mapLayout";
-import { NPC } from "./npc";
 import { seek } from "./pathing";
 import { sfc32 } from "./prng";
-
-// TODO Move the geometry stuff to a separate file
+import { LootTable } from "./defs/collectables";
 
 type Entity = Circle & { id: number; speed: number; heading: number };
 
@@ -132,6 +130,17 @@ type Player = Entity & {
   // For the tutorial only
   doNotShootYet?: boolean;
 };
+
+interface NPC {
+  player: Player;
+  input: Input;
+  angle: number | undefined;
+  selectedSecondary: number;
+  secondariesToFire: number[];
+  lootTable: LootTable;
+  targetId: number;
+  process: (state: GlobalState, sector: number) => void;
+}
 
 type Asteroid = Circle & {
   id: number;
@@ -581,6 +590,8 @@ const applyCollisionForce = (collider: Player, collidee: Circle, collideeMass = 
 
 // Idk if this is the right approach or not, but I need something that cuts down on unnecessary things being sent over the websocket
 type Mutated = { asteroids: Set<Asteroid>; collectables: Collectable[]; mines: Mine[] };
+
+// TODO Move the update function out of the src directory so that we don't need this dependency injection
 
 // Like usual the update function is a monstrosity
 // It could probably use some refactoring
@@ -1600,6 +1611,7 @@ export {
   SectorKind,
   SectorOfPlayerResult,
   TransferableAction,
+  NPC,
   update,
   applyInputs,
   processAllNpcs,

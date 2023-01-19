@@ -7,9 +7,9 @@ import express from "express";
 import { resolve } from "path";
 import cors from "cors";
 import { User, Station } from "./dataModels";
-import { addNpc } from "../src/npc";
+import { addNpc } from "./npcs/npc";
 import { market } from "./market";
-import { clients, friendlySectors, idToWebsocket, /* sectorFactions, sectorHasStarbase, */ sectorList, sectors, transferSectorToPeer, uid } from "./state";
+import { clients, idToWebsocket, sectorFactions, sectorHasStarbase, factionSectors, sectorList, sectors, transferSectorToPeer, uid } from "./state";
 import { adminHash, hash, sniCallback } from "./settings";
 import { recipeMap, recipes } from "../src/recipes";
 import { isFreeArm } from "../src/defs/armaments";
@@ -466,7 +466,7 @@ app.get("/addNPC", (req, res) => {
     return;
   }
   try {
-    addNpc(sectors.get(sectorIndex)!, what, parseInt(team), uid(), friendlySectors(parseInt(team)));
+    addNpc(sectors.get(sectorIndex)!, what, parseInt(team), uid());
   } catch (e) {
     res.send("Error: " + e);
     return;

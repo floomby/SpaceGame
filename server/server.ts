@@ -17,20 +17,18 @@ import {
 } from "../src/game";
 import { defs, Faction, UnitKind } from "../src/defs";
 
-import { addNpc, NPC } from "../src/npc";
+import { addNpc, NPC } from "./npcs/npc";
 import { discoverRecipe, sendInventory } from "./inventory";
 import {
   allResources,
   clients,
-  friendlySectors,
   idToWebsocket,
   knownRecipes,
   secondaries,
   secondariesToActivate,
-  sectorAsteroidResources,
-  // sectorAsteroidResources,
-  // sectorFactions,
-  // sectorGuardianCount,
+  factionSectors,
+  sectorFactions,
+  sectorGuardianCount,
   sectorList,
   sectors,
   serializeAllClientData,
@@ -40,10 +38,11 @@ import {
   targets,
   uid,
   warpList,
+  sectorAsteroidResources,
 } from "./state";
 import { CardinalDirection, mirrorAngleHorizontally, mirrorAngleVertically } from "../src/geometry";
 import { allyCount, enemyCount, flashServerMessage } from "./stateHelpers";
-import { serversForSectors, setPlayerSector } from "./peers";
+import { peerMap, serversForSectors, setPlayerSector } from "./peers";
 import { WebSocket } from "ws";
 import { User } from "./dataModels";
 import { mapGraph, mapHeight, mapWidth } from "../src/mapLayout";
@@ -146,22 +145,22 @@ const spawnIncrementalGuardians = (sector: number) => {
   switch (faction) {
     case Faction.Alliance:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
       }
       break;
     case Faction.Confederation:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
       }
       break;
     case Faction.Rogue:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
       }
       break;
     case Faction.Scourge:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid());
       }
   }
 };
@@ -199,22 +198,22 @@ const spawnSectorGuardians = (sector: number) => {
   switch (faction) {
     case Faction.Alliance:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.5 ? "Fighter" : "Advanced Fighter", Faction.Alliance, uid());
       }
       break;
     case Faction.Confederation:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.5 ? "Drone" : "Seeker", Faction.Confederation, uid());
       }
       break;
     case Faction.Rogue:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.2 ? "Strafer" : "Venture", Faction.Rogue, uid());
       }
       break;
     case Faction.Scourge:
       for (let i = 0; i < count; i++) {
-        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid(), friendlySectors(faction));
+        addNpc(state, Math.random() > 0.5 ? "Spartan" : "Striker", Faction.Scourge, uid());
       }
   }
 };
@@ -291,6 +290,28 @@ const warpNonNPCToSector = (ws: WebSocket, player: Player, sector: number) => {
       serverChangePlayer(ws, player, serverName);
     } else {
       flashServerMessage(player.id, `Server not found for this sector! (${sector})`, [1.0, 0.0, 0.0, 1.0]);
+    }
+  }
+};
+
+const warpNPCToSector = (player: Player, sector: number) => {
+  const state = sectors.get(sector);
+  if (state) {
+    state.players.set(player.id, player);
+  } else {
+    const peerSockets = peerMap.get(serversForSectors.get(sector)!);
+    if (peerSockets) {
+      (player as any).sector = sector;
+      (player as any).npcReconstructionKey = Object.getPrototypeOf(player.npc).constructor.name;
+      (player as any).input = player.npc!.input;
+      player.npc = undefined;
+      peerSockets.request.send("npc-transfer", player, (success: string) => {
+        if (success !== "OK") {
+          console.log("Error transferring npc: " + success);
+        }
+      });
+    } else {
+      console.log(`Server not found for this sector! (${sector})`);
     }
   }
 };
@@ -399,17 +420,17 @@ const spawnPlayer = (ws: WebSocket, player: Player, sector: number) => {
 };
 
 const setupTimers = () => {
-  // setInterval(() => {
-  //   for (let i = 0; i < sectorList.length; i++) {
-  //     spawnIncrementalGuardians(i);
-  //   }
-  // }, 20 * 990);
+  setInterval(() => {
+    for (let i = 0; i < sectorList.length; i++) {
+      spawnIncrementalGuardians(i);
+    }
+  }, 20 * 990);
 
-  // setInterval(() => {
-  //   for (let i = 0; i < sectorList.length; i++) {
-  //     spawnSectorGuardians(i);
-  //   }
-  // }, 120 * 60 * 1000);
+  setInterval(() => {
+    for (let i = 0; i < sectorList.length; i++) {
+      spawnSectorGuardians(i);
+    }
+  }, 120 * 60 * 1000);
 
   setInterval(() => {
     for (const sector of sectorList) {
@@ -541,7 +562,7 @@ const setupTimers = () => {
         warpNonNPCToSector(ws, transition.player, newSector);
       } else {
         // Is npc
-        console.log("Sector transitions for NPCs is disabled currently");
+        warpNPCToSector(transition.player, newSector);
       }
     }
 
@@ -555,7 +576,7 @@ const setupTimers = () => {
         warpNonNPCToSector(ws, player, to);
       } else {
         // Is npc
-        console.log("NPC warping is disabled currently");
+        // warpNPCToSector(player, to);
       }
     }
   }, 1000 / ticksPerSecond);

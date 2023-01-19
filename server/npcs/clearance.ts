@@ -14,7 +14,7 @@ import {
   State,
   strafingSwarmCombat,
   stupidSwarmCombat,
-} from "../../src/npc";
+} from "./npc";
 import { sfc32 } from "../../src/prng";
 import { uid } from "../state";
 

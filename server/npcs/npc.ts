@@ -1,6 +1,6 @@
-import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition, UnitKind } from "./defs";
-import { defaultLootTable, LootTable } from "./defs/collectables";
-import { estimateEffectivePrimaryRange, projectileDefs } from "./defs/projectiles";
+import { armDefs, collectableDefMap, defMap, defs, emptyLoadout, emptySlotData, Faction, SlotKind, UnitDefinition, UnitKind } from "../../src/defs";
+import { defaultLootTable, LootTable } from "../../src/defs/collectables";
+import { estimateEffectivePrimaryRange, projectileDefs } from "../../src/defs/projectiles";
 import {
   applyInputs,
   effectiveInfinity,
@@ -13,25 +13,16 @@ import {
   randomNearbyPointInSector,
   sectorBounds,
   sectorDelta,
-} from "./game";
-import { findInterceptAimingHeading, findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "./geometry";
-import { mapHeight, mapWidth } from "./mapLayout";
-import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "./pathing";
-import { sfc32 } from "./prng";
-import { recipeMap } from "./recipes";
+} from "../../src/game";
+import { findInterceptAimingHeading, findSmallAngleBetween, l2Norm, pointOutsideRectangle, Position, Rectangle } from "../../src/geometry";
+import { mapHeight, mapWidth } from "../../src/mapLayout";
+import { seekPosition, currentlyFacing, stopPlayer, arrivePosition, arrivePositionUsingAngle, seekPositionUsingAngle } from "../../src/pathing";
+import { sfc32 } from "../../src/prng";
+import { recipeMap } from "../../src/recipes";
+import { NPC } from "../../src/game";
+import { factionSectors } from "../state";
 
 const npcReconstructors: Map<string, (player: Player) => NPC> = new Map();
-
-interface NPC {
-  player: Player;
-  input: Input;
-  angle: number | undefined;
-  selectedSecondary: number;
-  secondariesToFire: number[];
-  lootTable: LootTable;
-  targetId: number;
-  process: (state: GlobalState, sector: number) => void;
-}
 
 type Completed = {
   completed?: boolean;
@@ -56,7 +47,7 @@ abstract class State {
     return null;
   }
 
-  abstract process: (state: GlobalState, npc: NPC, sector: number, target: Player | undefined) => State;
+  abstract process: (state: GlobalState, npc: NPC, sector: number, target: Player | undefined) => State | undefined;
   abstract onEnter: (npc: NPC) => void;
 }
 
@@ -416,8 +407,8 @@ const warpTo = (sectorList: number[]) => {
   return new (class extends State {
     process = (state: GlobalState, npc: NPC, sector: number, target) => {
       if (this.memory.needWarp) {
-        const sectors = sectorList.filter((sector) => sector !== sector);
-        if (npc.player.warping < 1) {
+        const sectors = sectorList.filter((sec) => sec !== sector);
+        if (npc.player.warping! < 1) {
           npc.player.warping = 1;
         }
         npc.player.warpTo = sectors[Math.floor(Math.random() * sectors.length)];
@@ -456,18 +447,18 @@ const makeBasicStateGraph = (
   idle.transitions.push({ trigger: () => Math.random() < 0.01, state: passiveGoToSector });
   idle.transitions.push({ trigger: () => Math.random() < 0.02, state: randomWarp });
   passiveGoTo.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
-  passiveGoTo.transitions.push({ trigger: (_, __, memory) => memory.completed, state: idle });
+  passiveGoTo.transitions.push({ trigger: (_, __, memory) => !!memory.completed, state: idle });
   passiveGoToSector.transitions.push({ trigger: (_, __, ___, target) => !!target, state: swarm });
-  passiveGoToSector.transitions.push({ trigger: (_, __, memory) => memory.completed, state: passiveGoTo });
+  passiveGoToSector.transitions.push({ trigger: (_, __, memory) => !!memory.completed, state: passiveGoTo });
   swarm.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
   if (!isStrafer) {
     const randomManeuver = randomCombatManeuver(primaryRange, secondaryGuided, secondaryRange, energyThreshold, mineSlot);
     swarm.transitions.push({
-      trigger: (_, npc, ___, target) => Math.random() < 0.008 && l2Norm(npc.player.position, target.position) < 500,
+      trigger: (_, npc, ___, target) => Math.random() < 0.008 && l2Norm(npc.player.position, target!.position) < 500,
       state: randomManeuver,
     });
     randomManeuver.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
-    randomManeuver.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
+    randomManeuver.transitions.push({ trigger: (_, __, memory) => !!memory.completed, state: swarm });
     randomManeuver.transitions.push({ trigger: () => Math.random() < 0.005, state: swarm });
   } else {
     const strafeSwarm = strafingSwarmCombat(
@@ -480,7 +471,7 @@ const makeBasicStateGraph = (
       projectileDefs[0].range
     );
     strafeSwarm.transitions.push({ trigger: (_, __, ___, target) => !target, state: idle });
-    strafeSwarm.transitions.push({ trigger: (_, __, memory) => memory.completed, state: swarm });
+    strafeSwarm.transitions.push({ trigger: (_, __, memory) => !!memory.completed, state: swarm });
     swarm.transitions.push({
       trigger: (_, npc, ___, target) => Math.random() < 0.05 && !!target && l2Norm(target.position, npc.player.position) < primaryRange,
       state: strafeSwarm,
@@ -519,7 +510,7 @@ class ActiveSwarmer implements NPC {
     primary: false,
     secondary: false,
   };
-  public angle: number = undefined;
+  public angle: number | undefined = undefined;
 
   public selectedSecondary = 1;
 
@@ -531,9 +522,7 @@ class ActiveSwarmer implements NPC {
 
   public targetId: number;
 
-  public friendlySectors: number[] = [];
-
-  constructor(what: string | number | Player, team?: number | Faction, id?: number, friendlySectors?: number[]) {
+  constructor(what: string | number | Player, team?: number | Faction, id?: number) {
     let noEquip = false;
     let def: UnitDefinition;
     if (typeof what === "object") {
@@ -560,7 +549,7 @@ class ActiveSwarmer implements NPC {
         speed: 0,
         heading: Math.random() * 2 * Math.PI,
         health: defs[defIndex].health,
-        id: id,
+        id: id!,
         sinceLastShot: [effectiveInfinity],
         energy: defs[defIndex].energy,
         defIndex: defIndex,
@@ -569,8 +558,8 @@ class ActiveSwarmer implements NPC {
         cargo: [],
         credits: 500,
         npc: this,
-        warping: -defs[defIndex].warpTime,
-        team,
+        warping: -defs[defIndex].warpTime!,
+        team: team!,
         v: { x: 0, y: 0 },
         iv: { x: 0, y: 0 },
         ir: 0,
@@ -578,9 +567,9 @@ class ActiveSwarmer implements NPC {
       };
     }
 
-    const prng = sfc32(id % 10000, 4398, this.player.defIndex, 6987);
+    const prng = sfc32(id! % 10000, 4398, this.player.defIndex, 6987);
 
-    let mineSlot = def.slots.indexOf(SlotKind.Mine);
+    let mineSlot: number | null = def.slots.indexOf(SlotKind.Mine);
     if (mineSlot === -1) {
       mineSlot = null;
     } else {
@@ -591,11 +580,6 @@ class ActiveSwarmer implements NPC {
 
     const isStrafer = def.name === "Strafer";
 
-    // TEMPORARY
-    if (!friendlySectors) {
-      friendlySectors = [0, 1];
-    }
-
     switch (Math.floor(prng() * 12)) {
       case 0:
       case 1:
@@ -603,26 +587,26 @@ class ActiveSwarmer implements NPC {
         if (!noEquip) {
           this.player = equip(this.player, 1, "Javelin Missile", true);
         }
-        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, factionSectors[this.player.team], isStrafer);
         break;
       case 3:
       case 4:
         if (!noEquip) {
           this.player = equip(this.player, 1, "Tomahawk Missile", true);
         }
-        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 2500, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 2500, 3, mineSlot, factionSectors[this.player.team], isStrafer);
         break;
       case 5:
         if (!noEquip) {
           this.player = equip(this.player, 1, "Laser Beam", true);
         }
-        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 38, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 38, mineSlot, factionSectors[this.player.team], isStrafer);
         break;
       case 6:
         if (!noEquip) {
           this.player = equip(this.player, 1, "Heavy Javelin Missile", true);
         }
-        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 700, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 700, 3, mineSlot, factionSectors[this.player.team], isStrafer);
         break;
       case 7:
       case 8:
@@ -630,12 +614,12 @@ class ActiveSwarmer implements NPC {
           if (!noEquip) {
             this.player = equip(this.player, 1, "Plasma Cannon", true);
           }
-          this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, friendlySectors, isStrafer);
+          this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, factionSectors[this.player.team], isStrafer);
         } else {
           if (!noEquip) {
             this.player = equip(this.player, 1, "Disruptor Cannon", true);
           }
-          this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 350, 3, mineSlot, friendlySectors, isStrafer);
+          this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 350, 3, mineSlot, factionSectors[this.player.team], isStrafer);
         }
         break;
       case 9:
@@ -643,13 +627,13 @@ class ActiveSwarmer implements NPC {
         if (!noEquip) {
           this.player = equip(this.player, 1, "Plasma Cannon", true);
         }
-        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), false, 800, 3, mineSlot, factionSectors[this.player.team], isStrafer);
         break;
       case 11:
         if (!noEquip) {
           this.player = equip(this.player, 1, "EMP Missile", true);
         }
-        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, friendlySectors, isStrafer);
+        this.currentState = makeBasicStateGraph(estimateEffectivePrimaryRange(def), true, 3000, 3, mineSlot, factionSectors[this.player.team], isStrafer);
         break;
     }
 
@@ -661,19 +645,19 @@ class ActiveSwarmer implements NPC {
   public process(state: GlobalState, sector: number) {
     let target: Player | undefined = undefined;
     const def = defs[this.player.defIndex];
-    const newTarget = findClosestTarget(this.player, state, def.scanRange, true);
+    const newTarget = findClosestTarget(this.player, state, def.scanRange!, true);
     this.targetId = newTarget?.id ?? 0;
     target = newTarget;
     if (!target && this.targetId) {
       target = state.players.get(this.targetId);
     }
-    this.currentState = this.currentState.process(state, this, sector, target);
+    this.currentState = this.currentState.process(state, this, sector, target) as State;
   }
 }
 
-const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number, friendlySectors: number[]) => {
+const addNpc = (state: GlobalState, what: string | number, team: Faction, id: number) => {
   // const npc = new ActiveSwarmer(what, team, id, friendlySectors);
-  const npc = new ActiveSwarmer(what, team, id, [0, 1]);
+  const npc = new ActiveSwarmer(what, team, id);
   state.players.set(npc.player.id, npc.player);
 };
 
@@ -682,7 +666,7 @@ const addNpc = (state: GlobalState, what: string | number, team: Faction, id: nu
 const aimlessPassiveRoaming = (bounds: Rectangle) => {
   const roam = passiveGoToRandomPointInSector(bounds);
   roam.transitions.push({ trigger: () => Math.random() < 0.05, state: roam });
-  roam.transitions.push({ trigger: (_, __, memory) => memory.completed, state: roam });
+  roam.transitions.push({ trigger: (_, __, memory) => !!memory.completed, state: roam });
   return roam;
 };
 
@@ -697,7 +681,7 @@ class TutorialRoamingVenture implements NPC {
     primary: false,
     secondary: false,
   };
-  public angle: number = undefined;
+  public angle: number | undefined = undefined;
 
   public selectedSecondary = 1;
 
@@ -713,10 +697,10 @@ class TutorialRoamingVenture implements NPC {
     let id: number;
     if (typeof idOrPlayer === "number") {
       id = idOrPlayer;
-      const { def, index } = defMap.get("Venture");
-      
+      const { def, index } = defMap.get("Venture")!;
+
       this.player = {
-        position: randomNearbyPointInSector(where, 1500),
+        position: randomNearbyPointInSector(where!, 1500),
         radius: def.radius,
         speed: 0,
         heading: Math.random() * 2 * Math.PI,
@@ -740,7 +724,7 @@ class TutorialRoamingVenture implements NPC {
       id = idOrPlayer.id;
       this.player = idOrPlayer;
     }
-    
+
     const bounds = { x: -3000, y: -3000, width: 6000, height: 6000 };
 
     this.lootTable = new LootTable();
@@ -753,7 +737,7 @@ class TutorialRoamingVenture implements NPC {
   private currentState: State;
 
   public process(state: GlobalState, sector: number) {
-    this.currentState = this.currentState.process(state, this, sector, undefined);
+    this.currentState = this.currentState.process(state, this, sector, undefined) as State;
   }
 }
 
@@ -774,7 +758,7 @@ class TutorialStrafer implements NPC {
     primary: false,
     secondary: false,
   };
-  public angle: number = undefined;
+  public angle: number | undefined = undefined;
 
   public selectedSecondary = 1;
 
@@ -791,10 +775,10 @@ class TutorialStrafer implements NPC {
     if (typeof idOrPlayer === "number") {
       id = idOrPlayer;
 
-      const { def, index } = defMap.get("Strafer");
-  
+      const { def, index } = defMap.get("Strafer")!;
+
       this.player = {
-        position: randomNearbyPointInSector(where, 4000),
+        position: randomNearbyPointInSector(where!, 4000),
         radius: def.radius,
         speed: 0,
         heading: Math.random() * 2 * Math.PI,
@@ -840,7 +824,7 @@ class TutorialStrafer implements NPC {
     let target: Player | undefined = undefined;
     const def = defs[this.player.defIndex];
     if (this.frame % 60 === 0) {
-      const newTarget = findClosestTarget(this.player, state, def.scanRange, true, true);
+      const newTarget = findClosestTarget(this.player, state, def.scanRange!, true, true);
       this.targetId = newTarget?.id ?? 0;
       target = newTarget;
     }

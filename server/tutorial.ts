@@ -2,7 +2,7 @@ import { copyPlayer, effectiveInfinity, equip, Player, randomAsteroids, sectorBo
 import { WebSocket } from "ws";
 import { clients, getTutorialNpc, saveCheckpoint, sectors, uid } from "./state";
 import { defMap, Faction } from "../src/defs";
-import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "../src/npc";
+import { addTutorialRoamingVenture, addTutorialStrafer, NPC } from "./npcs/npc";
 import { discoverRecipe, updateClientRecipes } from "./inventory";
 import { mapHeight, mapWidth } from "../src/mapLayout";
 import { transferableActionsMap } from "./transferableActions";

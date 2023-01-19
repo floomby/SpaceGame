@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { initFromDatabase } from "./misc";
-import { initInitialAsteroids, initSectorResourceData, initSectors, initStationTeams, insertSector, sendServerWarp, SerializableGlobalState, SerializableClient, SerializablePlayer, insertStation, insertNPC } from "./state";
+import { initInitialAsteroids, initSectorData, initSectors, initStationTeams, insertSector, sendServerWarp, SerializableGlobalState, SerializableClient, SerializablePlayer, insertStation, insertNPC } from "./state";
 import Routes from "./routes";
 import { startWebSocketServer } from "./websockets";
 import { setupTimers } from "./server";
@@ -207,7 +207,7 @@ mongoose
     await setupSelf();
     initSectors(sectors);
     await initFromDatabase();
-    await initSectorResourceData();
+    await initSectorData();
     await initStationTeams();
     initInitialAsteroids();
     setupTimers();

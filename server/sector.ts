@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { Faction } from "../src/defs";
 
 interface IResourceDensity {
   resource: string;
@@ -20,7 +21,9 @@ const resourceDensitySchema = new mongoose.Schema<IResourceDensity>({
 interface ISector {
   id: number;
   resources: IResourceDensity[];
-  count: number;
+  asteroidCount: number;
+  faction: Faction;
+  guardianCount: number;
 }
 
 const sectorSchema = new mongoose.Schema<ISector>({
@@ -32,9 +35,28 @@ const sectorSchema = new mongoose.Schema<ISector>({
     type: [resourceDensitySchema],
     default: [],
   },
-  count: {
+  asteroidCount: {
     type: Number,
     default: 0,
+  },
+  faction: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 3,
+    validate: {
+      validator: Number.isInteger,
+      message: "{VALUE} is not an integer value",
+    }
+  },
+  guardianCount: {
+    type: Number,
+    required: true,
+    min: 0,
+    validate: {
+      validator: Number.isInteger,
+      message: "{VALUE} is not an integer value",
+    }
   },
 });
 

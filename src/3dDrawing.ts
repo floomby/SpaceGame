@@ -353,6 +353,7 @@ const init3dDrawing = (callback: () => void) => {
         "heavy_tomahawk.obj",
         "maintainer.obj",
         "infiltrator.obj",
+        "emp_mine.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {

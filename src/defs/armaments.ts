@@ -1052,6 +1052,68 @@ const initArmaments = () => {
     tier: 1,
   });
 
+  // EMP Mine - 22
+  mineDefs.push({
+    explosionEffectIndex: 10,
+    explosionMutator(mine, state) {
+      // reuse the mine as the circle object for the collision detection for the explosion
+      mine.radius = 45;
+      const players = findAllPlayersOverlappingCircle(mine, state.players.values());
+      for (let i = 0; i < players.length; i++) {
+        players[i].disabled = (players[i].disabled ?? 0) + 120;
+      }
+    },
+    model: "emp_mine",
+    pointLights: [
+      { position: { x: 0, y: 0, z: 0.5 }, color: [0.0, 0.0, 3.0] },
+      { position: { x: 0, y: 0, z: -0.5 }, color: [0.0, 0.0, 3.0] },
+    ],
+    deploymentTime: 25,
+  });
+  const empMineIndex = mineDefs.length - 1;
+  armDefs.push({
+    name: "EMP Mine",
+    description: "A mine which emits an electromagnetic pulse when triggered",
+    kind: SlotKind.Mine,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Untargeted,
+    maxAmmo: 25,
+    fireMutator: (state, player, targetKind, target, applyEffect, slotId, flashServerMessage, whatMutated) => {
+      const slotData = player.slotData[slotId];
+      if (player.energy > 1 && slotData.sinceFired > 33 && slotData.ammo > 0) {
+        player.energy -= 1;
+        slotData.sinceFired = 0;
+        slotData.ammo--;
+        const id = uid();
+        const mine: Mine = {
+          id,
+          position: { x: player.position.x, y: player.position.y },
+          speed: 0,
+          heading: Math.random() * 2 * Math.PI,
+          radius: 15,
+          team: player.team,
+          defIndex: empMineIndex,
+          left: 1400,
+          deploying: 30,
+        };
+        state.mines.set(id, mine);
+        whatMutated.mines.push(mine);
+        applyEffect({ effectIndex: 12, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { sinceFired: 1000, ammo: 25 };
+    },
+    frameMutator: (player, slotIndex) => {
+      const slotData = player.slotData[slotIndex];
+      slotData.sinceFired++;
+    },
+    cost: 200,
+    tier: 1,
+  });
+
+
+
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];
     armDefMap.set(def.name, { index: i, def });

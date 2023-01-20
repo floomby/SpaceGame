@@ -203,7 +203,7 @@ class BasicSwarmer implements NPC {
     if (!target && this.targetId) {
       target = state.players.get(this.targetId);
     }
-    this.currentState = this.currentState.process(state, this, sector, target);
+    this.currentState = this.currentState.process(state, this, sector, target) ?? this.currentState;
   }
 }
 

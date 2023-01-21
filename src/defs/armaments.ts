@@ -4,7 +4,9 @@ import {
   availableCargoCapacity,
   CloakedState,
   EffectAnchorKind,
+  effectiveInfinity,
   EffectTrigger,
+  equip,
   findAllPlayersOverlappingCircle,
   GlobalState,
   Mine,
@@ -14,7 +16,7 @@ import {
   TargetKind,
 } from "../game";
 import { canonicalizeAngle, findHeadingBetween, l2Norm, l2NormSquared, Position, Rectangle } from "../geometry";
-import { defs, PointLightData, SlotKind, UnitKind } from "./shipsAndStations";
+import { defs, emptyLoadout, PointLightData, SlotKind, UnitKind } from "./shipsAndStations";
 import { clientUid as uid } from "../defs";
 import { asteroidDefs } from "./asteroids";
 import { projectileDefs } from "./projectiles";
@@ -1112,7 +1114,52 @@ const initArmaments = () => {
     tier: 1,
   });
 
-
+  // Gun Platform - 23
+  armDefs.push({
+    name: "Gun Platform",
+    description: "A deployable gun platform",
+    kind: SlotKind.Large,
+    usage: ArmUsage.Ammo,
+    targeted: TargetedKind.Untargeted,
+    maxAmmo: 1,
+    fireMutator: (state, player, targetKind, target, applyEffect, slotIndex, flashServerMessage, whatMutated) => {
+      const slotData = player.slotData[slotIndex];
+      if (slotData.ammo > 0) {
+        slotData.ammo--;
+        const id = uid();
+        const def = defs[15];
+        let platform: Player = {
+          position: { x: player.position.x, y: player.position.y },
+          radius: def.radius,
+          speed: 0,
+          heading: Math.random() * 2 * Math.PI,
+          health: def.health,
+          id,
+          sinceLastShot: [1000],
+          energy: def.energy,
+          defIndex: 15,
+          arms: emptyLoadout(15),
+          slotData: [{}],
+          team: player.team,
+          side: 0,
+          dp: 1,
+          v: { x: 0, y: 0 },
+          iv: { x: 0, y: 0 },
+          ir: 0,
+        };
+        platform = equip(platform, 0, "Heavy Tomahawk Missile", true);
+        platform.slotData[0].ammo = effectiveInfinity;
+        state.players.set(id, platform);
+        // TODO Make a new sound for this
+        applyEffect({ effectIndex: 12, from: { kind: EffectAnchorKind.Absolute, value: player.position } });
+      }
+    },
+    equipMutator: (player, slotIndex) => {
+      player.slotData[slotIndex] = { ammo: 1 };
+    },
+    cost: 100,
+    tier: 1,
+  });
 
   for (let i = 0; i < armDefs.length; i++) {
     const def = armDefs[i];

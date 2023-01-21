@@ -56,6 +56,7 @@ type UnitDefinition = {
   model: string;
   modelIndex?: number;
   pointLights?: PointLightData[];
+  deployment?: number;
 };
 
 const defs: UnitDefinition[] = [];
@@ -485,6 +486,32 @@ const initShipsAndStations = () => {
     mass: 35,
     isCloaky: true,
     model: "infiltrator",
+  });
+  // Gun Platform - 15
+  defs.push({
+    name: "Gun Platform",
+    description: "A static gun platform",
+    health: 800,
+    speed: 0,
+    energy: 1100,
+    energyRegen: 0.5,
+    primaryReloadTime: 10,
+    primaryDamage: 15,
+    radius: 25,
+    kind: UnitKind.Station,
+    slots: [SlotKind.Normal],
+    hardpoints: [{ x: 0, y: 0 }],
+    dockable: false,
+    deathEffect: 4,
+    healthRegen: 0.1,
+    repairsRequired: 8,
+    primaryDefIndex: 0,
+    mass: effectiveInfinity,
+    model: "gun_platform",
+    deployment: 120,
+    pointLights: [
+      { position: { x: 0, y: 0, z: 5 }, color: [2.0, 2.0, 2.0] },
+    ],
   });
 
   for (let i = 0; i < defs.length; i++) {

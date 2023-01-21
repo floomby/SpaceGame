@@ -354,6 +354,7 @@ const init3dDrawing = (callback: () => void) => {
         "maintainer.obj",
         "infiltrator.obj",
         "emp_mine.obj",
+        "gun_platform.obj",
       ].map((url) => loadObj(url, gl, programInfo))
     )
       .then(async () => {
@@ -403,6 +404,11 @@ const clientPlayerUpdate = (player: Player) => {
     mat4.scale(modelMatrix, modelMatrix, [Math.max(1, 10 / (warpFramesLeft + 3)), Math.min(1, warpFramesLeft / 10), 1]);
   }
 
+  if (player.dp) {
+    const deployingAmount = (player.dp / def.deployment!) * 0.7 + 0.3;
+    mat4.scale(modelMatrix, modelMatrix, [deployingAmount, deployingAmount, deployingAmount]);
+  }
+
   player.modelMatrix = modelMatrix;
 };
 
@@ -416,7 +422,8 @@ const drawPlayer = (player: Player, lightSources: PointLightData[], isHighlighte
   const def = defs[player.defIndex];
   let bufferData = models[def.modelIndex];
 
-  if (player.isPC || def.kind === UnitKind.Station) {
+  // No names for gun platforms (index 15)
+  if (player.isPC || (def.kind === UnitKind.Station && player.defIndex !== 15)) {
     const name = getNameOfPlayer(player);
     if (name !== undefined) {
       let nameData = nameDataCache.get(name);
@@ -1658,7 +1665,7 @@ const drawEverything = (target: Player | undefined, targetAsteroid: Asteroid | u
     if (isRemotelyOnscreen(player.position)) {
       clientPlayerUpdate(player);
 
-      if (!player.inoperable && !player.docked) {
+      if (!player.inoperable && !player.docked && !player.dp) {
         const def = defs[player.defIndex];
         if (def.pointLights) {
           for (const light of def.pointLights) {

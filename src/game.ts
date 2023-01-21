@@ -127,6 +127,8 @@ type Player = Entity & {
   modelMatrix?: any;
   // Delayed damage
   dd?: DelayedDamage[];
+  // deploying
+  dp?: number;
 };
 
 type Asteroid = Circle & {
@@ -956,10 +958,19 @@ const update = (
         player.energy = Math.max(0, player.energy - 2 * deltaEnergy);
       }
     } else {
+      // Handle deployment
+      if (player.dp) {
+        if (player.dp < def.deployment) {
+          player.dp++;
+        } else {
+          player.dp = undefined;
+        }
+      }
+
       // Have stations spin slowly
       player.heading = positiveMod(player.heading + 0.003, 2 * Math.PI);
       // Have the stations fire their primary weapons
-      if (!player.inoperable && !player.disabled) {
+      if (!player.inoperable && !player.disabled && !player.dp) {
         let closestEnemy: Player | undefined;
         let closestEnemyDistanceSquared = Infinity;
         for (const [otherId, otherPlayer] of state.players) {
@@ -1011,6 +1022,21 @@ const update = (
               state.projectileId++;
             }
           }
+          const targetKind = TargetKind.Player;
+          for (let slotId = 0; slotId < player.slotData.length; slotId++) {
+            const armDef = armDefs[player.arms[slotId]];
+            // Targeted weapons
+            if (armDef.targeted === TargetedKind.Targeted) {
+              armDef.fireMutator(state, player, targetKind, closestEnemy, applyEffect, slotId, flashServerMessage, ret);
+              // Untargeted weapons
+            } else if (armDef.targeted === TargetedKind.Untargeted) {
+              if (slotId !== undefined && slotId < player.arms.length) {
+                if (armDef.fireMutator) {
+                  armDef.fireMutator(state, player, TargetKind.None, undefined, applyEffect, slotId, flashServerMessage, ret);
+                }
+              }
+            }
+          }
         }
       } else if (player.inoperable) {
         for (let i = 0; i < player.repairs.length; i++) {
@@ -1026,6 +1052,13 @@ const update = (
       if (player.disabled > 0) {
         player.disabled = Math.max(0, player.disabled - 3);
       }
+      // Run the secondary frameMutators
+      player.arms.forEach((armament, index) => {
+        const armDef = armDefs[armament];
+        if (armDef.frameMutator) {
+          armDef.frameMutator(player, index, state, flashServerMessage);
+        }
+      });
     }
     // Update primary times since last shot (secondaries are handled in the frameMutators in the armDefs)
     for (let i = 0; i < player.sinceLastShot.length; i++) {
@@ -1354,6 +1387,7 @@ const findPreviousTargetAsteroid = (player: Player, current: Asteroid | undefine
   return ret;
 };
 
+// Note that this function return the new player object which has been modified (old is unmodified)
 const equip = (player: Player, slotIndex: number, what: string | number, noCost?: boolean) => {
   const def = defs[player.defIndex];
   if (slotIndex >= def.slots.length) {
@@ -1575,10 +1609,13 @@ type ClientFriendRequest = {
   outgoing: boolean;
 };
 
-type SectorOfPlayerResult = {
-  sectorNumber: number;
-  sectorKind: SectorKind;
-} | "respawning" | null;
+type SectorOfPlayerResult =
+  | {
+      sectorNumber: number;
+      sectorKind: SectorKind;
+    }
+  | "respawning"
+  | null;
 
 export {
   GlobalState,

@@ -27,6 +27,10 @@ const root = resolve(__dirname + "/..");
 
 const app = express();
 
+app.get("/privacy", (req, res) => {
+  res.sendFile("other/privacy.html", { root });
+});
+
 app.get("/dist/app.js", (req, res) => {
   res.sendFile("dist/app.js", { root });
 });

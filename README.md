@@ -1,4 +1,4 @@
-## Space IO Game
+## Space Quest IO
 
 Fly around with your friends blasting enemies, exploring space, collecting resources, taking over starbases, and manufacturing new ships and weapons.
 
